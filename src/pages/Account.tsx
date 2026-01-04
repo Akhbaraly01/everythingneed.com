@@ -4,10 +4,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { 
   User, Settings, ShoppingBag, Heart, Clock, CreditCard, 
-  Bell, HelpCircle, LogOut, ChevronRight 
+  Bell, HelpCircle, LogOut, ChevronRight, Shield
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Account = () => {
+  const { user, profile, role, signOut } = useAuth();
+
   const menuItems = [
     { icon: User, title: "Profile Information", description: "Update your personal details", path: "/profile" },
     { icon: ShoppingBag, title: "My Orders", description: "Track and manage your orders", badge: "3", path: "/orders" },
@@ -19,6 +22,33 @@ const Account = () => {
     { icon: HelpCircle, title: "Help & Support", description: "Get help and contact support", path: "/support" },
   ];
 
+  const getRoleBadge = () => {
+    switch (role) {
+      case "super_admin":
+        return <Badge className="bg-gradient-primary text-white">Super Admin</Badge>;
+      case "category_admin":
+        return <Badge variant="secondary">Category Admin</Badge>;
+      case "customer_service":
+        return <Badge variant="outline">Customer Service</Badge>;
+      default:
+        return <Badge variant="outline">User</Badge>;
+    }
+  };
+
+  const getInitials = () => {
+    if (profile?.full_name) {
+      return profile.full_name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+    }
+    if (user?.email) {
+      return user.email[0].toUpperCase();
+    }
+    return "U";
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
+
   return (
     <div className="min-h-screen bg-muted/30">
       <div className="container mx-auto px-4 py-8">
@@ -27,15 +57,20 @@ const Account = () => {
           <CardContent className="pt-6">
             <div className="flex flex-col md:flex-row items-center gap-6">
               <Avatar className="h-24 w-24">
-                <AvatarImage src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400" />
-                <AvatarFallback>JD</AvatarFallback>
+                <AvatarImage src={profile?.avatar_url || undefined} />
+                <AvatarFallback className="text-2xl">{getInitials()}</AvatarFallback>
               </Avatar>
               <div className="text-center md:text-left flex-1">
-                <h1 className="text-2xl font-bold mb-1">John Doe</h1>
-                <p className="text-muted-foreground mb-3">john.doe@example.com</p>
+                <h1 className="text-2xl font-bold mb-1">
+                  {profile?.full_name || "User"}
+                </h1>
+                <p className="text-muted-foreground mb-3">{user?.email}</p>
                 <div className="flex flex-wrap gap-2 justify-center md:justify-start">
-                  <Badge variant="secondary">Premium Member</Badge>
-                  <Badge variant="outline">Verified</Badge>
+                  {getRoleBadge()}
+                  <Badge variant="outline">
+                    <Shield className="h-3 w-3 mr-1" />
+                    Verified
+                  </Badge>
                 </div>
               </div>
               <Button variant="outline">
@@ -50,25 +85,25 @@ const Account = () => {
           <Card>
             <CardHeader className="pb-3">
               <CardDescription>Total Orders</CardDescription>
-              <CardTitle className="text-3xl">47</CardTitle>
+              <CardTitle className="text-3xl">0</CardTitle>
             </CardHeader>
           </Card>
           <Card>
             <CardHeader className="pb-3">
               <CardDescription>Active Orders</CardDescription>
-              <CardTitle className="text-3xl">3</CardTitle>
+              <CardTitle className="text-3xl">0</CardTitle>
             </CardHeader>
           </Card>
           <Card>
             <CardHeader className="pb-3">
               <CardDescription>Wishlist Items</CardDescription>
-              <CardTitle className="text-3xl">12</CardTitle>
+              <CardTitle className="text-3xl">0</CardTitle>
             </CardHeader>
           </Card>
           <Card>
             <CardHeader className="pb-3">
               <CardDescription>Courses Enrolled</CardDescription>
-              <CardTitle className="text-3xl">8</CardTitle>
+              <CardTitle className="text-3xl">0</CardTitle>
             </CardHeader>
           </Card>
         </div>
@@ -104,7 +139,10 @@ const Account = () => {
 
         {/* Sign Out */}
         <Card className="border-destructive/20">
-          <CardHeader className="cursor-pointer hover:bg-destructive/5 transition-colors">
+          <CardHeader 
+            className="cursor-pointer hover:bg-destructive/5 transition-colors"
+            onClick={handleSignOut}
+          >
             <div className="flex items-center gap-4">
               <div className="h-10 w-10 rounded-lg bg-destructive/10 flex items-center justify-center">
                 <LogOut className="h-5 w-5 text-destructive" />

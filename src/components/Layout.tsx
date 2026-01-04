@@ -1,8 +1,10 @@
 import { ReactNode } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { Home, Zap, GraduationCap, Heart, User, Search, Bell, MessageCircle } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Home, Zap, GraduationCap, Heart, User, Search, Bell, MessageCircle, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/contexts/AuthContext";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface LayoutProps {
   children: ReactNode;
@@ -10,6 +12,8 @@ interface LayoutProps {
 
 const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { isAuthenticated, user, profile } = useAuth();
 
   const navItems = [
     { path: "/", icon: Home, label: "Home" },
@@ -20,6 +24,16 @@ const Layout = ({ children }: LayoutProps) => {
   ];
 
   const isActive = (path: string) => location.pathname === path;
+
+  const getInitials = () => {
+    if (profile?.full_name) {
+      return profile.full_name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+    }
+    if (user?.email) {
+      return user.email[0].toUpperCase();
+    }
+    return "U";
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -49,9 +63,18 @@ const Layout = ({ children }: LayoutProps) => {
             <Button variant="ghost" size="icon">
               <MessageCircle className="h-5 w-5" />
             </Button>
-            <Button variant="ghost" size="icon">
-              <User className="h-5 w-5" />
-            </Button>
+            {isAuthenticated ? (
+              <Link to="/account">
+                <Avatar className="h-8 w-8 cursor-pointer">
+                  <AvatarImage src={profile?.avatar_url || undefined} />
+                  <AvatarFallback className="text-xs">{getInitials()}</AvatarFallback>
+                </Avatar>
+              </Link>
+            ) : (
+              <Button variant="ghost" size="icon" onClick={() => navigate("/auth")}>
+                <LogIn className="h-5 w-5" />
+              </Button>
+            )}
           </div>
         </div>
       </header>
