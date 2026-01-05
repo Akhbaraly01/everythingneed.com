@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 interface Notification {
   id: string;
@@ -20,6 +21,7 @@ export const useNotifications = () => {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
+  const { notifyOrderUpdate, notifyTicketUpdate, notifyHealthTicketUpdate, permission } = usePushNotifications();
 
   const fetchNotifications = async () => {
     if (!user) return;
@@ -109,10 +111,16 @@ export const useNotifications = () => {
           table: "tickets",
         },
         (payload) => {
+          const ticketNumber = payload.new.ticket_number;
+          const status = payload.new.status;
           toast({
             title: "Ticket Updated",
-            description: `Ticket status changed to ${payload.new.status}`,
+            description: `Ticket status changed to ${status}`,
           });
+          // Send push notification
+          if (permission === "granted") {
+            notifyTicketUpdate(ticketNumber, status);
+          }
         }
       )
       .subscribe();
@@ -128,10 +136,16 @@ export const useNotifications = () => {
           table: "medicine_orders",
         },
         (payload) => {
+          const orderNumber = payload.new.order_number;
+          const status = payload.new.status;
           toast({
             title: "Order Updated",
-            description: `Order status changed to ${payload.new.status}`,
+            description: `Order status changed to ${status}`,
           });
+          // Send push notification
+          if (permission === "granted") {
+            notifyOrderUpdate(orderNumber, status);
+          }
         }
       )
       .subscribe();
@@ -147,10 +161,16 @@ export const useNotifications = () => {
           table: "health_tickets",
         },
         (payload) => {
+          const ticketNumber = payload.new.ticket_number;
+          const status = payload.new.status;
           toast({
             title: "Health Ticket Updated",
-            description: `Your appointment status changed to ${payload.new.status}`,
+            description: `Your appointment status changed to ${status}`,
           });
+          // Send push notification
+          if (permission === "granted") {
+            notifyHealthTicketUpdate(ticketNumber, status);
+          }
         }
       )
       .subscribe();
@@ -161,7 +181,7 @@ export const useNotifications = () => {
       supabase.removeChannel(orderChannel);
       supabase.removeChannel(healthChannel);
     };
-  }, [user]);
+  }, [user, permission]);
 
   return {
     notifications,

@@ -3,11 +3,13 @@ import { Button } from "@/components/ui/button";
 import CampaignCarousel from "@/components/home/CampaignCarousel";
 import { QuickAccessGrid, ServicesGrid } from "@/components/home/QuickAccessGrid";
 import TrendingSection from "@/components/home/TrendingSection";
+import ProductsServicesSection from "@/components/home/ProductsServicesSection";
 import ProductCard from "@/components/ProductCard";
-import { products, services } from "@/data/mockData";
+import { services } from "@/data/mockData";
 import { ChevronRight, Zap, Clock, Shield, Headphones } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Link } from "react-router-dom";
+import PushNotificationPrompt from "@/components/notifications/PushNotificationPrompt";
 
 const Home = () => {
   return (
@@ -18,20 +20,15 @@ const Home = () => {
       </div>
 
       <div className="container mx-auto px-4 py-6 md:py-8 space-y-10">
-        {/* Quick Access Categories - Binance Style */}
+        {/* Quick Access Categories - Shows 8 initially */}
         <section>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl md:text-2xl font-bold">Quick Access</h2>
-            <Link to="/deals">
-              <Button variant="ghost" size="sm">
-                View All <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
-            </Link>
           </div>
           <QuickAccessGrid />
         </section>
 
-        {/* Services Grid */}
+        {/* Popular Services - Shows 4 dynamic */}
         <section>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl md:text-2xl font-bold">Popular Services</h2>
@@ -64,18 +61,18 @@ const Home = () => {
               <p className="text-xs text-muted-foreground">Delivery</p>
             </div>
           </Card>
-          <Card className="p-4 flex items-center gap-3 bg-gradient-to-br from-success/10 to-success/5">
-            <div className="p-2 rounded-lg bg-success/20">
-              <Shield className="h-5 w-5 text-success" />
+          <Card className="p-4 flex items-center gap-3 bg-gradient-to-br from-green-500/10 to-green-500/5">
+            <div className="p-2 rounded-lg bg-green-500/20">
+              <Shield className="h-5 w-5 text-green-500" />
             </div>
             <div>
               <p className="text-2xl font-bold">100%</p>
               <p className="text-xs text-muted-foreground">Secure</p>
             </div>
           </Card>
-          <Card className="p-4 flex items-center gap-3 bg-gradient-to-br from-warning/10 to-warning/5">
-            <div className="p-2 rounded-lg bg-warning/20">
-              <Headphones className="h-5 w-5 text-warning" />
+          <Card className="p-4 flex items-center gap-3 bg-gradient-to-br from-orange-500/10 to-orange-500/5">
+            <div className="p-2 rounded-lg bg-orange-500/20">
+              <Headphones className="h-5 w-5 text-orange-500" />
             </div>
             <div>
               <p className="text-2xl font-bold">24/7</p>
@@ -87,22 +84,8 @@ const Home = () => {
         {/* Trending Now */}
         <TrendingSection />
 
-        {/* Featured Products */}
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl md:text-2xl font-bold">Featured Products</h2>
-            <Link to="/deals">
-              <Button variant="ghost" size="sm">
-                See All <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-            {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-        </section>
+        {/* Products & Services Section with 50+ category tabs */}
+        <ProductsServicesSection />
 
         {/* Featured Services */}
         <section>
@@ -132,6 +115,9 @@ const Home = () => {
           </div>
         </section>
       </div>
+
+      {/* Push Notification Prompt */}
+      <PushNotificationPrompt />
     </div>
   );
 };

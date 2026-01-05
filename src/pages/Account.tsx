@@ -4,28 +4,31 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { 
   User, Settings, ShoppingBag, Heart, Clock, CreditCard, 
-  Bell, HelpCircle, LogOut, ChevronRight, Shield
+  Bell, HelpCircle, LogOut, ChevronRight, Shield, HeartPulse, 
+  GraduationCap, Package
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { Link } from "react-router-dom";
 
 const Account = () => {
   const { user, profile, role, signOut } = useAuth();
 
   const menuItems = [
-    { icon: User, title: "Profile Information", description: "Update your personal details", path: "/profile" },
-    { icon: ShoppingBag, title: "My Orders", description: "Track and manage your orders", badge: "3", path: "/orders" },
-    { icon: Clock, title: "Order History", description: "View past purchases", path: "/history" },
+    { icon: User, title: "Profile Information", description: "Update your personal details", path: "/account/profile" },
+    { icon: Package, title: "Order History", description: "View all pharmacy orders", path: "/account/orders" },
+    { icon: HeartPulse, title: "Health Tickets", description: "View your appointments", path: "/healthcare/tickets" },
+    { icon: GraduationCap, title: "My Courses", description: "Enrolled courses and progress", path: "/learn" },
     { icon: Heart, title: "Wishlist", description: "Saved items and favorites", badge: "12", path: "/wishlist" },
     { icon: CreditCard, title: "Payment Methods", description: "Manage cards and payment options", path: "/payments" },
     { icon: Bell, title: "Notifications", description: "Manage your notifications", badge: "5", path: "/notifications" },
     { icon: Settings, title: "Settings", description: "App preferences and security", path: "/settings" },
-    { icon: HelpCircle, title: "Help & Support", description: "Get help and contact support", path: "/support" },
+    { icon: HelpCircle, title: "Help & Support", description: "Get help and contact support", path: "/support/tickets" },
   ];
 
   const getRoleBadge = () => {
     switch (role) {
       case "super_admin":
-        return <Badge className="bg-gradient-primary text-white">Super Admin</Badge>;
+        return <Badge className="bg-gradient-to-r from-primary to-purple-600 text-white">Super Admin</Badge>;
       case "category_admin":
         return <Badge variant="secondary">Category Admin</Badge>;
       case "customer_service":
@@ -111,29 +114,31 @@ const Account = () => {
         {/* Menu Items */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           {menuItems.map((item, index) => (
-            <Card key={index} className="hover:shadow-md transition-shadow cursor-pointer">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <item.icon className="h-5 w-5 text-primary" />
+            <Link key={index} to={item.path}>
+              <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                  <div className="flex items-center gap-4">
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <item.icon className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        {item.title}
+                        {item.badge && (
+                          <Badge variant="destructive" className="h-5 px-2">
+                            {item.badge}
+                          </Badge>
+                        )}
+                      </CardTitle>
+                      <CardDescription className="text-sm mt-1">
+                        {item.description}
+                      </CardDescription>
+                    </div>
                   </div>
-                  <div>
-                    <CardTitle className="text-base flex items-center gap-2">
-                      {item.title}
-                      {item.badge && (
-                        <Badge variant="destructive" className="h-5 px-2">
-                          {item.badge}
-                        </Badge>
-                      )}
-                    </CardTitle>
-                    <CardDescription className="text-sm mt-1">
-                      {item.description}
-                    </CardDescription>
-                  </div>
-                </div>
-                <ChevronRight className="h-5 w-5 text-muted-foreground" />
-              </CardHeader>
-            </Card>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                </CardHeader>
+              </Card>
+            </Link>
           ))}
         </div>
 
