@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import Footer from "@/components/Footer";
 
 interface LayoutProps {
   children: ReactNode;
@@ -83,6 +84,11 @@ const Layout = ({ children }: LayoutProps) => {
       <main className="flex-1 pb-20 md:pb-4">
         {children}
       </main>
+
+      {/* Footer - Hidden on mobile */}
+      <div className="hidden md:block">
+        <Footer />
+      </div>
 
       {/* Bottom Navigation - Static on Mobile */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border md:hidden">

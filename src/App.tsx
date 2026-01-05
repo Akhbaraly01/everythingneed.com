@@ -21,6 +21,12 @@ import Food from "./pages/deals/Food";
 import RealEstate from "./pages/deals/RealEstate";
 import Booking from "./pages/deals/Booking";
 import ProtectedRoute from "./components/ProtectedRoute";
+import SuperAdminDashboard from "./pages/admin/SuperAdminDashboard";
+import CategoryAdminDashboard from "./pages/admin/CategoryAdminDashboard";
+import TicketList from "./pages/support/TicketList";
+import CreateTicket from "./pages/support/CreateTicket";
+import TicketDetail from "./pages/support/TicketDetail";
+import NeedCategoryPage from "./pages/needs/NeedCategoryPage";
 
 const queryClient = new QueryClient();
 
@@ -48,6 +54,7 @@ const App = () => (
                     <Route path="/deals/jobs" element={<Jobs />} />
                     <Route path="/deals/agriculture" element={<Agriculture />} />
                     <Route path="/deals/food" element={<Food />} />
+                    <Route path="/needs/:slug" element={<NeedCategoryPage />} />
                     <Route path="/learn" element={<Learn />} />
                     <Route path="/healthcare" element={<Healthcare />} />
                     <Route
@@ -55,6 +62,46 @@ const App = () => (
                       element={
                         <ProtectedRoute>
                           <Account />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin"
+                      element={
+                        <ProtectedRoute>
+                          <SuperAdminDashboard />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/category"
+                      element={
+                        <ProtectedRoute>
+                          <CategoryAdminDashboard />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/support/tickets"
+                      element={
+                        <ProtectedRoute>
+                          <TicketList />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/support/tickets/new"
+                      element={
+                        <ProtectedRoute>
+                          <CreateTicket />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/support/tickets/:id"
+                      element={
+                        <ProtectedRoute>
+                          <TicketDetail />
                         </ProtectedRoute>
                       }
                     />
