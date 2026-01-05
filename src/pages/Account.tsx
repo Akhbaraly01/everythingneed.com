@@ -20,7 +20,7 @@ const Account = () => {
     { icon: GraduationCap, title: "My Courses", description: "Enrolled courses and progress", path: "/learn" },
     { icon: Heart, title: "Wishlist", description: "Saved items and favorites", badge: "12", path: "/wishlist" },
     { icon: CreditCard, title: "Payment Methods", description: "Manage cards and payment options", path: "/payments" },
-    { icon: Bell, title: "Notifications", description: "Manage your notifications", badge: "5", path: "/notifications" },
+    { icon: Bell, title: "Notification Settings", description: "Manage push notifications", path: "/account/notifications" },
     { icon: Settings, title: "Settings", description: "App preferences and security", path: "/settings" },
     { icon: HelpCircle, title: "Help & Support", description: "Get help and contact support", path: "/support/tickets" },
   ];
