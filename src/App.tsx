@@ -31,6 +31,7 @@ import NeedCategoryPage from "./pages/needs/NeedCategoryPage";
 import PharmacyPage from "./pages/pharmacy/PharmacyPage";
 import CheckoutPage from "./pages/pharmacy/CheckoutPage";
 import OrderConfirmation from "./pages/pharmacy/OrderConfirmation";
+import OrderHistory from "./pages/pharmacy/OrderHistory";
 import DoctorSelection from "./pages/healthcare/DoctorSelection";
 import AppointmentBooking from "./pages/healthcare/AppointmentBooking";
 import MyHealthTickets from "./pages/healthcare/MyHealthTickets";
@@ -72,6 +73,7 @@ const App = () => (
                       <Route path="/healthcare/book/:doctorId" element={<ProtectedRoute><AppointmentBooking /></ProtectedRoute>} />
                       <Route path="/healthcare/tickets" element={<ProtectedRoute><MyHealthTickets /></ProtectedRoute>} />
                       <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
+                      <Route path="/account/orders" element={<ProtectedRoute><OrderHistory /></ProtectedRoute>} />
                       <Route path="/admin" element={<ProtectedRoute><SuperAdminDashboard /></ProtectedRoute>} />
                       <Route path="/admin/category" element={<ProtectedRoute><CategoryAdminDashboard /></ProtectedRoute>} />
                       <Route path="/support/tickets" element={<ProtectedRoute><TicketList /></ProtectedRoute>} />
