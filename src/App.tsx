@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { CartProvider } from "@/contexts/CartContext";
 import Layout from "./components/Layout";
 import Home from "./pages/Home";
 import Deals from "./pages/Deals";
@@ -27,6 +28,12 @@ import TicketList from "./pages/support/TicketList";
 import CreateTicket from "./pages/support/CreateTicket";
 import TicketDetail from "./pages/support/TicketDetail";
 import NeedCategoryPage from "./pages/needs/NeedCategoryPage";
+import PharmacyPage from "./pages/pharmacy/PharmacyPage";
+import CheckoutPage from "./pages/pharmacy/CheckoutPage";
+import OrderConfirmation from "./pages/pharmacy/OrderConfirmation";
+import DoctorSelection from "./pages/healthcare/DoctorSelection";
+import AppointmentBooking from "./pages/healthcare/AppointmentBooking";
+import MyHealthTickets from "./pages/healthcare/MyHealthTickets";
 
 const queryClient = new QueryClient();
 
@@ -35,82 +42,48 @@ const App = () => (
     <TooltipProvider>
       <BrowserRouter>
         <AuthProvider>
-          <Toaster />
-          <Sonner />
-          <Routes>
-            <Route path="/auth" element={<Auth />} />
-            <Route
-              path="/*"
-              element={
-                <Layout>
-                  <Routes>
-                    <Route path="/" element={<Home />} />
-                    <Route path="/deals" element={<Deals />} />
-                    <Route path="/deals/booking" element={<Booking />} />
-                    <Route path="/deals/tasks" element={<Tasks />} />
-                    <Route path="/deals/transportation" element={<Transportation />} />
-                    <Route path="/deals/hotels" element={<Hotels />} />
-                    <Route path="/deals/real-estate" element={<RealEstate />} />
-                    <Route path="/deals/jobs" element={<Jobs />} />
-                    <Route path="/deals/agriculture" element={<Agriculture />} />
-                    <Route path="/deals/food" element={<Food />} />
-                    <Route path="/needs/:slug" element={<NeedCategoryPage />} />
-                    <Route path="/learn" element={<Learn />} />
-                    <Route path="/healthcare" element={<Healthcare />} />
-                    <Route
-                      path="/account"
-                      element={
-                        <ProtectedRoute>
-                          <Account />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/admin"
-                      element={
-                        <ProtectedRoute>
-                          <SuperAdminDashboard />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/admin/category"
-                      element={
-                        <ProtectedRoute>
-                          <CategoryAdminDashboard />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/support/tickets"
-                      element={
-                        <ProtectedRoute>
-                          <TicketList />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/support/tickets/new"
-                      element={
-                        <ProtectedRoute>
-                          <CreateTicket />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/support/tickets/:id"
-                      element={
-                        <ProtectedRoute>
-                          <TicketDetail />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </Layout>
-              }
-            />
-          </Routes>
+          <CartProvider>
+            <Toaster />
+            <Sonner />
+            <Routes>
+              <Route path="/auth" element={<Auth />} />
+              <Route
+                path="/*"
+                element={
+                  <Layout>
+                    <Routes>
+                      <Route path="/" element={<Home />} />
+                      <Route path="/deals" element={<Deals />} />
+                      <Route path="/deals/booking" element={<Booking />} />
+                      <Route path="/deals/tasks" element={<Tasks />} />
+                      <Route path="/deals/transportation" element={<Transportation />} />
+                      <Route path="/deals/hotels" element={<Hotels />} />
+                      <Route path="/deals/real-estate" element={<RealEstate />} />
+                      <Route path="/deals/jobs" element={<Jobs />} />
+                      <Route path="/deals/agriculture" element={<Agriculture />} />
+                      <Route path="/deals/food" element={<Food />} />
+                      <Route path="/needs/:slug" element={<NeedCategoryPage />} />
+                      <Route path="/learn" element={<Learn />} />
+                      <Route path="/healthcare" element={<Healthcare />} />
+                      <Route path="/pharmacy" element={<PharmacyPage />} />
+                      <Route path="/pharmacy/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
+                      <Route path="/pharmacy/order/:id" element={<ProtectedRoute><OrderConfirmation /></ProtectedRoute>} />
+                      <Route path="/healthcare/book" element={<DoctorSelection />} />
+                      <Route path="/healthcare/book/:doctorId" element={<ProtectedRoute><AppointmentBooking /></ProtectedRoute>} />
+                      <Route path="/healthcare/tickets" element={<ProtectedRoute><MyHealthTickets /></ProtectedRoute>} />
+                      <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
+                      <Route path="/admin" element={<ProtectedRoute><SuperAdminDashboard /></ProtectedRoute>} />
+                      <Route path="/admin/category" element={<ProtectedRoute><CategoryAdminDashboard /></ProtectedRoute>} />
+                      <Route path="/support/tickets" element={<ProtectedRoute><TicketList /></ProtectedRoute>} />
+                      <Route path="/support/tickets/new" element={<ProtectedRoute><CreateTicket /></ProtectedRoute>} />
+                      <Route path="/support/tickets/:id" element={<ProtectedRoute><TicketDetail /></ProtectedRoute>} />
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </Layout>
+                }
+              />
+            </Routes>
+          </CartProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
