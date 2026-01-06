@@ -1,12 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
+import { getAllNeedsData, NeedItem as NeedDataItem } from "@/data/needsData";
+import NeedRequestForm from "@/components/needs/NeedRequestForm";
+import AIChatBot from "@/components/chat/AIChatBot";
 import { 
-  Search, ArrowLeft, Star, ShoppingCart, ChevronRight,
+  Search, ArrowLeft, Star, ShoppingCart, ChevronRight, Loader2,
   Plane, Hotel, Building, Briefcase, Tractor, UtensilsCrossed, 
   Heart, GraduationCap, Laptop, Shirt, Sparkles, Home, Music, 
   Dumbbell, Car, Wallet, Scale, Sparkle, Shield, Dog, Compass, 
@@ -39,12 +42,19 @@ const iconMap: { [key: string]: any } = {
   Printer, Truck, HardHat, Wrench, Baby, HeartHandshake, Phone,
 };
 
+const ITEMS_PER_PAGE = 12;
+
 const NeedCategoryPage = () => {
   const { slug } = useParams<{ slug: string }>();
   const [category, setCategory] = useState<NeedCategory | null>(null);
   const [items, setItems] = useState<NeedItem[]>([]);
+  const [sampleData, setSampleData] = useState<NeedDataItem[]>([]);
+  const [displayedItems, setDisplayedItems] = useState<(NeedItem | NeedDataItem)[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentIndex, setCurrentIndex] = useState(ITEMS_PER_PAGE);
+  const [showRequestForm, setShowRequestForm] = useState(false);
 
   useEffect(() => {
     if (slug) fetchData();
@@ -67,10 +77,36 @@ const NeedCategoryPage = () => {
           .eq("category_id", catData.id)
           .eq("is_available", true);
         
-        if (itemsData) setItems(itemsData);
+        if (itemsData && itemsData.length > 0) {
+          setItems(itemsData);
+          setDisplayedItems(itemsData.slice(0, ITEMS_PER_PAGE));
+        } else {
+          // Use sample data
+          const samples = getAllNeedsData(slug || 'transportation');
+          setSampleData(samples);
+          setDisplayedItems(samples.slice(0, ITEMS_PER_PAGE));
+        }
+      } else {
+        // Category not in DB, use sample data
+        const defaultCategory: NeedCategory = {
+          id: slug || 'default',
+          name: slug ? slug.charAt(0).toUpperCase() + slug.slice(1) : 'Category',
+          slug: slug || 'default',
+          description: `Browse ${slug} services and products`,
+          icon: 'Briefcase',
+          color: '#3B82F6'
+        };
+        setCategory(defaultCategory);
+        const samples = getAllNeedsData(slug || 'transportation');
+        setSampleData(samples);
+        setDisplayedItems(samples.slice(0, ITEMS_PER_PAGE));
       }
     } catch (error) {
       console.error("Error fetching data:", error);
+      // Fallback to sample data
+      const samples = getAllNeedsData(slug || 'transportation');
+      setSampleData(samples);
+      setDisplayedItems(samples.slice(0, ITEMS_PER_PAGE));
     } finally {
       setLoading(false);
     }
@@ -81,15 +117,41 @@ const NeedCategoryPage = () => {
     return Icon;
   };
 
-  const filteredItems = items.filter(item =>
+  const allItems = items.length > 0 ? items : sampleData;
+  
+  const filteredItems = allItems.filter(item =>
     item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const loadMore = useCallback(() => {
+    setLoadingMore(true);
+    setTimeout(() => {
+      const nextItems = filteredItems.slice(currentIndex, currentIndex + ITEMS_PER_PAGE);
+      setDisplayedItems(prev => [...prev, ...nextItems]);
+      setCurrentIndex(prev => prev + ITEMS_PER_PAGE);
+      setLoadingMore(false);
+    }, 500);
+  }, [currentIndex, filteredItems]);
+
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    if (scrollHeight - scrollTop <= clientHeight * 1.5 && !loadingMore && currentIndex < filteredItems.length) {
+      loadMore();
+    }
+  }, [loadMore, loadingMore, currentIndex, filteredItems.length]);
+
+  useEffect(() => {
+    if (searchTerm) {
+      setDisplayedItems(filteredItems.slice(0, ITEMS_PER_PAGE));
+      setCurrentIndex(ITEMS_PER_PAGE);
+    }
+  }, [searchTerm]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">Loading...</p>
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -108,16 +170,6 @@ const NeedCategoryPage = () => {
   }
 
   const IconComponent = getIcon(category.icon);
-
-  // Generate sample items if none exist
-  const displayItems = items.length > 0 ? filteredItems : Array(20).fill(null).map((_, i) => ({
-    id: `sample-${i}`,
-    name: `${category.name} Service ${i + 1}`,
-    description: `Quality ${category.name.toLowerCase()} service provider with excellent ratings`,
-    price: Math.floor(Math.random() * 200) + 20,
-    image_url: null,
-    is_available: true,
-  }));
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -145,33 +197,51 @@ const NeedCategoryPage = () => {
             </div>
           </div>
 
-          <div className="relative max-w-xl">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input
-              placeholder={`Search ${category.name.toLowerCase()}...`}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-12 py-6 text-lg bg-background"
-            />
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1 max-w-xl">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input
+                placeholder={`Search ${category.name.toLowerCase()}...`}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-12 py-6 text-lg bg-background"
+              />
+            </div>
+            <Button 
+              onClick={() => setShowRequestForm(!showRequestForm)}
+              variant={showRequestForm ? "secondary" : "default"}
+            >
+              {showRequestForm ? "Hide Request Form" : "Submit a Request"}
+            </Button>
           </div>
         </div>
       </section>
 
       <div className="container mx-auto px-4 py-8">
+        {/* Request Form */}
+        {showRequestForm && (
+          <div className="mb-8">
+            <NeedRequestForm categoryName={category.name} />
+          </div>
+        )}
+
         {/* Results Count */}
         <div className="flex items-center justify-between mb-6">
           <p className="text-muted-foreground">
-            {displayItems.length} {displayItems.length === 1 ? "item" : "items"} available
+            {filteredItems.length} {filteredItems.length === 1 ? "item" : "items"} available
           </p>
           <Button variant="outline">
             Filter <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         </div>
 
-        {/* Items Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {displayItems.map((item, index) => (
-            <Card key={item.id} className="group hover:shadow-lg transition-all duration-300">
+        {/* Items Grid with Infinite Scroll */}
+        <div 
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-h-[1000px] overflow-y-auto"
+          onScroll={handleScroll}
+        >
+          {displayedItems.map((item, index) => (
+            <Card key={item.id || index} className="group hover:shadow-lg transition-all duration-300">
               <div 
                 className="h-40 flex items-center justify-center"
                 style={{ background: `linear-gradient(135deg, ${category.color}15, ${category.color}05)` }}
@@ -188,10 +258,15 @@ const NeedCategoryPage = () => {
                 <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
                   {item.description}
                 </p>
+                {'provider' in item && (
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Provider: {item.provider}
+                  </p>
+                )}
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-1">
                     <Star className="h-4 w-4 fill-warning text-warning" />
-                    <span className="text-sm">{(4 + Math.random()).toFixed(1)}</span>
+                    <span className="text-sm">{'rating' in item ? item.rating : (4 + Math.random()).toFixed(1)}</span>
                   </div>
                   <Badge variant="outline">Available</Badge>
                 </div>
@@ -211,16 +286,36 @@ const NeedCategoryPage = () => {
           ))}
         </div>
 
-        {displayItems.length === 0 && (
+        {loadingMore && (
+          <div className="flex justify-center py-6">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          </div>
+        )}
+
+        {currentIndex < filteredItems.length && !loadingMore && (
+          <div className="text-center mt-6">
+            <Button variant="outline" onClick={loadMore}>
+              Load More Items
+            </Button>
+          </div>
+        )}
+
+        {displayedItems.length === 0 && (
           <div className="text-center py-12">
             <IconComponent className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium mb-2">No items found</h3>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground mb-4">
               {searchTerm ? "Try a different search term" : "Check back later for new listings"}
             </p>
+            <Button onClick={() => setShowRequestForm(true)}>
+              Submit a Custom Request
+            </Button>
           </div>
         )}
       </div>
+
+      {/* AI Chatbot */}
+      <AIChatBot context="needs" title="Needs Assistant" />
     </div>
   );
 };
