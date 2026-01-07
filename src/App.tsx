@@ -36,6 +36,7 @@ import DoctorSelection from "./pages/healthcare/DoctorSelection";
 import AppointmentBooking from "./pages/healthcare/AppointmentBooking";
 import MyHealthTickets from "./pages/healthcare/MyHealthTickets";
 import NotificationSettings from "./pages/account/NotificationSettings";
+import Dashboard from "./pages/account/Dashboard";
 
 const queryClient = new QueryClient();
 
@@ -74,6 +75,7 @@ const App = () => (
                       <Route path="/healthcare/book/:doctorId" element={<ProtectedRoute><AppointmentBooking /></ProtectedRoute>} />
                       <Route path="/healthcare/tickets" element={<ProtectedRoute><MyHealthTickets /></ProtectedRoute>} />
                       <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
+                      <Route path="/account/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                       <Route path="/account/orders" element={<ProtectedRoute><OrderHistory /></ProtectedRoute>} />
                       <Route path="/account/notifications" element={<ProtectedRoute><NotificationSettings /></ProtectedRoute>} />
                       <Route path="/admin" element={<ProtectedRoute><SuperAdminDashboard /></ProtectedRoute>} />
