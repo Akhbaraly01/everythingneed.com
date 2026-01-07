@@ -1,9 +1,11 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Star, ShoppingCart, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Star, ShoppingCart } from "lucide-react";
 import { allHomeProducts, HomeProduct } from "@/data/homeProductsData";
+import ProductFilters from "./ProductFilters";
+import Pagination from "@/components/Pagination";
 
 const categories = [
   "All", "Products", "Health", "Electronics", "Books", "Building", "Labour", 
@@ -17,28 +19,34 @@ const categories = [
   "Maintenance", "Security", "Education", "Training"
 ];
 
-const ITEMS_PER_PAGE = 24;
+const ITEMS_PER_PAGE = 500;
 
 const ProductsServicesSection = () => {
   const [activeCategory, setActiveCategory] = useState("All");
-  const [displayedProducts, setDisplayedProducts] = useState<HomeProduct[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(ITEMS_PER_PAGE);
-  const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000]);
+  const [minRating, setMinRating] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Filter products based on category
-  const getFilteredProducts = useCallback(() => {
-    if (activeCategory === "All") return allHomeProducts;
-    return allHomeProducts.filter(p => 
-      p.category.toLowerCase() === activeCategory.toLowerCase()
-    );
-  }, [activeCategory]);
+  // Filter products based on all criteria
+  const filteredProducts = useMemo(() => {
+    return allHomeProducts.filter(product => {
+      const matchesCategory = activeCategory === "All" || 
+        product.category.toLowerCase() === activeCategory.toLowerCase();
+      const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.category.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesPrice = product.price >= priceRange[0] && product.price <= priceRange[1];
+      const matchesRating = product.rating >= minRating;
+      
+      return matchesCategory && matchesSearch && matchesPrice && matchesRating;
+    });
+  }, [activeCategory, searchQuery, priceRange, minRating]);
 
-  useEffect(() => {
-    const filtered = getFilteredProducts();
-    setDisplayedProducts(filtered.slice(0, ITEMS_PER_PAGE));
-    setCurrentIndex(ITEMS_PER_PAGE);
-  }, [activeCategory, getFilteredProducts]);
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const displayedProducts = filteredProducts.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   const scrollCategories = (direction: "left" | "right") => {
     if (scrollRef.current) {
@@ -50,39 +58,37 @@ const ProductsServicesSection = () => {
     }
   };
 
-  const loadMore = useCallback(() => {
-    const filtered = getFilteredProducts();
-    if (currentIndex >= filtered.length) return;
-    
-    setLoading(true);
-    setTimeout(() => {
-      const nextProducts = filtered.slice(currentIndex, currentIndex + ITEMS_PER_PAGE);
-      setDisplayedProducts(prev => [...prev, ...nextProducts]);
-      setCurrentIndex(prev => prev + ITEMS_PER_PAGE);
-      setLoading(false);
-    }, 500);
-  }, [currentIndex, getFilteredProducts]);
-
-  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    const filtered = getFilteredProducts();
-    if (scrollHeight - scrollTop <= clientHeight * 1.5 && !loading && currentIndex < filtered.length) {
-      loadMore();
-    }
-  }, [loadMore, loading, currentIndex, getFilteredProducts]);
-
   const handleCategoryChange = (category: string) => {
     setActiveCategory(category);
+    setCurrentPage(1);
   };
 
-  const filteredTotal = getFilteredProducts().length;
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setPriceRange([0, 1000]);
+    setMinRating(0);
+    setActiveCategory("All");
+    setCurrentPage(1);
+  };
+
+  const activeFiltersCount = [
+    searchQuery !== "",
+    activeCategory !== "All",
+    minRating > 0,
+    priceRange[0] > 0 || priceRange[1] < 1000
+  ].filter(Boolean).length;
 
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl md:text-2xl font-bold">Products & Services</h2>
-          <p className="text-sm text-muted-foreground">{filteredTotal.toLocaleString()} items available</p>
+          <p className="text-sm text-muted-foreground">{filteredProducts.length.toLocaleString()} items available</p>
         </div>
         <div className="flex gap-2">
           <Button
@@ -103,6 +109,21 @@ const ProductsServicesSection = () => {
           </Button>
         </div>
       </div>
+
+      {/* Search and Filters */}
+      <ProductFilters
+        searchQuery={searchQuery}
+        onSearchChange={(value) => { setSearchQuery(value); setCurrentPage(1); }}
+        priceRange={priceRange}
+        onPriceChange={(value) => { setPriceRange(value); setCurrentPage(1); }}
+        minRating={minRating}
+        onRatingChange={(value) => { setMinRating(value); setCurrentPage(1); }}
+        selectedCategory={activeCategory}
+        onCategoryChange={handleCategoryChange}
+        categories={categories}
+        onClearFilters={clearFilters}
+        activeFiltersCount={activeFiltersCount}
+      />
 
       {/* Category Tabs */}
       <div className="relative">
@@ -125,11 +146,8 @@ const ProductsServicesSection = () => {
         </div>
       </div>
 
-      {/* Products Grid with Infinite Scroll */}
-      <div 
-        className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 max-h-[800px] overflow-y-auto"
-        onScroll={handleScroll}
-      >
+      {/* Products Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
         {displayedProducts.length > 0 ? (
           displayedProducts.map((product) => (
             <Card
@@ -163,31 +181,21 @@ const ProductsServicesSection = () => {
           ))
         ) : (
           <div className="col-span-full text-center py-12 text-muted-foreground">
-            No products found in this category
+            No products found matching your criteria
           </div>
         )}
       </div>
 
-      {/* Loading Indicator */}
-      {loading && (
-        <div className="flex justify-center py-4">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        </div>
+      {/* Pagination */}
+      {filteredProducts.length > 0 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+          itemsPerPage={ITEMS_PER_PAGE}
+          totalItems={filteredProducts.length}
+        />
       )}
-
-      {/* Load More Button */}
-      {!loading && currentIndex < filteredTotal && (
-        <div className="text-center">
-          <Button variant="outline" onClick={loadMore}>
-            Load More Products
-          </Button>
-        </div>
-      )}
-
-      {/* Item count */}
-      <div className="text-center text-sm text-muted-foreground">
-        Showing {displayedProducts.length} of {filteredTotal.toLocaleString()} items
-      </div>
     </section>
   );
 };
