@@ -1,47 +1,39 @@
-import { QuickAccessGrid, ServicesGrid } from "@/components/home/QuickAccessGrid";
+import { QuickAccessGrid } from "@/components/home/QuickAccessGrid";
 import CampaignCarousel from "@/components/home/CampaignCarousel";
+import BannerSection from "@/components/home/BannerSection";
 import ProductsServicesSection from "@/components/home/ProductsServicesSection";
 import HomeRequestForm from "@/components/home/HomeRequestForm";
 import PushNotificationPrompt from "@/components/notifications/PushNotificationPrompt";
 import AIChatBot from "@/components/chat/AIChatBot";
-import { ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import TrendingSection from "@/components/home/TrendingSection";
 
 const Home = () => {
   return (
     <div className="min-h-screen pb-20">
-      {/* Campaign Carousel */}
+      {/* Campaign Carousel - Main Slider */}
       <div className="pt-4 md:container md:mx-auto md:px-4">
         <CampaignCarousel />
       </div>
 
-      <div className="container mx-auto px-4 py-6 md:py-8 space-y-8">
+      <div className="container mx-auto px-4 py-6 md:py-8 space-y-6">
         {/* Request Form - At the top for easy access */}
         <HomeRequestForm />
 
-        {/* Quick Access Categories - Shows 8 initially */}
+        {/* Quick Access Categories - 7 icons + See More */}
         <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl md:text-2xl font-bold">Quick Access</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg md:text-xl font-bold">Quick Access</h2>
           </div>
           <QuickAccessGrid />
         </section>
 
-        {/* Popular Services - Shows 4 dynamic */}
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl md:text-2xl font-bold">Popular Services</h2>
-            <Link to="/deals">
-              <Button variant="ghost" size="sm">
-                View All <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
-            </Link>
-          </div>
-          <ServicesGrid />
-        </section>
+        {/* Promotional Banners - 1 large + 2 small */}
+        <BannerSection />
 
-        {/* Products & Services Section with 50+ category tabs and infinite scroll */}
+        {/* Trending Section */}
+        <TrendingSection />
+
+        {/* Products & Services Section with 500 items per page + pagination */}
         <ProductsServicesSection />
       </div>
 

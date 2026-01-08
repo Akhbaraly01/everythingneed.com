@@ -37,6 +37,9 @@ import AppointmentBooking from "./pages/healthcare/AppointmentBooking";
 import MyHealthTickets from "./pages/healthcare/MyHealthTickets";
 import NotificationSettings from "./pages/account/NotificationSettings";
 import Dashboard from "./pages/account/Dashboard";
+import VendorDashboard from "./pages/vendor/VendorDashboard";
+import ProductDetail from "./pages/product/ProductDetail";
+import Wishlist from "./pages/account/Wishlist";
 
 const queryClient = new QueryClient();
 
@@ -66,6 +69,7 @@ const App = () => (
                       <Route path="/deals/agriculture" element={<Agriculture />} />
                       <Route path="/deals/food" element={<Food />} />
                       <Route path="/needs/:slug" element={<NeedCategoryPage />} />
+                      <Route path="/product/:id" element={<ProductDetail />} />
                       <Route path="/learn" element={<Learn />} />
                       <Route path="/healthcare" element={<Healthcare />} />
                       <Route path="/pharmacy" element={<PharmacyPage />} />
@@ -77,7 +81,9 @@ const App = () => (
                       <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
                       <Route path="/account/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                       <Route path="/account/orders" element={<ProtectedRoute><OrderHistory /></ProtectedRoute>} />
+                      <Route path="/account/wishlist" element={<ProtectedRoute><Wishlist /></ProtectedRoute>} />
                       <Route path="/account/notifications" element={<ProtectedRoute><NotificationSettings /></ProtectedRoute>} />
+                      <Route path="/vendor/dashboard" element={<ProtectedRoute><VendorDashboard /></ProtectedRoute>} />
                       <Route path="/admin" element={<ProtectedRoute><SuperAdminDashboard /></ProtectedRoute>} />
                       <Route path="/admin/category" element={<ProtectedRoute><CategoryAdminDashboard /></ProtectedRoute>} />
                       <Route path="/support/tickets" element={<ProtectedRoute><TicketList /></ProtectedRoute>} />
