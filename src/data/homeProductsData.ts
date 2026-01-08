@@ -3,8 +3,11 @@ export interface HomeProduct {
   name: string;
   category: string;
   price: number;
+  originalPrice?: number;
   rating: number;
   image: string;
+  vendor: string;
+  description: string;
 }
 
 const categories = [
@@ -47,7 +50,12 @@ const images = [
   'https://images.unsplash.com/photo-1583394838336-acd977736f90?w=300',
 ];
 
-// Generate 1000+ products
+const vendors = ['TechHub', 'StyleMart', 'HomeGoods', 'FreshMarket', 'SportZone', 'BookWorld', 'BeautyPlus', 'AutoCare', 'PetLovers', 'BabyJoy'];
+
+const getDescription = (name: string, category: string): string => {
+  return `High-quality ${name.toLowerCase()} from our ${category} collection. Premium materials, excellent craftsmanship, and backed by our satisfaction guarantee. Perfect for everyday use with modern design.`;
+};
+
 export const generateHomeProducts = (): HomeProduct[] => {
   const products: HomeProduct[] = [];
   let id = 1;
@@ -57,13 +65,18 @@ export const generateHomeProducts = (): HomeProduct[] => {
     for (const category of categories) {
       const names = productNames[category] || productNames.Electronics;
       for (const name of names) {
+        const price = Math.floor(Math.random() * 1000) + 10;
+        const hasDiscount = Math.random() > 0.5;
         products.push({
           id: id++,
           name: round > 0 ? `${name} ${round + 1}` : name,
           category,
-          price: Math.floor(Math.random() * 1000) + 10,
+          price,
+          originalPrice: hasDiscount ? Math.floor(price * (1.2 + Math.random() * 0.5)) : undefined,
           rating: Number((4 + Math.random()).toFixed(1)),
-          image: images[Math.floor(Math.random() * images.length)]
+          image: images[Math.floor(Math.random() * images.length)],
+          vendor: vendors[Math.floor(Math.random() * vendors.length)],
+          description: getDescription(name, category),
         });
       }
     }
