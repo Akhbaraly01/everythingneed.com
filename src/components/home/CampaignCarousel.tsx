@@ -94,7 +94,7 @@ const CampaignCarousel = () => {
   const goPrev = () => goTo((current - 1 + campaigns.length) % campaigns.length);
 
   return (
-    <section className="relative h-56 md:h-72 lg:h-96 overflow-hidden rounded-xl md:rounded-2xl mx-4 md:mx-0">
+    <section className="relative h-36 md:h-48 lg:h-56 overflow-hidden rounded-xl md:rounded-2xl mx-4 md:mx-0">
       {/* Slides */}
       <div
         className="flex transition-transform duration-500 ease-out h-full"
@@ -107,30 +107,30 @@ const CampaignCarousel = () => {
           >
             {/* Background Pattern */}
             <div className="absolute inset-0 opacity-10">
-              <div className="absolute top-10 left-10 text-8xl md:text-9xl">
+              <div className="absolute top-4 left-4 text-5xl md:text-7xl">
                 {campaign.icon}
               </div>
-              <div className="absolute bottom-10 right-10 text-6xl md:text-8xl rotate-12">
+              <div className="absolute bottom-4 right-4 text-4xl md:text-6xl rotate-12">
                 {campaign.icon}
               </div>
             </div>
 
             {/* Content */}
-            <div className="container mx-auto px-6 md:px-8 relative z-10">
+            <div className="container mx-auto px-4 md:px-6 relative z-10">
               <div className="max-w-xl">
-                <span className="text-4xl md:text-5xl mb-2 md:mb-4 block">
+                <span className="text-2xl md:text-3xl mb-1 md:mb-2 block">
                   {campaign.icon}
                 </span>
-                <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold text-primary-foreground mb-2 md:mb-4">
+                <h2 className="text-lg md:text-2xl lg:text-3xl font-bold text-primary-foreground mb-1 md:mb-2">
                   {campaign.title}
                 </h2>
-                <p className="text-sm md:text-lg text-primary-foreground/90 mb-4 md:mb-6">
+                <p className="text-xs md:text-sm text-primary-foreground/90 mb-2 md:mb-4 line-clamp-2">
                   {campaign.subtitle}
                 </p>
                 <Link to={campaign.link}>
                   <Button
-                    size="lg"
-                    className="bg-background text-foreground hover:bg-background/90 shadow-lg"
+                    size="sm"
+                    className="bg-background text-foreground hover:bg-background/90 shadow-lg h-8 text-xs md:text-sm"
                   >
                     {campaign.cta}
                   </Button>
@@ -145,30 +145,30 @@ const CampaignCarousel = () => {
       <Button
         variant="ghost"
         size="icon"
-        className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 bg-background/20 hover:bg-background/40 text-primary-foreground backdrop-blur-sm"
+        className="absolute left-1 md:left-2 top-1/2 -translate-y-1/2 bg-background/20 hover:bg-background/40 text-primary-foreground backdrop-blur-sm h-7 w-7 md:h-9 md:w-9"
         onClick={goPrev}
       >
-        <ChevronLeft className="h-5 w-5" />
+        <ChevronLeft className="h-4 w-4" />
       </Button>
       <Button
         variant="ghost"
         size="icon"
-        className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 bg-background/20 hover:bg-background/40 text-primary-foreground backdrop-blur-sm"
+        className="absolute right-1 md:right-2 top-1/2 -translate-y-1/2 bg-background/20 hover:bg-background/40 text-primary-foreground backdrop-blur-sm h-7 w-7 md:h-9 md:w-9"
         onClick={goNext}
       >
-        <ChevronRight className="h-5 w-5" />
+        <ChevronRight className="h-4 w-4" />
       </Button>
 
       {/* Dot Indicators */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
         {campaigns.map((_, index) => (
           <button
             key={index}
             onClick={() => goTo(index)}
-            className={`h-2 rounded-full transition-all ${
+            className={`h-1.5 rounded-full transition-all ${
               index === current
-                ? "w-8 bg-primary-foreground"
-                : "w-2 bg-primary-foreground/50 hover:bg-primary-foreground/70"
+                ? "w-5 bg-primary-foreground"
+                : "w-1.5 bg-primary-foreground/50 hover:bg-primary-foreground/70"
             }`}
           />
         ))}

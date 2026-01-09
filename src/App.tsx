@@ -38,8 +38,10 @@ import MyHealthTickets from "./pages/healthcare/MyHealthTickets";
 import NotificationSettings from "./pages/account/NotificationSettings";
 import Dashboard from "./pages/account/Dashboard";
 import VendorDashboard from "./pages/vendor/VendorDashboard";
+import VendorRegistration from "./pages/vendor/VendorRegistration";
 import ProductDetail from "./pages/product/ProductDetail";
 import Wishlist from "./pages/account/Wishlist";
+import SubmitRequest from "./pages/needs/SubmitRequest";
 
 const queryClient = new QueryClient();
 
@@ -68,6 +70,7 @@ const App = () => (
                       <Route path="/deals/jobs" element={<Jobs />} />
                       <Route path="/deals/agriculture" element={<Agriculture />} />
                       <Route path="/deals/food" element={<Food />} />
+                      <Route path="/needs/request" element={<SubmitRequest />} />
                       <Route path="/needs/:slug" element={<NeedCategoryPage />} />
                       <Route path="/product/:id" element={<ProductDetail />} />
                       <Route path="/learn" element={<Learn />} />
@@ -84,6 +87,7 @@ const App = () => (
                       <Route path="/account/wishlist" element={<ProtectedRoute><Wishlist /></ProtectedRoute>} />
                       <Route path="/account/notifications" element={<ProtectedRoute><NotificationSettings /></ProtectedRoute>} />
                       <Route path="/vendor/dashboard" element={<ProtectedRoute><VendorDashboard /></ProtectedRoute>} />
+                      <Route path="/vendor/register" element={<VendorRegistration />} />
                       <Route path="/admin" element={<ProtectedRoute><SuperAdminDashboard /></ProtectedRoute>} />
                       <Route path="/admin/category" element={<ProtectedRoute><CategoryAdminDashboard /></ProtectedRoute>} />
                       <Route path="/support/tickets" element={<ProtectedRoute><TicketList /></ProtectedRoute>} />
