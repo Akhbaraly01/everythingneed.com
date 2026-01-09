@@ -3,9 +3,11 @@ export interface Product {
   name: string;
   category: string;
   price: number;
+  originalPrice?: number;
   image: string;
   rating: number;
   vendor: string;
+  description?: string;
 }
 
 export interface Service {
