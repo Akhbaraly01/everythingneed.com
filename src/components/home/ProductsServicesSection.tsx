@@ -1,10 +1,11 @@
 import { useState, useMemo, useRef } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Star, ShoppingCart } from "lucide-react";
+import { ChevronLeft, ChevronRight, Star, ShoppingCart, Heart } from "lucide-react";
 import { allHomeProducts, HomeProduct } from "@/data/homeProductsData";
-import ProductFilters from "./ProductFilters";
+import { useCurrency } from "@/contexts/CurrencyContext";
 import Pagination from "@/components/Pagination";
 
 const categories = [
@@ -24,24 +25,17 @@ const ITEMS_PER_PAGE = 500;
 const ProductsServicesSection = () => {
   const [activeCategory, setActiveCategory] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000]);
-  const [minRating, setMinRating] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { formatPrice } = useCurrency();
 
-  // Filter products based on all criteria
+  // Filter products based on category only (search is in top bar)
   const filteredProducts = useMemo(() => {
     return allHomeProducts.filter(product => {
       const matchesCategory = activeCategory === "All" || 
         product.category.toLowerCase() === activeCategory.toLowerCase();
-      const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.category.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesPrice = product.price >= priceRange[0] && product.price <= priceRange[1];
-      const matchesRating = product.rating >= minRating;
-      
-      return matchesCategory && matchesSearch && matchesPrice && matchesRating;
+      return matchesCategory;
     });
-  }, [activeCategory, searchQuery, priceRange, minRating]);
+  }, [activeCategory]);
 
   // Calculate pagination
   const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
@@ -68,33 +62,18 @@ const ProductsServicesSection = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const clearFilters = () => {
-    setSearchQuery("");
-    setPriceRange([0, 1000]);
-    setMinRating(0);
-    setActiveCategory("All");
-    setCurrentPage(1);
-  };
-
-  const activeFiltersCount = [
-    searchQuery !== "",
-    activeCategory !== "All",
-    minRating > 0,
-    priceRange[0] > 0 || priceRange[1] < 1000
-  ].filter(Boolean).length;
-
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl md:text-2xl font-bold">Products & Services</h2>
-          <p className="text-sm text-muted-foreground">{filteredProducts.length.toLocaleString()} items available</p>
+          <h2 className="text-lg md:text-xl font-bold">Products & Services</h2>
+          <p className="text-xs text-muted-foreground">{filteredProducts.length.toLocaleString()} items available</p>
         </div>
         <div className="flex gap-2">
           <Button
             variant="outline"
             size="icon"
-            className="h-8 w-8 hidden md:flex"
+            className="h-7 w-7 hidden md:flex"
             onClick={() => scrollCategories("left")}
           >
             <ChevronLeft className="h-4 w-4" />
@@ -102,7 +81,7 @@ const ProductsServicesSection = () => {
           <Button
             variant="outline"
             size="icon"
-            className="h-8 w-8 hidden md:flex"
+            className="h-7 w-7 hidden md:flex"
             onClick={() => scrollCategories("right")}
           >
             <ChevronRight className="h-4 w-4" />
@@ -110,22 +89,7 @@ const ProductsServicesSection = () => {
         </div>
       </div>
 
-      {/* Search and Filters */}
-      <ProductFilters
-        searchQuery={searchQuery}
-        onSearchChange={(value) => { setSearchQuery(value); setCurrentPage(1); }}
-        priceRange={priceRange}
-        onPriceChange={(value) => { setPriceRange(value); setCurrentPage(1); }}
-        minRating={minRating}
-        onRatingChange={(value) => { setMinRating(value); setCurrentPage(1); }}
-        selectedCategory={activeCategory}
-        onCategoryChange={handleCategoryChange}
-        categories={categories}
-        onClearFilters={clearFilters}
-        activeFiltersCount={activeFiltersCount}
-      />
-
-      {/* Category Tabs */}
+      {/* Category Tabs Only - No Search/Filter */}
       <div className="relative">
         <div
           ref={scrollRef}
@@ -137,7 +101,7 @@ const ProductsServicesSection = () => {
               key={category}
               variant={activeCategory === category ? "default" : "outline"}
               size="sm"
-              className="flex-shrink-0 rounded-full"
+              className="flex-shrink-0 rounded-full h-7 text-xs px-3"
               onClick={() => handleCategoryChange(category)}
             >
               {category}
@@ -147,37 +111,51 @@ const ProductsServicesSection = () => {
       </div>
 
       {/* Products Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
         {displayedProducts.length > 0 ? (
           displayedProducts.map((product) => (
-            <Card
-              key={product.id}
-              className="overflow-hidden group hover:shadow-lg transition-all duration-300 hover:border-primary/50 cursor-pointer"
-            >
-              <div className="relative aspect-square bg-muted">
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <Badge className="absolute top-2 left-2 bg-primary/90 text-xs">
-                  {product.category}
-                </Badge>
-              </div>
-              <div className="p-3 space-y-2">
-                <h3 className="font-medium text-sm line-clamp-2">{product.name}</h3>
-                <div className="flex items-center gap-1">
-                  <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                  <span className="text-xs text-muted-foreground">{product.rating}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-primary">${product.price}</span>
-                  <Button size="icon" variant="ghost" className="h-8 w-8">
-                    <ShoppingCart className="h-4 w-4" />
+            <Link key={product.id} to={`/product/${product.id}`}>
+              <Card className="overflow-hidden group hover:shadow-lg transition-all duration-300 hover:border-primary/50 cursor-pointer">
+                <div className="relative aspect-square bg-muted">
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <Badge className="absolute top-2 left-2 bg-primary/90 text-[10px] px-1.5 py-0.5">
+                    {product.category}
+                  </Badge>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="absolute top-2 right-2 h-7 w-7 bg-white/80 hover:bg-white"
+                    onClick={(e) => { e.preventDefault(); }}
+                  >
+                    <Heart className="h-3.5 w-3.5" />
                   </Button>
                 </div>
-              </div>
-            </Card>
+                <div className="p-2.5 space-y-1.5">
+                  <h3 className="font-medium text-xs line-clamp-2">{product.name}</h3>
+                  <div className="flex items-center gap-1">
+                    <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                    <span className="text-[10px] text-muted-foreground">{product.rating}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="font-bold text-primary text-sm">{formatPrice(product.price)}</span>
+                      {product.originalPrice && (
+                        <span className="text-[10px] text-muted-foreground line-through ml-1">
+                          {formatPrice(product.originalPrice)}
+                        </span>
+                      )}
+                    </div>
+                    <Button size="icon" variant="ghost" className="h-7 w-7">
+                      <ShoppingCart className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            </Link>
           ))
         ) : (
           <div className="col-span-full text-center py-12 text-muted-foreground">
