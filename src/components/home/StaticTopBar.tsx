@@ -19,7 +19,7 @@ import { toast } from "sonner";
 const StaticTopBar = () => {
   const navigate = useNavigate();
   const { isAuthenticated, profile, user } = useAuth();
-  const { currency, setCurrency, currencies, language, setLanguage, languages } = useCurrency();
+  const { language, setLanguage, languages } = useCurrency();
 
   const getInitials = () => {
     if (profile?.full_name) {
@@ -33,7 +33,6 @@ const StaticTopBar = () => {
 
   const handleScan = () => {
     toast.info("Camera scan feature - Upload or scan an item image to find similar products!");
-    // Future: Implement camera/upload functionality
   };
 
   const handleSupport = () => {
@@ -44,7 +43,7 @@ const StaticTopBar = () => {
     <div className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b border-border">
       <div className="container mx-auto px-3 py-2">
         <div className="flex items-center gap-2">
-          {/* User Avatar */}
+          {/* 1. User Avatar / Profile */}
           {isAuthenticated ? (
             <Link to="/account">
               <Avatar className="h-9 w-9 border-2 border-primary/50">
@@ -60,7 +59,7 @@ const StaticTopBar = () => {
             </Button>
           )}
 
-          {/* Search Bar */}
+          {/* 2. Search + Filter Input (Global Search) */}
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -70,7 +69,7 @@ const StaticTopBar = () => {
             />
           </div>
 
-          {/* Scan Button */}
+          {/* 3. Scan Products Button */}
           <Button 
             variant="ghost" 
             size="icon" 
@@ -80,7 +79,7 @@ const StaticTopBar = () => {
             <ScanLine className="h-5 w-5" />
           </Button>
 
-          {/* Customer Support */}
+          {/* 4. Customer Service */}
           <Button 
             variant="ghost" 
             size="icon" 
@@ -90,58 +89,14 @@ const StaticTopBar = () => {
             <Headphones className="h-5 w-5" />
           </Button>
 
-          {/* Notifications */}
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-9 w-9 shrink-0 relative"
-            onClick={() => navigate("/account/notifications")}
-          >
-            <Bell className="h-5 w-5" />
-            <Badge className="absolute -top-0.5 -right-0.5 h-4 w-4 p-0 text-[10px] bg-destructive">
-              3
-            </Badge>
-          </Button>
-        </div>
-
-        {/* Currency & Language Selector Row */}
-        <div className="flex items-center gap-2 mt-2">
-          {/* Currency Selector */}
+          {/* 5. Language Selector */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-7 text-xs gap-1 px-2">
-                <span className="font-medium">{currency.code}</span>
-                <ChevronDown className="h-3 w-3" />
+              <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0">
+                <span className="text-lg">{language.flag}</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="max-h-80 overflow-y-auto">
-              <DropdownMenuLabel className="text-xs">Select Currency</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {currencies.map((c) => (
-                <DropdownMenuItem 
-                  key={c.code} 
-                  onClick={() => setCurrency(c)}
-                  className={currency.code === c.code ? "bg-primary/10" : ""}
-                >
-                  <span className="font-medium mr-2">{c.symbol}</span>
-                  <span>{c.code}</span>
-                  <span className="text-muted-foreground ml-2 text-xs">- {c.name}</span>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* Language Selector */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-7 text-xs gap-1 px-2">
-                <Globe className="h-3 w-3" />
-                <span>{language.flag}</span>
-                <span className="hidden sm:inline">{language.code.toUpperCase()}</span>
-                <ChevronDown className="h-3 w-3" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="max-h-80 overflow-y-auto">
+            <DropdownMenuContent align="end" className="max-h-80 overflow-y-auto">
               <DropdownMenuLabel className="text-xs">Select Language</DropdownMenuLabel>
               <DropdownMenuSeparator />
               {languages.map((lang) => (
@@ -158,12 +113,18 @@ const StaticTopBar = () => {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Brand */}
-          <Link to="/" className="ml-auto">
-            <span className="text-sm font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              everythingneed
-            </span>
-          </Link>
+          {/* 6. Notifications */}
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-9 w-9 shrink-0 relative"
+            onClick={() => navigate("/account/notifications")}
+          >
+            <Bell className="h-5 w-5" />
+            <Badge className="absolute -top-0.5 -right-0.5 h-4 w-4 p-0 text-[10px] bg-destructive">
+              3
+            </Badge>
+          </Button>
         </div>
       </div>
     </div>

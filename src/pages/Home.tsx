@@ -1,34 +1,34 @@
 import StaticTopBar from "@/components/home/StaticTopBar";
 import { QuickAccessGrid } from "@/components/home/QuickAccessGrid";
+import CampaignBanners from "@/components/home/CampaignBanners";
 import BinanceStyleBanner from "@/components/home/BinanceStyleBanner";
 import ProductsServicesSection from "@/components/home/ProductsServicesSection";
 import SubmitNeedCarousel from "@/components/home/SubmitNeedCarousel";
 import PushNotificationPrompt from "@/components/notifications/PushNotificationPrompt";
 import AIChatBot from "@/components/chat/AIChatBot";
-import TrendingSection from "@/components/home/TrendingSection";
 
 const Home = () => {
   return (
     <div className="min-h-screen pb-20 bg-background">
-      {/* Static Top Bar - Always visible */}
+      {/* 1. Static Top Bar - User, Search, Scan, Support, Language, Notifications */}
       <StaticTopBar />
 
       <div className="container mx-auto px-3 py-3 space-y-4">
-        {/* Quick Access Categories - 7 icons + See More */}
+        {/* 2. Campaign Promotion Banners - 6 sliding banners */}
+        <CampaignBanners />
+
+        {/* 3. Quick Access Categories - 7 icons + See More (8th) */}
         <section>
           <QuickAccessGrid />
         </section>
 
-        {/* Binance-style Banners - Big left, 2 small right */}
-        <BinanceStyleBanner />
-
-        {/* Submit Your Need - Sliding forms carousel */}
+        {/* 4. Submit Your Need - Slidable request forms */}
         <SubmitNeedCarousel />
 
-        {/* Trending Section */}
-        <TrendingSection />
+        {/* 5. Triple Banner Layout - Left 2x, Right 2 stacked, each slides independently */}
+        <BinanceStyleBanner />
 
-        {/* Products & Services Section with 500 items per page + pagination */}
+        {/* 6. Products & Services Section - No search/filter here */}
         <ProductsServicesSection />
       </div>
 
