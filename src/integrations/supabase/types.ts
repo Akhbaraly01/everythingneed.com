@@ -47,6 +47,54 @@ export type Database = {
         }
         Relationships: []
       }
+      building_service_bookings: {
+        Row: {
+          address: string
+          created_at: string
+          description: string
+          estimated_cost: number | null
+          id: string
+          notes: string | null
+          scheduled_date: string
+          scheduled_time: string | null
+          service_category: string
+          status: string
+          updated_at: string
+          user_id: string
+          worker_type: string
+        }
+        Insert: {
+          address: string
+          created_at?: string
+          description: string
+          estimated_cost?: number | null
+          id?: string
+          notes?: string | null
+          scheduled_date: string
+          scheduled_time?: string | null
+          service_category: string
+          status?: string
+          updated_at?: string
+          user_id: string
+          worker_type: string
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          description?: string
+          estimated_cost?: number | null
+          id?: string
+          notes?: string | null
+          scheduled_date?: string
+          scheduled_time?: string | null
+          service_category?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+          worker_type?: string
+        }
+        Relationships: []
+      }
       cart_items: {
         Row: {
           created_at: string
@@ -373,6 +421,118 @@ export type Database = {
           },
         ]
       }
+      learn_post_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          post_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          post_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          post_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learn_post_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "learn_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learn_post_likes: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learn_post_likes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "learn_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learn_posts: {
+        Row: {
+          category: string
+          comments_count: number
+          content: string
+          created_at: string
+          id: string
+          likes_count: number
+          media_type: string | null
+          media_url: string | null
+          shares_count: number
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          comments_count?: number
+          content: string
+          created_at?: string
+          id?: string
+          likes_count?: number
+          media_type?: string | null
+          media_url?: string | null
+          shares_count?: number
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          comments_count?: number
+          content?: string
+          created_at?: string
+          id?: string
+          likes_count?: number
+          media_type?: string | null
+          media_url?: string | null
+          shares_count?: number
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       medicine_order_items: {
         Row: {
           created_at: string
@@ -610,6 +770,51 @@ export type Database = {
           title?: string
           type?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      order_tracking: {
+        Row: {
+          created_at: string
+          estimated_delivery: string | null
+          id: string
+          location_lat: number | null
+          location_lng: number | null
+          order_id: string
+          order_type: string
+          status: string
+          status_message: string | null
+          updated_at: string
+          user_id: string
+          vendor_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          estimated_delivery?: string | null
+          id?: string
+          location_lat?: number | null
+          location_lng?: number | null
+          order_id: string
+          order_type: string
+          status?: string
+          status_message?: string | null
+          updated_at?: string
+          user_id: string
+          vendor_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          estimated_delivery?: string | null
+          id?: string
+          location_lat?: number | null
+          location_lng?: number | null
+          order_id?: string
+          order_type?: string
+          status?: string
+          status_message?: string | null
+          updated_at?: string
+          user_id?: string
+          vendor_id?: string | null
         }
         Relationships: []
       }
