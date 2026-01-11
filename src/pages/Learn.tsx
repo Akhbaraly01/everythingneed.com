@@ -3,11 +3,10 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import CategoryGrid from "@/components/CategoryGrid";
-import { learnCategories, courses } from "@/data/mockData";
 import { extendedCourses, educationalVideos, educationalDocuments, learnCategories as learnCats, Course, Video, Document } from "@/data/learnData";
 import AIChatBot from "@/components/chat/AIChatBot";
-import { Play, Users, Clock, FileText, Download, Eye, BookOpen, Video as VideoIcon, Loader2 } from "lucide-react";
+import SocialFeed from "@/components/learn/SocialFeed";
+import { Play, Users, Clock, FileText, Download, Eye, BookOpen, Video as VideoIcon, Loader2, MessageSquare } from "lucide-react";
 
 const ITEMS_PER_PAGE = 6;
 
@@ -90,20 +89,29 @@ const Learn = () => {
 
         {/* Tabbed Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 max-w-md">
+          <TabsList className="grid w-full grid-cols-4 max-w-lg">
+            <TabsTrigger value="feed" className="flex items-center gap-2">
+              <MessageSquare className="h-4 w-4" />
+              Feed
+            </TabsTrigger>
             <TabsTrigger value="courses" className="flex items-center gap-2">
               <BookOpen className="h-4 w-4" />
-              Courses ({extendedCourses.length})
+              Courses
             </TabsTrigger>
             <TabsTrigger value="videos" className="flex items-center gap-2">
               <VideoIcon className="h-4 w-4" />
-              Videos ({educationalVideos.length})
+              Videos
             </TabsTrigger>
             <TabsTrigger value="documents" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
-              Documents ({educationalDocuments.length})
+              Docs
             </TabsTrigger>
           </TabsList>
+
+          {/* Social Feed Tab */}
+          <TabsContent value="feed" className="space-y-6">
+            <SocialFeed />
+          </TabsContent>
 
           {/* Courses Tab */}
           <TabsContent value="courses" className="space-y-6">

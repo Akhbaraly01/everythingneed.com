@@ -43,6 +43,7 @@ import VendorRegistration from "./pages/vendor/VendorRegistration";
 import ProductDetail from "./pages/product/ProductDetail";
 import Wishlist from "./pages/account/Wishlist";
 import SubmitRequest from "./pages/needs/SubmitRequest";
+import BuildingServices from "./pages/BuildingServices";
 
 const queryClient = new QueryClient();
 
@@ -76,6 +77,7 @@ const App = () => (
                       <Route path="/needs/:slug" element={<NeedCategoryPage />} />
                       <Route path="/product/:id" element={<ProductDetail />} />
                       <Route path="/learn" element={<Learn />} />
+                      <Route path="/building-services" element={<BuildingServices />} />
                       <Route path="/healthcare" element={<Healthcare />} />
                       <Route path="/pharmacy" element={<PharmacyPage />} />
                       <Route path="/pharmacy/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
