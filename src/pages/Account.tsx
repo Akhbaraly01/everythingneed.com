@@ -7,12 +7,13 @@ import { Label } from "@/components/ui/label";
 import { 
   User, Settings, ShoppingBag, Heart, Clock, CreditCard, 
   Bell, HelpCircle, LogOut, ChevronRight, Shield, HeartPulse, 
-  GraduationCap, Package, Moon, Sun, Wallet, ChevronDown
+  GraduationCap, Package, Moon, Sun, Wallet, ChevronDown, MapPin
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
+import OrderTracker from "@/components/orders/OrderTracker";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,6 +49,7 @@ const Account = () => {
 
   const menuItems = [
     { icon: User, title: "Profile Information", description: "Update your personal details", path: "/account/profile" },
+    { icon: MapPin, title: "Track Orders", description: "Real-time order tracking", path: "/account/dashboard" },
     { icon: Package, title: "Order History", description: "View all pharmacy orders", path: "/account/orders" },
     { icon: HeartPulse, title: "Health Tickets", description: "View your appointments", path: "/healthcare/tickets" },
     { icon: GraduationCap, title: "My Courses", description: "Enrolled courses and progress", path: "/learn" },
@@ -205,6 +207,20 @@ const Account = () => {
             </CardHeader>
           </Card>
         </div>
+
+        {/* Order Tracking Section */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-primary" />
+              Recent Orders
+            </CardTitle>
+            <CardDescription>Track your active orders in real-time</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <OrderTracker showAll={false} />
+          </CardContent>
+        </Card>
 
         {/* Menu Items */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
