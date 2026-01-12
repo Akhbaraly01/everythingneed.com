@@ -127,6 +127,79 @@ export type Database = {
           },
         ]
       }
+      chat_conversations: {
+        Row: {
+          booking_id: string | null
+          created_at: string
+          customer_id: string
+          id: string
+          updated_at: string
+          worker_id: string | null
+        }
+        Insert: {
+          booking_id?: string | null
+          created_at?: string
+          customer_id: string
+          id?: string
+          updated_at?: string
+          worker_id?: string | null
+        }
+        Update: {
+          booking_id?: string | null
+          created_at?: string
+          customer_id?: string
+          id?: string
+          updated_at?: string
+          worker_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_conversations_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "building_service_bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_messages: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          message_type: string
+          sender_id: string
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          message_type?: string
+          sender_id: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          message_type?: string
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "chat_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_lessons: {
         Row: {
           content: string | null
@@ -421,6 +494,44 @@ export type Database = {
           },
         ]
       }
+      learn_direct_messages: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          post_id: string | null
+          receiver_id: string
+          sender_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          post_id?: string | null
+          receiver_id: string
+          sender_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          post_id?: string | null
+          receiver_id?: string
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learn_direct_messages_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "learn_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       learn_post_comments: {
         Row: {
           content: string
@@ -487,49 +598,67 @@ export type Database = {
       }
       learn_posts: {
         Row: {
+          author_avatar: string | null
+          author_name: string | null
           category: string
           comments_count: number
           content: string
           created_at: string
+          duration_minutes: number | null
           id: string
+          is_featured: boolean | null
           likes_count: number
           media_type: string | null
           media_url: string | null
           shares_count: number
           status: string
+          thumbnail_url: string | null
           title: string
           updated_at: string
           user_id: string
+          video_url: string | null
         }
         Insert: {
+          author_avatar?: string | null
+          author_name?: string | null
           category: string
           comments_count?: number
           content: string
           created_at?: string
+          duration_minutes?: number | null
           id?: string
+          is_featured?: boolean | null
           likes_count?: number
           media_type?: string | null
           media_url?: string | null
           shares_count?: number
           status?: string
+          thumbnail_url?: string | null
           title: string
           updated_at?: string
           user_id: string
+          video_url?: string | null
         }
         Update: {
+          author_avatar?: string | null
+          author_name?: string | null
           category?: string
           comments_count?: number
           content?: string
           created_at?: string
+          duration_minutes?: number | null
           id?: string
+          is_featured?: boolean | null
           likes_count?: number
           media_type?: string | null
           media_url?: string | null
           shares_count?: number
           status?: string
+          thumbnail_url?: string | null
           title?: string
           updated_at?: string
           user_id?: string
+          video_url?: string | null
         }
         Relationships: []
       }
@@ -874,12 +1003,14 @@ export type Database = {
           is_active: boolean
           name: string
           price: number
+          production_video_url: string | null
           rating: number | null
           reviews_count: number | null
           stock_quantity: number
           subcategory: string | null
           updated_at: string
           vendor_id: string
+          video_url: string | null
         }
         Insert: {
           category: string
@@ -892,12 +1023,14 @@ export type Database = {
           is_active?: boolean
           name: string
           price: number
+          production_video_url?: string | null
           rating?: number | null
           reviews_count?: number | null
           stock_quantity?: number
           subcategory?: string | null
           updated_at?: string
           vendor_id: string
+          video_url?: string | null
         }
         Update: {
           category?: string
@@ -910,12 +1043,14 @@ export type Database = {
           is_active?: boolean
           name?: string
           price?: number
+          production_video_url?: string | null
           rating?: number | null
           reviews_count?: number | null
           stock_quantity?: number
           subcategory?: string | null
           updated_at?: string
           vendor_id?: string
+          video_url?: string | null
         }
         Relationships: [
           {
@@ -954,6 +1089,57 @@ export type Database = {
           id?: string
           phone?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      service_workers: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          completed_jobs: number | null
+          created_at: string
+          experience_years: number | null
+          full_name: string
+          hourly_rate: number | null
+          id: string
+          is_available: boolean
+          phone: string
+          rating: number | null
+          updated_at: string
+          user_id: string
+          worker_type: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          completed_jobs?: number | null
+          created_at?: string
+          experience_years?: number | null
+          full_name: string
+          hourly_rate?: number | null
+          id?: string
+          is_available?: boolean
+          phone: string
+          rating?: number | null
+          updated_at?: string
+          user_id: string
+          worker_type: string
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          completed_jobs?: number | null
+          created_at?: string
+          experience_years?: number | null
+          full_name?: string
+          hourly_rate?: number | null
+          id?: string
+          is_available?: boolean
+          phone?: string
+          rating?: number | null
+          updated_at?: string
+          user_id?: string
+          worker_type?: string
         }
         Relationships: []
       }
@@ -1038,6 +1224,44 @@ export type Database = {
             columns: ["department_id"]
             isOneToOne: false
             referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_certificates: {
+        Row: {
+          certificate_number: string
+          course_id: string | null
+          course_title: string
+          id: string
+          instructor_name: string
+          issued_at: string
+          user_id: string
+        }
+        Insert: {
+          certificate_number: string
+          course_id?: string | null
+          course_title: string
+          id?: string
+          instructor_name: string
+          issued_at?: string
+          user_id: string
+        }
+        Update: {
+          certificate_number?: string
+          course_id?: string | null
+          course_title?: string
+          id?: string
+          instructor_name?: string
+          issued_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_certificates_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
             referencedColumns: ["id"]
           },
         ]
