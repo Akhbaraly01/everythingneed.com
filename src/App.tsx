@@ -25,6 +25,7 @@ import Booking from "./pages/deals/Booking";
 import ProtectedRoute from "./components/ProtectedRoute";
 import SuperAdminDashboard from "./pages/admin/SuperAdminDashboard";
 import CategoryAdminDashboard from "./pages/admin/CategoryAdminDashboard";
+import AdminDashboard from "./pages/admin/AdminDashboard";
 import TicketList from "./pages/support/TicketList";
 import CreateTicket from "./pages/support/CreateTicket";
 import TicketDetail from "./pages/support/TicketDetail";
@@ -38,7 +39,7 @@ import AppointmentBooking from "./pages/healthcare/AppointmentBooking";
 import MyHealthTickets from "./pages/healthcare/MyHealthTickets";
 import NotificationSettings from "./pages/account/NotificationSettings";
 import Dashboard from "./pages/account/Dashboard";
-import VendorDashboard from "./pages/vendor/VendorDashboard";
+import EnhancedVendorDashboard from "./pages/vendor/EnhancedVendorDashboard";
 import VendorRegistration from "./pages/vendor/VendorRegistration";
 import ProductDetail from "./pages/product/ProductDetail";
 import Wishlist from "./pages/account/Wishlist";
@@ -90,9 +91,10 @@ const App = () => (
                       <Route path="/account/orders" element={<ProtectedRoute><OrderHistory /></ProtectedRoute>} />
                       <Route path="/account/wishlist" element={<ProtectedRoute><Wishlist /></ProtectedRoute>} />
                       <Route path="/account/notifications" element={<ProtectedRoute><NotificationSettings /></ProtectedRoute>} />
-                      <Route path="/vendor/dashboard" element={<ProtectedRoute><VendorDashboard /></ProtectedRoute>} />
+                      <Route path="/vendor/dashboard" element={<ProtectedRoute><EnhancedVendorDashboard /></ProtectedRoute>} />
                       <Route path="/vendor/register" element={<VendorRegistration />} />
                       <Route path="/admin" element={<ProtectedRoute><SuperAdminDashboard /></ProtectedRoute>} />
+                      <Route path="/admin/dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
                       <Route path="/admin/category" element={<ProtectedRoute><CategoryAdminDashboard /></ProtectedRoute>} />
                       <Route path="/support/tickets" element={<ProtectedRoute><TicketList /></ProtectedRoute>} />
                       <Route path="/support/tickets/new" element={<ProtectedRoute><CreateTicket /></ProtectedRoute>} />

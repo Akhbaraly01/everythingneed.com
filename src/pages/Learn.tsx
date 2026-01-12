@@ -5,13 +5,13 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { extendedCourses, educationalVideos, educationalDocuments, learnCategories as learnCats, Course, Video, Document } from "@/data/learnData";
 import AIChatBot from "@/components/chat/AIChatBot";
-import SocialFeed from "@/components/learn/SocialFeed";
-import { Play, Users, Clock, FileText, Download, Eye, BookOpen, Video as VideoIcon, Loader2, MessageSquare } from "lucide-react";
+import FacebookStyleFeed from "@/components/learn/FacebookStyleFeed";
+import { Play, Users, Clock, FileText, Download, Eye, BookOpen, Video as VideoIcon, Loader2, MessageSquare, Home } from "lucide-react";
 
 const ITEMS_PER_PAGE = 6;
 
 const Learn = () => {
-  const [activeTab, setActiveTab] = useState("courses");
+  const [activeTab, setActiveTab] = useState("feed");
   const [displayedCourses, setDisplayedCourses] = useState<Course[]>([]);
   const [displayedVideos, setDisplayedVideos] = useState<Video[]>([]);
   const [displayedDocs, setDisplayedDocs] = useState<Document[]>([]);
@@ -91,7 +91,7 @@ const Learn = () => {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-4 max-w-lg">
             <TabsTrigger value="feed" className="flex items-center gap-2">
-              <MessageSquare className="h-4 w-4" />
+              <Home className="h-4 w-4" />
               Feed
             </TabsTrigger>
             <TabsTrigger value="courses" className="flex items-center gap-2">
@@ -108,9 +108,9 @@ const Learn = () => {
             </TabsTrigger>
           </TabsList>
 
-          {/* Social Feed Tab */}
+          {/* Facebook-Style Feed Tab */}
           <TabsContent value="feed" className="space-y-6">
-            <SocialFeed />
+            <FacebookStyleFeed />
           </TabsContent>
 
           {/* Courses Tab */}
