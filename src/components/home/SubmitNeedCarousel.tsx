@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Package, Heart, Wrench, Building, Tractor, HelpCircle, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -73,25 +73,58 @@ const requestTypes: RequestType[] = [
 
 const SubmitNeedCarousel = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const itemsPerView = 2; // Show 2 items at a time on mobile
   const maxIndex = Math.max(0, requestTypes.length - itemsPerView);
 
-  const goNext = () => setCurrentIndex(prev => Math.min(prev + 1, maxIndex));
-  const goPrev = () => setCurrentIndex(prev => Math.max(prev - 1, 0));
+  const goNext = useCallback(() => {
+    setCurrentIndex(prev => prev >= maxIndex ? 0 : prev + 1);
+  }, [maxIndex]);
+
+  const goPrev = useCallback(() => {
+    setCurrentIndex(prev => prev <= 0 ? maxIndex : prev - 1);
+  }, [maxIndex]);
+
+  // Auto-slide effect
+  useEffect(() => {
+    if (!isAutoPlaying) return;
+
+    const interval = setInterval(() => {
+      goNext();
+    }, 4000); // Slide every 4 seconds
+
+    return () => clearInterval(interval);
+  }, [isAutoPlaying, goNext]);
+
+  // Pause auto-play on hover/touch
+  const handleMouseEnter = () => setIsAutoPlaying(false);
+  const handleMouseLeave = () => setIsAutoPlaying(true);
 
   return (
-    <section className="py-4">
+    <section 
+      className="py-4"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onTouchStart={handleMouseEnter}
+      onTouchEnd={handleMouseLeave}
+    >
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-          Submit Your Need
-        </h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+            Submit Your Need
+          </h3>
+          {/* Auto-play indicator */}
+          <div className={`h-2 w-2 rounded-full transition-colors ${isAutoPlaying ? "bg-green-500 animate-pulse" : "bg-muted"}`} />
+        </div>
         <div className="flex gap-1">
           <Button
             variant="ghost"
             size="icon"
             className="h-6 w-6"
-            onClick={goPrev}
-            disabled={currentIndex === 0}
+            onClick={() => {
+              setIsAutoPlaying(false);
+              goPrev();
+            }}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -99,8 +132,10 @@ const SubmitNeedCarousel = () => {
             variant="ghost"
             size="icon"
             className="h-6 w-6"
-            onClick={goNext}
-            disabled={currentIndex >= maxIndex}
+            onClick={() => {
+              setIsAutoPlaying(false);
+              goNext();
+            }}
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
@@ -109,7 +144,7 @@ const SubmitNeedCarousel = () => {
 
       <div className="overflow-hidden">
         <div 
-          className="flex gap-2 transition-transform duration-300 ease-out"
+          className="flex gap-2 transition-transform duration-500 ease-out"
           style={{ transform: `translateX(-${currentIndex * 50}%)` }}
         >
           {requestTypes.map((request) => (
@@ -118,7 +153,7 @@ const SubmitNeedCarousel = () => {
               to={request.link}
               className="min-w-[48%] md:min-w-[24%]"
             >
-              <div className={`bg-gradient-to-br ${request.gradient} rounded-lg p-3 h-20 flex items-center gap-3 hover:scale-[1.02] transition-transform`}>
+              <div className={`bg-gradient-to-br ${request.gradient} rounded-lg p-3 h-20 flex items-center gap-3 hover:scale-[1.02] transition-transform shadow-md hover:shadow-lg`}>
                 <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm shrink-0">
                   {request.icon}
                 </div>
@@ -132,18 +167,41 @@ const SubmitNeedCarousel = () => {
         </div>
       </div>
 
-      {/* Dot Indicators */}
-      <div className="flex justify-center gap-1 mt-2">
+      {/* Dot Indicators with progress */}
+      <div className="flex justify-center gap-1.5 mt-3">
         {Array.from({ length: maxIndex + 1 }).map((_, idx) => (
           <button
             key={idx}
-            onClick={() => setCurrentIndex(idx)}
-            className={`h-1.5 rounded-full transition-all ${
-              idx === currentIndex ? "w-4 bg-primary" : "w-1.5 bg-muted-foreground/30"
-            }`}
-          />
+            onClick={() => {
+              setCurrentIndex(idx);
+              setIsAutoPlaying(false);
+            }}
+            className="relative h-1.5 rounded-full overflow-hidden transition-all"
+            style={{ width: idx === currentIndex ? "24px" : "8px" }}
+          >
+            <div className="absolute inset-0 bg-muted-foreground/30" />
+            {idx === currentIndex && (
+              <div 
+                className="absolute inset-0 bg-primary origin-left"
+                style={{
+                  animation: isAutoPlaying ? "progress 4s linear infinite" : "none",
+                  width: isAutoPlaying ? "100%" : "100%",
+                }}
+              />
+            )}
+            {idx !== currentIndex && (
+              <div className="absolute inset-0 bg-muted-foreground/30" />
+            )}
+          </button>
         ))}
       </div>
+
+      <style>{`
+        @keyframes progress {
+          from { transform: scaleX(0); }
+          to { transform: scaleX(1); }
+        }
+      `}</style>
     </section>
   );
 };
