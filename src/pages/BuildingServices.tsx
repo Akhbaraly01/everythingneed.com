@@ -14,8 +14,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format } from "date-fns";
 import { 
   Wrench, Zap, Hammer, Settings, Paintbrush, Home, 
-  Star, Clock, MapPin, Phone, CalendarIcon, Loader2, Search, Filter
+  Star, Clock, MapPin, Phone, CalendarIcon, Loader2, Search, Filter, MessageCircle
 } from "lucide-react";
+import BookingChat from "@/components/chat/BookingChat";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
