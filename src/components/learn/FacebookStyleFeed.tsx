@@ -3,12 +3,15 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import DirectMessage from "./DirectMessage";
+import InteractiveQuizWidget from "./InteractiveQuizWidget";
+import PollWidget from "./PollWidget";
+import AchievementBadges from "./AchievementBadges";
 import {
   Heart,
   MessageCircle,

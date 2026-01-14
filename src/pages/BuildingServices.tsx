@@ -247,7 +247,34 @@ const BuildingServices = () => {
                   </div>
                 </CardContent>
 
-                <CardFooter className="border-t pt-3">
+                <CardFooter className="border-t pt-3 flex-col gap-2">
+                  <div className="flex gap-2 w-full">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 gap-2"
+                      onClick={() => {
+                        if (!user) {
+                          toast.error("Please login to message workers");
+                          return;
+                        }
+                        toast.success(`Starting chat with ${worker.name}`);
+                      }}
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      Message
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      onClick={() => {
+                        toast.info(`Calling ${worker.name}...`);
+                      }}
+                    >
+                      <Phone className="h-4 w-4" />
+                    </Button>
+                  </div>
                   <Dialog>
                     <DialogTrigger asChild>
                       <Button 
