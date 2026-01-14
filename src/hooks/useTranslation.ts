@@ -47,7 +47,6 @@ const translations: Record<string, Record<string, string>> = {
     "getExclusiveDeals": "Get exclusive deals and updates",
     "enterEmail": "Enter your email",
     "subscribe": "Subscribe",
-    "see_more": "See More",
     
     // Categories
     "all": "All",

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,9 +8,10 @@ import { Input } from "@/components/ui/input";
 import { 
   Search, Star, Users, Calendar, MessageCircle, Filter, 
   GraduationCap, Stethoscope, ChevronLeft, ChevronRight,
-  Clock, Globe, Award, CheckCircle, Video
+  Clock, Globe, Award, CheckCircle, Video, Play
 } from "lucide-react";
 import { learnExperts, healthcareExperts, Expert } from "@/data/expertsData";
+import { needsExperts } from "@/data/needsExpertsData";
 import {
   Select,
   SelectContent,
@@ -24,17 +25,19 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
 
 interface ExpertsShowcaseProps {
-  category: 'learn' | 'healthcare' | 'all';
+  category: 'learn' | 'healthcare' | 'needs' | 'all';
   title?: string;
   showFilters?: boolean;
   limit?: number;
+  compact?: boolean;
 }
 
 const ExpertsShowcase = ({ 
   category = 'all', 
   title, 
   showFilters = true,
-  limit
+  limit,
+  compact = false
 }: ExpertsShowcaseProps) => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -45,6 +48,7 @@ const ExpertsShowcase = ({
   const [currentPage, setCurrentPage] = useState(0);
   const [selectedExpert, setSelectedExpert] = useState<Expert | null>(null);
   const [bookingDialogOpen, setBookingDialogOpen] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
   
   const EXPERTS_PER_PAGE = limit || 8;
 
@@ -52,7 +56,8 @@ const ExpertsShowcase = ({
   const allExperts = useMemo(() => {
     if (category === 'learn') return learnExperts;
     if (category === 'healthcare') return healthcareExperts;
-    return [...learnExperts, ...healthcareExperts];
+    if (category === 'needs') return needsExperts;
+    return [...learnExperts.slice(0, 10), ...healthcareExperts.slice(0, 10), ...needsExperts.slice(0, 10)];
   }, [category]);
 
   // Get unique specialties
@@ -173,83 +178,159 @@ const ExpertsShowcase = ({
         </div>
       )}
 
-      {/* Experts Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-        {displayedExperts.map((expert) => (
-          <Card 
-            key={expert.id} 
-            className="overflow-hidden hover:shadow-lg transition-all group cursor-pointer"
-            onClick={() => handleBooking(expert)}
+      {/* Experts Grid - Compact mode for home page */}
+      {compact ? (
+        <div className="relative">
+          <div 
+            ref={scrollRef}
+            className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide"
           >
-            <CardContent className="p-3">
-              <div className="flex flex-col items-center text-center">
-                <div className="relative mb-2">
-                  <Avatar className="h-16 w-16 border-2 border-primary/20">
-                    <AvatarImage src={expert.avatar} alt={expert.name} />
-                    <AvatarFallback>{expert.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                  </Avatar>
-                  <div className={`absolute bottom-0 right-0 h-4 w-4 rounded-full border-2 border-background ${getAvailabilityColor(expert.availability)}`} />
-                </div>
-                
-                <h3 className="font-semibold text-sm line-clamp-1">{expert.name}</h3>
-                <p className="text-xs text-muted-foreground line-clamp-1">{expert.title}</p>
-                
-                <Badge variant="secondary" className="mt-1 text-[10px]">
-                  {expert.specialty}
-                </Badge>
-                
-                <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-                  <div className="flex items-center gap-0.5">
-                    <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                    {expert.rating}
+            {displayedExperts.map((expert) => (
+              <Card 
+                key={expert.id} 
+                className="flex-shrink-0 w-[160px] overflow-hidden hover:shadow-lg transition-all group cursor-pointer snap-start"
+                onClick={() => handleBooking(expert)}
+              >
+                <CardContent className="p-3">
+                  <div className="flex flex-col items-center text-center">
+                    <div className="relative mb-2">
+                      <Avatar className="h-14 w-14 border-2 border-primary/20">
+                        <AvatarImage src={expert.avatar} alt={expert.name} />
+                        <AvatarFallback>{expert.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                      </Avatar>
+                      <div className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background ${getAvailabilityColor(expert.availability)}`} />
+                      {/* Video intro indicator */}
+                      <div className="absolute -top-1 -right-1 bg-primary rounded-full p-1">
+                        <Play className="h-2 w-2 text-white" />
+                      </div>
+                    </div>
+                    
+                    <h3 className="font-semibold text-xs line-clamp-1">{expert.name}</h3>
+                    <p className="text-[10px] text-muted-foreground line-clamp-1">{expert.specialty}</p>
+                    
+                    <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground">
+                      <Star className="h-2.5 w-2.5 fill-yellow-400 text-yellow-400" />
+                      {expert.rating}
+                      <span>•</span>
+                      <span>{expert.experience}yr</span>
+                    </div>
+
+                    <Button 
+                      size="sm" 
+                      className="w-full h-6 text-[10px] mt-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleBooking(expert);
+                      }}
+                    >
+                      Book
+                    </Button>
                   </div>
-                  <span>•</span>
-                  <div className="flex items-center gap-0.5">
-                    <Users className="h-3 w-3" />
-                    {expert.studentsOrPatients.toLocaleString()}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          
+          {/* Scroll buttons */}
+          <Button
+            variant="outline"
+            size="icon"
+            className="absolute left-0 top-1/2 -translate-y-1/2 h-8 w-8 bg-background/80 backdrop-blur-sm -ml-2 z-10"
+            onClick={() => scrollRef.current?.scrollBy({ left: -200, behavior: 'smooth' })}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="absolute right-0 top-1/2 -translate-y-1/2 h-8 w-8 bg-background/80 backdrop-blur-sm -mr-2 z-10"
+            onClick={() => scrollRef.current?.scrollBy({ left: 200, behavior: 'smooth' })}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          {displayedExperts.map((expert) => (
+            <Card 
+              key={expert.id} 
+              className="overflow-hidden hover:shadow-lg transition-all group cursor-pointer"
+              onClick={() => handleBooking(expert)}
+            >
+              <CardContent className="p-3">
+                <div className="flex flex-col items-center text-center">
+                  <div className="relative mb-2">
+                    <Avatar className="h-16 w-16 border-2 border-primary/20">
+                      <AvatarImage src={expert.avatar} alt={expert.name} />
+                      <AvatarFallback>{expert.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                    </Avatar>
+                    <div className={`absolute bottom-0 right-0 h-4 w-4 rounded-full border-2 border-background ${getAvailabilityColor(expert.availability)}`} />
+                    {/* Video intro indicator */}
+                    <div className="absolute -top-1 -right-1 bg-primary rounded-full p-1.5">
+                      <Play className="h-3 w-3 text-white" />
+                    </div>
+                  </div>
+                  
+                  <h3 className="font-semibold text-sm line-clamp-1">{expert.name}</h3>
+                  <p className="text-xs text-muted-foreground line-clamp-1">{expert.title}</p>
+                  
+                  <Badge variant="secondary" className="mt-1 text-[10px]">
+                    {expert.specialty}
+                  </Badge>
+                  
+                  <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-0.5">
+                      <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                      {expert.rating}
+                    </div>
+                    <span>•</span>
+                    <div className="flex items-center gap-0.5">
+                      <Users className="h-3 w-3" />
+                      {expert.studentsOrPatients.toLocaleString()}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1 mt-2 text-xs">
+                    <Clock className="h-3 w-3 text-muted-foreground" />
+                    <span>{expert.experience} yrs exp</span>
+                  </div>
+
+                  {expert.hourlyRate && (
+                    <p className="text-sm font-bold text-primary mt-2">
+                      {formatPrice(expert.hourlyRate)}/hr
+                    </p>
+                  )}
+
+                  <div className="flex gap-1 mt-2 w-full">
+                    <Button 
+                      size="sm" 
+                      className="flex-1 h-7 text-xs gap-1"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleBooking(expert);
+                      }}
+                    >
+                      <Calendar className="h-3 w-3" />
+                      Book
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      className="h-7 w-7 p-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toast.info("Starting video call...");
+                      }}
+                    >
+                      <Video className="h-3 w-3" />
+                    </Button>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-1 mt-2 text-xs">
-                  <Clock className="h-3 w-3 text-muted-foreground" />
-                  <span>{expert.experience} yrs exp</span>
-                </div>
-
-                {expert.hourlyRate && (
-                  <p className="text-sm font-bold text-primary mt-2">
-                    {formatPrice(expert.hourlyRate)}/hr
-                  </p>
-                )}
-
-                <div className="flex gap-1 mt-2 w-full">
-                  <Button 
-                    size="sm" 
-                    className="flex-1 h-7 text-xs gap-1"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleBooking(expert);
-                    }}
-                  >
-                    <Calendar className="h-3 w-3" />
-                    Book
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    className="h-7 w-7 p-0"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toast.info("Starting video call...");
-                    }}
-                  >
-                    <Video className="h-3 w-3" />
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Pagination */}
       {totalPages > 1 && (
