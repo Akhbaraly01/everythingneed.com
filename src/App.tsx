@@ -38,15 +38,19 @@ import OrderHistory from "./pages/pharmacy/OrderHistory";
 import DoctorSelection from "./pages/healthcare/DoctorSelection";
 import AppointmentBooking from "./pages/healthcare/AppointmentBooking";
 import MyHealthTickets from "./pages/healthcare/MyHealthTickets";
+import LabsBooking from "./pages/healthcare/LabsBooking";
+import SpecialtyBooking from "./pages/healthcare/SpecialtyBooking";
 import NotificationSettings from "./pages/account/NotificationSettings";
 import Dashboard from "./pages/account/Dashboard";
 import Certificates from "./pages/account/Certificates";
+import Wallet from "./pages/account/Wallet";
 import EnhancedVendorDashboard from "./pages/vendor/EnhancedVendorDashboard";
 import VendorRegistration from "./pages/vendor/VendorRegistration";
 import ProductDetail from "./pages/product/ProductDetail";
 import Wishlist from "./pages/account/Wishlist";
 import SubmitRequest from "./pages/needs/SubmitRequest";
 import BuildingServices from "./pages/BuildingServices";
+import CourseDetail from "./pages/learn/CourseDetail";
 
 const queryClient = new QueryClient();
 
@@ -81,8 +85,11 @@ const App = () => (
                       <Route path="/needs/:slug" element={<NeedCategoryPage />} />
                       <Route path="/product/:id" element={<ProductDetail />} />
                       <Route path="/learn" element={<Learn />} />
+                      <Route path="/learn/course/:slug" element={<CourseDetail />} />
                       <Route path="/building-services" element={<BuildingServices />} />
                       <Route path="/healthcare" element={<Healthcare />} />
+                      <Route path="/healthcare/labs" element={<LabsBooking />} />
+                      <Route path="/healthcare/specialty/:specialty" element={<SpecialtyBooking />} />
                       <Route path="/pharmacy" element={<PharmacyPage />} />
                       <Route path="/pharmacy/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
                       <Route path="/pharmacy/order/:id" element={<ProtectedRoute><OrderConfirmation /></ProtectedRoute>} />
@@ -93,6 +100,7 @@ const App = () => (
                       <Route path="/account/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                       <Route path="/account/orders" element={<ProtectedRoute><OrderHistory /></ProtectedRoute>} />
                       <Route path="/account/wishlist" element={<ProtectedRoute><Wishlist /></ProtectedRoute>} />
+                      <Route path="/account/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />
                       <Route path="/account/notifications" element={<ProtectedRoute><NotificationSettings /></ProtectedRoute>} />
                       <Route path="/account/certificates" element={<ProtectedRoute><Certificates /></ProtectedRoute>} />
                       <Route path="/vendor/dashboard" element={<ProtectedRoute><EnhancedVendorDashboard /></ProtectedRoute>} />

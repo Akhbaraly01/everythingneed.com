@@ -38,15 +38,15 @@ const contentTabs: { id: ContentType; label: string; icon: React.ReactNode }[] =
   { id: "services", label: "Services", icon: <Briefcase className="h-3 w-3" /> },
 ];
 
-const ITEMS_PER_PAGE = 30;
+const ITEMS_PER_PAGE = 40;
 
-// Assign dynamic sizes to items
+// Assign dynamic sizes - more small items like AliExpress/Amazon
 const getSizeForIndex = (index: number): ContentItem["size"] => {
   const pattern = [
-    "large", "small", "small", "medium", "small", "tall",
-    "small", "wide", "small", "small", "medium", "small",
-    "small", "small", "large", "small", "medium", "small",
-    "tall", "small", "small", "wide", "small", "small",
+    "small", "small", "small", "small", "medium", "small",
+    "small", "small", "small", "small", "small", "small",
+    "small", "medium", "small", "small", "small", "small",
+    "small", "small", "small", "small", "small", "medium",
   ];
   return pattern[index % pattern.length] as ContentItem["size"];
 };
@@ -229,21 +229,15 @@ const MasonryProductGrid = () => {
 
   const getSizeClasses = (size: ContentItem["size"]) => {
     switch (size) {
-      case "large": return "col-span-2 row-span-2";
-      case "wide": return "col-span-2 row-span-1";
-      case "tall": return "col-span-1 row-span-2";
-      case "medium": return "col-span-1 row-span-1 md:col-span-1 md:row-span-1";
+      case "medium": return "col-span-1 row-span-1";
       default: return "col-span-1 row-span-1";
     }
   };
 
   const getImageHeight = (size: ContentItem["size"]) => {
     switch (size) {
-      case "large": return "h-64 md:h-80";
-      case "wide": return "h-40 md:h-48";
-      case "tall": return "h-72 md:h-96";
-      case "medium": return "h-40 md:h-48";
-      default: return "h-32 md:h-40";
+      case "medium": return "h-28 md:h-32";
+      default: return "h-24 md:h-28";
     }
   };
 
@@ -273,7 +267,7 @@ const MasonryProductGrid = () => {
       </div>
 
       {/* Masonry Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 auto-rows-min">
+      <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-2 auto-rows-min">
         {displayedContent.map((item) => (
           <Link
             key={item.id}
