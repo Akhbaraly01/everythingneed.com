@@ -1,11 +1,11 @@
-// Experts and professionals data for Learn and Healthcare sections
+// Experts and professionals data for Learn, Healthcare, and Needs sections
 
 export interface Expert {
   id: string;
   name: string;
   title: string;
   specialty: string;
-  category: 'learn' | 'healthcare';
+  category: 'learn' | 'healthcare' | 'needs';
   experience: number;
   rating: number;
   studentsOrPatients: number;
@@ -16,6 +16,7 @@ export interface Expert {
   hourlyRate?: number;
   languages: string[];
   certifications: string[];
+  videoIntro?: string;
 }
 
 export const learnExperts: Expert[] = [

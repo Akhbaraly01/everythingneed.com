@@ -147,100 +147,52 @@ const DiverseContentBanners = () => {
   }
 
   return (
-    <section className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg md:text-xl font-bold">Discover More Services</h2>
-          <p className="text-xs text-muted-foreground">Find everything you need in one place</p>
-        </div>
-        <div className="flex gap-1">
-          {contentBanners.map((_, idx) => (
-            <button
-              key={idx}
-              onClick={() => {
-                setCurrentIndex(idx);
-                setIsAutoPlaying(false);
-              }}
-              className={`w-2 h-2 rounded-full transition-all ${
-                idx === currentIndex ? 'bg-primary w-6' : 'bg-muted-foreground/30'
-              }`}
-            />
-          ))}
-        </div>
+    <section className="space-y-3">
+      {/* Navigation dots only - no header text */}
+      <div className="flex justify-center gap-1">
+        {contentBanners.map((_, idx) => (
+          <button
+            key={idx}
+            onClick={() => {
+              setCurrentIndex(idx);
+              setIsAutoPlaying(false);
+            }}
+            className={`w-2 h-2 rounded-full transition-all ${
+              idx === currentIndex ? 'bg-primary w-4' : 'bg-muted-foreground/30'
+            }`}
+          />
+        ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Main Large Banner */}
-        <Link to={currentBanner.ctaLink} className="lg:col-span-2">
-          <Card className={`overflow-hidden h-full min-h-[250px] bg-gradient-to-br ${currentBanner.bgGradient} text-white border-0 hover:shadow-xl transition-shadow`}>
-            <div className="p-6 h-full flex flex-col justify-between relative">
-              <div className="absolute top-4 right-4 opacity-20">
-                <div className="transform scale-[3]">{currentBanner.icon}</div>
-              </div>
-              
-              <div className="space-y-3 relative z-10">
-                <Badge className="bg-white/20 text-white hover:bg-white/30 backdrop-blur-sm">
-                  {currentBanner.type.charAt(0).toUpperCase() + currentBanner.type.slice(1)}
-                </Badge>
-                <h3 className="text-2xl md:text-3xl font-bold">{currentBanner.title}</h3>
-                <p className="text-lg opacity-90">{currentBanner.subtitle}</p>
-                <p className="text-sm opacity-80 max-w-md">{currentBanner.description}</p>
-                
-                <div className="flex flex-wrap gap-2 pt-2">
-                  {currentBanner.features.map((feature, idx) => (
-                    <Badge key={idx} variant="outline" className="border-white/40 text-white text-xs">
-                      {feature}
-                    </Badge>
-                  ))}
+      {/* Compact horizontal scroll banners */}
+      <div className="flex gap-2 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide">
+        {contentBanners.map((banner) => (
+          <Link 
+            key={banner.id} 
+            to={banner.ctaLink}
+            className="flex-shrink-0 w-[280px] snap-start"
+          >
+            <Card className={`overflow-hidden bg-gradient-to-br ${banner.bgGradient} text-white border-0 hover:shadow-lg transition-all h-[120px]`}>
+              <div className="p-3 h-full flex items-center gap-3">
+                <div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm shrink-0">
+                  <div className="h-6 w-6">{banner.icon}</div>
                 </div>
-              </div>
-
-              <div className="flex items-center justify-between mt-4 relative z-10">
-                {currentBanner.stats && (
-                  <div className="flex gap-6">
-                    {currentBanner.stats.map((stat, idx) => (
-                      <div key={idx}>
-                        <p className="text-2xl font-bold">{stat.value}</p>
-                        <p className="text-xs opacity-80">{stat.label}</p>
-                      </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-bold text-sm line-clamp-1">{banner.title}</h4>
+                  <p className="text-xs opacity-90 line-clamp-1">{banner.subtitle}</p>
+                  <div className="flex gap-1 mt-1.5">
+                    {banner.features.slice(0, 2).map((f, i) => (
+                      <Badge key={i} variant="outline" className="border-white/40 text-white text-[9px] px-1.5 py-0">
+                        {f}
+                      </Badge>
                     ))}
                   </div>
-                )}
-                <Button variant="secondary" className="gap-2 ml-auto">
-                  {currentBanner.ctaText}
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </Card>
-        </Link>
-
-        {/* Side Smaller Banners */}
-        <div className="flex flex-col gap-4">
-          {nextBanners.map((banner) => (
-            <Link key={banner.id} to={banner.ctaLink}>
-              <Card className={`overflow-hidden bg-gradient-to-br ${banner.bgGradient} text-white border-0 hover:shadow-xl transition-shadow`}>
-                <div className="p-4 flex items-center gap-4">
-                  <div className="bg-white/20 p-3 rounded-full backdrop-blur-sm shrink-0">
-                    {banner.icon}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-bold text-lg">{banner.title}</h4>
-                    <p className="text-sm opacity-90 line-clamp-1">{banner.subtitle}</p>
-                    <div className="flex gap-2 mt-2">
-                      {banner.features.slice(0, 2).map((f, i) => (
-                        <Badge key={i} variant="outline" className="border-white/40 text-white text-[10px]">
-                          {f}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                  <ChevronRight className="h-5 w-5 shrink-0" />
                 </div>
-              </Card>
-            </Link>
-          ))}
-        </div>
+                <ChevronRight className="h-4 w-4 shrink-0 opacity-60" />
+              </div>
+            </Card>
+          </Link>
+        ))}
       </div>
     </section>
   );
