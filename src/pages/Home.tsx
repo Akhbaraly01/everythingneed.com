@@ -2,11 +2,12 @@ import StaticTopBar from "@/components/home/StaticTopBar";
 import { QuickAccessGrid } from "@/components/home/QuickAccessGrid";
 import CampaignBanners from "@/components/home/CampaignBanners";
 import BinanceStyleBanner from "@/components/home/BinanceStyleBanner";
-import ProductsServicesSection from "@/components/home/ProductsServicesSection";
+import MasonryProductGrid from "@/components/home/MasonryProductGrid";
 import SubmitNeedCarousel from "@/components/home/SubmitNeedCarousel";
 import DiverseContentBanners from "@/components/home/DiverseContentBanners";
 import PushNotificationPrompt from "@/components/notifications/PushNotificationPrompt";
 import AIChatBot from "@/components/chat/AIChatBot";
+import Footer from "@/components/Footer";
 
 const Home = () => {
   return (
@@ -23,18 +24,21 @@ const Home = () => {
           <QuickAccessGrid />
         </section>
 
-        {/* 4. Submit Your Need - Slidable request forms */}
-        <SubmitNeedCarousel />
-
-        {/* 5. Diverse Content Banners - Needs, Learn, Healthcare, Jobs */}
+        {/* 4. Diverse Content Banners - Needs, Learn, Healthcare, Jobs */}
         <DiverseContentBanners />
 
-        {/* 6. Triple Banner Layout - Left 2x, Right 2 stacked, each slides independently */}
+        {/* 5. Triple Banner Layout - Left 2x, Right 2 stacked, each slides independently */}
         <BinanceStyleBanner />
 
-        {/* 7. Products & Services Section - No search/filter here */}
-        <ProductsServicesSection />
+        {/* 6. Products & Services Section with Masonry Grid */}
+        <MasonryProductGrid />
+
+        {/* 7. Submit Your Need - Slidable request forms (moved to end before footer) */}
+        <SubmitNeedCarousel />
       </div>
+
+      {/* Footer */}
+      <Footer />
 
       {/* Push Notification Prompt */}
       <PushNotificationPrompt />
