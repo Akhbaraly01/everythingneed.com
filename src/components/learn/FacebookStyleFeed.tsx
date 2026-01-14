@@ -521,7 +521,4 @@ const FacebookStyleFeed = () => {
   );
 };
 
-// Add missing Input import
-import { Input } from "@/components/ui/input";
-
 export default FacebookStyleFeed;
