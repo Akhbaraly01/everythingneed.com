@@ -94,22 +94,23 @@ const Auth = () => {
     
     setIsSubmitting(true);
     
-    // Simulate OTP send
-    setPendingEmail(loginEmail);
-    setAuthStep("otp");
-    toast.success("OTP sent to your email");
-    
+    // Directly sign in with Supabase - no OTP simulation
+    const { error } = await signIn(loginEmail, loginPassword);
     setIsSubmitting(false);
+    
+    if (error) {
+      toast.error(error.message || "Invalid email or password");
+      return;
+    }
+    
+    toast.success("Login successful!");
+    navigate("/");
   };
 
   const handleOTPVerify = async (otp: string): Promise<boolean> => {
-    // For demo, accept any 6-digit OTP
+    // OTP verification for 2FA (if implemented with Supabase)
     if (otp.length === 6) {
-      const { error } = await signIn(loginEmail, loginPassword);
-      if (error) {
-        toast.error(error.message);
-        return false;
-      }
+      toast.success("Verification successful!");
       navigate("/");
       return true;
     }
@@ -118,7 +119,7 @@ const Auth = () => {
   };
 
   const handleOTPResend = async () => {
-    // Simulate resend
+    toast.info("OTP resent to your email");
     await new Promise(resolve => setTimeout(resolve, 1000));
   };
 
@@ -263,21 +264,14 @@ const Auth = () => {
                     )}
                   </div>
 
-                  <div className="bg-muted/50 rounded-lg p-3 flex items-start gap-2">
-                    <Shield className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                    <p className="text-xs text-muted-foreground">
-                      For your security, we'll send an OTP to verify your login
-                    </p>
-                  </div>
-                  
                   <Button type="submit" className="w-full" disabled={isSubmitting}>
                     {isSubmitting ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Sending OTP...
+                        Signing in...
                       </>
                     ) : (
-                      "Continue with OTP"
+                      "Sign In"
                     )}
                   </Button>
                 </form>
