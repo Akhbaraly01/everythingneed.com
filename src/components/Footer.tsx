@@ -10,9 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { useTranslation } from "@/hooks/useTranslation";
 
 const Footer = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const currentYear = new Date().getFullYear();
 
   const scrollToTop = () => {
@@ -72,12 +74,12 @@ const Footer = () => {
   ];
 
   const features = [
-    { icon: Truck, text: "Free Shipping on $50+" },
-    { icon: Shield, text: "100% Secure Payments" },
-    { icon: CreditCard, text: "Easy Returns" },
-    { icon: Globe, text: "Worldwide Delivery" },
-    { icon: Headphones, text: "24/7 Support" },
-    { icon: Award, text: "Quality Guaranteed" },
+    { icon: Truck, text: t('freeShipping') },
+    { icon: Shield, text: t('securePayments') },
+    { icon: CreditCard, text: t('easyReturns') },
+    { icon: Globe, text: t('worldwideDelivery') },
+    { icon: Headphones, text: t('support247') },
+    { icon: Award, text: t('qualityGuaranteed') },
   ];
 
   const trustedCompanies = [
@@ -87,12 +89,12 @@ const Footer = () => {
   ];
 
   const quickServices = [
-    { name: "Find Your Need", path: "/deals", icon: ShoppingBag, desc: "Browse all categories" },
-    { name: "Get a Job", path: "/deals/jobs", icon: Briefcase, desc: "Find career opportunities" },
-    { name: "Learn Skills", path: "/learn", icon: GraduationCap, desc: "Courses & certificates" },
-    { name: "Healthcare", path: "/healthcare", icon: Stethoscope, desc: "Book appointments" },
-    { name: "Building Services", path: "/building-services", icon: Building2, desc: "Find skilled workers" },
-    { name: "Become Vendor", path: "/vendor/register", icon: Users, desc: "Sell your products" },
+    { name: t('findYourNeed'), path: "/deals", icon: ShoppingBag, desc: t('browseCategories') },
+    { name: t('getJob'), path: "/deals/jobs", icon: Briefcase, desc: t('findOpportunities') },
+    { name: t('learnSkills'), path: "/learn", icon: GraduationCap, desc: t('coursesAndCertificates') },
+    { name: t('healthcare'), path: "/healthcare", icon: Stethoscope, desc: t('bookAppointments') },
+    { name: t('buildingServices'), path: "/building-services", icon: Building2, desc: t('findWorkers') },
+    { name: t('becomeVendor'), path: "/vendor/register", icon: Users, desc: t('sellProducts') },
   ];
 
   const accountLinks = [
@@ -130,20 +132,20 @@ const Footer = () => {
       </div>
 
       {/* Quick Services Grid */}
-      <div className="bg-amber-800/50 py-8 border-b border-amber-700">
+      <div className="bg-amber-800/50 py-6 border-b border-amber-700">
         <div className="container mx-auto px-4">
-          <h3 className="text-xl font-bold text-center mb-6 text-amber-100">What Would You Like to Do?</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <h3 className="text-lg font-bold text-center mb-4 text-amber-100">{t('whatWouldYouLikeToDo')}</h3>
+          <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
             {quickServices.map((service, index) => (
               <Button
                 key={index}
                 variant="outline"
-                className="h-auto py-4 flex-col gap-2 bg-amber-800/50 border-amber-600 text-amber-100 hover:bg-amber-700 hover:text-white transition-all"
+                className="h-auto py-3 flex-col gap-1 bg-amber-800/50 border-amber-600 text-amber-100 hover:bg-amber-700 hover:text-white transition-all"
                 onClick={() => navigateTo(service.path)}
               >
-                <service.icon className="h-6 w-6 text-amber-400" />
-                <span className="font-semibold">{service.name}</span>
-                <span className="text-xs text-amber-300">{service.desc}</span>
+                <service.icon className="h-5 w-5 text-amber-400" />
+                <span className="font-semibold text-xs">{service.name}</span>
+                <span className="text-[10px] text-amber-300 hidden md:block">{service.desc}</span>
               </Button>
             ))}
           </div>
@@ -151,17 +153,17 @@ const Footer = () => {
       </div>
 
       {/* Trusted Companies */}
-      <div className="py-8 border-b border-amber-700 bg-amber-800/30">
+      <div className="py-4 border-b border-amber-700 bg-amber-800/30">
         <div className="container mx-auto px-4">
-          <h4 className="text-center text-sm text-amber-400 mb-4 font-semibold tracking-wide">
-            TRUSTED BY LEADING ORGANIZATIONS WORLDWIDE
+          <h4 className="text-center text-xs text-amber-400 mb-3 font-semibold tracking-wide">
+            {t('trustedBy')}
           </h4>
-          <div className="flex flex-wrap justify-center items-center gap-4">
+          <div className="flex flex-wrap justify-center items-center gap-2">
             {trustedCompanies.map((company, index) => (
               <Badge 
                 key={index} 
                 variant="outline" 
-                className="px-4 py-2 text-sm font-medium border-amber-600 text-amber-200 hover:bg-amber-700 transition-colors cursor-default"
+                className="px-2 py-1 text-xs font-medium border-amber-600 text-amber-200 hover:bg-amber-700 transition-colors cursor-default"
               >
                 {company}
               </Badge>
@@ -171,17 +173,17 @@ const Footer = () => {
       </div>
 
       {/* Main Footer Content - Site Map Style */}
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8">
+      <div className="container mx-auto px-4 py-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {/* Site Map */}
           <div>
-            <h4 className="font-bold text-amber-400 mb-4 text-lg">SITE MAP</h4>
-            <ul className="space-y-2">
+            <h4 className="font-bold text-amber-400 mb-2 text-sm">{t('siteMap')}</h4>
+            <ul className="space-y-1">
               {siteMapLinks.map((link) => (
                 <li key={link.name}>
                   <button
                     onClick={() => navigateTo(link.path)}
-                    className="text-sm text-amber-200 hover:text-amber-400 transition-colors flex items-center gap-1"
+                    className="text-xs text-amber-200 hover:text-amber-400 transition-colors flex items-center gap-1"
                   >
                     {link.name}
                   </button>
@@ -278,25 +280,25 @@ const Footer = () => {
         <Separator className="my-8 bg-amber-700" />
 
         {/* Newsletter Section */}
-        <div className="bg-amber-800 rounded-xl p-6 mb-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="bg-amber-800 rounded-lg p-4 mb-4">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-3">
             <div className="text-center md:text-left">
-              <h3 className="text-xl font-bold text-amber-100 mb-2">
-                Subscribe to Our Newsletter
+              <h3 className="text-sm font-bold text-amber-100 mb-1">
+                {t('subscribeNewsletter')}
               </h3>
-              <p className="text-amber-300 text-sm">
-                Get exclusive deals, learning resources, and updates delivered to your inbox
+              <p className="text-amber-300 text-xs">
+                {t('getExclusiveDeals')}
               </p>
             </div>
-            <div className="flex w-full md:w-auto gap-3">
+            <div className="flex w-full md:w-auto gap-2">
               <Input
                 type="email"
-                placeholder="Enter your email"
-                className="max-w-xs bg-amber-700 border-amber-600 text-amber-100 placeholder:text-amber-400"
+                placeholder={t('enterEmail')}
+                className="max-w-xs bg-amber-700 border-amber-600 text-amber-100 placeholder:text-amber-400 h-8 text-sm"
               />
-              <Button className="shrink-0 bg-amber-500 hover:bg-amber-400 text-amber-900">
-                <Send className="h-4 w-4 mr-2" />
-                Subscribe
+              <Button size="sm" className="shrink-0 bg-amber-500 hover:bg-amber-400 text-amber-900 h-8">
+                <Send className="h-3 w-3 mr-1" />
+                {t('subscribe')}
               </Button>
             </div>
           </div>
