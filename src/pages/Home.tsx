@@ -16,25 +16,25 @@ const Home = () => {
       <StaticTopBar />
 
       <div className="container mx-auto px-3 py-3 space-y-6">
-        {/* 2. Campaign Promotion Banners - 6 sliding banners */}
+        {/* 2. Campaign Promotion Banners */}
         <CampaignBanners />
 
-        {/* 3. Quick Access Categories - 7 icons + See More (8th) */}
+        {/* 3. Quick Access Categories */}
         <section>
           <QuickAccessGrid />
         </section>
 
-        {/* 4. Diverse Content Banners - Needs, Learn, Healthcare, Jobs */}
-        <DiverseContentBanners />
+        {/* 4. Submit Your Need - Keep here as requested */}
+        <SubmitNeedCarousel />
 
-        {/* 5. Triple Banner Layout - Left 2x, Right 2 stacked, each slides independently */}
+        {/* 5. Triple Banner Layout */}
         <BinanceStyleBanner />
 
         {/* 6. Products & Services Section with Masonry Grid */}
         <MasonryProductGrid />
 
-        {/* 7. Submit Your Need - Slidable request forms (moved to end before footer) */}
-        <SubmitNeedCarousel />
+        {/* 7. Discover More Services - Moved to end before footer */}
+        <DiverseContentBanners />
       </div>
 
       {/* Footer */}
