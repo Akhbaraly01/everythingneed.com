@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { CurrencyProvider } from "@/contexts/CurrencyContext";
 import Layout from "./components/Layout";
+import ScrollToTop from "./components/ScrollToTop";
 import Home from "./pages/Home";
 import Deals from "./pages/Deals";
 import Learn from "./pages/Learn";
@@ -39,6 +40,7 @@ import AppointmentBooking from "./pages/healthcare/AppointmentBooking";
 import MyHealthTickets from "./pages/healthcare/MyHealthTickets";
 import NotificationSettings from "./pages/account/NotificationSettings";
 import Dashboard from "./pages/account/Dashboard";
+import Certificates from "./pages/account/Certificates";
 import EnhancedVendorDashboard from "./pages/vendor/EnhancedVendorDashboard";
 import VendorRegistration from "./pages/vendor/VendorRegistration";
 import ProductDetail from "./pages/product/ProductDetail";
@@ -55,11 +57,12 @@ const App = () => (
         <AuthProvider>
           <CurrencyProvider>
             <CartProvider>
+              <ScrollToTop />
               <Toaster />
-            <Sonner />
-            <Routes>
-              <Route path="/auth" element={<Auth />} />
-              <Route
+              <Sonner />
+              <Routes>
+                <Route path="/auth" element={<Auth />} />
+                <Route
                 path="/*"
                 element={
                   <Layout>
@@ -91,6 +94,7 @@ const App = () => (
                       <Route path="/account/orders" element={<ProtectedRoute><OrderHistory /></ProtectedRoute>} />
                       <Route path="/account/wishlist" element={<ProtectedRoute><Wishlist /></ProtectedRoute>} />
                       <Route path="/account/notifications" element={<ProtectedRoute><NotificationSettings /></ProtectedRoute>} />
+                      <Route path="/account/certificates" element={<ProtectedRoute><Certificates /></ProtectedRoute>} />
                       <Route path="/vendor/dashboard" element={<ProtectedRoute><EnhancedVendorDashboard /></ProtectedRoute>} />
                       <Route path="/vendor/register" element={<VendorRegistration />} />
                       <Route path="/admin" element={<ProtectedRoute><SuperAdminDashboard /></ProtectedRoute>} />
