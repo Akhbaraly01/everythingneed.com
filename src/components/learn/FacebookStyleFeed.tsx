@@ -272,18 +272,80 @@ const FacebookStyleFeed = () => {
     );
   };
 
-  // Mix campaign banners after every 6 posts
+  // Sample quiz data
+  const quizzes = [
+    {
+      id: 1,
+      title: "Web Development Basics",
+      questions: [
+        { question: "What does HTML stand for?", options: ["Hyper Text Markup Language", "High Tech Modern Language", "Hyper Transfer Markup Language"], correctIndex: 0 },
+        { question: "Which CSS property controls text size?", options: ["text-size", "font-size", "text-style"], correctIndex: 1 },
+      ],
+    },
+  ];
+
+  // Sample poll data
+  const polls = [
+    {
+      question: "What programming language should we teach next?",
+      options: [
+        { id: "1", text: "Python", votes: 156 },
+        { id: "2", text: "JavaScript", votes: 203 },
+        { id: "3", text: "Rust", votes: 89 },
+        { id: "4", text: "Go", votes: 67 },
+      ],
+      category: "Technology",
+    },
+    {
+      question: "How do you prefer to learn?",
+      options: [
+        { id: "1", text: "Video tutorials", votes: 312 },
+        { id: "2", text: "Written guides", votes: 145 },
+        { id: "3", text: "Hands-on projects", votes: 278 },
+        { id: "4", text: "Live classes", votes: 98 },
+      ],
+      category: "Learning",
+    },
+  ];
+
+  // User achievements for display
+  const userAchievements = [
+    { id: "first_post", name: "First Post", description: "Created your first post", icon: "📝", earned: true },
+    { id: "helpful", name: "Helpful", description: "Received 10 likes", icon: "👍", earned: true },
+    { id: "streak_7", name: "7-Day Streak", description: "Learned 7 days in a row", icon: "🔥", earned: false, progress: 5, total: 7 },
+  ];
+
+  // Mix campaign banners, quizzes, polls after every few posts
   const getContentWithBanners = () => {
-    const content: (Post | typeof campaignBanners[0] & { type: "banner" })[] = [];
+    const content: any[] = [];
     let bannerIndex = 0;
+    let quizIndex = 0;
+    let pollIndex = 0;
 
     displayedPosts.forEach((post, index) => {
-      content.push(post);
+      content.push({ ...post, itemType: "post" });
+
+      // Insert quiz after every 3 posts
+      if ((index + 1) % 3 === 0 && quizIndex < quizzes.length) {
+        content.push({ ...quizzes[quizIndex], itemType: "quiz" });
+        quizIndex++;
+      }
+
+      // Insert poll after every 4 posts
+      if ((index + 1) % 4 === 0 && pollIndex < polls.length) {
+        content.push({ ...polls[pollIndex], itemType: "poll" });
+        pollIndex++;
+      }
 
       // Insert banner after every 6 posts
       if ((index + 1) % 6 === 0 && bannerIndex < campaignBanners.length) {
-        content.push({ ...campaignBanners[bannerIndex], type: "banner" } as any);
+        content.push({ ...campaignBanners[bannerIndex], itemType: "banner" });
         bannerIndex++;
+      }
+
+      // Insert achievements section after 8 posts
+      if (index === 7) {
+        content.push({ achievements: userAchievements, itemType: "achievements" });
       }
     });
 
@@ -328,8 +390,38 @@ const FacebookStyleFeed = () => {
 
       {/* Feed Content */}
       {getContentWithBanners().map((item, index) => {
+        // Quiz Widget
+        if (item.itemType === "quiz") {
+          return (
+            <InteractiveQuizWidget
+              key={`quiz-${item.id}`}
+              title={item.title}
+              questions={item.questions}
+              onComplete={(score) => toast.success(`Quiz complete! Score: ${score}%`)}
+            />
+          );
+        }
+
+        // Poll Widget
+        if (item.itemType === "poll") {
+          return (
+            <PollWidget
+              key={`poll-${index}`}
+              question={item.question}
+              options={item.options}
+              category={item.category}
+              onVote={(optionId) => console.log("Voted:", optionId)}
+            />
+          );
+        }
+
+        // Achievement Badges
+        if (item.itemType === "achievements") {
+          return <AchievementBadges key="achievements" />;
+        }
+
         // Campaign Banner
-        if ("type" in item && item.type === "banner") {
+        if (item.itemType === "banner") {
           return (
             <Card key={`banner-${item.id}`} className="overflow-hidden border-2 border-primary/20 bg-gradient-to-r from-primary/5 to-secondary/5">
               <div className="relative aspect-[3/1] overflow-hidden">
