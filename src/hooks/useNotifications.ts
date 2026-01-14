@@ -117,7 +117,6 @@ export const useNotifications = () => {
             title: "Ticket Updated",
             description: `Ticket status changed to ${status}`,
           });
-          // Send push notification
           if (permission === "granted") {
             notifyTicketUpdate(ticketNumber, status);
           }
@@ -142,7 +141,6 @@ export const useNotifications = () => {
             title: "Order Updated",
             description: `Order status changed to ${status}`,
           });
-          // Send push notification
           if (permission === "granted") {
             notifyOrderUpdate(orderNumber, status);
           }
@@ -167,9 +165,37 @@ export const useNotifications = () => {
             title: "Health Ticket Updated",
             description: `Your appointment status changed to ${status}`,
           });
-          // Send push notification
           if (permission === "granted") {
             notifyHealthTicketUpdate(ticketNumber, status);
+          }
+        }
+      )
+      .subscribe();
+
+    // Subscribe to chat messages for building services
+    const chatChannel = supabase
+      .channel("chat-messages-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "chat_messages",
+        },
+        (payload) => {
+          const message = payload.new as any;
+          // Only notify if the message is not from the current user
+          if (message.sender_id !== user.id) {
+            toast({
+              title: "New Message",
+              description: "You have a new message from your service worker",
+            });
+            if (permission === "granted") {
+              new Notification("New Message", {
+                body: "You have a new message regarding your booking",
+                icon: "/favicon.ico",
+              });
+            }
           }
         }
       )
@@ -180,6 +206,7 @@ export const useNotifications = () => {
       supabase.removeChannel(ticketChannel);
       supabase.removeChannel(orderChannel);
       supabase.removeChannel(healthChannel);
+      supabase.removeChannel(chatChannel);
     };
   }, [user, permission]);
 
