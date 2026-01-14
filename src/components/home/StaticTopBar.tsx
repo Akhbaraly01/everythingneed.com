@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
+import { useTranslation } from "@/hooks/useTranslation";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +21,7 @@ const StaticTopBar = () => {
   const navigate = useNavigate();
   const { isAuthenticated, profile, user } = useAuth();
   const { language, setLanguage, languages } = useCurrency();
+  const { t } = useTranslation();
 
   const getInitials = () => {
     if (profile?.full_name) {
@@ -32,7 +34,7 @@ const StaticTopBar = () => {
   };
 
   const handleScan = () => {
-    toast.info("Camera scan feature - Upload or scan an item image to find similar products!");
+    toast.info(t('scanFeature'));
   };
 
   const handleSupport = () => {
@@ -64,7 +66,7 @@ const StaticTopBar = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Search products, services..."
+              placeholder={t('searchPlaceholder')}
               className="pl-9 h-9 bg-muted/50 border-0 text-sm"
             />
           </div>
@@ -97,7 +99,7 @@ const StaticTopBar = () => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="max-h-80 overflow-y-auto">
-              <DropdownMenuLabel className="text-xs">Select Language</DropdownMenuLabel>
+              <DropdownMenuLabel className="text-xs">{t('selectLanguage')}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               {languages.map((lang) => (
                 <DropdownMenuItem 
