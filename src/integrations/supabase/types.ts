@@ -1392,6 +1392,45 @@ export type Database = {
         }
         Relationships: []
       }
+      video_progress: {
+        Row: {
+          completed: boolean | null
+          course_id: string
+          created_at: string | null
+          id: string
+          last_position_seconds: number | null
+          lesson_id: string
+          progress_percent: number | null
+          updated_at: string | null
+          user_id: string
+          watch_time_seconds: number | null
+        }
+        Insert: {
+          completed?: boolean | null
+          course_id: string
+          created_at?: string | null
+          id?: string
+          last_position_seconds?: number | null
+          lesson_id: string
+          progress_percent?: number | null
+          updated_at?: string | null
+          user_id: string
+          watch_time_seconds?: number | null
+        }
+        Update: {
+          completed?: boolean | null
+          course_id?: string
+          created_at?: string | null
+          id?: string
+          last_position_seconds?: number | null
+          lesson_id?: string
+          progress_percent?: number | null
+          updated_at?: string | null
+          user_id?: string
+          watch_time_seconds?: number | null
+        }
+        Relationships: []
+      }
       wishlists: {
         Row: {
           created_at: string

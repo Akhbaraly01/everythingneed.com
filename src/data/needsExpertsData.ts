@@ -1,6 +1,6 @@
 // Experts data for Needs section - 30 professionals for various services
 
-import { Expert } from './expertsData';
+import type { Expert } from './expertsData';
 
 export const needsExperts: Expert[] = [
   { id: 'ne1', name: 'Michael Okonkwo', title: 'Master Electrician', specialty: 'Electrical Services', category: 'needs', experience: 18, rating: 4.9, studentsOrPatients: 2340, avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150', bio: 'Certified master electrician specializing in residential and commercial wiring', skills: ['Electrical Wiring', 'Solar Installation', 'Panel Upgrades', 'Emergency Repairs'], availability: 'available', hourlyRate: 45, languages: ['English', 'Igbo'], certifications: ['Master Electrician License', 'Solar PV Certified'] },
