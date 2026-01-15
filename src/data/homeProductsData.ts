@@ -60,8 +60,8 @@ export const generateHomeProducts = (): HomeProduct[] => {
   const products: HomeProduct[] = [];
   let id = 1;
   
-  // Generate ~50 products per category to get 1000+
-  for (let round = 0; round < 5; round++) {
+  // Generate ~80 products per category (increased by 60%) to get 1600+
+  for (let round = 0; round < 8; round++) {
     for (const category of categories) {
       const names = productNames[category] || productNames.Electronics;
       for (const name of names) {
