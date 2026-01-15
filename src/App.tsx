@@ -51,6 +51,8 @@ import Wishlist from "./pages/account/Wishlist";
 import SubmitRequest from "./pages/needs/SubmitRequest";
 import BuildingServices from "./pages/BuildingServices";
 import CourseDetail from "./pages/learn/CourseDetail";
+import LearningDashboard from "./pages/account/LearningDashboard";
+import ExpertsDirectory from "./pages/experts/ExpertsDirectory";
 
 const queryClient = new QueryClient();
 
@@ -103,6 +105,8 @@ const App = () => (
                       <Route path="/account/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />
                       <Route path="/account/notifications" element={<ProtectedRoute><NotificationSettings /></ProtectedRoute>} />
                       <Route path="/account/certificates" element={<ProtectedRoute><Certificates /></ProtectedRoute>} />
+                      <Route path="/account/learning" element={<ProtectedRoute><LearningDashboard /></ProtectedRoute>} />
+                      <Route path="/experts" element={<ExpertsDirectory />} />
                       <Route path="/vendor/dashboard" element={<ProtectedRoute><EnhancedVendorDashboard /></ProtectedRoute>} />
                       <Route path="/vendor/register" element={<VendorRegistration />} />
                       <Route path="/admin" element={<ProtectedRoute><SuperAdminDashboard /></ProtectedRoute>} />
