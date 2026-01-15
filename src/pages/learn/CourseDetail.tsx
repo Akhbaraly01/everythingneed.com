@@ -18,6 +18,8 @@ import { extendedCourses } from "@/data/learnData";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 // Generate lesson data for a course
 const generateLessons = (courseId: string, lessonCount: number) => {
@@ -33,43 +35,184 @@ const CourseDetail = () => {
   const { courseId } = useParams();
   const { user } = useAuth();
   const { formatPrice } = useCurrency();
+  const queryClient = useQueryClient();
   const [currentLessonId, setCurrentLessonId] = useState<string | null>(null);
   const [videoProgress, setVideoProgress] = useState(0);
-  const [isEnrolled, setIsEnrolled] = useState(false);
   const [showCertificate, setShowCertificate] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Find course
+  // Find course from local data (in production, fetch from Supabase)
   const course = extendedCourses.find(c => c.id === courseId) || extendedCourses[0];
   const lessons = generateLessons(course.id, course.lessons || 10);
 
+  // Check enrollment status from Supabase
+  const { data: enrollment, isLoading: checkingEnrollment } = useQuery({
+    queryKey: ['enrollment', course.id, user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data, error } = await supabase
+        .from('enrollments')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('course_id', course.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const isEnrolled = !!enrollment;
+
+  // Fetch video progress for current lesson
+  const { data: lessonProgress } = useQuery({
+    queryKey: ['video-progress', course.id, currentLessonId, user?.id],
+    queryFn: async () => {
+      if (!user || !currentLessonId) return null;
+      const { data, error } = await supabase
+        .from('video_progress')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('course_id', course.id)
+        .eq('lesson_id', currentLessonId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user && !!currentLessonId && isEnrolled,
+  });
+
+  // Enroll mutation
+  const enrollMutation = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("Not authenticated");
+      
+      // Get actual course from Supabase if exists
+      const { data: dbCourse } = await supabase
+        .from('courses')
+        .select('id')
+        .eq('slug', course.id)
+        .maybeSingle();
+      
+      const { data, error } = await supabase
+        .from('enrollments')
+        .insert({
+          user_id: user.id,
+          course_id: dbCourse?.id || course.id,
+          progress: 0,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['enrollment'] });
+      toast.success("Successfully enrolled in the course!");
+    },
+    onError: (error) => {
+      toast.error("Failed to enroll: " + error.message);
+    },
+  });
+
+  // Save video progress mutation
+  const saveProgressMutation = useMutation({
+    mutationFn: async (progress: { lessonId: string; percent: number; seconds: number }) => {
+      if (!user) throw new Error("Not authenticated");
+      
+      const { data, error } = await supabase
+        .from('video_progress')
+        .upsert({
+          user_id: user.id,
+          course_id: course.id,
+          lesson_id: progress.lessonId,
+          progress_percent: progress.percent,
+          last_position_seconds: progress.seconds,
+          completed: progress.percent >= 95,
+        }, {
+          onConflict: 'user_id,course_id,lesson_id'
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Generate certificate mutation
+  const generateCertificateMutation = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("Not authenticated");
+      
+      const certNumber = `CERT-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      
+      const { data, error } = await supabase
+        .from('user_certificates')
+        .insert({
+          user_id: user.id,
+          course_title: course.title,
+          instructor_name: course.instructor,
+          certificate_number: certNumber,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      setShowCertificate(true);
+      toast.success("Certificate generated! You can download it now.");
+    },
+    onError: (error) => {
+      toast.error("Failed to generate certificate: " + error.message);
+    },
+  });
+
+  // Set first lesson on mount
   useEffect(() => {
-    // Check if enrolled
-    const enrolled = localStorage.getItem(`enrolled-${course.id}`);
-    if (enrolled) setIsEnrolled(true);
-    
-    // Set first lesson
-    if (lessons.length > 0) {
+    if (lessons.length > 0 && !currentLessonId) {
       setCurrentLessonId(lessons[0].id);
     }
-  }, [course.id, lessons]);
+  }, [lessons, currentLessonId]);
+
+  // Restore video progress when lesson changes
+  useEffect(() => {
+    if (lessonProgress) {
+      setVideoProgress(Number(lessonProgress.progress_percent) || 0);
+    } else {
+      setVideoProgress(0);
+    }
+  }, [lessonProgress]);
 
   const handleEnroll = () => {
     if (!user) {
       toast.error("Please sign in to enroll");
       return;
     }
-    localStorage.setItem(`enrolled-${course.id}`, "true");
-    setIsEnrolled(true);
-    toast.success("Successfully enrolled in the course!");
+    enrollMutation.mutate();
   };
 
   const handleVideoProgress = (progress: number) => {
     setVideoProgress(progress);
+    // Save progress every 10% or on completion
+    if (currentLessonId && user && (progress % 10 < 1 || progress >= 95)) {
+      saveProgressMutation.mutate({
+        lessonId: currentLessonId,
+        percent: progress,
+        seconds: Math.floor(progress * 10), // Approximate
+      });
+    }
   };
 
   const handleVideoComplete = () => {
     toast.success("Lesson completed!");
+    if (currentLessonId && user) {
+      saveProgressMutation.mutate({
+        lessonId: currentLessonId,
+        percent: 100,
+        seconds: 0,
+      });
+    }
   };
 
   const handleLessonSelect = (lessonId: string) => {
@@ -83,8 +226,38 @@ const CourseDetail = () => {
   };
 
   const handleGenerateCertificate = () => {
-    setShowCertificate(true);
-    toast.success("Certificate generated! You can download it now.");
+    generateCertificateMutation.mutate();
+  };
+
+  const handleDownloadCertificate = () => {
+    // Generate PDF certificate
+    const certificateContent = `
+CERTIFICATE OF COMPLETION
+
+This is to certify that
+
+${user?.email || 'Student'}
+
+has successfully completed the course
+
+"${course.title}"
+
+Instructor: ${course.instructor}
+Date: ${new Date().toLocaleDateString()}
+
+Certificate ID: CERT-${Date.now()}
+    `;
+    
+    const blob = new Blob([certificateContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `certificate-${course.title.replace(/\s+/g, '-')}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success("Certificate downloaded!");
   };
 
   const currentLesson = lessons.find(l => l.id === currentLessonId);
@@ -390,7 +563,7 @@ const CourseDetail = () => {
                   <p className="text-sm text-muted-foreground mb-4">
                     You've completed the course!
                   </p>
-                  <Button className="w-full gap-2">
+                  <Button className="w-full gap-2" onClick={handleDownloadCertificate}>
                     <Download className="h-4 w-4" />
                     Download Certificate
                   </Button>
