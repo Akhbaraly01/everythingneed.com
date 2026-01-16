@@ -34,8 +34,8 @@ const Home = () => {
         {/* 6. Enhanced Products Grid with Image Sliders & Video Previews */}
         <EnhancedProductGrid />
 
-        {/* 7. Experts Showcase - Compact 4 cards in 2x2 style */}
-        <ExpertsShowcase category="all" title="Meet Our Experts" limit={4} showFilters={false} compact={true} />
+        {/* 7. Experts Showcase - ALL experts in horizontal scroll */}
+        <ExpertsShowcase category="all" title="Meet Our Experts" showFilters={false} compact={true} />
 
         {/* 8. Discover More Services */}
         <DiverseContentBanners />

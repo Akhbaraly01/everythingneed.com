@@ -178,14 +178,15 @@ const ExpertsShowcase = ({
         </div>
       )}
 
-      {/* Experts Grid - Compact mode for home page */}
+      {/* Experts Grid - Compact mode for home page - shows ALL experts in horizontal scroll */}
       {compact ? (
         <div className="relative">
           <div 
             ref={scrollRef}
             className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
-            {displayedExperts.map((expert) => (
+            {filteredExperts.map((expert) => (
               <Card 
                 key={expert.id} 
                 className="flex-shrink-0 w-[160px] overflow-hidden hover:shadow-lg transition-all group cursor-pointer snap-start"
@@ -236,7 +237,7 @@ const ExpertsShowcase = ({
             variant="outline"
             size="icon"
             className="absolute left-0 top-1/2 -translate-y-1/2 h-8 w-8 bg-background/80 backdrop-blur-sm -ml-2 z-10"
-            onClick={() => scrollRef.current?.scrollBy({ left: -200, behavior: 'smooth' })}
+            onClick={() => scrollRef.current?.scrollBy({ left: -300, behavior: 'smooth' })}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -244,7 +245,7 @@ const ExpertsShowcase = ({
             variant="outline"
             size="icon"
             className="absolute right-0 top-1/2 -translate-y-1/2 h-8 w-8 bg-background/80 backdrop-blur-sm -mr-2 z-10"
-            onClick={() => scrollRef.current?.scrollBy({ left: 200, behavior: 'smooth' })}
+            onClick={() => scrollRef.current?.scrollBy({ left: 300, behavior: 'smooth' })}
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
