@@ -53,6 +53,7 @@ import BuildingServices from "./pages/BuildingServices";
 import CourseDetail from "./pages/learn/CourseDetail";
 import LearningDashboard from "./pages/account/LearningDashboard";
 import ExpertsDirectory from "./pages/experts/ExpertsDirectory";
+import VendorAnalytics from "./pages/vendor/VendorAnalytics";
 
 const queryClient = new QueryClient();
 
@@ -108,6 +109,7 @@ const App = () => (
                       <Route path="/account/learning" element={<ProtectedRoute><LearningDashboard /></ProtectedRoute>} />
                       <Route path="/experts" element={<ExpertsDirectory />} />
                       <Route path="/vendor/dashboard" element={<ProtectedRoute><EnhancedVendorDashboard /></ProtectedRoute>} />
+                      <Route path="/vendor/analytics" element={<ProtectedRoute><VendorAnalytics /></ProtectedRoute>} />
                       <Route path="/vendor/register" element={<VendorRegistration />} />
                       <Route path="/admin" element={<ProtectedRoute><SuperAdminDashboard /></ProtectedRoute>} />
                       <Route path="/admin/dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />

@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import BookingRequestForm from "@/components/booking/BookingRequestForm";
+import InlineBookingForm from "@/components/booking/InlineBookingForm";
 import { ArrowLeft, FileText, Upload, MessageCircle, CheckCircle } from "lucide-react";
 
 const Booking = () => {
@@ -64,50 +64,45 @@ const Booking = () => {
           </div>
         </section>
 
-        {/* Booking Form Section */}
-        <Card className="p-8 max-w-3xl mx-auto">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold mb-2">Start Your Booking Request</h2>
-            <p className="text-muted-foreground">
-              Choose your service category and fill out the form. Our customer service team will 
-              review your request and get back to you within 24 hours with available options.
-            </p>
-          </div>
+        {/* Inline Booking Form */}
+        <div className="max-w-3xl mx-auto">
+          <InlineBookingForm 
+            category="general"
+            serviceTypes={[
+              "Product Request",
+              "Service Booking",
+              "Custom Order",
+              "Bulk Purchase",
+              "Special Event",
+              "Consultation",
+              "Transportation",
+              "Hotel Booking",
+              "Job Posting",
+              "Task Request",
+              "Other"
+            ]}
+            title="Start Your Booking Request"
+            description="Choose your service category and fill out the form. Our team will review and respond within 24 hours."
+          />
+        </div>
 
-          <div className="flex justify-center">
-            <BookingRequestForm 
-              serviceTypes={[
-                "Product Request",
-                "Service Booking",
-                "Custom Order",
-                "Bulk Purchase",
-                "Special Event",
-                "Consultation",
-                "Other"
-              ]}
-              title="Submit Booking Request"
-              description="Tell us what you need and we'll find the best options for you."
-            />
+        <div className="mt-8 max-w-3xl mx-auto">
+          <h3 className="font-bold mb-4 text-center">Quick Access to Services</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Link to="/deals/transportation">
+              <Button variant="outline" className="w-full">Transportation</Button>
+            </Link>
+            <Link to="/deals/hotels">
+              <Button variant="outline" className="w-full">Hotels</Button>
+            </Link>
+            <Link to="/deals/jobs">
+              <Button variant="outline" className="w-full">Jobs</Button>
+            </Link>
+            <Link to="/deals/agriculture">
+              <Button variant="outline" className="w-full">Agriculture</Button>
+            </Link>
           </div>
-
-          <div className="mt-8 pt-8 border-t border-border">
-            <h3 className="font-bold mb-4 text-center">Quick Access to Services</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Link to="/deals/transportation">
-                <Button variant="outline" className="w-full">Transportation</Button>
-              </Link>
-              <Link to="/deals/hotels">
-                <Button variant="outline" className="w-full">Hotels</Button>
-              </Link>
-              <Link to="/deals/jobs">
-                <Button variant="outline" className="w-full">Jobs</Button>
-              </Link>
-              <Link to="/deals/agriculture">
-                <Button variant="outline" className="w-full">Agriculture</Button>
-              </Link>
-            </div>
-          </div>
-        </Card>
+        </div>
       </div>
     </div>
   );
