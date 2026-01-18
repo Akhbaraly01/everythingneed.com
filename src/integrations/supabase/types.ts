@@ -375,6 +375,7 @@ export type Database = {
           specialization: string
           updated_at: string
           user_id: string | null
+          virtual_fee: number | null
         }
         Insert: {
           avatar_url?: string | null
@@ -389,6 +390,7 @@ export type Database = {
           specialization: string
           updated_at?: string
           user_id?: string | null
+          virtual_fee?: number | null
         }
         Update: {
           avatar_url?: string | null
@@ -403,6 +405,7 @@ export type Database = {
           specialization?: string
           updated_at?: string
           user_id?: string | null
+          virtual_fee?: number | null
         }
         Relationships: []
       }
@@ -440,6 +443,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      expert_availability: {
+        Row: {
+          created_at: string | null
+          current_status: string | null
+          expert_id: string
+          expert_type: string
+          id: string
+          is_available: boolean | null
+          next_available_at: string | null
+          status_message: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          current_status?: string | null
+          expert_id: string
+          expert_type?: string
+          id?: string
+          is_available?: boolean | null
+          next_available_at?: string | null
+          status_message?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          current_status?: string | null
+          expert_id?: string
+          expert_type?: string
+          id?: string
+          is_available?: boolean | null
+          next_available_at?: string | null
+          status_message?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       expert_reviews: {
         Row: {
@@ -496,6 +535,8 @@ export type Database = {
         Row: {
           appointment_date: string | null
           appointment_time: string | null
+          consultation_fee: number | null
+          consultation_type: string | null
           created_at: string
           description: string | null
           doctor_id: string | null
@@ -510,6 +551,8 @@ export type Database = {
         Insert: {
           appointment_date?: string | null
           appointment_time?: string | null
+          consultation_fee?: number | null
+          consultation_type?: string | null
           created_at?: string
           description?: string | null
           doctor_id?: string | null
@@ -524,6 +567,8 @@ export type Database = {
         Update: {
           appointment_date?: string | null
           appointment_time?: string | null
+          consultation_fee?: number | null
+          consultation_type?: string | null
           created_at?: string
           description?: string | null
           doctor_id?: string | null

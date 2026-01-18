@@ -7,10 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Award, Download, Search, Share2, Eye, Calendar, GraduationCap, CheckCircle } from "lucide-react";
+import { Award, Download, Search, Share2, Eye, Calendar, GraduationCap, CheckCircle, Printer } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { generateCertificatePDF, printCertificate } from "@/utils/certificateGenerator";
 
 interface Certificate {
   id: string;
@@ -48,36 +49,24 @@ const Certificates = () => {
   );
 
   const handleDownload = (cert: Certificate) => {
-    // Generate certificate as downloadable content
-    const certificateContent = `
-CERTIFICATE OF COMPLETION
-
-This is to certify that
-
-${user?.email || "Student"}
-
-has successfully completed the course
-
-"${cert.course_title}"
-
-Instructor: ${cert.instructor_name}
-Certificate Number: ${cert.certificate_number}
-Date Issued: ${format(new Date(cert.issued_at), "MMMM dd, yyyy")}
-
-This certificate verifies the completion of all course requirements.
-    `.trim();
-
-    const blob = new Blob([certificateContent], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `Certificate-${cert.certificate_number}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
+    generateCertificatePDF({
+      studentName: user?.email || "Student",
+      courseTitle: cert.course_title,
+      instructorName: cert.instructor_name,
+      certificateNumber: cert.certificate_number,
+      issueDate: new Date(cert.issued_at)
+    });
     toast.success("Certificate downloaded!");
+  };
+
+  const handlePrint = (cert: Certificate) => {
+    printCertificate({
+      studentName: user?.email || "Student",
+      courseTitle: cert.course_title,
+      instructorName: cert.instructor_name,
+      certificateNumber: cert.certificate_number,
+      issueDate: new Date(cert.issued_at)
+    });
   };
 
   const handleShare = async (cert: Certificate) => {
@@ -251,6 +240,10 @@ This certificate verifies the completion of all course requirements.
                           <Button variant="outline" onClick={() => handleShare(cert)}>
                             <Share2 className="h-4 w-4 mr-2" />
                             Share
+                          </Button>
+                          <Button variant="outline" onClick={() => handlePrint(cert)}>
+                            <Printer className="h-4 w-4 mr-2" />
+                            Print
                           </Button>
                           <Button onClick={() => handleDownload(cert)}>
                             <Download className="h-4 w-4 mr-2" />
