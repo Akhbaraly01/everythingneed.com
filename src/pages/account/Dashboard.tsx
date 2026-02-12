@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { StatCardSkeleton, CardSkeleton } from "@/components/ui/card-skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 import { 
   Package, 
   Heart, 
@@ -13,7 +15,8 @@ import {
   TrendingUp,
   ShoppingBag,
   BookOpen,
-  Ticket
+  Ticket,
+  Sparkles
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -105,10 +108,12 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-8">
+    <div className="container mx-auto px-4 py-8 space-y-8 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">My Dashboard</h1>
+          <h1 className="text-3xl font-bold">
+            {user?.user_metadata?.full_name ? `Welcome, ${user.user_metadata.full_name.split(' ')[0]}!` : 'My Dashboard'}
+          </h1>
           <p className="text-muted-foreground">Track your orders, saved items, and personalized recommendations</p>
         </div>
         <Link to="/account">
@@ -120,50 +125,56 @@ const Dashboard = () => {
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="p-3 rounded-full bg-primary/10">
-              <Package className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{orders.length}</p>
-              <p className="text-sm text-muted-foreground">Total Orders</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="p-3 rounded-full bg-rose-500/10">
-              <Heart className="h-6 w-6 text-rose-500" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{mockSavedItems.length}</p>
-              <p className="text-sm text-muted-foreground">Saved Items</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="p-3 rounded-full bg-amber-500/10">
-              <Star className="h-6 w-6 text-amber-500" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">12</p>
-              <p className="text-sm text-muted-foreground">Reviews Given</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="p-3 rounded-full bg-green-500/10">
-              <TrendingUp className="h-6 w-6 text-green-500" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">$2,450</p>
-              <p className="text-sm text-muted-foreground">Total Spent</p>
-            </div>
-          </CardContent>
-        </Card>
+        {loading ? (
+          Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)
+        ) : (
+          <>
+            <Card className="hover:shadow-md transition-shadow">
+              <CardContent className="p-4 flex items-center gap-4">
+                <div className="p-3 rounded-full bg-primary/10">
+                  <Package className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{orders.length}</p>
+                  <p className="text-sm text-muted-foreground">Total Orders</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="hover:shadow-md transition-shadow">
+              <CardContent className="p-4 flex items-center gap-4">
+                <div className="p-3 rounded-full bg-destructive/10">
+                  <Heart className="h-6 w-6 text-destructive" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{mockSavedItems.length}</p>
+                  <p className="text-sm text-muted-foreground">Saved Items</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="hover:shadow-md transition-shadow">
+              <CardContent className="p-4 flex items-center gap-4">
+                <div className="p-3 rounded-full bg-warning/10">
+                  <Star className="h-6 w-6 text-warning" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">12</p>
+                  <p className="text-sm text-muted-foreground">Reviews Given</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="hover:shadow-md transition-shadow">
+              <CardContent className="p-4 flex items-center gap-4">
+                <div className="p-3 rounded-full bg-success/10">
+                  <TrendingUp className="h-6 w-6 text-success" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">$2,450</p>
+                  <p className="text-sm text-muted-foreground">Total Spent</p>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
 
       {/* Quick Actions */}
@@ -222,15 +233,25 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               {loading ? (
-                <div className="text-center py-8 text-muted-foreground">Loading orders...</div>
-              ) : orders.length === 0 ? (
-                <div className="text-center py-8">
-                  <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">No orders yet</p>
-                  <Link to="/">
-                    <Button className="mt-4">Start Shopping</Button>
-                  </Link>
+                <div className="space-y-4">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                      <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 rounded bg-muted animate-pulse" />
+                        <div className="space-y-2">
+                          <div className="h-4 w-24 bg-muted rounded animate-pulse" />
+                          <div className="h-3 w-16 bg-muted rounded animate-pulse" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
+              ) : orders.length === 0 ? (
+                <EmptyState
+                  icon={Package}
+                  title="No orders yet"
+                  description="Start shopping to see your order history here"
+                />
               ) : (
                 <div className="space-y-4">
                   {orders.map((order) => (

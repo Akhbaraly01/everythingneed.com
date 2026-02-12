@@ -132,6 +132,24 @@ const AppointmentCalendar = ({ doctor, isRandomAssignment = false, onSuccess }: 
 
       if (error) throw error;
 
+      // Call booking confirmation edge function
+      try {
+        await supabase.functions.invoke('booking-confirmation', {
+          body: {
+            ticketNumber: data.ticket_number,
+            patientName: user.user_metadata?.full_name || user.email,
+            doctorName: doctor?.full_name || null,
+            appointmentDate: format(selectedDate, "MMM dd, yyyy"),
+            appointmentTime: selectedTime,
+            consultationType,
+            consultationFee: currentFee,
+            patientEmail: user.email,
+          }
+        });
+      } catch (emailError) {
+        console.log("Confirmation notification pending:", emailError);
+      }
+
       toast.success(`Appointment booked! Ticket: ${data.ticket_number}`);
       onSuccess?.(data.ticket_number);
     } catch (error: any) {

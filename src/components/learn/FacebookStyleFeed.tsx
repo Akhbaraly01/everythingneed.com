@@ -8,6 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { PostCardSkeleton } from "@/components/ui/card-skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 import DirectMessage from "./DirectMessage";
 import InteractiveQuizWidget from "./InteractiveQuizWidget";
 import PollWidget from "./PollWidget";
@@ -389,6 +391,17 @@ const FacebookStyleFeed = () => {
       )}
 
       {/* Feed Content */}
+      {displayedPosts.length === 0 && posts.length === 0 ? (
+        <div className="space-y-4">
+          {Array.from({ length: 3 }).map((_, i) => <PostCardSkeleton key={i} />)}
+        </div>
+      ) : displayedPosts.length === 0 ? (
+        <EmptyState
+          icon={BookOpen}
+          title="No posts yet"
+          description="Be the first to share something educational with the community!"
+        />
+      ) : null}
       {getContentWithBanners().map((item, index) => {
         // Quiz Widget
         if (item.itemType === "quiz") {

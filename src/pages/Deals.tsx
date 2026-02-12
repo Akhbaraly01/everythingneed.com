@@ -5,12 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
+import { CategoryCardSkeleton, StatCardSkeleton } from "@/components/ui/card-skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 import { 
   Search, ChevronRight, Plane, Hotel, Building, Briefcase, 
   Tractor, UtensilsCrossed, Heart, GraduationCap, Laptop, Shirt,
   Sparkles, Home, Music, Dumbbell, Car, Wallet, Scale, Sparkle,
   Shield, Dog, Compass, Calendar, Camera, Printer, Truck, HardHat,
-  Wrench, Baby, HeartHandshake, Phone
+  Wrench, Baby, HeartHandshake, Phone, PackageSearch
 } from "lucide-react";
 
 interface NeedCategory {
@@ -103,10 +105,10 @@ const DealsPage = () => {
           <div className="flex gap-4 overflow-x-auto pb-2">
             {quickServices.map((service, index) => (
               <Link key={index} to={service.path}>
-                <Card className="shrink-0 hover:shadow-lg transition-all duration-300 hover:scale-105 w-36">
+                <Card className="shrink-0 hover:shadow-lg transition-all duration-300 hover:scale-105 hover:-translate-y-1 w-36">
                   <CardContent className="pt-6 text-center">
                     <div 
-                      className="h-12 w-12 rounded-full mx-auto mb-3 flex items-center justify-center"
+                      className="h-12 w-12 rounded-full mx-auto mb-3 flex items-center justify-center transition-transform group-hover:scale-110"
                       style={{ backgroundColor: service.color + "20" }}
                     >
                       <service.icon className="h-6 w-6" style={{ color: service.color }} />
@@ -123,30 +125,36 @@ const DealsPage = () => {
       <div className="container mx-auto px-4 py-8">
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <Card>
-            <CardContent className="pt-6 text-center">
-              <p className="text-3xl font-bold text-primary">{categories.length}</p>
-              <p className="text-sm text-muted-foreground">Categories</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6 text-center">
-              <p className="text-3xl font-bold text-secondary">500+</p>
-              <p className="text-sm text-muted-foreground">Services</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6 text-center">
-              <p className="text-3xl font-bold text-success">1000+</p>
-              <p className="text-sm text-muted-foreground">Vendors</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6 text-center">
-              <p className="text-3xl font-bold text-warning">24/7</p>
-              <p className="text-sm text-muted-foreground">Support</p>
-            </CardContent>
-          </Card>
+          {loading ? (
+            Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)
+          ) : (
+            <>
+              <Card className="animate-fade-in">
+                <CardContent className="pt-6 text-center">
+                  <p className="text-3xl font-bold text-primary">{categories.length}</p>
+                  <p className="text-sm text-muted-foreground">Categories</p>
+                </CardContent>
+              </Card>
+              <Card className="animate-fade-in" style={{ animationDelay: "50ms" }}>
+                <CardContent className="pt-6 text-center">
+                  <p className="text-3xl font-bold text-secondary">500+</p>
+                  <p className="text-sm text-muted-foreground">Services</p>
+                </CardContent>
+              </Card>
+              <Card className="animate-fade-in" style={{ animationDelay: "100ms" }}>
+                <CardContent className="pt-6 text-center">
+                  <p className="text-3xl font-bold text-success">1000+</p>
+                  <p className="text-sm text-muted-foreground">Vendors</p>
+                </CardContent>
+              </Card>
+              <Card className="animate-fade-in" style={{ animationDelay: "150ms" }}>
+                <CardContent className="pt-6 text-center">
+                  <p className="text-3xl font-bold text-warning">24/7</p>
+                  <p className="text-sm text-muted-foreground">Support</p>
+                </CardContent>
+              </Card>
+            </>
+          )}
         </div>
 
         {/* All Categories */}
@@ -157,13 +165,17 @@ const DealsPage = () => {
           </div>
 
           {loading ? (
-            <div className="text-center py-12 text-muted-foreground">Loading categories...</div>
-          ) : filteredCategories.length === 0 ? (
-            <div className="text-center py-12">
-              <Search className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium mb-2">No categories found</h3>
-              <p className="text-muted-foreground">Try a different search term</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {Array.from({ length: 10 }).map((_, i) => <CategoryCardSkeleton key={i} />)}
             </div>
+          ) : filteredCategories.length === 0 ? (
+            <EmptyState
+              icon={PackageSearch}
+              title="No categories found"
+              description="Try a different search term or browse all categories"
+              actionLabel="Clear Search"
+              onAction={() => setSearchTerm("")}
+            />
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {filteredCategories.map((category) => {
