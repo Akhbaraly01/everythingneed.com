@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { DoctorCardSkeleton } from "@/components/ui/card-skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -244,34 +245,42 @@ const Healthcare = () => {
             </Link>
           </div>
           <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-            {doctors.map((doctor) => (
-              <Link key={doctor.id} to={`/healthcare/book/${doctor.id}`}>
-                <Card className="flex-shrink-0 w-[200px] hover:shadow-lg transition-all">
-                  <CardContent className="p-4 text-center">
-                    <Avatar className="h-16 w-16 mx-auto mb-2">
-                      <AvatarImage src={doctor.avatar_url || ''} />
-                      <AvatarFallback>{doctor.full_name[0]}</AvatarFallback>
-                    </Avatar>
-                    <h3 className="font-medium text-sm line-clamp-1">{doctor.full_name}</h3>
-                    <p className="text-xs text-muted-foreground">{doctor.specialization}</p>
-                    <div className="flex items-center justify-center gap-1 mt-1">
-                      <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />
-                      <span className="text-xs">{doctor.rating}</span>
-                    </div>
-                    <div className="flex flex-col gap-1 mt-3">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="flex items-center gap-1"><Video className="h-3 w-3" /> Virtual</span>
-                        <span className="font-medium text-primary">${doctor.virtual_fee}</span>
+            {doctors.length === 0 ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="flex-shrink-0 w-[200px]">
+                  <DoctorCardSkeleton />
+                </div>
+              ))
+            ) : (
+              doctors.map((doctor) => (
+                <Link key={doctor.id} to={`/healthcare/book/${doctor.id}`}>
+                  <Card className="flex-shrink-0 w-[200px] hover:shadow-lg transition-all hover:-translate-y-1">
+                    <CardContent className="p-4 text-center">
+                      <Avatar className="h-16 w-16 mx-auto mb-2">
+                        <AvatarImage src={doctor.avatar_url || ''} />
+                        <AvatarFallback>{doctor.full_name[0]}</AvatarFallback>
+                      </Avatar>
+                      <h3 className="font-medium text-sm line-clamp-1">{doctor.full_name}</h3>
+                      <p className="text-xs text-muted-foreground">{doctor.specialization}</p>
+                      <div className="flex items-center justify-center gap-1 mt-1">
+                        <Star className="h-3 w-3 fill-warning text-warning" />
+                        <span className="text-xs">{doctor.rating}</span>
                       </div>
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> Physical</span>
-                        <span className="font-medium">${doctor.consultation_fee}</span>
+                      <div className="flex flex-col gap-1 mt-3">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="flex items-center gap-1"><Video className="h-3 w-3" /> Virtual</span>
+                          <span className="font-medium text-primary">${doctor.virtual_fee}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> Physical</span>
+                          <span className="font-medium">${doctor.consultation_fee}</span>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))
+            )}
           </div>
         </section>
 
