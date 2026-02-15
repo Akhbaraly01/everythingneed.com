@@ -10,7 +10,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Users, Ticket, Store, Truck, TrendingUp, DollarSign, Activity, 
-  Shield, Search, Filter, MoreHorizontal, UserPlus, Eye, Trash2, Edit
+  Shield, Search, Filter, MoreHorizontal, UserPlus, Eye, Trash2, Edit,
+  Stethoscope, BookOpen, ShoppingCart, HeartPulse
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -71,13 +72,14 @@ interface AuditLog {
   created_at: string;
 }
 
-const analyticsData = [
-  { name: "Jan", users: 400, tickets: 240, revenue: 2400 },
-  { name: "Feb", users: 300, tickets: 139, revenue: 2210 },
-  { name: "Mar", users: 520, tickets: 280, revenue: 2290 },
-  { name: "Apr", users: 478, tickets: 390, revenue: 2000 },
-  { name: "May", users: 689, tickets: 480, revenue: 2181 },
-  { name: "Jun", users: 839, tickets: 380, revenue: 2500 },
+// Will be populated from real data
+const defaultAnalyticsData = [
+  { name: "Jan", users: 0, tickets: 0, revenue: 0 },
+  { name: "Feb", users: 0, tickets: 0, revenue: 0 },
+  { name: "Mar", users: 0, tickets: 0, revenue: 0 },
+  { name: "Apr", users: 0, tickets: 0, revenue: 0 },
+  { name: "May", users: 0, tickets: 0, revenue: 0 },
+  { name: "Jun", users: 0, tickets: 0, revenue: 0 },
 ];
 
 const SuperAdminDashboard = () => {
@@ -92,6 +94,14 @@ const SuperAdminDashboard = () => {
   const [selectedUser, setSelectedUser] = useState<UserWithRole | null>(null);
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const [newRole, setNewRole] = useState("");
+  
+  // Real-time analytics
+  const [bookingCount, setBookingCount] = useState(0);
+  const [orderCount, setOrderCount] = useState(0);
+  const [learnPostCount, setLearnPostCount] = useState(0);
+  const [totalLikes, setTotalLikes] = useState(0);
+  const [doctorCount, setDoctorCount] = useState(0);
+  const [analyticsData, setAnalyticsData] = useState(defaultAnalyticsData);
 
   useEffect(() => {
     fetchData();
@@ -132,6 +142,40 @@ const SuperAdminDashboard = () => {
       // Fetch audit logs
       const { data: logsData } = await supabase.from("audit_logs").select("*").order("created_at", { ascending: false }).limit(50);
       if (logsData) setAuditLogs(logsData);
+
+      // Fetch real-time analytics
+      const { count: bCount } = await supabase.from("health_tickets").select("*", { count: "exact", head: true });
+      setBookingCount(bCount || 0);
+      
+      const { count: oCount } = await supabase.from("vendor_orders").select("*", { count: "exact", head: true });
+      setOrderCount(oCount || 0);
+      
+      const { count: dCount } = await supabase.from("doctors").select("*", { count: "exact", head: true });
+      setDoctorCount(dCount || 0);
+
+      const { data: learnStats } = await supabase.from("learn_posts").select("likes_count");
+      if (learnStats) {
+        setLearnPostCount(learnStats.length);
+        setTotalLikes(learnStats.reduce((sum, p) => sum + (p.likes_count || 0), 0));
+      }
+
+      // Build analytics chart from real ticket data
+      const { data: recentTickets } = await supabase.from("health_tickets").select("created_at").order("created_at", { ascending: true });
+      if (recentTickets && recentTickets.length > 0) {
+        const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+        const monthCounts: Record<string, number> = {};
+        recentTickets.forEach(t => {
+          const m = months[new Date(t.created_at).getMonth()];
+          monthCounts[m] = (monthCounts[m] || 0) + 1;
+        });
+        const chartData = months.slice(0, 6).map(name => ({
+          name,
+          users: profiles?.filter(p => months[new Date(p.created_at).getMonth()] === name).length || 0,
+          tickets: monthCounts[name] || 0,
+          revenue: (monthCounts[name] || 0) * 100,
+        }));
+        setAnalyticsData(chartData);
+      }
 
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -284,6 +328,62 @@ const SuperAdminDashboard = () => {
                   <Bar dataKey="tickets" fill="hsl(var(--secondary))" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Live Platform Metrics */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <Card className="border-l-4 border-l-primary">
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <HeartPulse className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{bookingCount}</p>
+                  <p className="text-xs text-muted-foreground">Health Bookings</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-l-4 border-l-success">
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-success/10">
+                  <ShoppingCart className="h-5 w-5 text-success" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{orderCount}</p>
+                  <p className="text-xs text-muted-foreground">Vendor Orders</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-l-4 border-l-secondary">
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-secondary/10">
+                  <BookOpen className="h-5 w-5 text-secondary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{learnPostCount}</p>
+                  <p className="text-xs text-muted-foreground">Learn Posts</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-l-4 border-l-warning">
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-warning/10">
+                  <Stethoscope className="h-5 w-5 text-warning" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{doctorCount}</p>
+                  <p className="text-xs text-muted-foreground">Active Doctors</p>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
