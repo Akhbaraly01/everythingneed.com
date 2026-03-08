@@ -9,12 +9,9 @@ import ExpertsShowcase from "@/components/experts/ExpertsShowcase";
 import PushNotificationPrompt from "@/components/notifications/PushNotificationPrompt";
 import AIChatBot from "@/components/chat/AIChatBot";
 import Footer from "@/components/Footer";
-import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { 
-  TrendingUp, Sparkles, Award, ShieldCheck, Users, Star, 
-  ArrowRight
-} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Sparkles, Award, ShieldCheck, Users, Star, ArrowRight } from "lucide-react";
 
 const Home = () => {
   return (
