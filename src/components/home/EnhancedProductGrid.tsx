@@ -437,6 +437,11 @@ const EnhancedProductGrid = () => {
 
   return (
     <section className="space-y-4">
+      <div>
+        <h2 className="text-lg md:text-xl font-bold">Discover Products & Services</h2>
+        <p className="text-xs text-muted-foreground">{filteredContent.length.toLocaleString()} items available</p>
+      </div>
+
       {/* Tabs */}
       <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2">
         {contentTabs.map((tab) => (
