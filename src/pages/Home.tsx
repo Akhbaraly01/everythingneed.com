@@ -11,6 +11,7 @@ import AIChatBot from "@/components/chat/AIChatBot";
 import Footer from "@/components/Footer";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { motion } from "framer-motion";
 import { Sparkles, Award, ShieldCheck, Users, Star, ArrowRight } from "lucide-react";
 
 const Home = () => {
@@ -37,8 +38,13 @@ const Home = () => {
         {/* 7. Enhanced Products Grid */}
         <EnhancedProductGrid />
 
-        {/* 8. Experts Showcase - ALL experts in horizontal scroll */}
-        <section>
+        {/* 8. Experts Showcase */}
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.5, ease: "easeOut" as const }}
+        >
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Star className="h-5 w-5 text-warning" />
@@ -51,7 +57,7 @@ const Home = () => {
             </Link>
           </div>
           <ExpertsShowcase category="all" title="" showFilters={false} compact={true} />
-        </section>
+        </motion.section>
 
         {/* 9. Discover More Services */}
         <DiverseContentBanners />
