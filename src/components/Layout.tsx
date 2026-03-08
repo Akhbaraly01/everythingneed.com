@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { Badge } from "@/components/ui/badge";
 import Footer from "@/components/Footer";
+import { AnimatedPage } from "@/components/AnimatedPage";
 
 interface LayoutProps {
   children: ReactNode;
@@ -31,7 +32,9 @@ const Layout = ({ children }: LayoutProps) => {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <main className="flex-1 pb-20 md:pb-4">{children}</main>
+      <main className="flex-1 pb-20 md:pb-4">
+        <AnimatedPage>{children}</AnimatedPage>
+      </main>
 
       <div className="hidden md:block"><Footer /></div>
 
