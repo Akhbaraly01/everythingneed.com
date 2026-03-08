@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { Badge } from "@/components/ui/badge";
 import Footer from "@/components/Footer";
+import { AnimatedPage } from "@/components/AnimatedPage";
 
 interface LayoutProps {
   children: ReactNode;
