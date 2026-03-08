@@ -9,12 +9,9 @@ import ExpertsShowcase from "@/components/experts/ExpertsShowcase";
 import PushNotificationPrompt from "@/components/notifications/PushNotificationPrompt";
 import AIChatBot from "@/components/chat/AIChatBot";
 import Footer from "@/components/Footer";
-import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { 
-  TrendingUp, Sparkles, Award, ShieldCheck, Users, Star, 
-  ArrowRight
-} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Sparkles, Award, ShieldCheck, Users, Star, ArrowRight } from "lucide-react";
 
 const Home = () => {
   return (
@@ -37,21 +34,8 @@ const Home = () => {
         {/* 6. Triple Banner Layout */}
         <BinanceStyleBanner />
 
-        {/* 7. Enhanced Products Grid with Image Sliders & Video Previews */}
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-bold">Trending Products</h2>
-            </div>
-            <Link to="/deals">
-              <Button variant="ghost" size="sm" className="gap-1">
-                View All <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
-          </div>
-          <EnhancedProductGrid />
-        </section>
+        {/* 7. Enhanced Products Grid */}
+        <EnhancedProductGrid />
 
         {/* 8. Experts Showcase - ALL experts in horizontal scroll */}
         <section>
