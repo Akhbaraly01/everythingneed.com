@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -436,13 +437,6 @@ const EnhancedProductGrid = () => {
 
   return (
     <section className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg md:text-xl font-bold">Discover Products & Services</h2>
-          <p className="text-xs text-muted-foreground">{filteredContent.length.toLocaleString()} items available</p>
-        </div>
-      </div>
-
       {/* Tabs */}
       <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2">
         {contentTabs.map((tab) => (
@@ -459,12 +453,29 @@ const EnhancedProductGrid = () => {
         ))}
       </div>
 
-      {/* Masonry Grid with varied sizes */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2 auto-rows-min">
+      {/* Masonry Grid with stagger animations */}
+      <motion.div
+        className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2 auto-rows-min"
+        initial="hidden"
+        animate="visible"
+        key={`${activeTab}-${currentPage}`}
+        variants={{
+          hidden: {},
+          visible: { transition: { staggerChildren: 0.04 } },
+        }}
+      >
         {displayedContent.map((item) => (
-          <ProductCardSlider key={item.id} item={item} formatPrice={formatPrice} />
+          <motion.div
+            key={item.id}
+            variants={{
+              hidden: { opacity: 0, y: 16 },
+              visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: "easeOut" as const } },
+            }}
+          >
+            <ProductCardSlider item={item} formatPrice={formatPrice} />
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
 
       {filteredContent.length > 0 && (
         <Pagination
