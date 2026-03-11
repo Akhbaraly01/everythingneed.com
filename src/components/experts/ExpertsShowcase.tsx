@@ -189,7 +189,7 @@ const ExpertsShowcase = ({
             {filteredExperts.map((expert) => (
               <Card 
                 key={expert.id} 
-                className="flex-shrink-0 w-[160px] overflow-hidden hover:shadow-lg transition-all group cursor-pointer snap-start"
+                className="flex-shrink-0 w-[160px] overflow-hidden hover:shadow-lg hover:scale-105 transition-all duration-300 group cursor-pointer snap-start"
                 onClick={() => handleBooking(expert)}
               >
                 <CardContent className="p-3">
