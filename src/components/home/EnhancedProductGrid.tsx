@@ -136,7 +136,7 @@ const ProductCardSlider = ({ item, formatPrice }: { item: ContentItem; formatPri
 
   return (
     <Link to={item.link} className={`${getSizeClasses()} block`}>
-      <Card className="overflow-hidden group hover:shadow-xl transition-all duration-300 hover:border-primary/50 cursor-pointer h-full flex flex-col">
+      <Card className="overflow-hidden group hover:shadow-xl transition-all duration-300 hover:border-primary/50 hover:scale-[1.03] cursor-pointer h-full flex flex-col">
         <div className={`relative ${getImageHeight()} bg-muted flex-shrink-0 overflow-hidden`}>
           {/* Image Slider */}
           <div className="relative w-full h-full">
