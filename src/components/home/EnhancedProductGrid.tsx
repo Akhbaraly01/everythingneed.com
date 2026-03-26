@@ -301,10 +301,18 @@ const ProductCardSlider = ({ item, formatPrice }: { item: ContentItem; formatPri
 
 const EnhancedProductGrid = () => {
   const [activeTab, setActiveTab] = useState<ContentType>("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [visibleCount, setVisibleCount] = useState(INITIAL_ITEMS);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const { formatPrice } = useCurrency();
+
+  // Simulate initial load
+  useEffect(() => {
+    const t = setTimeout(() => setInitialLoading(false), 600);
+    return () => clearTimeout(t);
+  }, []);
 
   // Generate combined content with dynamic sizes and multiple images
   const allContent = useMemo((): ContentItem[] => {
