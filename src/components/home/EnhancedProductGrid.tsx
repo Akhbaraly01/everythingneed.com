@@ -469,8 +469,20 @@ const EnhancedProductGrid = () => {
         item.description?.toLowerCase().includes(q)
       );
     }
+    // Sorting
+    if (sortBy !== "default") {
+      items = [...items].sort((a, b) => {
+        switch (sortBy) {
+          case "price_low": return (a.price ?? 0) - (b.price ?? 0);
+          case "price_high": return (b.price ?? 0) - (a.price ?? 0);
+          case "rating": return b.rating - a.rating;
+          case "name": return a.name.localeCompare(b.name);
+          default: return 0;
+        }
+      });
+    }
     return items;
-  }, [activeTab, allContent, searchQuery]);
+  }, [activeTab, allContent, searchQuery, sortBy]);
 
   const displayedContent = filteredContent.slice(0, visibleCount);
   const hasMore = visibleCount < filteredContent.length;
