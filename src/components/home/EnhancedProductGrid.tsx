@@ -503,6 +503,28 @@ const EnhancedProductGrid = () => {
 
   return (
     <section className="space-y-4">
+      {/* Search Bar */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search products, services, courses..."
+          value={searchQuery}
+          onChange={(e) => {
+            setSearchQuery(e.target.value);
+            setVisibleCount(INITIAL_ITEMS);
+          }}
+          className="pl-9 pr-9 h-10 rounded-full bg-muted/50 border-border text-sm"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => { setSearchQuery(""); setVisibleCount(INITIAL_ITEMS); }}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
       {/* Tabs */}
       <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2">
         {contentTabs.map((tab) => (
@@ -519,39 +541,56 @@ const EnhancedProductGrid = () => {
         ))}
       </div>
 
-      {/* Masonry Grid with stagger animations */}
-      <motion.div
-        className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2 auto-rows-min"
-        initial="hidden"
-        animate="visible"
-        key={activeTab}
-        variants={{
-          hidden: {},
-          visible: { transition: { staggerChildren: 0.04 } },
-        }}
-      >
-        {displayedContent.map((item) => (
-          <motion.div
-            key={item.id}
-            variants={{
-              hidden: { opacity: 0, y: 16 },
-              visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: "easeOut" as const } },
-            }}
-          >
-            <ProductCardSlider item={item} formatPrice={formatPrice} />
-          </motion.div>
-        ))}
-      </motion.div>
+      {/* Skeleton loading on initial load */}
+      {initialLoading ? (
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2 auto-rows-min">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <ProductCardSkeleton key={i} />
+          ))}
+        </div>
+      ) : displayedContent.length === 0 ? (
+        <div className="text-center py-12">
+          <Search className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
+          <p className="text-sm text-muted-foreground">No results found for "{searchQuery}"</p>
+          <Button variant="ghost" size="sm" className="mt-2" onClick={() => setSearchQuery("")}>
+            Clear search
+          </Button>
+        </div>
+      ) : (
+        /* Masonry Grid with stagger animations */
+        <motion.div
+          className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2 auto-rows-min"
+          initial="hidden"
+          animate="visible"
+          key={`${activeTab}-${searchQuery}`}
+          variants={{
+            hidden: {},
+            visible: { transition: { staggerChildren: 0.04 } },
+          }}
+        >
+          {displayedContent.map((item) => (
+            <motion.div
+              key={item.id}
+              variants={{
+                hidden: { opacity: 0, y: 16 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: "easeOut" as const } },
+              }}
+            >
+              <ProductCardSlider item={item} formatPrice={formatPrice} />
+            </motion.div>
+          ))}
+        </motion.div>
+      )}
 
       {/* Infinite scroll sentinel */}
-      {hasMore && (
+      {hasMore && !initialLoading && (
         <div ref={loadMoreRef} className="flex items-center justify-center py-6">
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           <span className="ml-2 text-sm text-muted-foreground">Loading more...</span>
         </div>
       )}
 
-      {!hasMore && filteredContent.length > INITIAL_ITEMS && (
+      {!hasMore && filteredContent.length > INITIAL_ITEMS && !initialLoading && (
         <p className="text-center text-xs text-muted-foreground py-4">
           Showing all {filteredContent.length} items
         </p>
