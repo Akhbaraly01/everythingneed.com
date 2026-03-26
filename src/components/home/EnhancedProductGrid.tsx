@@ -7,8 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { 
   Star, Heart, Play, Pause, FileText, Stethoscope, GraduationCap, 
   Briefcase, Users, ChevronRight, ChevronLeft, ShoppingCart, Volume2, VolumeX,
-  Loader2
+  Loader2, Search, X
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { allHomeProducts } from "@/data/homeProductsData";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { educationalVideos, extendedCourses } from "@/data/learnData";
@@ -67,11 +69,27 @@ const getProductImages = (baseImage: string, count: number = 4): string[] => {
   return images;
 };
 
+// Skeleton card for loading state
+const ProductCardSkeleton = () => (
+  <Card className="overflow-hidden h-full flex flex-col">
+    <Skeleton className="h-28 md:h-32 w-full" />
+    <div className="p-2.5 space-y-2 flex-1">
+      <Skeleton className="h-3 w-3/4" />
+      <Skeleton className="h-3 w-1/2" />
+      <div className="flex justify-between pt-1">
+        <Skeleton className="h-4 w-16" />
+        <Skeleton className="h-4 w-4 rounded-full" />
+      </div>
+    </div>
+  </Card>
+);
+
 // Product Card with Image Slider
 const ProductCardSlider = ({ item, formatPrice }: { item: ContentItem; formatPrice: (p: number) => string }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const handlePrevImage = (e: React.MouseEvent) => {
@@ -180,12 +198,15 @@ const ProductCardSlider = ({ item, formatPrice }: { item: ContentItem; formatPri
                 <img
                   src={item.images[currentImageIndex]}
                   alt={item.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
                   loading="lazy"
+                  onLoad={() => setImageLoaded(true)}
                   onError={(e) => {
                     (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=600";
+                    setImageLoaded(true);
                   }}
                 />
+                {!imageLoaded && <Skeleton className="absolute inset-0" />}
                 
                 {/* Image Navigation */}
                 {item.images.length > 1 && (
@@ -280,10 +301,18 @@ const ProductCardSlider = ({ item, formatPrice }: { item: ContentItem; formatPri
 
 const EnhancedProductGrid = () => {
   const [activeTab, setActiveTab] = useState<ContentType>("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [visibleCount, setVisibleCount] = useState(INITIAL_ITEMS);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const { formatPrice } = useCurrency();
+
+  // Simulate initial load
+  useEffect(() => {
+    const t = setTimeout(() => setInitialLoading(false), 600);
+    return () => clearTimeout(t);
+  }, []);
 
   // Generate combined content with dynamic sizes and multiple images
   const allContent = useMemo((): ContentItem[] => {
@@ -419,15 +448,26 @@ const EnhancedProductGrid = () => {
   }, []);
 
   const filteredContent = useMemo(() => {
-    if (activeTab === "all") return allContent;
-    return allContent.filter(item => 
-      (activeTab === "products" && item.type === "product") ||
-      (activeTab === "needs" && item.type === "need") ||
-      (activeTab === "healthcare" && item.type === "healthcare") ||
-      (activeTab === "learning" && item.type === "learning") ||
-      (activeTab === "services" && item.type === "service")
-    );
-  }, [activeTab, allContent]);
+    let items = allContent;
+    if (activeTab !== "all") {
+      items = items.filter(item => 
+        (activeTab === "products" && item.type === "product") ||
+        (activeTab === "needs" && item.type === "need") ||
+        (activeTab === "healthcare" && item.type === "healthcare") ||
+        (activeTab === "learning" && item.type === "learning") ||
+        (activeTab === "services" && item.type === "service")
+      );
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      items = items.filter(item =>
+        item.name.toLowerCase().includes(q) ||
+        item.category.toLowerCase().includes(q) ||
+        item.description?.toLowerCase().includes(q)
+      );
+    }
+    return items;
+  }, [activeTab, allContent, searchQuery]);
 
   const displayedContent = filteredContent.slice(0, visibleCount);
   const hasMore = visibleCount < filteredContent.length;
@@ -458,10 +498,33 @@ const EnhancedProductGrid = () => {
   const handleTabChange = (tab: ContentType) => {
     setActiveTab(tab);
     setVisibleCount(INITIAL_ITEMS);
+    setSearchQuery("");
   };
 
   return (
     <section className="space-y-4">
+      {/* Search Bar */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search products, services, courses..."
+          value={searchQuery}
+          onChange={(e) => {
+            setSearchQuery(e.target.value);
+            setVisibleCount(INITIAL_ITEMS);
+          }}
+          className="pl-9 pr-9 h-10 rounded-full bg-muted/50 border-border text-sm"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => { setSearchQuery(""); setVisibleCount(INITIAL_ITEMS); }}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
       {/* Tabs */}
       <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2">
         {contentTabs.map((tab) => (
@@ -478,39 +541,56 @@ const EnhancedProductGrid = () => {
         ))}
       </div>
 
-      {/* Masonry Grid with stagger animations */}
-      <motion.div
-        className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2 auto-rows-min"
-        initial="hidden"
-        animate="visible"
-        key={activeTab}
-        variants={{
-          hidden: {},
-          visible: { transition: { staggerChildren: 0.04 } },
-        }}
-      >
-        {displayedContent.map((item) => (
-          <motion.div
-            key={item.id}
-            variants={{
-              hidden: { opacity: 0, y: 16 },
-              visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: "easeOut" as const } },
-            }}
-          >
-            <ProductCardSlider item={item} formatPrice={formatPrice} />
-          </motion.div>
-        ))}
-      </motion.div>
+      {/* Skeleton loading on initial load */}
+      {initialLoading ? (
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2 auto-rows-min">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <ProductCardSkeleton key={i} />
+          ))}
+        </div>
+      ) : displayedContent.length === 0 ? (
+        <div className="text-center py-12">
+          <Search className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
+          <p className="text-sm text-muted-foreground">No results found for "{searchQuery}"</p>
+          <Button variant="ghost" size="sm" className="mt-2" onClick={() => setSearchQuery("")}>
+            Clear search
+          </Button>
+        </div>
+      ) : (
+        /* Masonry Grid with stagger animations */
+        <motion.div
+          className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2 auto-rows-min"
+          initial="hidden"
+          animate="visible"
+          key={`${activeTab}-${searchQuery}`}
+          variants={{
+            hidden: {},
+            visible: { transition: { staggerChildren: 0.04 } },
+          }}
+        >
+          {displayedContent.map((item) => (
+            <motion.div
+              key={item.id}
+              variants={{
+                hidden: { opacity: 0, y: 16 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: "easeOut" as const } },
+              }}
+            >
+              <ProductCardSlider item={item} formatPrice={formatPrice} />
+            </motion.div>
+          ))}
+        </motion.div>
+      )}
 
       {/* Infinite scroll sentinel */}
-      {hasMore && (
+      {hasMore && !initialLoading && (
         <div ref={loadMoreRef} className="flex items-center justify-center py-6">
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           <span className="ml-2 text-sm text-muted-foreground">Loading more...</span>
         </div>
       )}
 
-      {!hasMore && filteredContent.length > INITIAL_ITEMS && (
+      {!hasMore && filteredContent.length > INITIAL_ITEMS && !initialLoading && (
         <p className="text-center text-xs text-muted-foreground py-4">
           Showing all {filteredContent.length} items
         </p>
