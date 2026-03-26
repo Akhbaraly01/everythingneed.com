@@ -44,7 +44,8 @@ const contentTabs: { id: ContentType; label: string; icon: React.ReactNode }[] =
   { id: "services", label: "Services", icon: <Briefcase className="h-3 w-3" /> },
 ];
 
-const ITEMS_PER_PAGE = 30;
+const INITIAL_ITEMS = 20;
+const LOAD_MORE_COUNT = 15;
 
 // More varied sizes for visual interest
 const getSizeForIndex = (index: number): ContentItem["size"] => {
