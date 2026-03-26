@@ -198,12 +198,15 @@ const ProductCardSlider = ({ item, formatPrice }: { item: ContentItem; formatPri
                 <img
                   src={item.images[currentImageIndex]}
                   alt={item.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
                   loading="lazy"
+                  onLoad={() => setImageLoaded(true)}
                   onError={(e) => {
                     (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=600";
+                    setImageLoaded(true);
                   }}
                 />
+                {!imageLoaded && <Skeleton className="absolute inset-0" />}
                 
                 {/* Image Navigation */}
                 {item.images.length > 1 && (
