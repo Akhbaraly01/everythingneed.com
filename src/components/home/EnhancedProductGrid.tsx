@@ -280,7 +280,9 @@ const ProductCardSlider = ({ item, formatPrice }: { item: ContentItem; formatPri
 
 const EnhancedProductGrid = () => {
   const [activeTab, setActiveTab] = useState<ContentType>("all");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [visibleCount, setVisibleCount] = useState(INITIAL_ITEMS);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
   const { formatPrice } = useCurrency();
 
   // Generate combined content with dynamic sizes and multiple images
@@ -427,13 +429,35 @@ const EnhancedProductGrid = () => {
     );
   }, [activeTab, allContent]);
 
-  const totalPages = Math.ceil(filteredContent.length / ITEMS_PER_PAGE);
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const displayedContent = filteredContent.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  const displayedContent = filteredContent.slice(0, visibleCount);
+  const hasMore = visibleCount < filteredContent.length;
+
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isLoadingMore) {
+          setIsLoadingMore(true);
+          // Small delay for smooth UX
+          setTimeout(() => {
+            setVisibleCount(prev => Math.min(prev + LOAD_MORE_COUNT, filteredContent.length));
+            setIsLoadingMore(false);
+          }, 300);
+        }
+      },
+      { rootMargin: "200px" }
+    );
+
+    if (loadMoreRef.current) {
+      observer.observe(loadMoreRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasMore, isLoadingMore, filteredContent.length]);
 
   const handleTabChange = (tab: ContentType) => {
     setActiveTab(tab);
-    setCurrentPage(1);
+    setVisibleCount(INITIAL_ITEMS);
   };
 
   return (
@@ -459,7 +483,7 @@ const EnhancedProductGrid = () => {
         className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2 auto-rows-min"
         initial="hidden"
         animate="visible"
-        key={`${activeTab}-${currentPage}`}
+        key={activeTab}
         variants={{
           hidden: {},
           visible: { transition: { staggerChildren: 0.04 } },
@@ -478,17 +502,18 @@ const EnhancedProductGrid = () => {
         ))}
       </motion.div>
 
-      {filteredContent.length > 0 && (
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={(page) => {
-            setCurrentPage(page);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
-          itemsPerPage={ITEMS_PER_PAGE}
-          totalItems={filteredContent.length}
-        />
+      {/* Infinite scroll sentinel */}
+      {hasMore && (
+        <div ref={loadMoreRef} className="flex items-center justify-center py-6">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          <span className="ml-2 text-sm text-muted-foreground">Loading more...</span>
+        </div>
+      )}
+
+      {!hasMore && filteredContent.length > INITIAL_ITEMS && (
+        <p className="text-center text-xs text-muted-foreground py-4">
+          Showing all {filteredContent.length} items
+        </p>
       )}
     </section>
   );
