@@ -498,6 +498,7 @@ const EnhancedProductGrid = () => {
   const handleTabChange = (tab: ContentType) => {
     setActiveTab(tab);
     setVisibleCount(INITIAL_ITEMS);
+    setSearchQuery("");
   };
 
   return (
