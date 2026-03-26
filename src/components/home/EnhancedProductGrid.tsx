@@ -299,9 +299,12 @@ const ProductCardSlider = ({ item, formatPrice }: { item: ContentItem; formatPri
   );
 };
 
+type SortOption = "default" | "price_low" | "price_high" | "rating" | "name";
+
 const EnhancedProductGrid = () => {
   const [activeTab, setActiveTab] = useState<ContentType>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<SortOption>("default");
   const [visibleCount, setVisibleCount] = useState(INITIAL_ITEMS);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);

@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { User, Search, ScanLine, Headphones, Bell, Globe, ChevronDown } from "lucide-react";
+import { User, Search, ScanLine, Headphones, Bell, Globe, ChevronDown, Moon, Sun } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useTheme } from "next-themes";
 import {
   DropdownMenu,
   DropdownMenuContent,
