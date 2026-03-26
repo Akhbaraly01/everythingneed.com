@@ -23,6 +23,7 @@ const StaticTopBar = () => {
   const { isAuthenticated, profile, user } = useAuth();
   const { language, setLanguage, languages } = useCurrency();
   const { t } = useTranslation();
+  const { theme, setTheme } = useTheme();
 
   const getInitials = () => {
     if (profile?.full_name) {
