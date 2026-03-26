@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { User, Search, ScanLine, Headphones, Bell, Globe, ChevronDown } from "lucide-react";
+import { User, Search, ScanLine, Headphones, Bell, Globe, ChevronDown, Moon, Sun } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useTheme } from "next-themes";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,6 +23,7 @@ const StaticTopBar = () => {
   const { isAuthenticated, profile, user } = useAuth();
   const { language, setLanguage, languages } = useCurrency();
   const { t } = useTranslation();
+  const { theme, setTheme } = useTheme();
 
   const getInitials = () => {
     if (profile?.full_name) {
@@ -79,6 +81,16 @@ const StaticTopBar = () => {
             className="h-9 w-9 shrink-0"
           >
             <ScanLine className="h-5 w-5" />
+          </Button>
+
+          {/* Dark Mode Toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="h-9 w-9 shrink-0"
+          >
+            {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </Button>
 
           {/* 4. Customer Service */}

@@ -7,10 +7,17 @@ import { Badge } from "@/components/ui/badge";
 import { 
   Star, Heart, Play, Pause, FileText, Stethoscope, GraduationCap, 
   Briefcase, Users, ChevronRight, ChevronLeft, ShoppingCart, Volume2, VolumeX,
-  Loader2, Search, X
+  Loader2, Search, X, ArrowUpDown
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { allHomeProducts } from "@/data/homeProductsData";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { educationalVideos, extendedCourses } from "@/data/learnData";
@@ -299,9 +306,12 @@ const ProductCardSlider = ({ item, formatPrice }: { item: ContentItem; formatPri
   );
 };
 
+type SortOption = "default" | "price_low" | "price_high" | "rating" | "name";
+
 const EnhancedProductGrid = () => {
   const [activeTab, setActiveTab] = useState<ContentType>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<SortOption>("default");
   const [visibleCount, setVisibleCount] = useState(INITIAL_ITEMS);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -466,8 +476,20 @@ const EnhancedProductGrid = () => {
         item.description?.toLowerCase().includes(q)
       );
     }
+    // Sorting
+    if (sortBy !== "default") {
+      items = [...items].sort((a, b) => {
+        switch (sortBy) {
+          case "price_low": return (a.price ?? 0) - (b.price ?? 0);
+          case "price_high": return (b.price ?? 0) - (a.price ?? 0);
+          case "rating": return b.rating - a.rating;
+          case "name": return a.name.localeCompare(b.name);
+          default: return 0;
+        }
+      });
+    }
     return items;
-  }, [activeTab, allContent, searchQuery]);
+  }, [activeTab, allContent, searchQuery, sortBy]);
 
   const displayedContent = filteredContent.slice(0, visibleCount);
   const hasMore = visibleCount < filteredContent.length;
@@ -503,26 +525,41 @@ const EnhancedProductGrid = () => {
 
   return (
     <section className="space-y-4">
-      {/* Search Bar */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search products, services, courses..."
-          value={searchQuery}
-          onChange={(e) => {
-            setSearchQuery(e.target.value);
-            setVisibleCount(INITIAL_ITEMS);
-          }}
-          className="pl-9 pr-9 h-10 rounded-full bg-muted/50 border-border text-sm"
-        />
-        {searchQuery && (
-          <button
-            onClick={() => { setSearchQuery(""); setVisibleCount(INITIAL_ITEMS); }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        )}
+      {/* Search Bar + Sort */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search products, services, courses..."
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setVisibleCount(INITIAL_ITEMS);
+            }}
+            className="pl-9 pr-9 h-10 rounded-full bg-muted/50 border-border text-sm"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => { setSearchQuery(""); setVisibleCount(INITIAL_ITEMS); }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+        <Select value={sortBy} onValueChange={(v) => { setSortBy(v as SortOption); setVisibleCount(INITIAL_ITEMS); }}>
+          <SelectTrigger className="w-[120px] h-10 rounded-full text-xs shrink-0">
+            <ArrowUpDown className="h-3.5 w-3.5 mr-1" />
+            <SelectValue placeholder="Sort" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="default">Default</SelectItem>
+            <SelectItem value="price_low">Price: Low</SelectItem>
+            <SelectItem value="price_high">Price: High</SelectItem>
+            <SelectItem value="rating">Top Rated</SelectItem>
+            <SelectItem value="name">A-Z</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Tabs */}

@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { CurrencyProvider } from "@/contexts/CurrencyContext";
@@ -60,76 +61,78 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <BrowserRouter>
-        <AuthProvider>
-          <CurrencyProvider>
-            <CartProvider>
-              <ScrollToTop />
-              <Toaster />
-              <Sonner />
-              <Routes>
-                <Route path="/auth" element={<Auth />} />
-                <Route
-                path="/*"
-                element={
-                  <Layout>
-                    <Routes>
-                      <Route path="/" element={<Home />} />
-                      <Route path="/deals" element={<Deals />} />
-                      <Route path="/deals/booking" element={<Booking />} />
-                      <Route path="/deals/tasks" element={<Tasks />} />
-                      <Route path="/deals/transportation" element={<Transportation />} />
-                      <Route path="/deals/hotels" element={<Hotels />} />
-                      <Route path="/deals/real-estate" element={<RealEstate />} />
-                      <Route path="/deals/jobs" element={<Jobs />} />
-                      <Route path="/deals/agriculture" element={<Agriculture />} />
-                      <Route path="/deals/food" element={<Food />} />
-                      <Route path="/needs/request" element={<SubmitRequest />} />
-                      <Route path="/needs/:slug" element={<NeedCategoryPage />} />
-                      <Route path="/product/:id" element={<ProductDetail />} />
-                      <Route path="/learn" element={<Learn />} />
-                      <Route path="/learn/course/:slug" element={<CourseDetail />} />
-                      <Route path="/building-services" element={<BuildingServices />} />
-                      <Route path="/healthcare" element={<Healthcare />} />
-                      <Route path="/healthcare/labs" element={<LabsBooking />} />
-                      <Route path="/healthcare/specialty/:specialty" element={<SpecialtyBooking />} />
-                      <Route path="/pharmacy" element={<PharmacyPage />} />
-                      <Route path="/pharmacy/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
-                      <Route path="/pharmacy/order/:id" element={<ProtectedRoute><OrderConfirmation /></ProtectedRoute>} />
-                      <Route path="/healthcare/book" element={<DoctorSelection />} />
-                      <Route path="/healthcare/book/:doctorId" element={<ProtectedRoute><AppointmentBooking /></ProtectedRoute>} />
-                      <Route path="/healthcare/tickets" element={<ProtectedRoute><MyHealthTickets /></ProtectedRoute>} />
-                      <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
-                      <Route path="/account/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-                      <Route path="/account/orders" element={<ProtectedRoute><OrderHistory /></ProtectedRoute>} />
-                      <Route path="/account/wishlist" element={<ProtectedRoute><Wishlist /></ProtectedRoute>} />
-                      <Route path="/account/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />
-                      <Route path="/account/notifications" element={<ProtectedRoute><NotificationSettings /></ProtectedRoute>} />
-                      <Route path="/account/certificates" element={<ProtectedRoute><Certificates /></ProtectedRoute>} />
-                      <Route path="/account/learning" element={<ProtectedRoute><LearningDashboard /></ProtectedRoute>} />
-                      <Route path="/experts" element={<ExpertsDirectory />} />
-                      <Route path="/experts/:expertId" element={<ExpertProfile />} />
-                      <Route path="/vendor/dashboard" element={<ProtectedRoute><EnhancedVendorDashboard /></ProtectedRoute>} />
-                      <Route path="/vendor/analytics" element={<ProtectedRoute><VendorAnalytics /></ProtectedRoute>} />
-                      <Route path="/vendor/register" element={<VendorRegistration />} />
-                      <Route path="/admin" element={<ProtectedRoute><SuperAdminDashboard /></ProtectedRoute>} />
-                      <Route path="/admin/dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
-                      <Route path="/admin/category" element={<ProtectedRoute><CategoryAdminDashboard /></ProtectedRoute>} />
-                      <Route path="/support/tickets" element={<ProtectedRoute><TicketList /></ProtectedRoute>} />
-                      <Route path="/support/tickets/new" element={<ProtectedRoute><CreateTicket /></ProtectedRoute>} />
-                      <Route path="/support/tickets/:id" element={<ProtectedRoute><TicketDetail /></ProtectedRoute>} />
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </Layout>
-                }
-              />
-            </Routes>
-            </CartProvider>
-          </CurrencyProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+      <TooltipProvider>
+        <BrowserRouter>
+          <AuthProvider>
+            <CurrencyProvider>
+              <CartProvider>
+                <ScrollToTop />
+                <Toaster />
+                <Sonner />
+                <Routes>
+                  <Route path="/auth" element={<Auth />} />
+                  <Route
+                  path="/*"
+                  element={
+                    <Layout>
+                      <Routes>
+                        <Route path="/" element={<Home />} />
+                        <Route path="/deals" element={<Deals />} />
+                        <Route path="/deals/booking" element={<Booking />} />
+                        <Route path="/deals/tasks" element={<Tasks />} />
+                        <Route path="/deals/transportation" element={<Transportation />} />
+                        <Route path="/deals/hotels" element={<Hotels />} />
+                        <Route path="/deals/real-estate" element={<RealEstate />} />
+                        <Route path="/deals/jobs" element={<Jobs />} />
+                        <Route path="/deals/agriculture" element={<Agriculture />} />
+                        <Route path="/deals/food" element={<Food />} />
+                        <Route path="/needs/request" element={<SubmitRequest />} />
+                        <Route path="/needs/:slug" element={<NeedCategoryPage />} />
+                        <Route path="/product/:id" element={<ProductDetail />} />
+                        <Route path="/learn" element={<Learn />} />
+                        <Route path="/learn/course/:slug" element={<CourseDetail />} />
+                        <Route path="/building-services" element={<BuildingServices />} />
+                        <Route path="/healthcare" element={<Healthcare />} />
+                        <Route path="/healthcare/labs" element={<LabsBooking />} />
+                        <Route path="/healthcare/specialty/:specialty" element={<SpecialtyBooking />} />
+                        <Route path="/pharmacy" element={<PharmacyPage />} />
+                        <Route path="/pharmacy/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
+                        <Route path="/pharmacy/order/:id" element={<ProtectedRoute><OrderConfirmation /></ProtectedRoute>} />
+                        <Route path="/healthcare/book" element={<DoctorSelection />} />
+                        <Route path="/healthcare/book/:doctorId" element={<ProtectedRoute><AppointmentBooking /></ProtectedRoute>} />
+                        <Route path="/healthcare/tickets" element={<ProtectedRoute><MyHealthTickets /></ProtectedRoute>} />
+                        <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
+                        <Route path="/account/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                        <Route path="/account/orders" element={<ProtectedRoute><OrderHistory /></ProtectedRoute>} />
+                        <Route path="/account/wishlist" element={<ProtectedRoute><Wishlist /></ProtectedRoute>} />
+                        <Route path="/account/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />
+                        <Route path="/account/notifications" element={<ProtectedRoute><NotificationSettings /></ProtectedRoute>} />
+                        <Route path="/account/certificates" element={<ProtectedRoute><Certificates /></ProtectedRoute>} />
+                        <Route path="/account/learning" element={<ProtectedRoute><LearningDashboard /></ProtectedRoute>} />
+                        <Route path="/experts" element={<ExpertsDirectory />} />
+                        <Route path="/experts/:expertId" element={<ExpertProfile />} />
+                        <Route path="/vendor/dashboard" element={<ProtectedRoute><EnhancedVendorDashboard /></ProtectedRoute>} />
+                        <Route path="/vendor/analytics" element={<ProtectedRoute><VendorAnalytics /></ProtectedRoute>} />
+                        <Route path="/vendor/register" element={<VendorRegistration />} />
+                        <Route path="/admin" element={<ProtectedRoute><SuperAdminDashboard /></ProtectedRoute>} />
+                        <Route path="/admin/dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+                        <Route path="/admin/category" element={<ProtectedRoute><CategoryAdminDashboard /></ProtectedRoute>} />
+                        <Route path="/support/tickets" element={<ProtectedRoute><TicketList /></ProtectedRoute>} />
+                        <Route path="/support/tickets/new" element={<ProtectedRoute><CreateTicket /></ProtectedRoute>} />
+                        <Route path="/support/tickets/:id" element={<ProtectedRoute><TicketDetail /></ProtectedRoute>} />
+                        <Route path="*" element={<NotFound />} />
+                      </Routes>
+                    </Layout>
+                  }
+                />
+              </Routes>
+              </CartProvider>
+            </CurrencyProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 
