@@ -448,15 +448,26 @@ const EnhancedProductGrid = () => {
   }, []);
 
   const filteredContent = useMemo(() => {
-    if (activeTab === "all") return allContent;
-    return allContent.filter(item => 
-      (activeTab === "products" && item.type === "product") ||
-      (activeTab === "needs" && item.type === "need") ||
-      (activeTab === "healthcare" && item.type === "healthcare") ||
-      (activeTab === "learning" && item.type === "learning") ||
-      (activeTab === "services" && item.type === "service")
-    );
-  }, [activeTab, allContent]);
+    let items = allContent;
+    if (activeTab !== "all") {
+      items = items.filter(item => 
+        (activeTab === "products" && item.type === "product") ||
+        (activeTab === "needs" && item.type === "need") ||
+        (activeTab === "healthcare" && item.type === "healthcare") ||
+        (activeTab === "learning" && item.type === "learning") ||
+        (activeTab === "services" && item.type === "service")
+      );
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      items = items.filter(item =>
+        item.name.toLowerCase().includes(q) ||
+        item.category.toLowerCase().includes(q) ||
+        item.description?.toLowerCase().includes(q)
+      );
+    }
+    return items;
+  }, [activeTab, allContent, searchQuery]);
 
   const displayedContent = filteredContent.slice(0, visibleCount);
   const hasMore = visibleCount < filteredContent.length;
