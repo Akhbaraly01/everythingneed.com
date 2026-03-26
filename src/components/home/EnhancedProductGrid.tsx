@@ -7,10 +7,17 @@ import { Badge } from "@/components/ui/badge";
 import { 
   Star, Heart, Play, Pause, FileText, Stethoscope, GraduationCap, 
   Briefcase, Users, ChevronRight, ChevronLeft, ShoppingCart, Volume2, VolumeX,
-  Loader2, Search, X
+  Loader2, Search, X, ArrowUpDown
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { allHomeProducts } from "@/data/homeProductsData";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { educationalVideos, extendedCourses } from "@/data/learnData";
