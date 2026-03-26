@@ -69,11 +69,27 @@ const getProductImages = (baseImage: string, count: number = 4): string[] => {
   return images;
 };
 
+// Skeleton card for loading state
+const ProductCardSkeleton = () => (
+  <Card className="overflow-hidden h-full flex flex-col">
+    <Skeleton className="h-28 md:h-32 w-full" />
+    <div className="p-2.5 space-y-2 flex-1">
+      <Skeleton className="h-3 w-3/4" />
+      <Skeleton className="h-3 w-1/2" />
+      <div className="flex justify-between pt-1">
+        <Skeleton className="h-4 w-16" />
+        <Skeleton className="h-4 w-4 rounded-full" />
+      </div>
+    </div>
+  </Card>
+);
+
 // Product Card with Image Slider
 const ProductCardSlider = ({ item, formatPrice }: { item: ContentItem; formatPrice: (p: number) => string }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const handlePrevImage = (e: React.MouseEvent) => {
