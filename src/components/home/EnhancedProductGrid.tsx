@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -6,14 +6,14 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
   Star, Heart, Play, Pause, FileText, Stethoscope, GraduationCap, 
-  Briefcase, Users, ChevronRight, ChevronLeft, ShoppingCart, Volume2, VolumeX
+  Briefcase, Users, ChevronRight, ChevronLeft, ShoppingCart, Volume2, VolumeX,
+  Loader2
 } from "lucide-react";
 import { allHomeProducts } from "@/data/homeProductsData";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { educationalVideos, extendedCourses } from "@/data/learnData";
 import { healthVideos, healthDocuments } from "@/data/healthcareData";
 import { needsCategoryData } from "@/data/needsData";
-import Pagination from "@/components/Pagination";
 
 type ContentType = "all" | "products" | "needs" | "healthcare" | "learning" | "services";
 
