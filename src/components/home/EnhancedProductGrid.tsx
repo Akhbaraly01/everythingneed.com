@@ -525,26 +525,41 @@ const EnhancedProductGrid = () => {
 
   return (
     <section className="space-y-4">
-      {/* Search Bar */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search products, services, courses..."
-          value={searchQuery}
-          onChange={(e) => {
-            setSearchQuery(e.target.value);
-            setVisibleCount(INITIAL_ITEMS);
-          }}
-          className="pl-9 pr-9 h-10 rounded-full bg-muted/50 border-border text-sm"
-        />
-        {searchQuery && (
-          <button
-            onClick={() => { setSearchQuery(""); setVisibleCount(INITIAL_ITEMS); }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        )}
+      {/* Search Bar + Sort */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search products, services, courses..."
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setVisibleCount(INITIAL_ITEMS);
+            }}
+            className="pl-9 pr-9 h-10 rounded-full bg-muted/50 border-border text-sm"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => { setSearchQuery(""); setVisibleCount(INITIAL_ITEMS); }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+        <Select value={sortBy} onValueChange={(v) => { setSortBy(v as SortOption); setVisibleCount(INITIAL_ITEMS); }}>
+          <SelectTrigger className="w-[120px] h-10 rounded-full text-xs shrink-0">
+            <ArrowUpDown className="h-3.5 w-3.5 mr-1" />
+            <SelectValue placeholder="Sort" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="default">Default</SelectItem>
+            <SelectItem value="price_low">Price: Low</SelectItem>
+            <SelectItem value="price_high">Price: High</SelectItem>
+            <SelectItem value="rating">Top Rated</SelectItem>
+            <SelectItem value="name">A-Z</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Tabs */}
