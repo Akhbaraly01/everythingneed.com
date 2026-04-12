@@ -102,6 +102,15 @@ const ProductCardSlider = ({ item, formatPrice }: { item: ContentItem; formatPri
   const [isMuted, setIsMuted] = useState(true);
   const [imageLoaded, setImageLoaded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const { user } = useAuth();
+  const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
+  const { addToCompare, isInCompare, removeFromCompare } = useCompare();
+  const productId = item.id.replace(/^(product-|need-|health-|learn-video-|course-|service-)/, "");
+  const inWishlist = isInWishlist(productId);
+  const inCompare = isInCompare(item.id);
+  const [isMuted, setIsMuted] = useState(true);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const handlePrevImage = (e: React.MouseEvent) => {
     e.preventDefault();
