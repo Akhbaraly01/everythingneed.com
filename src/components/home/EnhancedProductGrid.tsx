@@ -7,8 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { 
   Star, Heart, Play, Pause, FileText, Stethoscope, GraduationCap, 
   Briefcase, Users, ChevronRight, ChevronLeft, ShoppingCart, Volume2, VolumeX,
-  Loader2, Search, X, ArrowUpDown
+  Loader2, Search, X, ArrowUpDown, GitCompareArrows
 } from "lucide-react";
+import { useWishlist } from "@/hooks/useWishlist";
+import { useAuth } from "@/contexts/AuthContext";
+import { useCompare } from "@/contexts/CompareContext";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
