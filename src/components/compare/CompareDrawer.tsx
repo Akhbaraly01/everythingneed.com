@@ -123,7 +123,7 @@ const CompareDrawer = () => {
                     return (
                       <td key={item.id} className="p-2 text-center">
                         {savings > 0 ? (
-                          <Badge className="bg-green-500 text-xs">Save {formatPrice(savings)}</Badge>
+                          <Badge variant="secondary" className="text-xs font-medium">Save {formatPrice(savings)}</Badge>
                         ) : (
                           <span className="text-xs text-muted-foreground">—</span>
                         )}
