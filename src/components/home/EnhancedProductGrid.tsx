@@ -270,13 +270,46 @@ const ProductCardSlider = ({ item, formatPrice }: { item: ContentItem; formatPri
             {item.badge || item.category}
           </Badge>
           
+          {/* Wishlist Button */}
           <Button 
             variant="ghost" 
             size="icon" 
-            className="absolute top-2 right-2 h-7 w-7 bg-white/80 hover:bg-white opacity-0 group-hover:opacity-100 transition-opacity"
-            onClick={(e) => e.preventDefault()}
+            className={`absolute top-2 right-2 h-7 w-7 transition-all ${
+              inWishlist ? "bg-destructive/90 text-destructive-foreground opacity-100" : "bg-background/80 hover:bg-background opacity-0 group-hover:opacity-100"
+            }`}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (!user) { toast.error("Please sign in to add to wishlist"); return; }
+              if (inWishlist) { removeFromWishlist(productId); } else { addToWishlist(productId); }
+            }}
           >
-            <Heart className="h-3.5 w-3.5" />
+            <Heart className={`h-3.5 w-3.5 ${inWishlist ? "fill-current" : ""}`} />
+          </Button>
+
+          {/* Compare Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className={`absolute top-10 right-2 h-7 w-7 transition-all ${
+              inCompare ? "bg-primary text-primary-foreground opacity-100" : "bg-background/80 hover:bg-background opacity-0 group-hover:opacity-100"
+            }`}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (inCompare) {
+                removeFromCompare(item.id);
+              } else {
+                const added = addToCompare({
+                  id: item.id, name: item.name, price: item.price,
+                  originalPrice: item.originalPrice, rating: item.rating,
+                  image: item.images[0], category: item.category, description: item.description,
+                });
+                if (!added) toast.info("You can compare up to 3 items");
+              }
+            }}
+          >
+            <GitCompareArrows className="h-3.5 w-3.5" />
           </Button>
 
           {/* Discount Badge */}
