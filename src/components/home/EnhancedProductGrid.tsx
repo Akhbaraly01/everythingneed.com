@@ -7,8 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { 
   Star, Heart, Play, Pause, FileText, Stethoscope, GraduationCap, 
   Briefcase, Users, ChevronRight, ChevronLeft, ShoppingCart, Volume2, VolumeX,
-  Loader2, Search, X, ArrowUpDown
+  Loader2, Search, X, ArrowUpDown, GitCompareArrows
 } from "lucide-react";
+import { useWishlist } from "@/hooks/useWishlist";
+import { useAuth } from "@/contexts/AuthContext";
+import { useCompare } from "@/contexts/CompareContext";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -98,6 +102,12 @@ const ProductCardSlider = ({ item, formatPrice }: { item: ContentItem; formatPri
   const [isMuted, setIsMuted] = useState(true);
   const [imageLoaded, setImageLoaded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const { user } = useAuth();
+  const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
+  const { addToCompare, isInCompare, removeFromCompare } = useCompare();
+  const productId = item.id.replace(/^(product-|need-|health-|learn-video-|course-|service-)/, "");
+  const inWishlist = isInWishlist(productId);
+  const inCompare = isInCompare(item.id);
 
   const handlePrevImage = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -260,13 +270,46 @@ const ProductCardSlider = ({ item, formatPrice }: { item: ContentItem; formatPri
             {item.badge || item.category}
           </Badge>
           
+          {/* Wishlist Button */}
           <Button 
             variant="ghost" 
             size="icon" 
-            className="absolute top-2 right-2 h-7 w-7 bg-white/80 hover:bg-white opacity-0 group-hover:opacity-100 transition-opacity"
-            onClick={(e) => e.preventDefault()}
+            className={`absolute top-2 right-2 h-7 w-7 transition-all ${
+              inWishlist ? "bg-destructive/90 text-destructive-foreground opacity-100" : "bg-background/80 hover:bg-background opacity-0 group-hover:opacity-100"
+            }`}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (!user) { toast.error("Please sign in to add to wishlist"); return; }
+              if (inWishlist) { removeFromWishlist(productId); } else { addToWishlist(productId); }
+            }}
           >
-            <Heart className="h-3.5 w-3.5" />
+            <Heart className={`h-3.5 w-3.5 ${inWishlist ? "fill-current" : ""}`} />
+          </Button>
+
+          {/* Compare Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className={`absolute top-10 right-2 h-7 w-7 transition-all ${
+              inCompare ? "bg-primary text-primary-foreground opacity-100" : "bg-background/80 hover:bg-background opacity-0 group-hover:opacity-100"
+            }`}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (inCompare) {
+                removeFromCompare(item.id);
+              } else {
+                const added = addToCompare({
+                  id: item.id, name: item.name, price: item.price,
+                  originalPrice: item.originalPrice, rating: item.rating,
+                  image: item.images[0], category: item.category, description: item.description,
+                });
+                if (!added) toast.info("You can compare up to 3 items");
+              }
+            }}
+          >
+            <GitCompareArrows className="h-3.5 w-3.5" />
           </Button>
 
           {/* Discount Badge */}

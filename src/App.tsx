@@ -7,6 +7,8 @@ import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { CurrencyProvider } from "@/contexts/CurrencyContext";
+import { CompareProvider } from "@/contexts/CompareContext";
+import CompareDrawer from "@/components/compare/CompareDrawer";
 import Layout from "./components/Layout";
 import ScrollToTop from "./components/ScrollToTop";
 import Home from "./pages/Home";
@@ -66,6 +68,7 @@ const App = () => (
         <BrowserRouter>
           <AuthProvider>
             <CurrencyProvider>
+              <CompareProvider>
               <CartProvider>
                 <ScrollToTop />
                 <Toaster />
@@ -127,7 +130,9 @@ const App = () => (
                   }
                 />
               </Routes>
+              <CompareDrawer />
               </CartProvider>
+              </CompareProvider>
             </CurrencyProvider>
           </AuthProvider>
         </BrowserRouter>
