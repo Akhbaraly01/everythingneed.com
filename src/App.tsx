@@ -130,7 +130,9 @@ const App = () => (
                   }
                 />
               </Routes>
+              <CompareDrawer />
               </CartProvider>
+              </CompareProvider>
             </CurrencyProvider>
           </AuthProvider>
         </BrowserRouter>
