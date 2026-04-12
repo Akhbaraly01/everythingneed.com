@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { allHomeProducts } from "@/data/homeProductsData";
+import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
 import { 
   Star, 
   Heart, 
@@ -34,6 +35,20 @@ const ProductDetail = () => {
 
   // Find product from mock data
   const product = allHomeProducts.find(p => String(p.id) === id);
+  const { addItem } = useRecentlyViewed();
+
+  // Track recently viewed
+  useEffect(() => {
+    if (product) {
+      addItem({
+        id: String(product.id),
+        name: product.name,
+        image: product.image,
+        price: product.price,
+        category: product.category,
+      });
+    }
+  }, [product?.id]);
 
   // Check if in wishlist
   const { data: isInWishlist } = useQuery({
