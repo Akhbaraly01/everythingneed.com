@@ -68,6 +68,7 @@ const App = () => (
         <BrowserRouter>
           <AuthProvider>
             <CurrencyProvider>
+              <CompareProvider>
               <CartProvider>
                 <ScrollToTop />
                 <Toaster />
