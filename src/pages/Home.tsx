@@ -6,6 +6,7 @@ import EnhancedProductGrid from "@/components/home/EnhancedProductGrid";
 import SubmitNeedCarousel from "@/components/home/SubmitNeedCarousel";
 import DiverseContentBanners from "@/components/home/DiverseContentBanners";
 import ExpertsShowcase from "@/components/experts/ExpertsShowcase";
+import RecentlyViewedSection from "@/components/home/RecentlyViewedSection";
 import PushNotificationPrompt from "@/components/notifications/PushNotificationPrompt";
 import AIChatBot from "@/components/chat/AIChatBot";
 import Footer from "@/components/Footer";
@@ -34,6 +35,9 @@ const Home = () => {
 
         {/* 6. Triple Banner Layout */}
         <BinanceStyleBanner />
+
+        {/* Recently Viewed Products */}
+        <RecentlyViewedSection />
 
         {/* 7. Enhanced Products Grid */}
         <EnhancedProductGrid />
