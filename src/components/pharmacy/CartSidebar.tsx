@@ -75,7 +75,7 @@ const CartSidebar = ({ open, onClose }: CartSidebarProps) => {
               className="gap-2 mt-2"
               onClick={() => {
                 onClose();
-                navigate("/");
+                navigate("/#product-grid");
               }}
             >
               Browse Products
