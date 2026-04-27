@@ -1,4 +1,4 @@
-import { Minus, Plus, Trash2, X, ShoppingBag, AlertCircle } from "lucide-react";
+import { Minus, Plus, Trash2, X, ShoppingBag, AlertCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -48,11 +48,29 @@ const CartSidebar = ({ open, onClose }: CartSidebarProps) => {
             <p className="text-muted-foreground">Loading cart...</p>
           </div>
         ) : items.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center gap-4">
-            <ShoppingBag className="h-16 w-16 text-muted-foreground/50" />
-            <p className="text-muted-foreground">Your cart is empty</p>
-            <Button variant="outline" onClick={onClose}>
-              Continue Shopping
+          <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6 text-center">
+            <div className="h-24 w-24 rounded-full bg-muted/60 flex items-center justify-center">
+              <ShoppingBag className="h-12 w-12 text-muted-foreground/70" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-semibold text-lg">Your cart is empty</h3>
+              <p className="text-sm text-muted-foreground max-w-xs">
+                Looks like you haven't added anything yet. Discover products and start filling your cart.
+              </p>
+            </div>
+            <Button
+              size="lg"
+              className="gap-2 mt-2"
+              onClick={() => {
+                onClose();
+                navigate("/");
+              }}
+            >
+              Browse Products
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              Continue where I was
             </Button>
           </div>
         ) : (
