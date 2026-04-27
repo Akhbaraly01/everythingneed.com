@@ -8,7 +8,9 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { CurrencyProvider } from "@/contexts/CurrencyContext";
 import { CompareProvider } from "@/contexts/CompareContext";
+import { CartDrawerProvider } from "@/contexts/CartDrawerContext";
 import CompareDrawer from "@/components/compare/CompareDrawer";
+import GlobalCartDrawer from "@/components/GlobalCartDrawer";
 import Layout from "./components/Layout";
 import ScrollToTop from "./components/ScrollToTop";
 import Home from "./pages/Home";
@@ -70,6 +72,7 @@ const App = () => (
             <CurrencyProvider>
               <CompareProvider>
               <CartProvider>
+                <CartDrawerProvider>
                 <ScrollToTop />
                 <Toaster />
                 <Sonner />
@@ -131,6 +134,8 @@ const App = () => (
                 />
               </Routes>
               <CompareDrawer />
+              <GlobalCartDrawer />
+              </CartDrawerProvider>
               </CartProvider>
               </CompareProvider>
             </CurrencyProvider>
