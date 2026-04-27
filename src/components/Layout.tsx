@@ -4,6 +4,7 @@ import { Home, Zap, GraduationCap, Heart, User, ShoppingCart } from "lucide-reac
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
+import { useCartDrawer } from "@/contexts/CartDrawerContext";
 import { Badge } from "@/components/ui/badge";
 import Footer from "@/components/Footer";
 import { AnimatedPage } from "@/components/AnimatedPage";
@@ -16,6 +17,7 @@ const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { totalItems } = useCart();
+  const { openCart } = useCartDrawer();
 
   const navItems = [
     { path: "/", icon: Home, label: "Home" },
@@ -65,7 +67,7 @@ const Layout = ({ children }: LayoutProps) => {
 
       {/* Floating Cart Button - Desktop */}
       <Button
-        onClick={() => navigate("/pharmacy")}
+        onClick={openCart}
         className="hidden md:flex fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-40"
         size="icon"
       >

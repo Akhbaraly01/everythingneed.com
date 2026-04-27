@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { User, Search, ScanLine, Headphones, Bell, Globe, ChevronDown, Moon, Sun } from "lucide-react";
+import { User, Search, ScanLine, Headphones, Bell, Globe, ChevronDown, Moon, Sun, ShoppingCart } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useTheme } from "next-themes";
+import { useCart } from "@/contexts/CartContext";
+import { useCartDrawer } from "@/contexts/CartDrawerContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +26,8 @@ const StaticTopBar = () => {
   const { language, setLanguage, languages } = useCurrency();
   const { t } = useTranslation();
   const { theme, setTheme } = useTheme();
+  const { totalItems } = useCart();
+  const { openCart } = useCartDrawer();
 
   const getInitials = () => {
     if (profile?.full_name) {
@@ -126,6 +130,21 @@ const StaticTopBar = () => {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* Cart Drawer Trigger */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 shrink-0 relative"
+            onClick={openCart}
+          >
+            <ShoppingCart className="h-5 w-5" />
+            {totalItems > 0 && (
+              <Badge className="absolute -top-0.5 -right-0.5 h-4 w-4 p-0 text-[10px] bg-destructive">
+                {totalItems > 9 ? "9+" : totalItems}
+              </Badge>
+            )}
+          </Button>
 
           {/* 6. Notifications */}
           <Button 
