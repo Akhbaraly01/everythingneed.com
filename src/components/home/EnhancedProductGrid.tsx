@@ -567,7 +567,7 @@ const EnhancedProductGrid = () => {
   };
 
   return (
-    <section className="space-y-4">
+    <section id="product-grid" className="space-y-4 scroll-mt-24">
       {/* Search Bar + Sort */}
       <div className="flex gap-2">
         <div className="relative flex-1">
