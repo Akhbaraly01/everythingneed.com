@@ -10,12 +10,26 @@ import RecentlyViewedSection from "@/components/home/RecentlyViewedSection";
 import PushNotificationPrompt from "@/components/notifications/PushNotificationPrompt";
 import AIChatBot from "@/components/chat/AIChatBot";
 import Footer from "@/components/Footer";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { Sparkles, Award, ShieldCheck, Users, Star, ArrowRight } from "lucide-react";
+import { useEffect } from "react";
 
 const Home = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.hash) {
+      const id = location.hash.replace("#", "");
+      // Wait a tick for sections to mount
+      const t = setTimeout(() => {
+        const el = document.getElementById(id);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+      return () => clearTimeout(t);
+    }
+  }, [location.hash]);
   return (
     <div className="min-h-screen pb-20 bg-background">
       {/* 1. Static Top Bar */}
