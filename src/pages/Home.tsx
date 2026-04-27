@@ -20,15 +20,27 @@ const Home = () => {
   const location = useLocation();
 
   useEffect(() => {
-    if (location.hash) {
-      const id = location.hash.replace("#", "");
-      // Wait a tick for sections to mount
-      const t = setTimeout(() => {
-        const el = document.getElementById(id);
-        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 100);
-      return () => clearTimeout(t);
-    }
+    if (!location.hash) return;
+    const id = location.hash.replace("#", "");
+    let cancelled = false;
+    let attempts = 0;
+
+    // Poll for the element so /#product-grid works on hard refresh,
+    // including when sections mount slightly after the page does.
+    const tryScroll = () => {
+      if (cancelled) return;
+      const el = document.getElementById(id);
+      if (el) {
+        // Disable smooth on initial hard-refresh hop to avoid layout-shift jitter
+        el.scrollIntoView({ behavior: attempts === 0 ? "auto" : "smooth", block: "start" });
+        return;
+      }
+      if (attempts++ < 20) setTimeout(tryScroll, 100);
+    };
+    tryScroll();
+    return () => {
+      cancelled = true;
+    };
   }, [location.hash]);
   return (
     <div className="min-h-screen pb-20 bg-background">

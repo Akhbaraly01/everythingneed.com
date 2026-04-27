@@ -567,7 +567,12 @@ const EnhancedProductGrid = () => {
   };
 
   return (
-    <section id="product-grid" className="space-y-4 scroll-mt-24">
+    <section
+      id="product-grid"
+      tabIndex={-1}
+      aria-label="Product grid"
+      className="space-y-4 scroll-mt-24 outline-none"
+    >
       {/* Search Bar + Sort */}
       <div className="flex gap-2">
         <div className="relative flex-1">

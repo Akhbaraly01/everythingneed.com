@@ -60,8 +60,12 @@ const CartSidebar = ({ open, onClose }: CartSidebarProps) => {
             <p className="text-muted-foreground">Loading cart...</p>
           </div>
         ) : items.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6 text-center">
-            <div className="h-24 w-24 rounded-full bg-muted/60 flex items-center justify-center">
+          <div
+            className="flex-1 flex flex-col items-center justify-center gap-4 px-6 text-center"
+            role="status"
+            aria-live="polite"
+          >
+            <div className="h-24 w-24 rounded-full bg-muted/60 flex items-center justify-center" aria-hidden="true">
               <ShoppingBag className="h-12 w-12 text-muted-foreground/70" />
             </div>
             <div className="space-y-1">
@@ -73,13 +77,24 @@ const CartSidebar = ({ open, onClose }: CartSidebarProps) => {
             <Button
               size="lg"
               className="gap-2 mt-2"
+              aria-label="Browse products — navigate to the product grid on the home page"
               onClick={() => {
+                // Announce destination for screen readers via the live region above
                 onClose();
                 navigate("/#product-grid");
+                // After the cart drawer closes and home re-renders, place focus on the
+                // product grid heading so keyboard / screen-reader users land where they expect.
+                setTimeout(() => {
+                  const grid = document.getElementById("product-grid");
+                  if (grid) {
+                    if (!grid.hasAttribute("tabindex")) grid.setAttribute("tabindex", "-1");
+                    (grid as HTMLElement).focus({ preventScroll: true });
+                  }
+                }, 250);
               }}
             >
               Browse Products
-              <ArrowRight className="h-4 w-4" />
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Button>
             <Button variant="ghost" size="sm" onClick={onClose}>
               Continue where I was
