@@ -131,6 +131,21 @@ const StaticTopBar = () => {
             </DropdownMenuContent>
           </DropdownMenu>
 
+          {/* Cart Drawer Trigger */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 shrink-0 relative"
+            onClick={openCart}
+          >
+            <ShoppingCart className="h-5 w-5" />
+            {totalItems > 0 && (
+              <Badge className="absolute -top-0.5 -right-0.5 h-4 w-4 p-0 text-[10px] bg-destructive">
+                {totalItems > 9 ? "9+" : totalItems}
+              </Badge>
+            )}
+          </Button>
+
           {/* 6. Notifications */}
           <Button 
             variant="ghost" 
