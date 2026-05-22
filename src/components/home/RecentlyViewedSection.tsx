@@ -22,12 +22,18 @@ const RecentlyViewedSection = () => {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Clock className="h-5 w-5 text-muted-foreground" />
-          <h2 className="text-lg font-bold">Recently Viewed</h2>
+          <h2 className="text-lg font-bold" data-testid="recently-viewed-heading">Recently Viewed</h2>
         </div>
       </div>
-      <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
+      <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2" data-testid="recently-viewed-list">
         {recentlyViewed.map((item) => (
-          <Link key={item.id} to={`/product/${item.id}`} className="flex-shrink-0 w-32">
+          <Link
+            key={item.id}
+            to={`/product/${item.id}`}
+            className="flex-shrink-0 w-32"
+            data-testid="recently-viewed-item"
+            data-product-id={item.id}
+          >
             <Card className="overflow-hidden hover:shadow-lg hover:scale-[1.03] transition-all duration-300">
               <div className="aspect-square bg-muted">
                 <img src={item.image} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
