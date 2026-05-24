@@ -6,12 +6,25 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      external_base_url:
+        description: "Optional external base URL to test against (overrides local dev server)"
+        required: false
+        default: ""
 
 jobs:
   recently-viewed-e2e:
-    name: Playwright (Recently Viewed)
+    name: Playwright (${{ matrix.browser }} / ${{ matrix.target }})
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+        target: [local, external]
+        exclude:
+          # Only run the external target when an URL is actually provided.
+          - target: external
     steps:
       - uses: actions/checkout@v4
 
@@ -24,18 +37,61 @@ jobs:
         run: npm ci
 
       - name: Install Playwright browsers + system deps
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps ${{ matrix.browser }}
 
-      - name: Run Recently Viewed E2E
-        run: npx playwright test e2e/recently-viewed.spec.ts --reporter=list
+      - name: Run Recently Viewed E2E (local dev server)
+        if: matrix.target == 'local'
+        run: npx playwright test e2e/recently-viewed.spec.ts --project=${{ matrix.browser }} --reporter=list
         env:
           CI: "true"
 
-      - name: Upload Playwright report on failure
+      - name: Run Recently Viewed E2E (external base URL)
+        if: matrix.target == 'external' && github.event.inputs.external_base_url != ''
+        run: npx playwright test e2e/recently-viewed.spec.ts --project=${{ matrix.browser }} --reporter=list
+        env:
+          CI: "true"
+          E2E_BASE_URL: ${{ github.event.inputs.external_base_url }}
+
+      - name: Upload Playwright artifacts on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-${{ matrix.browser }}-${{ matrix.target }}
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7
+
+  # Separate optional job that always runs the external target when the workflow
+  # is dispatched with an external_base_url input. Kept out of the matrix so PRs
+  # don't try to hit a non-existent external environment.
+  recently-viewed-e2e-external:
+    name: Playwright external (${{ matrix.browser }})
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.external_base_url != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Run E2E against external URL
+        run: npx playwright test e2e/recently-viewed.spec.ts --project=${{ matrix.browser }} --reporter=list
+        env:
+          CI: "true"
+          E2E_BASE_URL: ${{ github.event.inputs.external_base_url }}
+      - name: Upload Playwright artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-external-${{ matrix.browser }}
           path: |
             playwright-report
             test-results
