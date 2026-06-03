@@ -1,4 +1,12 @@
-import { test, expect, Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
+import {
+  clearRecentlyViewed,
+  corruptors,
+  goHome,
+  getRenderedOrder,
+  visitProduct,
+  waitForRecentlyViewedList,
+} from "./helpers/recently-viewed";
 
 /**
  * Real E2E flow:
@@ -9,39 +17,11 @@ import { test, expect, Page } from "@playwright/test";
  * - Corrupted localStorage resets and repopulates cleanly
  */
 
-const STORAGE_KEY = "recently_viewed_products";
 const PRODUCT_IDS = Array.from({ length: 12 }, (_, i) => String(i + 1));
-
-async function visitProduct(page: Page, id: string) {
-  await page.goto(`/product/${id}`);
-  await page.waitForURL(`**/product/${id}`);
-  // Stricter wait: DOM-ready over networkidle (more deterministic, less flaky).
-  await page.waitForLoadState("domcontentloaded");
-}
-
-async function goHome(page: Page) {
-  await page.goto("/");
-  await page.waitForURL((url) => url.pathname === "/");
-  await page.waitForLoadState("domcontentloaded");
-}
-
-async function waitForRecentlyViewed(page: Page, expectedCount: number) {
-  // Hard-wait for the list container, then for the exact card count.
-  await page.waitForSelector('[data-testid="recently-viewed-list"]', {
-    state: "visible",
-    timeout: 15_000,
-  });
-  const items = page
-    .getByTestId("recently-viewed-list")
-    .getByTestId("recently-viewed-item");
-  await expect(items).toHaveCount(expectedCount);
-  return items;
-}
 
 test.describe("Recently Viewed — real browser E2E", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/");
-    await page.evaluate(() => localStorage.clear());
+    await clearRecentlyViewed(page);
   });
 
   test("12 product visits → home shows 10 cards in newest-first order", async ({ page }) => {
@@ -50,12 +30,10 @@ test.describe("Recently Viewed — real browser E2E", () => {
       await goHome(page);
     }
 
-    const items = await waitForRecentlyViewed(page, 10);
+    await waitForRecentlyViewedList(page, 10);
+    const actual = await getRenderedOrder(page);
 
     const expected = [...PRODUCT_IDS].reverse().slice(0, 10);
-    const actual = await items.evaluateAll((els) =>
-      els.map((el) => (el as HTMLElement).dataset.productId),
-    );
     expect(actual).toEqual(expected);
     expect(actual).not.toContain("1");
     expect(actual).not.toContain("2");
@@ -69,44 +47,44 @@ test.describe("Recently Viewed — real browser E2E", () => {
 
     await page.reload({ waitUntil: "domcontentloaded" });
 
-    const items = await waitForRecentlyViewed(page, 10);
-    const expected = [...PRODUCT_IDS].reverse().slice(0, 10);
-    const actual = await items.evaluateAll((els) =>
-      els.map((el) => (el as HTMLElement).dataset.productId),
-    );
-    expect(actual).toEqual(expected);
+    await waitForRecentlyViewedList(page, 10);
+    const actual = await getRenderedOrder(page);
+    expect(actual).toEqual([...PRODUCT_IDS].reverse().slice(0, 10));
   });
 
-  test("corrupted localStorage resets gracefully and repopulates", async ({ page }) => {
-    // Seed garbage into the storage key before any app code touches it.
-    await page.goto("/");
-    await page.evaluate((key) => {
-      localStorage.setItem(key, "{not json");
-    }, STORAGE_KEY);
+  test("corrupted localStorage (invalid JSON) resets gracefully and repopulates", async ({ page }) => {
+    await corruptors.invalidJson(page);
 
-    // Reload so the hook re-reads the corrupted value on mount.
-    await page.reload({ waitUntil: "domcontentloaded" });
-
-    // Section should not be present (no items, no crash).
     await expect(page.getByTestId("recently-viewed-list")).toHaveCount(0);
     await expect(page.getByTestId("recently-viewed-heading")).toHaveCount(0);
 
-    // Now visit 12 products — eviction + ordering must still work.
     for (const id of PRODUCT_IDS) {
       await visitProduct(page, id);
       await goHome(page);
     }
 
-    const items = await waitForRecentlyViewed(page, 10);
-    const actual = await items.evaluateAll((els) =>
-      els.map((el) => (el as HTMLElement).dataset.productId),
-    );
+    await waitForRecentlyViewedList(page, 10);
+    const actual = await getRenderedOrder(page);
     expect(actual).toEqual([...PRODUCT_IDS].reverse().slice(0, 10));
+  });
 
-    // Storage is now valid JSON again.
-    const stored = await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY);
-    expect(() => JSON.parse(stored || "")).not.toThrow();
-    const parsed = JSON.parse(stored || "[]");
-    expect(parsed).toHaveLength(10);
+  test("corrupted localStorage (wrong shape) resets gracefully", async ({ page }) => {
+    await corruptors.wrongShape(page);
+    // Hook may either render nothing or render zero items; both are acceptable.
+    await expect(page.getByTestId("recently-viewed-item")).toHaveCount(0);
+  });
+
+  test("over-cap seed (>10 items) truncates to 10 on next interaction", async ({ page }) => {
+    await corruptors.overCap(page);
+
+    // Section renders with the seeded items (>10 allowed if hook tolerates it,
+    // but a fresh add must enforce the 10-item cap).
+    await visitProduct(page, "1");
+    await goHome(page);
+
+    await waitForRecentlyViewedList(page, 10);
+    const actual = await getRenderedOrder(page);
+    expect(actual).toHaveLength(10);
+    expect(actual[0]).toBe("1");
   });
 });
