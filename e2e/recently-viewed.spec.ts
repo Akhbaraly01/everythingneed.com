@@ -6,27 +6,40 @@ import { test, expect, Page } from "@playwright/test";
  * - Navigate back to "/" between each visit
  * - Assert Recently Viewed shows exactly 10 cards in newest-first order
  * - Hard reload "/" and assert the list survives
+ * - Corrupted localStorage resets and repopulates cleanly
  */
 
+const STORAGE_KEY = "recently_viewed_products";
 const PRODUCT_IDS = Array.from({ length: 12 }, (_, i) => String(i + 1));
 
 async function visitProduct(page: Page, id: string) {
   await page.goto(`/product/${id}`);
-  // Wait for the route to actually mount the product detail page.
-  // ProductDetail uses a "back" chevron + product content; we just wait for URL + network idle.
   await page.waitForURL(`**/product/${id}`);
-  await page.waitForLoadState("networkidle");
+  // Stricter wait: DOM-ready over networkidle (more deterministic, less flaky).
+  await page.waitForLoadState("domcontentloaded");
 }
 
 async function goHome(page: Page) {
   await page.goto("/");
   await page.waitForURL((url) => url.pathname === "/");
-  await page.waitForLoadState("networkidle");
+  await page.waitForLoadState("domcontentloaded");
+}
+
+async function waitForRecentlyViewed(page: Page, expectedCount: number) {
+  // Hard-wait for the list container, then for the exact card count.
+  await page.waitForSelector('[data-testid="recently-viewed-list"]', {
+    state: "visible",
+    timeout: 15_000,
+  });
+  const items = page
+    .getByTestId("recently-viewed-list")
+    .getByTestId("recently-viewed-item");
+  await expect(items).toHaveCount(expectedCount);
+  return items;
 }
 
 test.describe("Recently Viewed — real browser E2E", () => {
   test.beforeEach(async ({ page }) => {
-    // Start from a clean slate so prior runs don't pollute the list.
     await page.goto("/");
     await page.evaluate(() => localStorage.clear());
   });
@@ -37,20 +50,13 @@ test.describe("Recently Viewed — real browser E2E", () => {
       await goHome(page);
     }
 
-    const section = page.getByTestId("recently-viewed-list");
-    await expect(section).toBeVisible();
+    const items = await waitForRecentlyViewed(page, 10);
 
-    const items = section.getByTestId("recently-viewed-item");
-    await expect(items).toHaveCount(10);
-
-    // Newest-first: 12, 11, ..., 3
     const expected = [...PRODUCT_IDS].reverse().slice(0, 10);
     const actual = await items.evaluateAll((els) =>
       els.map((el) => (el as HTMLElement).dataset.productId),
     );
     expect(actual).toEqual(expected);
-
-    // The two oldest must have been evicted.
     expect(actual).not.toContain("1");
     expect(actual).not.toContain("2");
   });
@@ -61,16 +67,46 @@ test.describe("Recently Viewed — real browser E2E", () => {
       await goHome(page);
     }
 
-    // Hard reload — discards in-memory React state, must rehydrate from localStorage.
-    await page.reload({ waitUntil: "networkidle" });
+    await page.reload({ waitUntil: "domcontentloaded" });
 
-    const items = page.getByTestId("recently-viewed-list").getByTestId("recently-viewed-item");
-    await expect(items).toHaveCount(10);
-
+    const items = await waitForRecentlyViewed(page, 10);
     const expected = [...PRODUCT_IDS].reverse().slice(0, 10);
     const actual = await items.evaluateAll((els) =>
       els.map((el) => (el as HTMLElement).dataset.productId),
     );
     expect(actual).toEqual(expected);
+  });
+
+  test("corrupted localStorage resets gracefully and repopulates", async ({ page }) => {
+    // Seed garbage into the storage key before any app code touches it.
+    await page.goto("/");
+    await page.evaluate((key) => {
+      localStorage.setItem(key, "{not json");
+    }, STORAGE_KEY);
+
+    // Reload so the hook re-reads the corrupted value on mount.
+    await page.reload({ waitUntil: "domcontentloaded" });
+
+    // Section should not be present (no items, no crash).
+    await expect(page.getByTestId("recently-viewed-list")).toHaveCount(0);
+    await expect(page.getByTestId("recently-viewed-heading")).toHaveCount(0);
+
+    // Now visit 12 products — eviction + ordering must still work.
+    for (const id of PRODUCT_IDS) {
+      await visitProduct(page, id);
+      await goHome(page);
+    }
+
+    const items = await waitForRecentlyViewed(page, 10);
+    const actual = await items.evaluateAll((els) =>
+      els.map((el) => (el as HTMLElement).dataset.productId),
+    );
+    expect(actual).toEqual([...PRODUCT_IDS].reverse().slice(0, 10));
+
+    // Storage is now valid JSON again.
+    const stored = await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY);
+    expect(() => JSON.parse(stored || "")).not.toThrow();
+    const parsed = JSON.parse(stored || "[]");
+    expect(parsed).toHaveLength(10);
   });
 });
