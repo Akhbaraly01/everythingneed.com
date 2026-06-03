@@ -22,6 +22,7 @@ interface Doctor {
   qualification: string;
   experience_years: number;
   consultation_fee: number;
+  virtual_fee: number | null;
   rating: number | null;
   avatar_url: string | null;
   is_available: boolean;
@@ -163,71 +164,99 @@ const DoctorSelection = () => {
             </p>
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredDoctors.map((doctor) => (
-              <Card
-                key={doctor.id}
-                className="p-6 hover:shadow-lg transition-all duration-300 hover:border-primary/50"
-              >
-                <div className="flex items-start gap-4 mb-4">
-                  <Avatar className="w-16 h-16">
-                    <AvatarImage src={doctor.avatar_url || undefined} />
-                    <AvatarFallback className="text-lg">
-                      {doctor.full_name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <h3 className="font-semibold">{doctor.full_name}</h3>
-                    <Badge variant="secondary" className="mt-1">
-                      {doctor.specialization}
-                    </Badge>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {doctor.qualification}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2 mb-4 text-center">
-                  <div className="p-2 bg-muted/50 rounded-lg">
-                    <div className="flex items-center justify-center gap-1">
-                      <Star className="h-3 w-3 fill-warning text-warning" />
-                      <span className="font-medium text-sm">
-                        {doctor.rating ? Number(doctor.rating).toFixed(1) : "New"}
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">Rating</p>
-                  </div>
-                  <div className="p-2 bg-muted/50 rounded-lg">
-                    <div className="flex items-center justify-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      <span className="font-medium text-sm">
-                        {doctor.experience_years}y
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">Exp.</p>
-                  </div>
-                  <div className="p-2 bg-muted/50 rounded-lg">
-                    <div className="flex items-center justify-center gap-1">
-                      <DollarSign className="h-3 w-3" />
-                      <span className="font-medium text-sm">
-                        ${Number(doctor.consultation_fee)}
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">Fee</p>
-                  </div>
-                </div>
-
-                <Button
-                  className="w-full"
-                  onClick={() => handleSelectDoctor(doctor.id)}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="doctor-list">
+            {filteredDoctors.map((doctor) => {
+              const physical = Number(doctor.consultation_fee);
+              const virtual =
+                doctor.virtual_fee != null
+                  ? Number(doctor.virtual_fee)
+                  : Math.round(physical * 0.7);
+              const savings = Math.max(0, physical - virtual);
+              return (
+                <Card
+                  key={doctor.id}
+                  className="p-6 hover:shadow-lg transition-all duration-300 hover:border-primary/50"
+                  data-testid="doctor-card"
+                  data-doctor-id={doctor.id}
                 >
-                  Book Appointment
-                </Button>
-              </Card>
-            ))}
+                  <div className="flex items-start gap-4 mb-4">
+                    <Avatar className="w-16 h-16">
+                      <AvatarImage src={doctor.avatar_url || undefined} />
+                      <AvatarFallback className="text-lg">
+                        {doctor.full_name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="font-semibold">{doctor.full_name}</h3>
+                        {doctor.is_available && (
+                          <Badge className="bg-success/15 text-success border-success/30 shrink-0">
+                            Available
+                          </Badge>
+                        )}
+                      </div>
+                      <Badge variant="secondary" className="mt-1">
+                        {doctor.specialization}
+                      </Badge>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {doctor.qualification}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 mb-4 text-center">
+                    <div className="p-2 bg-muted/50 rounded-lg">
+                      <div className="flex items-center justify-center gap-1">
+                        <Star className="h-3 w-3 fill-warning text-warning" />
+                        <span className="font-medium text-sm">
+                          {doctor.rating ? Number(doctor.rating).toFixed(1) : "New"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Rating</p>
+                    </div>
+                    <div className="p-2 bg-muted/50 rounded-lg">
+                      <div className="flex items-center justify-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        <span className="font-medium text-sm">
+                          {doctor.experience_years}y
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Exp.</p>
+                    </div>
+                    <div className="p-2 bg-muted/50 rounded-lg">
+                      <div className="flex items-center justify-center gap-1">
+                        <DollarSign className="h-3 w-3" />
+                        <span className="font-medium text-sm">${physical}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Physical</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between mb-4 p-2 rounded-lg bg-success/5 border border-success/20">
+                    <span className="text-xs text-muted-foreground">Virtual visit</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-success">${virtual}</span>
+                      {savings > 0 && (
+                        <Badge variant="outline" className="text-[10px] bg-success/10 text-success border-success/30">
+                          Save ${savings}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+
+                  <Button
+                    className="w-full"
+                    onClick={() => handleSelectDoctor(doctor.id)}
+                    data-testid="book-doctor-btn"
+                  >
+                    Book Appointment
+                  </Button>
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>
