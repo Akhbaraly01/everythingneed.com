@@ -24,9 +24,9 @@ jobs:
         run: npm ci
 
       - name: Install Playwright browsers + system deps
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium firefox webkit
 
-      - name: Run Recently Viewed E2E
+      - name: Run Recently Viewed E2E (all browsers)
         run: npx playwright test e2e/recently-viewed.spec.ts --reporter=list
         env:
           CI: "true"
