@@ -6,12 +6,21 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      headed:
+        description: "Run browsers in headed mode (xvfb) for richer video capture"
+        required: false
+        default: "false"
 
 jobs:
   recently-viewed-e2e:
-    name: Playwright (Recently Viewed)
+    name: Playwright (${{ matrix.browser }})
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
     steps:
       - uses: actions/checkout@v4
 
@@ -23,20 +32,37 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Playwright browsers + system deps
-        run: npx playwright install --with-deps chromium firefox webkit
+      - name: Install Playwright browser + system deps
+        run: npx playwright install --with-deps ${{ matrix.browser }}
 
-      - name: Run Recently Viewed E2E (all browsers)
-        run: npx playwright test e2e/recently-viewed.spec.ts --reporter=list
+      - name: Run Recently Viewed E2E (${{ matrix.browser }})
+        run: |
+          if [ "${{ github.event.inputs.headed }}" = "true" ]; then
+            xvfb-run -a npx playwright test e2e/recently-viewed.spec.ts \
+              --project=${{ matrix.browser }} --headed --reporter=list
+          else
+            npx playwright test e2e/recently-viewed.spec.ts \
+              --project=${{ matrix.browser }} --reporter=list
+          fi
         env:
           CI: "true"
 
-      - name: Upload Playwright report on failure
+      - name: Upload Playwright HTML report
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.browser }}-${{ github.run_attempt }}
+          path: playwright-report
+          retention-days: 14
+
+      - name: Upload traces, screenshots, videos
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts-${{ matrix.browser }}-${{ github.run_attempt }}
           path: |
-            playwright-report
-            test-results
-          retention-days: 7
+            test-results/**/trace.zip
+            test-results/**/*.png
+            test-results/**/*.webm
+          retention-days: 14
+          if-no-files-found: ignore

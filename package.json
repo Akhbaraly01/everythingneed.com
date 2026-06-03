@@ -10,7 +10,11 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test:e2e": "playwright test",
-    "test:e2e:recently-viewed": "playwright test e2e/recently-viewed.spec.ts"
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "PWDEBUG=1 playwright test --headed",
+    "test:e2e:recently-viewed": "playwright test e2e/recently-viewed.spec.ts",
+    "test:e2e:recently-viewed:headed": "playwright test e2e/recently-viewed.spec.ts --headed",
+    "test:e2e:rerun-failed": "playwright test --last-failed --headed"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
