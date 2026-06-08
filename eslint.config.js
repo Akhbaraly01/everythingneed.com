@@ -23,4 +23,29 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": "off",
     },
   },
+  // Module-boundary enforcement: inside src/modules/<name>/**, you may NOT
+  // import from a sibling module's internals. Cross-module access goes through
+  // the public barrel `@modules/<other>` or via `@core/events` (EventBus).
+  {
+    files: ["src/modules/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@modules/*/*", "@/modules/*/*"],
+              message:
+                "Module boundary violation: import from the module barrel '@modules/<name>' only, never reach into its internals.",
+            },
+            {
+              group: ["@/integrations/supabase/*"],
+              message:
+                "Modules must not depend on infrastructure directly. Use '@core/api/client' instead.",
+            },
+          ],
+        },
+      ],
+    },
+  },
 );

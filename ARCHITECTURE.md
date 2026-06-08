@@ -9,44 +9,9 @@ src/
 ├── core/                # Infrastructure: api client, event bus, routes, config, logging
 ├── shared/              # UI primitives + framework-free utils (no business logic)
 └── modules/             # 35 business modules, each fully self-contained
-    ├── authentication/
-    ├── users/
-    ├── roles/
-    ├── permissions/
-    ├── vendors/
-    ├── stores/
-    ├── products/
-    ├── categories/
-    ├── inventory/
-    ├── orders/
-    ├── checkout/
-    ├── payments/
-    ├── wallets/
-    ├── deliveries/
-    ├── food/
-    ├── rides/
-    ├── bookings/
-    ├── hotels/
-    ├── real-estate/
-    ├── jobs/
-    ├── healthcare/
-    ├── deals/
-    ├── messaging/
-    ├── notifications/
-    ├── reviews/
-    ├── subscriptions/
-    ├── analytics/
-    ├── admin/
-    ├── settings/
-    ├── experts/
-    ├── learn/
-    ├── needs/
-    ├── pharmacy/
-    ├── building-services/
-    └── engagement/      # wishlist, compare, recently-viewed
 ```
 
-Each module follows the same internal layout:
+Each module follows the same three-level internal structure (`module → layer → file`):
 
 ```
 <module>/
@@ -55,9 +20,19 @@ Each module follows the same internal layout:
 ├── api/          utils/      index.ts     README.md
 ```
 
-## Path aliases
+Large modules MAY introduce **sub-modules** as another level (`module → sub-module → layer → file`), e.g.:
 
-Configured in `vite.config.ts` and `tsconfig.json`:
+```
+healthcare/
+├── doctors/        { components, pages, services, hooks, types }
+├── appointments/   { components, pages, services, hooks, types }
+├── labs/           { components, pages, services, hooks, types }
+└── tickets/        { components, pages, services, hooks, types }
+```
+
+Sub-modules are still exported through the parent module's single `index.ts` barrel.
+
+## Path aliases
 
 | Alias        | Resolves to       |
 | ------------ | ----------------- |
@@ -68,43 +43,103 @@ Configured in `vite.config.ts` and `tsconfig.json`:
 
 ## Rules
 
-1. **One module = one barrel.** Always import via `@modules/<name>` — never reach into subfolders.
-2. **No module imports another module's internals.** Use the barrel, or emit a domain event.
-3. **Cross-module communication** goes through `eventBus` in `@core/events/EventBus`. This mirrors Laravel's event/listener dispatch.
-4. **Infra (Supabase, logging, config)** lives only in `@core`. Modules never import `@/integrations/...` directly — use `@core/api/client`.
-5. **`@shared` contains zero business logic.** Only UI primitives and pure utilities.
+1. **One module = one barrel.** Always import via `@modules/<name>` — never reach into subfolders. Enforced by ESLint (`no-restricted-imports` on `@modules/*/*`).
+2. **No module imports another module's internals.** Use the barrel, or emit a domain event via `@core/events/EventBus`.
+3. **Infra (Supabase, logging, config)** lives only in `@core`. Modules never import `@/integrations/...` — use `@core/api/client`. Enforced by ESLint.
+4. **`@shared` contains zero business logic.** Only UI primitives and pure utilities.
+5. **Routes are module-owned.** Each module exports its `routes` element from `<module>/routes/index.tsx`; `@core/routes` centralizes the path constants.
 
-## Migration phases
+## Module routing
 
-This refactor was done in two safe phases to avoid breaking the running app:
+Routes are grouped by module path:
 
-- **Phase 1 (done):** scaffolded `core/`, `shared/`, and all 35 module folders. Each module's `index.ts` re-exports current implementations from their existing locations. Aliases configured.
-- **Phase 2 (incremental, per module):** physically relocate each module's files into its folder. Because all consumers already import from `@modules/<name>`, moves are transparent.
+| Module      | Base path                |
+| ----------- | ------------------------ |
+| healthcare  | `/healthcare/*`          |
+| pharmacy    | `/pharmacy/*`            |
+| vendors     | `/vendor/*`              |
+| products    | `/product/*`             |
+| account     | `/account/*`             |
+| needs       | `/needs/*`               |
+| learn       | `/learn/*`               |
+| experts     | `/experts/*`             |
+| deals       | `/deals/*`               |
+| admin       | `/admin/*`               |
+| messaging   | `/support/tickets/*`     |
 
-To migrate a module:
+Each module ships a `<module>/routes/index.tsx` exporting a React Router `<Route>` fragment. `App.tsx` composes them. Path constants live in `@core/routes`.
 
-1. Move existing files (e.g. `src/pages/healthcare/*`) into `src/modules/healthcare/pages/`.
-2. Update the module's `index.ts` re-exports to point at the new local paths.
-3. Run the app — no external consumer code changes.
+## ESLint boundary enforcement
 
-## Laravel 13 target mapping
+`eslint.config.js` blocks:
 
-Each `src/modules/<name>` maps directly to:
+- `@modules/<other>/<anything-after-barrel>` from inside `src/modules/**` — forces use of the module's public barrel.
+- `@/integrations/supabase/*` from inside modules — forces use of `@core/api/client`.
 
-```
-Modules/<PascalName>/
-├── Entities/        # domain models
-├── Repositories/    # data access
-├── Services/        # business logic
-├── Actions/         # single-responsibility commands
-├── Http/Controllers # Inertia controllers
-├── Resources/js/    # React pages (from modules/<name>/pages)
-├── Policies/        # from modules/<name>/permissions
-└── routes/web.php   # from modules/<name>/routes
-```
+Run `npx eslint src/modules` to verify boundaries.
 
-Domain events emitted via `@core/events/EventBus` become Laravel events with the same names (`OrderCreated`, `PaymentCompleted`, `DeliveryCreated`, …).
+## Laravel 13 mapping checklist
 
-## Event catalog
+Each `src/modules/<name>` will become `Modules/<PascalName>/` in Laravel. For every module, complete this checklist before declaring the migration done:
 
-See `src/core/events/EventBus.ts` `DomainEventMap` for the typed list. Add new events there before emitting them.
+- [ ] **Entities** — Eloquent models in `Entities/` (one per domain noun)
+- [ ] **Repositories** — `Repositories/<Name>Repository.php` (data access; mirrors `services/` data calls)
+- [ ] **Services** — `Services/<Name>Service.php` (business logic from `services/`)
+- [ ] **Actions** — `Actions/<VerbNoun>.php` single-responsibility commands (one per mutation)
+- [ ] **DTOs** — `Data/<Name>Data.php` using `spatie/laravel-data` (mirrors `types/` + `validators/`)
+- [ ] **Policies** — `Policies/<Name>Policy.php` (mirrors RBAC checks from `@modules/permissions`)
+- [ ] **Http/Controllers** — Inertia controllers per page in `Http/Controllers/`
+- [ ] **Resources/js/Pages** — React pages from `modules/<name>/pages`
+- [ ] **Resources/js/Components** — local components from `modules/<name>/components`
+- [ ] **routes/web.php** — module routes from `<module>/routes/index.tsx`
+- [ ] **Events + Listeners** — every `DomainEventMap` entry becomes `Events/<Name>.php` + matching listener
+- [ ] **Migrations** — `Database/Migrations/*` for the module's tables
+- [ ] **Seeders / Factories** — `Database/{Seeders,Factories}` parity with Supabase seed data
+- [ ] **Tests** — `Tests/{Unit,Feature}` covering actions + policies
+
+### Per-module status
+
+| Module             | Entities | Repos | Actions | Policies | DTOs | Routes | Events |
+| ------------------ | :------: | :---: | :-----: | :------: | :--: | :----: | :----: |
+| authentication     |          |       |         |          |      |        |        |
+| users              |          |       |         |          |      |        |        |
+| roles              |          |       |         |          |      |        |        |
+| permissions        |          |       |         |          |      |        |        |
+| vendors            |          |       |         |          |      |        |        |
+| stores             |          |       |         |          |      |        |        |
+| products           |          |       |         |          |      |        |        |
+| categories         |          |       |         |          |      |        |        |
+| inventory          |          |       |         |          |      |        |        |
+| orders             |          |       |         |          |      |        |        |
+| checkout           |          |       |         |          |      |        |        |
+| payments           |          |       |         |          |      |        |        |
+| wallets            |          |       |         |          |      |        |        |
+| deliveries         |          |       |         |          |      |        |        |
+| food               |          |       |         |          |      |        |        |
+| rides              |          |       |         |          |      |        |        |
+| bookings           |          |       |         |          |      |        |        |
+| hotels             |          |       |         |          |      |        |        |
+| real-estate        |          |       |         |          |      |        |        |
+| jobs               |          |       |         |          |      |        |        |
+| healthcare         |    ✓     |       |         |          |      |   ✓    |        |
+| deals              |          |       |         |          |      |        |        |
+| messaging          |          |       |         |          |      |        |        |
+| notifications      |          |       |         |          |      |        |        |
+| reviews            |          |       |         |          |      |        |        |
+| subscriptions      |          |       |         |          |      |        |        |
+| analytics          |          |       |         |          |      |        |        |
+| admin              |          |       |         |          |      |        |        |
+| settings           |          |       |         |          |      |        |        |
+| experts            |          |       |         |          |      |        |        |
+| learn              |          |       |         |          |      |        |        |
+| needs              |          |       |         |          |      |        |        |
+| pharmacy           |          |       |         |          |      |        |        |
+| building-services  |          |       |         |          |      |        |        |
+| engagement         |          |       |         |          |      |        |        |
+
+## Physical migration status
+
+- [x] healthcare — files moved to `src/modules/healthcare/{pages,components,routes}`
+- [ ] all other modules — barrels still re-export from legacy `@/pages/*` and `@/components/*`
+
+To migrate the next module: move files into `src/modules/<name>/`, rewrite the barrel `index.ts` to use relative paths, and update any direct `@/pages/...` imports in `App.tsx` to use `@modules/<name>`.
