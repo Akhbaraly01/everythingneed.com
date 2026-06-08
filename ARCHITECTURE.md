@@ -131,15 +131,75 @@ Each `src/modules/<name>` will become `Modules/<PascalName>/` in Laravel. For ev
 | admin              |          |       |         |          |      |        |        |
 | settings           |          |       |         |          |      |        |        |
 | experts            |          |       |         |          |      |        |        |
-| learn              |          |       |         |          |      |        |        |
-| needs              |          |       |         |          |      |        |        |
+| learn              |          |       |         |          |      |   ✓    |        |
+| needs              |          |       |         |          |      |   ✓    |        |
+| home               |          |       |         |          |      |   ✓    |        |
 | pharmacy           |          |       |         |          |      |        |        |
 | building-services  |          |       |         |          |      |        |        |
 | engagement         |          |       |         |          |      |        |        |
 
+## Per-module domain catalog
+
+Source-of-truth mapping each frontend module to its target Laravel 13 domain artifacts.
+
+| Module             | Entities                                              | Repositories                 | Actions (commands)                                              | Policies                              | DTOs                                                |
+| ------------------ | ----------------------------------------------------- | ---------------------------- | --------------------------------------------------------------- | ------------------------------------- | --------------------------------------------------- |
+| authentication     | Session, OtpChallenge, TwoFactorSecret                | SessionRepository            | RequestOtp, VerifyOtp, EnableTwoFactor, SignOut                 | SessionPolicy                         | LoginData, OtpData, TwoFactorData                   |
+| users              | User, Profile, Address                                | UserRepository               | UpdateProfile, AddAddress, DeleteAccount                        | UserPolicy                            | UserData, ProfileData, AddressData                  |
+| roles              | Role, UserRole                                        | RoleRepository               | AssignRole, RevokeRole                                          | RolePolicy                            | RoleData                                            |
+| permissions        | Permission, RolePermission                            | PermissionRepository         | GrantPermission, RevokePermission                               | PermissionPolicy                      | PermissionData                                      |
+| vendors            | Vendor, VendorApplication, VendorPayout               | VendorRepository             | RegisterVendor, ApproveVendor, SuspendVendor, RequestPayout     | VendorPolicy                          | VendorData, VendorApplicationData                   |
+| stores             | Store, StoreCategory                                  | StoreRepository              | CreateStore, UpdateStore, CloseStore                            | StorePolicy                           | StoreData                                           |
+| products           | Product, ProductVariant, ProductImage                 | ProductRepository            | CreateProduct, UpdateProduct, ArchiveProduct                    | ProductPolicy                         | ProductData, VariantData                            |
+| categories         | Category, CategoryTree                                | CategoryRepository           | CreateCategory, ReorderCategory                                 | CategoryPolicy                        | CategoryData                                        |
+| inventory          | StockLevel, StockMovement                             | InventoryRepository          | AdjustStock, ReserveStock, ReleaseStock                         | InventoryPolicy                       | StockLevelData, StockMovementData                   |
+| orders             | Order, OrderItem, OrderStatusHistory                  | OrderRepository              | PlaceOrder, CancelOrder, FulfillOrder, RefundOrder              | OrderPolicy                           | OrderData, OrderItemData                            |
+| checkout           | Cart, CartItem, Coupon                                | CartRepository               | AddToCart, RemoveFromCart, ApplyCoupon, BeginCheckout           | CheckoutPolicy                        | CartData, CouponData                                |
+| payments           | Payment, PaymentMethod, Refund                        | PaymentRepository            | ChargePayment, RefundPayment, AttachMethod                      | PaymentPolicy                         | PaymentData, RefundData                             |
+| wallets            | Wallet, WalletTransaction                             | WalletRepository             | TopUpWallet, DebitWallet, TransferWallet                        | WalletPolicy                          | WalletData, WalletTransactionData                   |
+| deliveries         | Shipment, ShippingZone, ShippingRate, Tracking        | ShipmentRepository           | CreateShipment, UpdateTracking, MarkDelivered                   | ShipmentPolicy                        | ShipmentData, TrackingData                          |
+| food               | Restaurant, MenuItem, FoodOrder                       | RestaurantRepository         | CreateMenuItem, PlaceFoodOrder                                  | RestaurantPolicy                      | RestaurantData, MenuItemData                        |
+| rides              | Ride, Driver, Vehicle                                 | RideRepository               | RequestRide, AcceptRide, CompleteRide                           | RidePolicy                            | RideData, DriverData                                |
+| bookings           | Booking, BookingSlot                                  | BookingRepository            | CreateBooking, RescheduleBooking, CancelBooking                 | BookingPolicy                         | BookingData                                         |
+| hotels             | Hotel, HotelRoom, HotelReservation                    | HotelRepository              | CreateReservation, CancelReservation                            | HotelPolicy                           | HotelData, ReservationData                          |
+| real-estate        | Property, Listing, ViewingRequest                     | PropertyRepository           | CreateListing, ScheduleViewing                                  | PropertyPolicy                        | PropertyData                                        |
+| jobs               | JobPost, JobApplication                               | JobRepository                | PostJob, ApplyToJob, ShortlistApplicant                         | JobPolicy                             | JobData, JobApplicationData                         |
+| healthcare         | Doctor, Specialty, Appointment, Lab, HealthTicket     | DoctorRepository, LabRepo    | BookAppointment, RescheduleAppointment, CancelAppointment, OrderLab, SendReminder | AppointmentPolicy, HealthTicketPolicy | DoctorData, AppointmentData, LabData, HealthTicketData |
+| deals              | Deal, Coupon, Campaign                                | DealRepository               | CreateDeal, ExpireDeal                                          | DealPolicy                            | DealData                                            |
+| messaging          | Conversation, Message, SupportTicket                  | ConversationRepository       | SendMessage, OpenTicket, ResolveTicket                          | ConversationPolicy, TicketPolicy      | MessageData, TicketData                             |
+| notifications      | Notification, PushSubscription                        | NotificationRepository       | SendNotification, MarkRead, SubscribePush                       | NotificationPolicy                    | NotificationData                                    |
+| reviews            | Review, ReviewVote                                    | ReviewRepository             | LeaveReview, EditReview, FlagReview                             | ReviewPolicy                          | ReviewData                                          |
+| subscriptions      | Plan, Subscription, Invoice                           | SubscriptionRepository       | Subscribe, ChangePlan, CancelSubscription                       | SubscriptionPolicy                    | PlanData, SubscriptionData                          |
+| analytics          | Event, MetricSnapshot                                 | AnalyticsRepository          | TrackEvent, AggregateMetrics                                    | AnalyticsPolicy                       | EventData                                           |
+| admin              | AuditLog, AdminAction                                 | AuditRepository              | LogAdminAction                                                  | AdminPolicy                           | AuditLogData                                        |
+| settings           | UserSetting, FeatureFlag                              | SettingRepository            | UpdateSetting, ToggleFeature                                    | SettingPolicy                         | SettingData                                         |
+| experts            | Expert, ExpertAvailability, ExpertReview              | ExpertRepository             | RegisterExpert, BookExpert, ReviewExpert                        | ExpertPolicy                          | ExpertData, AvailabilityData                        |
+| learn              | Course, Lesson, Enrollment, Certificate               | CourseRepository             | EnrollInCourse, CompleteLesson, IssueCertificate                | EnrollmentPolicy                      | CourseData, EnrollmentData, CertificateData         |
+| needs              | NeedRequest, NeedCategory, NeedOffer                  | NeedRepository               | SubmitNeed, OfferOnNeed, AcceptOffer                            | NeedPolicy                            | NeedRequestData, NeedOfferData                      |
+| home               | (composition only — no entities)                      | —                            | —                                                               | —                                     | —                                                   |
+| pharmacy           | Pharmacy, Drug, Prescription, PharmacyOrder           | PharmacyRepository           | UploadPrescription, PlacePharmacyOrder                          | PrescriptionPolicy                    | DrugData, PrescriptionData                          |
+| building-services  | BuildingProvider, BuildingRequest                     | BuildingRepository           | RequestService, AssignProvider                                  | BuildingPolicy                        | BuildingRequestData                                 |
+| engagement         | Favorite, RecentlyViewed, Wishlist                    | EngagementRepository         | Favorite, Unfavorite, RecordView                                | EngagementPolicy                      | FavoriteData                                        |
+
+## Sub-module structure
+
+Multi-section modules use a three-layer sub-module structure:
+
+```
+<module>/
+├── <sub-module-a>/{components,pages,services,hooks,types,validators}
+├── <sub-module-b>/{components,pages,services,hooks,types,validators}
+├── routes/index.tsx        # composes sub-module routes
+├── index.ts                # single public barrel re-exporting from sub-modules
+└── README.md
+```
+
+Single-section modules keep the flat layer layout (`components/`, `pages/`, ...) and skip the sub-module level. Sub-modules are still exported through the parent module's single `index.ts` barrel.
+
 ## Physical migration status
 
 - [x] healthcare — files moved to `src/modules/healthcare/{pages,components,routes}`
-- [ ] all other modules — barrels still re-export from legacy `@/pages/*` and `@/components/*`
+- [x] home / needs / learn / users (account) — module barrels + route fragments published; files still re-exported from `@/pages/*`
+- [ ] all other modules — barrels re-export from legacy `@/pages/*` and `@/components/*`
 
 To migrate the next module: move files into `src/modules/<name>/`, rewrite the barrel `index.ts` to use relative paths, and update any direct `@/pages/...` imports in `App.tsx` to use `@modules/<name>`.

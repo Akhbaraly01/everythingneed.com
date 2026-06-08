@@ -1,0 +1,21 @@
+name: Module Boundaries
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  eslint-module-boundaries:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Lint module boundaries (src/modules/**)
+        run: bunx eslint "src/modules/**/*.{ts,tsx}" --max-warnings=0
+      - name: Full ESLint pass
+        run: bunx eslint .
