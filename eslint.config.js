@@ -24,8 +24,10 @@ export default tseslint.config(
     },
   },
   // Module-boundary enforcement: inside src/modules/<name>/**, you may NOT
-  // import from a sibling module's internals. Cross-module access goes through
-  // the public barrel `@modules/<other>` or via `@core/events` (EventBus).
+  // import from a sibling module's internals OR a sibling module's barrel.
+  // Cross-module access MUST go through `@core/events` (EventBus) or a
+  // contract re-exported from `@shared/*`. Infrastructure (Supabase) is
+  // reachable only via `@core/api/client`.
   {
     files: ["src/modules/**/*.{ts,tsx}"],
     rules: {
@@ -36,12 +38,22 @@ export default tseslint.config(
             {
               group: ["@modules/*/*", "@/modules/*/*"],
               message:
-                "Module boundary violation: import from the module barrel '@modules/<name>' only, never reach into its internals.",
+                "Module boundary violation: never reach into another module's internals. Use '@core/events' for cross-module communication or expose a contract via '@shared/*'.",
+            },
+            {
+              group: ["@modules/*", "@/modules/*"],
+              message:
+                "Direct sibling-module imports are forbidden. Communicate across modules via '@core/events' (EventBus) or shared contracts in '@shared/*'.",
             },
             {
               group: ["@/integrations/supabase/*"],
               message:
                 "Modules must not depend on infrastructure directly. Use '@core/api/client' instead.",
+            },
+            {
+              group: ["@/pages/*", "@/components/*"],
+              message:
+                "Modules must own their pages/components. Move the file into 'src/modules/<name>/{pages,components}/' and re-export it from the module barrel.",
             },
           ],
         },
@@ -49,3 +61,4 @@ export default tseslint.config(
     },
   },
 );
+
