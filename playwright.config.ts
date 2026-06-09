@@ -12,8 +12,8 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 1,
   workers: 1,
   reporter: process.env.CI
-    ? [["github"], ["list"], ["html", { open: "never" }]]
-    : [["list"], ["html", { open: "never" }]],
+    ? [["github"], ["list"], ["html", { open: "never" }], ["json", { outputFile: "playwright-report/results.json" }]]
+    : [["list"], ["html", { open: "never" }], ["json", { outputFile: "playwright-report/results.json" }]],
   // Tighter, explicit timeouts so failures surface fast with full artifacts.
   timeout: 60_000,
   expect: { timeout: 10_000 },

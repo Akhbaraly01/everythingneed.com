@@ -12,6 +12,7 @@ import { CartDrawerProvider } from "@/contexts/CartDrawerContext";
 import CompareDrawer from "@/components/compare/CompareDrawer";
 import GlobalCartDrawer from "@/components/GlobalCartDrawer";
 import Layout from "./components/Layout";
+import { EventBusDevBridge } from "@core/dev/EventBusDevBridge";
 import ScrollToTop from "./components/ScrollToTop";
 import Deals from "./pages/Deals";
 import { homeRoutes } from "@modules/home";
@@ -60,6 +61,7 @@ const App = () => (
               <CartProvider>
                 <CartDrawerProvider>
                 <ScrollToTop />
+                <EventBusDevBridge />
                 <Toaster />
                 <Sonner />
                 <Routes>
