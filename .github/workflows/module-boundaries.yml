@@ -19,10 +19,14 @@ jobs:
         run: node scripts/check-module-structure.mjs
       - name: Event/contract typing parity
         run: node scripts/check-event-contracts.mjs
+      - name: API/contracts/validators usage (modules)
+        run: node scripts/check-api-usage.mjs
       - name: Lint module boundaries (src/modules/**)
         run: bunx eslint "src/modules/**/*.{ts,tsx}" --max-warnings=0
       - name: Full ESLint pass
         run: bunx eslint .
+      - name: Core unit tests (security + engines)
+        run: bunx vitest run src/core/security src/core/engines --coverage --coverage.thresholds.statements=90 --coverage.thresholds.branches=85 --coverage.include='src/core/security/**' --coverage.include='src/core/engines/**'
 
   e2e-routing-gate:
     runs-on: ubuntu-latest

@@ -9,7 +9,7 @@ import { healthVideos, healthDocuments, preventiveCareGuides, healthcareCategori
 import { healthcareExperts } from "@/data/expertsData";
 import AIChatBot from "@/components/chat/AIChatBot";
 import { Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@core/api/supabaseGateway";
 import { useQuery } from "@tanstack/react-query";
 import { 
   Video, MapPin, Pill, Stethoscope, Calendar, Phone, Play, FileText, 
