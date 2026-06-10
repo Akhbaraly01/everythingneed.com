@@ -203,3 +203,89 @@ Single-section modules keep the flat layer layout (`components/`, `pages/`, ...)
 - [ ] all other modules — barrels re-export from legacy `@/pages/*` and `@/components/*`
 
 To migrate the next module: move files into `src/modules/<name>/`, rewrite the barrel `index.ts` to use relative paths, and update any direct `@/pages/...` imports in `App.tsx` to use `@modules/<name>`.
+
+---
+
+## Enterprise Enforcement (Laravel 13 parity)
+
+This codebase is engineered to migrate 1:1 into Laravel 13 + Inertia.js + React + TypeScript.
+Every contributor — human or AI — MUST follow these rules before adding code.
+
+### 1. Architectural pillars
+
+DDD · SOLID · DRY · KISS · Clean Architecture · CQRS-ready · Repository + Service patterns · Event-driven.
+
+### 2. Reuse-first rule (non-negotiable)
+
+Before creating any component, hook, service, validator, API client, engine, or utility:
+
+1. Search `@shared/*` and `@core/*` first.
+2. Search the owning module's barrel (`@modules/<name>`).
+3. If it exists → **REUSE**. If it doesn't → **CREATE ONCE in `@shared` or `@core`, then use everywhere.**
+
+Duplicated UI, validation, pricing, tax, commission, wallet, payment, notification, search, or analytics code is a defect — refactor it on sight.
+
+### 3. Canonical shared surfaces
+
+| Concern                  | Source of truth                                |
+| ------------------------ | ---------------------------------------------- |
+| UI primitives            | `@shared/ui/*` (re-exports shadcn)             |
+| Validation rules         | `@shared/validators` (zod)                     |
+| HTTP / REST              | `@core/api/RequestBuilder` (`http`)            |
+| Supabase data API        | `@core/api/client` (`apiClient`)               |
+| Domain events            | `@core/events/EventBus` (+ `schemas.ts` zod)   |
+| Business engines         | `@core/engines` (Pricing/Tax/Commission/Wallet)|
+| Domain contracts         | `@core/contracts` (Payment/Notification/...)   |
+| Security utils           | `@core/security` (sanitize/escape/hash/limit)  |
+| Routes                   | `@core/routes`                                 |
+| Config                   | `@core/config`                                 |
+| Logging                  | `@core/logging`                                |
+
+### 4. Security baseline
+
+- AuthN: Email/password + Google (default), Phone OTP, optional MFA.
+- AuthZ: RBAC via `user_roles` + `has_role()` SECURITY DEFINER. Never store roles on `profiles`.
+- Secrets: server-side only. Browser code never sees raw API secrets.
+- Encryption: AES-256-GCM (data at rest server-side), Argon2id/bcrypt (passwords via Supabase Auth), HMAC-SHA-256 for signed payloads.
+- All input validated client-side via `@shared/validators` AND server-side (RLS + edge function validation).
+- Output escaping via `escapeHtml`; never `dangerouslySetInnerHTML` with user input.
+- Rate limiting on sensitive client actions via `RateLimiter`; on server via Edge Function gateways.
+
+### 5. Contracts over implementations
+
+Modules depend on interfaces from `@core/contracts`. Adapters (Supabase, Resend, Lovable AI, Stripe-ready, etc.) implement them. Swapping providers is a wiring change, not a module rewrite.
+
+### 6. Event-driven communication
+
+Cross-module side effects flow through `eventBus` with payloads validated by `domainEventSchemas`. Direct imports between modules are blocked by ESLint and CI.
+
+### 7. Portability & interoperability
+
+Business logic lives in pure functions / classes inside `services/`, `engines/`, and `contracts/`. No React, no Supabase, no fetch inside business logic — only adapters touch infrastructure. This guarantees migration to Laravel 13 Actions/Services without rewrites and enables REST, GraphQL, WebSocket, queue, or mobile consumers.
+
+### 8. Adaptability
+
+No hardcoded currencies, tax rates, commission rates, countries, providers, or feature flags inside modules. Read from `@core/config` or the `settings` module.
+
+### 9. Performance
+
+Lazy-load route components, paginate lists, cache GET responses via `http({ cacheTtlSeconds })`, debounce search inputs, memoize selectors, avoid prop drilling with module-scoped stores.
+
+### 10. Testability
+
+- Unit: pure functions in `engines/`, `services/`, `validators/`.
+- Integration: module services against a test Supabase project.
+- E2E: Playwright suites in `e2e/` (routing + cross-module events already gated in CI).
+- Contracts: `scripts/check-event-contracts.mjs` keeps event schemas honest.
+- Structure: `scripts/check-module-structure.mjs` enforces the three-layer convention.
+
+### 11. Definition of Done (per change)
+
+- [ ] Reuse check performed (no duplicate created).
+- [ ] Inputs validated with `@shared/validators` (or extension thereof).
+- [ ] Cross-module side effects emitted via `eventBus` with a registered schema.
+- [ ] No direct `@/integrations/supabase/*`, `@/pages/*`, or sibling-module-internal imports.
+- [ ] Module barrel updated; route fragment exported if applicable.
+- [ ] RLS + GRANT verified for any new public table.
+- [ ] Tests added/updated; `module-boundaries` CI passes locally.
+
