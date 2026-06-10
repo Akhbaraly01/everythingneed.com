@@ -11,7 +11,7 @@ import { logger } from "@core/logging";
  * Direct imports from `@/integrations/supabase/*` are blocked by ESLint
  * and `scripts/check-api-usage.mjs`. */
 export const supabase = raw;
-import { logger } from "@core/logging";
+
 
 export type TableName = Parameters<typeof raw.from>[0];
 
