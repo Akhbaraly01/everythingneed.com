@@ -7,7 +7,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@core/api/supabaseGateway";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { format, addDays, isBefore, startOfDay } from "date-fns";

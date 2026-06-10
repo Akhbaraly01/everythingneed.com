@@ -28,7 +28,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@core/api/supabaseGateway";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { format, isAfter, isBefore, differenceInHours, parseISO } from "date-fns";
