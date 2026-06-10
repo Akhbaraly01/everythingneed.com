@@ -56,3 +56,43 @@ export const SafeTextValidation = z
   .refine((v) => !/<script/i.test(v), "Disallowed content");
 
 export type Address = z.infer<typeof AddressValidation>;
+
+export const NameValidation = z.string().trim().min(2, "Name must be at least 2 characters").max(100);
+
+export const DescriptionValidation = z
+  .string()
+  .trim()
+  .min(20, "Please provide more details (at least 20 characters)")
+  .max(1000);
+
+export const UrgencyEnum = z.enum(["low", "medium", "high", "urgent"]);
+
+export const PrescriptionFileValidation = z
+  .instanceof(File)
+  .refine((f) => f.size <= 5 * 1024 * 1024, "File must be ≤ 5MB")
+  .refine(
+    (f) => ["image/png", "image/jpeg", "image/webp", "application/pdf"].includes(f.type),
+    "Only PNG, JPG, WEBP or PDF allowed",
+  );
+
+/** Canonical booking request schema; reuse across booking/needs/healthcare. */
+export const BookingRequestSchema = z.object({
+  name: NameValidation,
+  email: EmailValidation,
+  phone: PhoneValidation,
+  serviceType: z.string().min(1, "Please select a service type"),
+  description: DescriptionValidation,
+  budget: z.string().optional(),
+  preferredDate: z.string().optional(),
+  preferredTime: z.string().optional(),
+  location: z.string().optional(),
+  urgency: UrgencyEnum.optional(),
+});
+export type BookingRequest = z.infer<typeof BookingRequestSchema>;
+
+/** Canonical checkout schema. */
+export const CheckoutSchema = z.object({
+  address: SafeTextValidation,
+  notes: z.string().trim().max(500).optional(),
+});
+export type Checkout = z.infer<typeof CheckoutSchema>;
