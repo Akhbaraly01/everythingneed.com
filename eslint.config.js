@@ -48,7 +48,16 @@ export default tseslint.config(
             {
               group: ["@/integrations/supabase/*"],
               message:
-                "Modules must not depend on infrastructure directly. Use '@core/api/client' instead.",
+                "Modules must not depend on infrastructure directly. Use '@core/api/supabaseGateway' or '@core/api' (http).",
+            },
+            {
+              group: ["@core/services/*", "@/core/services/*"],
+              message:
+                "Modules must depend on @core/contracts interfaces, not concrete services. Use the DI container's resolve(TOKENS.X).",
+            },
+            {
+              group: ["axios"],
+              message: "Use `http` from '@core/api' instead of axios.",
             },
             {
               group: ["@/pages/*", "@/components/*"],
@@ -57,6 +66,10 @@ export default tseslint.config(
             },
           ],
         },
+      ],
+      "no-restricted-globals": [
+        "error",
+        { name: "fetch", message: "Use `http` from '@core/api' instead of bare fetch()." },
       ],
     },
   },
