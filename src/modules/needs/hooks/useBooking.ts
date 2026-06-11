@@ -27,15 +27,13 @@ export function useBooking() {
         toast.error("Please sign in to continue");
         return { ok: false as const };
       }
-      const { error } = await supabaseGateway
-        .from("bookings")
-        .insert({
-          user_id: auth.user.id,
-          service_type: payload.service_type,
-          service_id: payload.service_id ?? null,
-          details: payload.details,
-          status: "pending",
-        });
+      const { error } = await (supabaseGateway.from as any)("bookings").insert({
+        user_id: auth.user.id,
+        service_type: payload.service_type,
+        service_id: payload.service_id ?? null,
+        details: payload.details,
+        status: "pending",
+      });
       if (error) throw error;
       toast.success("Submitted successfully");
       return { ok: true as const };

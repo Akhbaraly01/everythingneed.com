@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useBooking, BookingServiceType } from "../hooks/useBooking";
-import { pricingEngine } from "@core/engines";
+import { PricingEngine } from "@core/engines";
 
 export type BookingKind = "book" | "appointment" | "apply" | "inquire";
 
@@ -63,8 +63,7 @@ const BookingModal = ({ open, onOpenChange, kind, service }: Props) => {
   const basePrice = service.price ?? 0;
   const total =
     kind === "book" && basePrice
-      ? pricingEngine?.calculateTotal?.({ price: basePrice, quantity: guests }) ??
-        basePrice * guests
+      ? PricingEngine.lineTotal({ unitPrice: basePrice, quantity: guests })
       : null;
 
   const onSubmit = async () => {

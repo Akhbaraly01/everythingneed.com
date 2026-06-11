@@ -32,7 +32,7 @@ const labelByKind: Record<BookingKind, string> = {
   inquire: "Inquire",
 };
 
-const iconByKind: Record<BookingKind, React.ComponentType<{ className?: string }>> = {
+const iconByKind: Record<BookingKind, React.ComponentType<any>> = {
   book: ShoppingCart,
   appointment: CalendarClock,
   apply: Briefcase,

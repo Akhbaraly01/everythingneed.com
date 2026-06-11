@@ -8,7 +8,7 @@ import {
   Truck, HardHat, Wrench, Baby, HeartHandshake, Phone,
 } from "lucide-react";
 
-const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+const iconMap: Record<string, React.ComponentType<any>> = {
   Plane, Hotel, Building, Briefcase, Tractor, UtensilsCrossed, Heart,
   GraduationCap, Laptop, Shirt, Sparkles, Home, Music, Dumbbell, Car,
   Wallet, Scale, Sparkle, Shield, Dog, Compass, Calendar, Camera, Printer,

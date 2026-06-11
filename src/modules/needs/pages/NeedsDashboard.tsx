@@ -35,8 +35,7 @@ const NeedsDashboard = () => {
     let active = true;
     (async () => {
       try {
-        const { data } = await supabaseGateway
-          .from("need_categories")
+        const { data } = await (supabaseGateway.from as any)("need_categories")
           .select("id,slug,name,icon,color")
           .order("name");
         if (active && data && data.length) {
