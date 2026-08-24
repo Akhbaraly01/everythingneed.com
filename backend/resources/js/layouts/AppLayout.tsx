@@ -50,7 +50,7 @@ const navigation = [
     { name: 'Vendor Portal', href: '/vendor', icon: Store },
     { name: 'Healthcare', href: '/healthcare/appointments', icon: Stethoscope },
     { name: 'Notifications', href: '/notifications', icon: Bell },
-    { name: 'Help', href: '/help', icon: HelpCircle },
+    { name: 'Help', href: '/support/tickets', icon: HelpCircle },
 ];
 
 export default function AppLayout({ children, title }: AppLayoutProps) {
