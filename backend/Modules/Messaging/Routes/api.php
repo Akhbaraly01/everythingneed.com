@@ -16,6 +16,7 @@ Route::prefix('api')->group(function () {
         Route::post('/tickets/{id}/close', [TicketController::class, 'close']);
 
         // Direct chat
+        Route::get('/chat/users', [ChatController::class, 'users']);
         Route::get('/chat/conversations', [ChatController::class, 'conversations']);
         Route::post('/chat/conversations', [ChatController::class, 'findOrCreate']);
         Route::get('/chat/{conversationId}/messages', [ChatController::class, 'messages']);

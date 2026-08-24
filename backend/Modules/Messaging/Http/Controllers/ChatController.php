@@ -25,6 +25,25 @@ class ChatController extends Controller
         return response()->json(['data' => $conversations]);
     }
 
+    public function users(Request $request): JsonResponse
+    {
+        $q = trim((string) $request->query('q', ''));
+
+        $query = \App\Models\User::query()
+            ->select('id', 'name', 'email')
+            ->where('id', '!=', $request->user()->id)
+            ->limit(10);
+
+        if ($q !== '') {
+            $query->where(function ($sub) use ($q) {
+                $sub->where('name', 'ilike', "%{$q}%")
+                    ->orWhere('email', 'ilike', "%{$q}%");
+            });
+        }
+
+        return response()->json(['data' => $query->get()]);
+    }
+
     public function findOrCreate(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -56,6 +75,14 @@ class ChatController extends Controller
             $conversation = ChatConversation::where('customer_id', $recipientId)
                 ->where('worker_id', $user->id)
                 ->where('booking_id', $bookingId)
+                ->first();
+        }
+
+        if (!$conversation && $recipientId) {
+            // Reverse direct-chat pairing (recipient started it first)
+            $conversation = ChatConversation::where('customer_id', $recipientId)
+                ->where('worker_id', $user->id)
+                ->whereNull('booking_id')
                 ->first();
         }
 

@@ -64,6 +64,7 @@ use App\Http\Controllers\Web\WebAuthController;
 use App\Http\Controllers\Web\JobSeekersPageController;
 use App\Http\Controllers\Web\FlightsPageController;
 use App\Http\Controllers\Web\TasksPageController;
+use App\Http\Controllers\Web\MessagingPageController;
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [WebAuthController::class, 'showLogin'])->name('login');
@@ -99,6 +100,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/tasks/my-applications', [TasksPageController::class, 'myApplications'])->name('tasks.my-applications');
 });
 Route::get('/tasks/{id}', [TasksPageController::class, 'show'])->name('tasks.show');
+
+// Messaging (Inertia deep pages)
+Route::middleware('auth')->group(function () {
+    Route::get('/messages', [MessagingPageController::class, 'inbox'])->name('messages.inbox');
+    Route::get('/messages/{id}', [MessagingPageController::class, 'thread'])->name('messages.thread');
+});
 
 Route::get('/{path}', function (string $path) use ($frontendUrl) {
     return redirect()->away($frontendUrl($path));

@@ -212,5 +212,8 @@ class DatabaseSeeder extends Seeder
 
         // Seed task center demo tasks
         $this->call(TaskCenterSeeder::class);
+
+        // Seed a demo chat conversation
+        $this->call(MessagingSeeder::class);
     }
 }
