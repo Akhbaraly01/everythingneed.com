@@ -67,6 +67,7 @@ use App\Http\Controllers\Web\TasksPageController;
 use App\Http\Controllers\Web\MessagingPageController;
 use App\Http\Controllers\Web\VendorPortalPageController;
 use App\Http\Controllers\Web\HealthcarePageController;
+use App\Http\Controllers\Web\ServiceRequestsPageController;
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [WebAuthController::class, 'showLogin'])->name('login');
@@ -117,7 +118,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/healthcare/appointments', [HealthcarePageController::class, 'appointments'])->name('healthcare.appointments');
     Route::get('/healthcare/prescriptions', [HealthcarePageController::class, 'prescriptions'])->name('healthcare.prescriptions');
     Route::get('/healthcare/appointments/{id}', [HealthcarePageController::class, 'appointmentDetail'])->name('healthcare.appointment.show');
+
+    // Service requests (Deals/Needs deep chain)
+    Route::get('/requests', [ServiceRequestsPageController::class, 'requests'])->name('requests.index');
 });
+
+// Public vertical landings (Inertia)
+Route::get('/agriculture', [ServiceRequestsPageController::class, 'agriculture'])->name('agriculture.index');
+Route::get('/building-services', [ServiceRequestsPageController::class, 'buildingServices'])->name('building-services.index');
 
 Route::get('/{path}', function (string $path) use ($frontendUrl) {
     return redirect()->away($frontendUrl($path));

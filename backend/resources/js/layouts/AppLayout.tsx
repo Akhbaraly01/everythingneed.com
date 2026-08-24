@@ -23,6 +23,9 @@ import {
     ListChecks,
     Store,
     Stethoscope,
+    Handshake,
+    Sprout,
+    HardHat,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -38,6 +41,9 @@ const navigation = [
     { name: 'Job Seekers', href: '/job-seekers', icon: Briefcase },
     { name: 'Flights', href: '/flights', icon: Plane },
     { name: 'Task Center', href: '/tasks', icon: ListChecks },
+    { name: 'My Requests', href: '/requests', icon: Handshake },
+    { name: 'Agriculture', href: '/agriculture', icon: Sprout },
+    { name: 'Building', href: '/building-services', icon: HardHat },
     { name: 'My Bookings', href: '/bookings', icon: Calendar },
     { name: 'Wishlist', href: '/wishlist', icon: Heart },
     { name: 'Messages', href: '/messages', icon: MessageSquare },
