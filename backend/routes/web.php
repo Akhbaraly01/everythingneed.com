@@ -62,6 +62,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 // Web (Inertia) authentication
 use App\Http\Controllers\Web\WebAuthController;
 use App\Http\Controllers\Web\JobSeekersPageController;
+use App\Http\Controllers\Web\FlightsPageController;
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [WebAuthController::class, 'showLogin'])->name('login');
@@ -81,6 +82,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/job-seekers/request/{worker}', [JobSeekersPageController::class, 'createRequest'])->name('job-seekers.request');
 });
 Route::get('/job-seekers/{id}', [JobSeekersPageController::class, 'show'])->name('job-seekers.show');
+
+// Flights (Inertia deep pages)
+Route::get('/flights', [FlightsPageController::class, 'search'])->name('flights.search');
+Route::middleware('auth')->group(function () {
+    Route::get('/flights/confirmation/{booking}', [FlightsPageController::class, 'confirmation'])->name('flights.confirmation');
+    Route::get('/bookings', [FlightsPageController::class, 'myBookings'])->name('bookings.index');
+});
+Route::get('/flights/{id}', [FlightsPageController::class, 'show'])->name('flights.show');
 
 Route::get('/{path}', function (string $path) use ($frontendUrl) {
     return redirect()->away($frontendUrl($path));

@@ -203,6 +203,24 @@ export interface Medicine {
     created_at: string;
 }
 
+export interface Flight {
+    id: string;
+    flight_number: string;
+    airline: string;
+    origin_city: string;
+    origin_code: string;
+    destination_city: string;
+    destination_code: string;
+    departure_time?: string;
+    arrival_time?: string;
+    duration_minutes: number;
+    price: number | string;
+    seats_total: number;
+    seats_available: number;
+    days_of_week?: number[];
+    is_active: boolean;
+}
+
 export interface Booking {
     id: string;
     user_id: string;

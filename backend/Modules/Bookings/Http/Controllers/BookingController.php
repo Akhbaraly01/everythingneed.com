@@ -7,6 +7,7 @@ use Modules\Bookings\Entities\Booking;
 use Core\Exceptions\NotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class BookingController extends Controller
 {
@@ -105,11 +106,27 @@ class BookingController extends Controller
             ], 422);
         }
 
-        $booking->update(['status' => 'cancelled']);
+        DB::transaction(function () use ($booking) {
+            $booking->update(['status' => 'cancelled']);
+
+            // Release inventory held by this booking
+            if ($booking->service_type === 'flight' && $booking->service_id) {
+                $seats = (int) ($booking->details['seat_count'] ?? 0);
+
+                if ($seats > 0) {
+                    DB::table('flights')
+                        ->where('id', $booking->service_id)
+                        ->lockForUpdate()
+                        ->increment('seats_available', $seats);
+                }
+            }
+        });
+
+        $booking->refresh();
 
         return response()->json([
             'message' => 'Booking cancelled successfully',
-            'data' => $booking->fresh(),
+            'data' => $booking,
         ]);
     }
 
