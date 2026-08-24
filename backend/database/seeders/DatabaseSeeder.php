@@ -209,5 +209,8 @@ class DatabaseSeeder extends Seeder
 
         // Seed job seeker worker profiles
         $this->call(JobSeekersSeeder::class);
+
+        // Seed task center demo tasks
+        $this->call(TaskCenterSeeder::class);
     }
 }

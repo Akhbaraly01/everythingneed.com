@@ -20,6 +20,7 @@ import {
     HelpCircle,
     Briefcase,
     Plane,
+    ListChecks,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -34,6 +35,7 @@ const navigation = [
     { name: 'Orders', href: '/orders', icon: Package },
     { name: 'Job Seekers', href: '/job-seekers', icon: Briefcase },
     { name: 'Flights', href: '/flights', icon: Plane },
+    { name: 'Task Center', href: '/tasks', icon: ListChecks },
     { name: 'My Bookings', href: '/bookings', icon: Calendar },
     { name: 'Wishlist', href: '/wishlist', icon: Heart },
     { name: 'Messages', href: '/messages', icon: MessageSquare },

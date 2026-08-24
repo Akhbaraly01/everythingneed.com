@@ -63,6 +63,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 use App\Http\Controllers\Web\WebAuthController;
 use App\Http\Controllers\Web\JobSeekersPageController;
 use App\Http\Controllers\Web\FlightsPageController;
+use App\Http\Controllers\Web\TasksPageController;
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [WebAuthController::class, 'showLogin'])->name('login');
@@ -90,6 +91,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/bookings', [FlightsPageController::class, 'myBookings'])->name('bookings.index');
 });
 Route::get('/flights/{id}', [FlightsPageController::class, 'show'])->name('flights.show');
+
+// Task Center (Inertia deep pages)
+Route::get('/tasks', [TasksPageController::class, 'index'])->name('tasks.index');
+Route::middleware('auth')->group(function () {
+    Route::get('/tasks/create', [TasksPageController::class, 'create'])->name('tasks.create');
+    Route::get('/tasks/my-applications', [TasksPageController::class, 'myApplications'])->name('tasks.my-applications');
+});
+Route::get('/tasks/{id}', [TasksPageController::class, 'show'])->name('tasks.show');
 
 Route::get('/{path}', function (string $path) use ($frontendUrl) {
     return redirect()->away($frontendUrl($path));
