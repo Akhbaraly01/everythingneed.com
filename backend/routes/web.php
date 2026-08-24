@@ -66,6 +66,7 @@ use App\Http\Controllers\Web\FlightsPageController;
 use App\Http\Controllers\Web\TasksPageController;
 use App\Http\Controllers\Web\MessagingPageController;
 use App\Http\Controllers\Web\VendorPortalPageController;
+use App\Http\Controllers\Web\HealthcarePageController;
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [WebAuthController::class, 'showLogin'])->name('login');
@@ -111,6 +112,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/vendor', [VendorPortalPageController::class, 'dashboard'])->name('vendor.dashboard');
     Route::get('/vendor/products', [VendorPortalPageController::class, 'products'])->name('vendor.products');
     Route::get('/vendor/orders', [VendorPortalPageController::class, 'orders'])->name('vendor.orders');
+
+    // Healthcare patient portal (Inertia)
+    Route::get('/healthcare/appointments', [HealthcarePageController::class, 'appointments'])->name('healthcare.appointments');
+    Route::get('/healthcare/prescriptions', [HealthcarePageController::class, 'prescriptions'])->name('healthcare.prescriptions');
+    Route::get('/healthcare/appointments/{id}', [HealthcarePageController::class, 'appointmentDetail'])->name('healthcare.appointment.show');
 });
 
 Route::get('/{path}', function (string $path) use ($frontendUrl) {

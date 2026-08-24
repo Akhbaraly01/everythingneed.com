@@ -22,6 +22,7 @@ import {
     Plane,
     ListChecks,
     Store,
+    Stethoscope,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -41,6 +42,7 @@ const navigation = [
     { name: 'Wishlist', href: '/wishlist', icon: Heart },
     { name: 'Messages', href: '/messages', icon: MessageSquare },
     { name: 'Vendor Portal', href: '/vendor', icon: Store },
+    { name: 'Healthcare', href: '/healthcare/appointments', icon: Stethoscope },
     { name: 'Notifications', href: '/notifications', icon: Bell },
     { name: 'Help', href: '/help', icon: HelpCircle },
 ];
