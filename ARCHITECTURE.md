@@ -45,7 +45,7 @@ Sub-modules are still exported through the parent module's single `index.ts` bar
 
 1. **One module = one barrel.** Always import via `@modules/<name>` — never reach into subfolders. Enforced by ESLint (`no-restricted-imports` on `@modules/*/*`).
 2. **No module imports another module's internals.** Use the barrel, or emit a domain event via `@core/events/EventBus`.
-3. **Infra (Supabase, logging, config)** lives only in `@core`. Modules never import `@/integrations/...` — use `@core/api/client`. Enforced by ESLint.
+3. **Infra (PostgreSQL, logging, config)** lives only in `@core`. Modules never import `@/integrations/...` — use `@core/api/laravelGateway` (`db`, `auth`, `storage`). Enforced by ESLint.
 4. **`@shared` contains zero business logic.** Only UI primitives and pure utilities.
 5. **Routes are module-owned.** Each module exports its `routes` element from `<module>/routes/index.tsx`; `@core/routes` centralizes the path constants.
 
@@ -74,7 +74,8 @@ Each module ships a `<module>/routes/index.tsx` exporting a React Router `<Route
 `eslint.config.js` blocks:
 
 - `@modules/<other>/<anything-after-barrel>` from inside `src/modules/**` — forces use of the module's public barrel.
-- `@/integrations/supabase/*` from inside modules — forces use of `@core/api/client`.
+- `@/integrations/*` from inside modules — forces use of `@core/api/laravelGateway` or `@core/services`.
+- All data access flows through the Laravel REST gateway (`@core/api/laravelGateway`); no external BaaS clients are permitted.
 
 Run `npx eslint src/modules` to verify boundaries.
 
@@ -93,8 +94,8 @@ Each `src/modules/<name>` will become `Modules/<PascalName>/` in Laravel. For ev
 - [ ] **Resources/js/Components** — local components from `modules/<name>/components`
 - [ ] **routes/web.php** — module routes from `<module>/routes/index.tsx`
 - [ ] **Events + Listeners** — every `DomainEventMap` entry becomes `Events/<Name>.php` + matching listener
-- [ ] **Migrations** — `Database/Migrations/*` for the module's tables
-- [ ] **Seeders / Factories** — `Database/{Seeders,Factories}` parity with Supabase seed data
+- [ ] **Migrations** — `Database/Migrations/*` for the module's tables (derived from PostgreSQL schema in `@core/api/types`)
+- [ ] **Seeders / Factories** — `Database/{Seeders,Factories}` parity with the PostgreSQL seed data
 - [ ] **Tests** — `Tests/{Unit,Feature}` covering actions + policies
 
 ### Per-module status
@@ -200,6 +201,7 @@ Single-section modules keep the flat layer layout (`components/`, `pages/`, ...)
 
 - [x] healthcare — files moved to `src/modules/healthcare/{pages,components,routes}`
 - [x] home / needs / learn / users (account) — module barrels + route fragments published; files still re-exported from `@/pages/*`
+- [x] External BaaS fully removed - all data access via the Laravel REST gateway `@core/api/laravelGateway` (Laravel 13 + PostgreSQL)
 - [ ] all other modules — barrels re-export from legacy `@/pages/*` and `@/components/*`
 
 To migrate the next module: move files into `src/modules/<name>/`, rewrite the barrel `index.ts` to use relative paths, and update any direct `@/pages/...` imports in `App.tsx` to use `@modules/<name>`.
@@ -223,7 +225,7 @@ Before creating any component, hook, service, validator, API client, engine, or 
 2. Search the owning module's barrel (`@modules/<name>`).
 3. If it exists → **REUSE**. If it doesn't → **CREATE ONCE in `@shared` or `@core`, then use everywhere.**
 
-Duplicated UI, validation, pricing, tax, commission, wallet, payment, notification, search, or analytics code is a defect — refactor it on sight.
+Duplicated UI, validation, pricing, tax, commission, wallet, payment, notification, search, or analytics code is a defect - refactor it on sight. Never create a new data access method - always use `db`, `auth`, or `storage` from the Laravel REST gateway `@core/api/laravelGateway`.
 
 ### 3. Canonical shared surfaces
 
@@ -232,36 +234,45 @@ Duplicated UI, validation, pricing, tax, commission, wallet, payment, notificati
 | UI primitives            | `@shared/ui/*` (re-exports shadcn)             |
 | Validation rules         | `@shared/validators` (zod)                     |
 | HTTP / REST              | `@core/api/RequestBuilder` (`http`)            |
-| Supabase data API        | `@core/api/client` (`apiClient`)               |
+| PostgreSQL data API      | `@core/api/laravelGateway` (`db`, `auth`, `storage`) |
+| Database types           | `@core/api/types` (PostgreSQL schema types)    |
 | Domain events            | `@core/events/EventBus` (+ `schemas.ts` zod)   |
 | Business engines         | `@core/engines` (Pricing/Tax/Commission/Wallet)|
 | Domain contracts         | `@core/contracts` (Payment/Notification/...)   |
+| Domain layer             | `@core/domain` (Value Objects, Entities, Aggregate Roots) |
+| Repository interfaces    | `@core/repositories` (Repository pattern contracts) |
+| Application layer        | `@core/application` (Services, DTOs, Commands, Queries) |
+| Infrastructure layer     | `@core/infrastructure` (Repository implementations, adapters) |
+| API client               | `@core/services` (HTTP-based API client)       |
+| Edge function services   | `@core/services/edge` (AI, bookings, reminders)|
 | Security utils           | `@core/security` (sanitize/escape/hash/limit)  |
 | Routes                   | `@core/routes`                                 |
 | Config                   | `@core/config`                                 |
 | Logging                  | `@core/logging`                                |
+| Laravel 13 blueprint     | `@core/laravel` (Backend migration structure)  |
 
 ### 4. Security baseline
 
-- AuthN: Email/password + Google (default), Phone OTP, optional MFA.
-- AuthZ: RBAC via `user_roles` + `has_role()` SECURITY DEFINER. Never store roles on `profiles`.
+- AuthN: Email/password + Google (default), Phone OTP, optional MFA via `@core/services/apiClient`.
+- AuthZ: RBAC + PBAC via `user_roles` table + role hierarchy check in `AuthContext` + Laravel Policies.
 - Secrets: server-side only. Browser code never sees raw API secrets.
-- Encryption: AES-256-GCM (data at rest server-side), Argon2id/bcrypt (passwords via Supabase Auth), HMAC-SHA-256 for signed payloads.
-- All input validated client-side via `@shared/validators` AND server-side (RLS + edge function validation).
+- Encryption: AES-256-GCM (data at rest server-side), Argon2id/bcrypt (passwords via Laravel), HMAC-SHA-256 for signed payloads.
+- All input validated client-side via `@shared/validators` AND server-side (Laravel validation + Form Requests).
 - Output escaping via `escapeHtml`; never `dangerouslySetInnerHTML` with user input.
-- Rate limiting on sensitive client actions via `RateLimiter`; on server via Edge Function gateways.
+- Rate limiting on sensitive client actions via `RateLimiter`; on server via Laravel middleware.
+- Authorization: Laravel Gates + Policies for fine-grained access control per module.
 
 ### 5. Contracts over implementations
 
-Modules depend on interfaces from `@core/contracts`. Adapters (Supabase, Resend, Lovable AI, Stripe-ready, etc.) implement them. Swapping providers is a wiring change, not a module rewrite.
+Modules depend on interfaces from `@core/contracts` and `@core/repositories`. Adapters (API client, Payment gateway, Email service, AI service, etc.) implement them. Swapping providers is a wiring change, not a module rewrite. All repository interfaces follow the Repository pattern with CRUD operations + domain-specific queries.
 
 ### 6. Event-driven communication
 
-Cross-module side effects flow through `eventBus` with payloads validated by `domainEventSchemas`. Direct imports between modules are blocked by ESLint and CI.
+Cross-module side effects flow through `eventBus` with payloads validated by `domainEventSchemas`. Direct imports between modules are blocked by ESLint and CI. Each module defines its own domain events in `domain/index.ts` and publishes them via the EventBus. Events are typed with Zod schemas for runtime validation.
 
 ### 7. Portability & interoperability
 
-Business logic lives in pure functions / classes inside `services/`, `engines/`, and `contracts/`. No React, no Supabase, no fetch inside business logic — only adapters touch infrastructure. This guarantees migration to Laravel 13 Actions/Services without rewrites and enables REST, GraphQL, WebSocket, queue, or mobile consumers.
+Business logic lives in pure functions / classes inside `modules/<name>/domain/`, `modules/<name>/application/`, `engines/`, and `contracts/`. No React, no database client, no fetch inside business logic — only adapters touch infrastructure via `@core/infrastructure`. This guarantees migration to Laravel 13 Actions/Services without rewrites and enables REST, GraphQL, WebSocket, queue, or mobile consumers. The Application layer orchestrates use cases, the Domain layer contains business rules, and the Infrastructure layer handles external integrations.
 
 ### 8. Adaptability
 
@@ -273,19 +284,26 @@ Lazy-load route components, paginate lists, cache GET responses via `http({ cach
 
 ### 10. Testability
 
-- Unit: pure functions in `engines/`, `services/`, `validators/`.
-- Integration: module services against a test Supabase project.
+- Unit: pure functions in `engines/`, `modules/<name>/domain/`, `modules/<name>/application/`, `validators/`.
+- Integration: module services against a test database (PostgreSQL).
 - E2E: Playwright suites in `e2e/` (routing + cross-module events already gated in CI).
 - Contracts: `scripts/check-event-contracts.mjs` keeps event schemas honest.
 - Structure: `scripts/check-module-structure.mjs` enforces the three-layer convention.
+- Domain: Test domain entities, value objects, and domain services in isolation.
+- Application: Test use cases with mocked repositories and services.
+- Infrastructure: Test repository implementations against real database.
 
 ### 11. Definition of Done (per change)
 
 - [ ] Reuse check performed (no duplicate created).
 - [ ] Inputs validated with `@shared/validators` (or extension thereof).
 - [ ] Cross-module side effects emitted via `eventBus` with a registered schema.
-- [ ] No direct `@/integrations/supabase/*`, `@/pages/*`, or sibling-module-internal imports.
+- [ ] No direct `@/integrations/*`, `@/pages/*`, `@/components/*`, or sibling-module-internal imports.
+- [ ] Uses `@core/api/laravelGateway` (`db`, `auth`, `storage`) for all data access.
 - [ ] Module barrel updated; route fragment exported if applicable.
-- [ ] RLS + GRANT verified for any new public table.
+- [ ] Domain entities and value objects defined in `modules/<name>/domain/`.
+- [ ] Application services and DTOs defined in `modules/<name>/application/`.
+- [ ] Repository interfaces defined in `@core/repositories`.
 - [ ] Tests added/updated; `module-boundaries` CI passes locally.
+- [ ] Laravel 13 migration checklist updated for the module.
 

@@ -1,0 +1,34 @@
+import AppLayout from '@/layouts/AppLayout';
+import { Head, Link } from '@inertiajs/react';
+import type { JobPost } from '@/types';
+import { Briefcase, MapPin, DollarSign, Clock } from 'lucide-react';
+
+interface JobsProps {
+    jobs: { data: JobPost[]; meta: { current_page: number; last_page: number; per_page: number; total: number } };
+}
+
+export default function Jobs({ jobs }: JobsProps) {
+    return (
+        <AppLayout title="Jobs">
+            <Head title="Jobs" />
+            <div className="space-y-4">
+                {jobs.data.map((job) => (
+                    <Link key={job.id} href={`/jobs/${job.id}`} className="block rounded-lg bg-white p-6 shadow hover:shadow-md dark:bg-gray-800">
+                        <div className="flex items-start justify-between">
+                            <div>
+                                <h3 className="font-semibold text-gray-900 dark:text-white">{job.title}</h3>
+                                <p className="text-sm text-indigo-600">{job.company}</p>
+                                <div className="mt-2 flex items-center gap-4 text-sm text-gray-500">
+                                    <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{job.location}</span>
+                                    <span className="flex items-center gap-1"><Briefcase className="h-3 w-3" />{job.job_type}</span>
+                                    {job.salary_min && <span className="flex items-center gap-1"><DollarSign className="h-3 w-3" />{job.salary_min.toLocaleString()} - {job.salary_max?.toLocaleString()}</span>}
+                                </div>
+                            </div>
+                            <button className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">Apply</button>
+                        </div>
+                    </Link>
+                ))}
+            </div>
+        </AppLayout>
+    );
+}

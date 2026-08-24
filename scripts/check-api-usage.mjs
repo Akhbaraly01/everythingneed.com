@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
  * Enforce the shared API layer:
- *   - No direct `@/integrations/supabase/client` imports in modules
- *     (must use `@core/api/supabaseGateway` or `@core/api/RequestBuilder`).
+ *   - No direct `@/integrations/supabase/client` imports anywhere
+ *   - No `@/integrations/*` imports in modules
  *   - No bare `fetch(` / `axios` in modules (must use `http` from @core/api).
  *   - No imports from `@core/services/*` (modules use contracts + DI).
  *   - No inline `z.object(` in module form code (must use @shared/validators).
@@ -32,7 +32,9 @@ function scan(file) {
   const rel = relative(process.cwd(), file);
 
   const checks = [
-    { re: /from\s+["']@\/integrations\/supabase\/client["']/, msg: "Use @core/api/supabaseGateway instead of direct supabase client." },
+    { re: /from\s+["']@\/integrations\/supabase\/client["']/, msg: "Supabase SDK removed. Use @core/api/databaseGateway (db, auth, storage) instead." },
+    { re: /from\s+["']@\/integrations\/.+["']/, msg: "Legacy integrations removed. Use @core/api/databaseGateway or @core/services instead." },
+    { re: /from\s+["']@supabase\/supabase-js["']/, msg: "Supabase SDK removed. Import types from @core/api/types instead." },
     { re: /from\s+["']@core\/services\/.+["']/, msg: "Modules must depend on @core/contracts, not @core/services/*. Use DI resolve()." },
     { re: /\bfetch\s*\(/, msg: "Use `http` from @core/api instead of bare fetch()." },
     { re: /from\s+["']axios["']/, msg: "Use `http` from @core/api instead of axios." },

@@ -1,0 +1,64 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+
+/*
+|--------------------------------------------------------------------------
+| Web Routes
+|--------------------------------------------------------------------------
+|
+| Backend browser routes. The frontend dev app runs at FRONTEND_URL.
+| API JSON routes live in routes/api.php.
+|
+*/
+
+$frontendUrl = function (string $path = ''): string {
+    $base = rtrim(config('app.frontend_url', 'http://127.0.0.1:8080'), '/');
+
+    return $base.'/'.ltrim($path, '/');
+};
+
+Route::get('/', function () use ($frontendUrl) {
+    return redirect()->away($frontendUrl());
+});
+
+Route::get('/up', function () {
+    $db = 'ok';
+    try {
+        \Illuminate\Support\Facades\DB::connection()->getPdo();
+    } catch (\Exception $e) {
+        $db = 'error: ' . $e->getMessage();
+    }
+
+    return response()->json([
+        'status' => 'operational',
+        'service' => config('app.name'),
+        'version' => app()->version(),
+        'php' => phpversion(),
+        'environment' => config('app.env'),
+        'database' => $db,
+        'cache' => config('cache.default'),
+        'session' => config('session.driver'),
+        'queue' => config('queue.default'),
+        'frontend' => config('app.frontend_url', 'http://127.0.0.1:8080'),
+        'timestamp' => now()->toIso8601String(),
+    ]);
+});
+
+Route::get('/robots.txt', function () {
+    return response("User-agent: *\nDisallow: /api/\n", 200, ['Content-Type' => 'text/plain']);
+});
+
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/dashboard', function () {
+        return inertia('Dashboard');
+    })->name('dashboard');
+
+    Route::get('/profile', function () {
+        return inertia('Profile/Edit');
+    })->name('profile.edit');
+});
+
+Route::get('/{path}', function (string $path) use ($frontendUrl) {
+    return redirect()->away($frontendUrl($path));
+})->where('path', '^(?!api|up|storage|sanctum|telescope).*$');

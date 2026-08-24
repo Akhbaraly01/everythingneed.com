@@ -12,6 +12,27 @@ dist
 dist-ssr
 *.local
 
+# Environment files (examples only)
+.env
+.env.backup
+
+# Database files
+*.sqlite
+*.sqlite-journal
+
+# Test artifacts
+playwright-report/
+test-results/
+
+# Generated route dumps
+route_list.txt
+
+# Stray repo-root artifacts
+/package-lock.json
+backup-*
+modules_report.csv
+.phpunit.result.cache
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
