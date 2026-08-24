@@ -136,6 +136,12 @@ Route::prefix('api/admin')->middleware(['api', 'auth:sanctum', 'role:super_admin
         ->can('manageUsers');
     Route::get('/permissions', [AdminRbacController::class, 'permissions'])
         ->can('manageUsers');
+    Route::get('/rbac/matrix', [AdminRbacController::class, 'matrix'])
+        ->middleware('role:super_admin');
+    Route::post('/rbac/grant', [AdminRbacController::class, 'grant'])
+        ->middleware('role:super_admin');
+    Route::post('/rbac/revoke', [AdminRbacController::class, 'revoke'])
+        ->middleware('role:super_admin');
     Route::put('/roles/assign', [AdminRbacController::class, 'updateRole'])
         ->can('manageUsers');
 });

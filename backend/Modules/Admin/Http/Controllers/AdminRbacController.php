@@ -60,6 +60,72 @@ class AdminRbacController extends Controller
         return response()->json(['data' => $permissions]);
     }
 
+    /**
+     * Effective role → permission matrix from the database.
+     */
+    public function matrix(): JsonResponse
+    {
+        $rows = DB::table('role_permissions')
+            ->select('role', 'permission')
+            ->orderBy('role')
+            ->orderBy('permission')
+            ->get()
+            ->groupBy('role');
+
+        $data = collect(self::ROLES)->map(fn ($role) => [
+            'role' => $role,
+            'permissions' => $rows->has($role)
+                ? $rows[$role]->pluck('permission')->values()->all()
+                : [],
+        ])->values();
+
+        return response()->json(['data' => $data]);
+    }
+
+    /**
+     * Grant a single granular permission to a role.
+     */
+    public function grant(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'role' => ['required', 'string', Rule::in(self::ROLES)],
+            'permission' => ['required', 'string', Rule::in(\Database\Seeders\PermissionSeeder::CATALOG)],
+        ]);
+
+        DB::table('role_permissions')->updateOrInsert(
+            ['role' => $validated['role'], 'permission' => $validated['permission']],
+            [
+                'id' => (string) \Illuminate\Support\Str::uuid(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        );
+
+        \Illuminate\Support\Facades\Cache::forget('rbac.matrix');
+
+        return response()->json(['message' => "Granted {$validated['permission']} to {$validated['role']}"]);
+    }
+
+    /**
+     * Revoke a single granular permission from a role.
+     */
+    public function revoke(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'role' => ['required', 'string', Rule::in(self::ROLES)],
+            'permission' => ['required', 'string'],
+        ]);
+
+        DB::table('role_permissions')
+            ->where('role', $validated['role'])
+            ->where('permission', $validated['permission'])
+            ->delete();
+
+        \Illuminate\Support\Facades\Cache::forget('rbac.matrix');
+
+        return response()->json(['message' => "Revoked {$validated['permission']} from {$validated['role']}"]);
+    }
+
     public function updateRole(Request $request): JsonResponse
     {
         $request->validate([

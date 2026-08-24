@@ -19,9 +19,10 @@ class HandleInertiaRequests
                         'name' => $user->name,
                         'email' => $user->email,
                         'roles' => $user->roles->pluck('role'),
-                        // Granular permissions arrive with the RBAC campaign;
-                        // role-derived until then.
-                        'permissions' => collect(),
+                        // Granular permissions from the seeded RBAC matrix
+                        'permissions' => collect(
+                            ['products.view', 'orders.view', 'support.view', 'analytics.view']
+                        )->filter(fn ($p) => $user->hasPermission($p))->values(),
                     ];
                 }
 

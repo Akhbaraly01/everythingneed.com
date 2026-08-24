@@ -215,5 +215,8 @@ class DatabaseSeeder extends Seeder
 
         // Seed a demo chat conversation
         $this->call(MessagingSeeder::class);
+
+        // Seed the granular RBAC matrix
+        $this->call(PermissionSeeder::class);
     }
 }

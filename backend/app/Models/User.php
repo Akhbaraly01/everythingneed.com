@@ -55,6 +55,28 @@ class User extends Authenticatable
         return $this->roles()->where('role', $role)->exists();
     }
 
+    /**
+     * Granular RBAC check against the seeded role→permission matrix.
+     * super_admin implicitly holds every permission.
+     */
+    public function hasPermission(string $permission): bool
+    {
+        if ($this->hasRole('super_admin')) {
+            return true;
+        }
+
+        $matrix = \Illuminate\Support\Facades\Cache::remember('rbac.matrix', 300, function () {
+            return \Illuminate\Support\Facades\DB::table('role_permissions')
+                ->get()
+                ->groupBy('role')
+                ->map->pluck('permission');
+        });
+
+        return $this->roles()->get(['role'])->contains(
+            fn ($r) => ($matrix[$r->role] ?? collect())->contains($permission),
+        );
+    }
+
     public function wallet()
     {
         return $this->hasOne(Wallet::class);
