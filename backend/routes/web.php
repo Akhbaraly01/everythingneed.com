@@ -20,7 +20,7 @@ $frontendUrl = function (string $path = ''): string {
 
 Route::get('/', function () use ($frontendUrl) {
     return redirect()->away($frontendUrl());
-});
+})->name('home');
 
 Route::get('/up', function () {
     $db = 'ok';
@@ -58,6 +58,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return inertia('Profile/Edit');
     })->name('profile.edit');
 });
+
+// Web (Inertia) authentication
+use App\Http\Controllers\Web\WebAuthController;
+
+Route::middleware('guest')->group(function () {
+    Route::get('/login', [WebAuthController::class, 'showLogin'])->name('login');
+    Route::post('/login', [WebAuthController::class, 'login'])->middleware('throttle:10,1');
+    Route::get('/register', [WebAuthController::class, 'showRegister'])->name('register');
+    Route::post('/register', [WebAuthController::class, 'register'])->middleware('throttle:10,1');
+});
+
+Route::post('/logout', [WebAuthController::class, 'logout'])
+    ->middleware('auth')
+    ->name('logout');
 
 Route::get('/{path}', function (string $path) use ($frontendUrl) {
     return redirect()->away($frontendUrl($path));

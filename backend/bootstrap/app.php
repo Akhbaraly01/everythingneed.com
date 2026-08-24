@@ -24,6 +24,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'verified.custom' => \App\Http\Middleware\EnsureEmailIsVerified::class,
         ]);
 
+        $middleware->web(append: [
+            \App\Http\Middleware\HandleInertiaRequests::class,
+        ]);
+
         $middleware->api(prepend: [
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
         ]);
@@ -73,6 +77,11 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             if ($e instanceof AuthenticationException) {
+                // Web context: let Laravel redirect guests to route('login').
+                if (!$request->expectsJson() && !($request->is('api/*'))) {
+                    return null;
+                }
+
                 return response()->json([
                     'message' => 'Unauthenticated',
                     'error' => 'Please log in.',
@@ -80,6 +89,11 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             if ($e instanceof ValidationException) {
+                // Web context: standard redirect-back-with-errors behaviour.
+                if (!$request->expectsJson() && !($request->is('api/*'))) {
+                    return null;
+                }
+
                 return response()->json([
                     'message' => 'Validation Error',
                     'errors' => $e->errors(),

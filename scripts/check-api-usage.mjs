@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Enforce the shared API layer:
- *   - No direct `@/integrations/supabase/client` imports anywhere
+ * Enforce the shared API layer (Laravel 13 + Inertia.js + React + TypeScript + PostgreSQL):
+ *   - No BaaS SDK imports (`@supabase/*`, `@/integrations/supabase/*`) anywhere
  *   - No `@/integrations/*` imports in modules
  *   - No bare `fetch(` / `axios` in modules (must use `http` from @core/api).
  *   - No imports from `@core/services/*` (modules use contracts + DI).
@@ -32,9 +32,9 @@ function scan(file) {
   const rel = relative(process.cwd(), file);
 
   const checks = [
-    { re: /from\s+["']@\/integrations\/supabase\/client["']/, msg: "Supabase SDK removed. Use @core/api/databaseGateway (db, auth, storage) instead." },
-    { re: /from\s+["']@\/integrations\/.+["']/, msg: "Legacy integrations removed. Use @core/api/databaseGateway or @core/services instead." },
-    { re: /from\s+["']@supabase\/supabase-js["']/, msg: "Supabase SDK removed. Import types from @core/api/types instead." },
+    { re: /from\s+["']@\/integrations\/supabase\/client["']/, msg: "BaaS SDK removed. This is a Laravel 13 + PostgreSQL modular monolith — use @core/api/laravelGateway (db, auth, storage) instead." },
+    { re: /from\s+["']@\/integrations\/.+["']/, msg: "Legacy integrations removed. Use @core/api/laravelGateway or @core/services instead." },
+    { re: /from\s+["']@supabase\/supabase-js["']/, msg: "BaaS SDK removed. This is a Laravel 13 + PostgreSQL modular monolith — use @core/api/laravelGateway and types from @core/api/types instead." },
     { re: /from\s+["']@core\/services\/.+["']/, msg: "Modules must depend on @core/contracts, not @core/services/*. Use DI resolve()." },
     { re: /\bfetch\s*\(/, msg: "Use `http` from @core/api instead of bare fetch()." },
     { re: /from\s+["']axios["']/, msg: "Use `http` from @core/api instead of axios." },

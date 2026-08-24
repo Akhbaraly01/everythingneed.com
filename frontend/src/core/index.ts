@@ -13,4 +13,4 @@ export * from "./engines";
 export * from "./di/container";
 export * from "./di/bootstrap";
 export * from "./services";
-export * from "./services/edge";
+export * from "./services/adapters";

@@ -64,7 +64,7 @@ const AIChatBot = ({ context = 'general', title = 'AI Research Assistant' }: AIC
 
     try {
       // TODO: Edge function calls will be implemented via HTTP adapter
-      // TODO: Call aiResearchAssistant from @core/services/edge
+      // TODO: Call aiResearchAssistant from @core/services/adapters (Laravel-backed)
       //   body: {
       //     message: userMessage.content,
       //     language,

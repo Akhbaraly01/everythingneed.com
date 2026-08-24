@@ -54,12 +54,12 @@ export default tseslint.config(
             {
               group: ["@/integrations/*"],
               message:
-                "Modules must not depend on legacy integrations. Use '@core/api/databaseGateway' (db, auth, storage) or '@core/services' instead.",
+                "Modules must not depend on legacy integrations. Use '@core/api/laravelGateway' (db, auth, storage) or '@core/services' instead.",
             },
             {
-              group: ["@/integrations/supabase/*"],
+              group: ["@supabase/supabase-js", "@/integrations/supabase/*", "**/supabase/**"],
               message:
-                "Supabase SDK has been removed. Use '@core/api/databaseGateway' (db, auth, storage) instead.",
+                "BaaS SDKs are forbidden. This is a Laravel 13 + Inertia.js + React + TypeScript + PostgreSQL modular monolith. Use '@core/api/laravelGateway' (db, auth, storage) instead.",
             },
             {
               group: ["@core/services/*", "@/core/services/*"],

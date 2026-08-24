@@ -18,8 +18,10 @@ class HandleInertiaRequests
                         'id' => $user->id,
                         'name' => $user->name,
                         'email' => $user->email,
-                        'roles' => $user->roles->pluck('name'),
-                        'permissions' => $user->getAllPermissions()->pluck('name'),
+                        'roles' => $user->roles->pluck('role'),
+                        // Granular permissions arrive with the RBAC campaign;
+                        // role-derived until then.
+                        'permissions' => collect(),
                     ];
                 }
 

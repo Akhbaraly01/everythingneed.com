@@ -1,5 +1,7 @@
 /**
- * Pure TypeScript services callable from the frontend.
+ * Service adapters implementing @core/contracts.
+ * Each adapter maps 1:1 to a Laravel 13 backend service/action and will
+ * delegate to REST endpoints as those come online.
  */
 export { aiResearchAssistant } from "./aiResearchAssistant";
 export type { AiResearchInput } from "./aiResearchAssistant";

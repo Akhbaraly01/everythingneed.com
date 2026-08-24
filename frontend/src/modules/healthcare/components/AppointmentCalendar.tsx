@@ -135,7 +135,7 @@ const AppointmentCalendar = ({ doctor, isRandomAssignment = false, onSuccess }: 
       if (!ticket) throw new Error("Failed to create appointment");
 
       // Call booking confirmation edge function
-      // TODO: Replace with @core/services/edge function call
+      // TODO: Replace with @core/services/adapters call backed by a Laravel endpoint
       // const { error: emailError } = await functions.invoke('booking-confirmation', {
       //   body: {
       //     ticketNumber: data.ticket_number,

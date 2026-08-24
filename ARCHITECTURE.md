@@ -244,7 +244,7 @@ Duplicated UI, validation, pricing, tax, commission, wallet, payment, notificati
 | Application layer        | `@core/application` (Services, DTOs, Commands, Queries) |
 | Infrastructure layer     | `@core/infrastructure` (Repository implementations, adapters) |
 | API client               | `@core/services` (HTTP-based API client)       |
-| Edge function services   | `@core/services/edge` (AI, bookings, reminders)|
+| Service adapters         | `@core/services/adapters` (AI, bookings, reminders — Laravel-backed) |
 | Security utils           | `@core/security` (sanitize/escape/hash/limit)  |
 | Routes                   | `@core/routes`                                 |
 | Config                   | `@core/config`                                 |

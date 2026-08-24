@@ -34,6 +34,22 @@ class VendorController extends Controller
         ]);
     }
 
+    public function mine(Request $request): JsonResponse
+    {
+        $vendor = $this->vendorService->getVendorByUserId($request->user()->id);
+
+        if (!$vendor) {
+            return response()->json([
+                'message' => 'No vendor profile found',
+                'error' => 'You do not have a vendor profile yet.',
+            ], 404);
+        }
+
+        return response()->json([
+            'data' => new VendorResource($vendor),
+        ]);
+    }
+
     public function show(string $id): JsonResponse
     {
         $vendor = $this->vendorService->getVendor($id);
