@@ -65,6 +65,7 @@ use App\Http\Controllers\Web\JobSeekersPageController;
 use App\Http\Controllers\Web\FlightsPageController;
 use App\Http\Controllers\Web\TasksPageController;
 use App\Http\Controllers\Web\MessagingPageController;
+use App\Http\Controllers\Web\VendorPortalPageController;
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [WebAuthController::class, 'showLogin'])->name('login');
@@ -105,6 +106,11 @@ Route::get('/tasks/{id}', [TasksPageController::class, 'show'])->name('tasks.sho
 Route::middleware('auth')->group(function () {
     Route::get('/messages', [MessagingPageController::class, 'inbox'])->name('messages.inbox');
     Route::get('/messages/{id}', [MessagingPageController::class, 'thread'])->name('messages.thread');
+
+    // Vendor portal (Inertia)
+    Route::get('/vendor', [VendorPortalPageController::class, 'dashboard'])->name('vendor.dashboard');
+    Route::get('/vendor/products', [VendorPortalPageController::class, 'products'])->name('vendor.products');
+    Route::get('/vendor/orders', [VendorPortalPageController::class, 'orders'])->name('vendor.orders');
 });
 
 Route::get('/{path}', function (string $path) use ($frontendUrl) {
