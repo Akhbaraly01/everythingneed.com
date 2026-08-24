@@ -18,6 +18,7 @@ import {
     Package,
     CreditCard,
     HelpCircle,
+    Briefcase,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -30,6 +31,7 @@ const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Products', href: '/products', icon: ShoppingBag },
     { name: 'Orders', href: '/orders', icon: Package },
+    { name: 'Job Seekers', href: '/job-seekers', icon: Briefcase },
     { name: 'Wishlist', href: '/wishlist', icon: Heart },
     { name: 'Bookings', href: '/bookings', icon: Calendar },
     { name: 'Messages', href: '/messages', icon: MessageSquare },

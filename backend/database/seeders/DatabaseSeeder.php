@@ -206,5 +206,8 @@ class DatabaseSeeder extends Seeder
 
         // Seed demo data for all modules
         $this->call(DemoDataSeeder::class);
+
+        // Seed job seeker worker profiles
+        $this->call(JobSeekersSeeder::class);
     }
 }

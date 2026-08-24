@@ -425,3 +425,60 @@ export interface ApiResponse<T> {
     data: T;
     message?: string;
 }
+
+export interface WorkerProfile {
+    id: string;
+    user_id: string;
+    headline: string;
+    bio?: string;
+    category: string;
+    skills?: { name: string; level?: string }[];
+    experience?: { title: string; company: string; from?: string; to?: string; description?: string }[];
+    education?: { institution: string; degree: string; year?: string }[];
+    portfolio?: { title: string; url?: string; description?: string }[];
+    hourly_rate?: number;
+    daily_rate?: number;
+    currency: string;
+    availability: 'available' | 'busy' | 'unavailable';
+    city?: string;
+    country?: string;
+    rating_avg: number;
+    rating_count: number;
+    completed_jobs: number;
+    is_verified: boolean;
+    user?: Pick<User, 'id' | 'name' | 'email'>;
+}
+
+export interface WorkOffer {
+    id: string;
+    work_request_id: string;
+    worker_profile_id?: string;
+    proposed_by: 'requester' | 'worker';
+    rate: number;
+    message?: string;
+    status: 'pending' | 'accepted' | 'rejected' | 'countered';
+    created_at: string;
+}
+
+export interface WorkRequest {
+    id: string;
+    requester_id: string;
+    worker_profile_id?: string;
+    title: string;
+    description?: string;
+    category: string;
+    location?: string;
+    start_date?: string;
+    estimated_duration?: string;
+    budget_min?: number;
+    budget_max?: number;
+    currency: string;
+    workers_needed: number;
+    status: 'open' | 'negotiating' | 'accepted' | 'paid' | 'in_progress' | 'completed' | 'cancelled' | 'disputed';
+    agreed_rate?: number;
+    rated_at?: string;
+    created_at: string;
+    worker_profile?: WorkerProfile;
+    requester?: Pick<User, 'id' | 'name' | 'email'>;
+    offers?: WorkOffer[];
+}

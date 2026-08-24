@@ -41,6 +41,7 @@ return [
         Modules\Hotels\Providers\HotelsServiceProvider::class,
         Modules\Inventory\Providers\InventoryServiceProvider::class,
         Modules\Jobs\Providers\JobsServiceProvider::class,
+        Modules\JobSeekers\Providers\JobSeekersServiceProvider::class,
         Modules\Learn\Providers\LearnServiceProvider::class,
         Modules\Messaging\Providers\MessagingServiceProvider::class,
         Modules\Needs\Providers\NeedsServiceProvider::class,

@@ -61,6 +61,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 // Web (Inertia) authentication
 use App\Http\Controllers\Web\WebAuthController;
+use App\Http\Controllers\Web\JobSeekersPageController;
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [WebAuthController::class, 'showLogin'])->name('login');
@@ -72,6 +73,14 @@ Route::middleware('guest')->group(function () {
 Route::post('/logout', [WebAuthController::class, 'logout'])
     ->middleware('auth')
     ->name('logout');
+
+// Job Seekers (Inertia deep pages)
+Route::get('/job-seekers', [JobSeekersPageController::class, 'index'])->name('job-seekers.index');
+Route::middleware('auth')->group(function () {
+    Route::get('/job-seekers/my-requests', [JobSeekersPageController::class, 'myRequests'])->name('job-seekers.my-requests');
+    Route::get('/job-seekers/request/{worker}', [JobSeekersPageController::class, 'createRequest'])->name('job-seekers.request');
+});
+Route::get('/job-seekers/{id}', [JobSeekersPageController::class, 'show'])->name('job-seekers.show');
 
 Route::get('/{path}', function (string $path) use ($frontendUrl) {
     return redirect()->away($frontendUrl($path));
