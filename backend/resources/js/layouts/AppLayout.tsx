@@ -1,5 +1,6 @@
 import { type ReactNode } from 'react';
 import { Link, usePage } from '@inertiajs/react';
+import GlobalSearch from '@/components/shared/GlobalSearch';
 import { getInitials } from '@/lib/utils';
 import {
     LayoutDashboard,
@@ -165,6 +166,7 @@ export default function AppLayout({ children, title }: AppLayoutProps) {
                         <Menu className="h-6 w-6" />
                     </button>
                     <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
+                        <GlobalSearch />
                         <div className="flex flex-1" />
                         <div className="flex items-center gap-x-4 lg:gap-x-6">
                             {/* Profile dropdown */}
