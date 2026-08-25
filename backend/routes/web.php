@@ -114,6 +114,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/vendor', [VendorPortalPageController::class, 'dashboard'])->name('vendor.dashboard');
     Route::get('/vendor/products', [VendorPortalPageController::class, 'products'])->name('vendor.products');
     Route::get('/vendor/orders', [VendorPortalPageController::class, 'orders'])->name('vendor.orders');
+    Route::get('/vendor/payouts', [VendorPortalPageController::class, 'payouts'])->name('vendor.payouts');
 
     // Healthcare patient portal (Inertia)
     Route::get('/healthcare/appointments', [HealthcarePageController::class, 'appointments'])->name('healthcare.appointments');

@@ -222,6 +222,21 @@ class ProductOrderController extends Controller
 
         $subOrder->update(['status' => $newStatus]);
 
+        // Commission accrual on delivery (idempotent per vendor order).
+        if ($action === 'deliver') {
+            DB::table('vendor_commissions')->updateOrInsert(
+                ['vendor_id' => $vendor->id, 'order_id' => $subOrder->id],
+                [
+                    'id' => (string) \Illuminate\Support\Str::uuid(),
+                    'amount' => round((float) $subOrder->total_price * 0.90, 2), // vendor share after 10% platform fee
+                    'rate' => 0.10,
+                    'status' => 'cleared',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ],
+            );
+        }
+
         // Roll up parent order status when all vendor legs reach this stage.
         $parent = Order::find($subOrder->order_id);
         if ($parent && !in_array($parent->status, [Order::STATUS_CANCELLED, Order::STATUS_REFUNDED], true)) {

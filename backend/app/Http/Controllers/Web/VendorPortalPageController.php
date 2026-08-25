@@ -75,4 +75,10 @@ class VendorPortalPageController extends Controller
             'orders' => $orders,
         ]);
     }
+
+    public function payouts(): Response
+    {
+        // Summary + withdrawals load client-side from /api/vendor/earnings.
+        return Inertia::render('vendor/Payouts');
+    }
 }
