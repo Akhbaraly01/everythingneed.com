@@ -80,7 +80,7 @@ class ProductCrudTest extends TestCase
             ]);
 
         $response->assertStatus(201)
-            ->assertJsonFragment(['message' => 'Product created successfully']);
+            ->assertJsonFragment(['message' => 'Product submitted for approval']);
 
         $this->assertDatabaseHas('products', [
             'vendor_id' => $vendor->id,

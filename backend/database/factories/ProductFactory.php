@@ -20,6 +20,9 @@ class ProductFactory extends Factory
             'stock_quantity' => fake()->numberBetween(0, 100),
             'category' => fake()->randomElement(['electronics', 'clothing', 'home', 'beauty']),
             'is_active' => true,
+            // Factory items represent an established catalogue — approved by default.
+            // The approval-queue lifecycle is covered explicitly in ProductApprovalTest.
+            'approved_at' => now(),
         ];
     }
 }

@@ -45,4 +45,17 @@ export default defineConfig({
       "@shared": path.resolve(__dirname, "./src/shared"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // Split heavy vendor libraries out of the main bundle (§40)
+        manualChunks: {
+          "vendor-react": ["react", "react-dom", "react-router-dom"],
+          "vendor-charts": ["recharts"],
+          "vendor-query": ["@tanstack/react-query"],
+          "vendor-motion": ["framer-motion"],
+        },
+      },
+    },
+  },
 });
