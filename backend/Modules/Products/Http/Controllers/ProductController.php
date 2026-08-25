@@ -55,10 +55,24 @@ class ProductController extends Controller
             return response()->json(['message' => 'You may only create products for your own vendor account'], 403);
         }
 
-        $product = $this->productService->create($request->validated());
+        $data = $request->validated();
+
+        if ($this->isAdmin($request)) {
+            // Admins publish directly.
+            $data['approved_at'] = now();
+            $data['is_active'] = true;
+        } else {
+            // Vendor submissions enter the admin approval queue, hidden until then.
+            $data['is_active'] = false;
+            $data['approved_at'] = null;
+        }
+
+        $product = $this->productService->create($data);
 
         return response()->json([
-            'message' => 'Product created successfully',
+            'message' => $data['approved_at']
+                ? 'Product created successfully'
+                : 'Product submitted for approval',
             'data' => new ProductResource($product),
         ], 201);
     }

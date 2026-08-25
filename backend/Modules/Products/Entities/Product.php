@@ -26,6 +26,7 @@ class Product extends Model
         'production_video_url',
         'stock_quantity',
         'is_active',
+        'approved_at',
         'rating',
         'reviews_count',
     ];
@@ -36,6 +37,7 @@ class Product extends Model
         'images' => 'array',
         'stock_quantity' => 'integer',
         'is_active' => 'boolean',
+        'approved_at' => 'datetime',
         'rating' => 'decimal:1',
         'reviews_count' => 'integer',
     ];

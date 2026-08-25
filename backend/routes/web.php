@@ -68,6 +68,7 @@ use App\Http\Controllers\Web\MessagingPageController;
 use App\Http\Controllers\Web\VendorPortalPageController;
 use App\Http\Controllers\Web\HealthcarePageController;
 use App\Http\Controllers\Web\ServiceRequestsPageController;
+use App\Http\Controllers\Web\AdminPageController;
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [WebAuthController::class, 'showLogin'])->name('login');
@@ -126,6 +127,11 @@ Route::middleware('auth')->group(function () {
 // Public vertical landings (Inertia)
 Route::get('/agriculture', [ServiceRequestsPageController::class, 'agriculture'])->name('agriculture.index');
 Route::get('/building-services', [ServiceRequestsPageController::class, 'buildingServices'])->name('building-services.index');
+
+// Admin console (Inertia, role-gated)
+Route::middleware('role:super_admin,administrator,category_admin')->prefix('admin')->group(function () {
+    Route::get('/approvals', [AdminPageController::class, 'approvals'])->name('admin.approvals');
+});
 
 Route::get('/{path}', function (string $path) use ($frontendUrl) {
     return redirect()->away($frontendUrl($path));

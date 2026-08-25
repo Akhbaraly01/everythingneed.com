@@ -12,6 +12,7 @@ use Modules\Admin\Http\Controllers\AdminAnalyticsController;
 use Modules\Admin\Http\Controllers\AdminCmsController;
 use Modules\Admin\Http\Controllers\AdminSupportController;
 use Modules\Admin\Http\Controllers\AdminRbacController;
+use Modules\Admin\Http\Controllers\AdminProductApprovalController;
 
 /*
 |--------------------------------------------------------------------------
@@ -134,6 +135,15 @@ Route::prefix('api/admin')->middleware(['api', 'auth:sanctum', 'role:super_admin
     // RBAC management
     Route::get('/roles', [AdminRbacController::class, 'roles'])
         ->can('manageUsers');
+
+    // Product approval queue
+    Route::get('/products/pending', [AdminProductApprovalController::class, 'pending'])
+        ->middleware('role:super_admin,administrator,category_admin');
+    Route::post('/products/{id}/approve', [AdminProductApprovalController::class, 'approve'])
+        ->middleware('role:super_admin,administrator,category_admin');
+    Route::post('/products/{id}/reject', [AdminProductApprovalController::class, 'reject'])
+        ->middleware('role:super_admin,administrator,category_admin');
+
     Route::get('/permissions', [AdminRbacController::class, 'permissions'])
         ->can('manageUsers');
     Route::get('/rbac/matrix', [AdminRbacController::class, 'matrix'])

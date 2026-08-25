@@ -1,6 +1,5 @@
 import { type ReactNode } from 'react';
 import { Link, usePage } from '@inertiajs/react';
-import { useApp } from '@/hooks/use-app';
 import { getInitials } from '@/lib/utils';
 import {
     LayoutDashboard,
@@ -26,6 +25,7 @@ import {
     Handshake,
     Sprout,
     HardHat,
+    ShieldCheck,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -53,9 +53,17 @@ const navigation = [
     { name: 'Help', href: '/support/tickets', icon: HelpCircle },
 ];
 
+const adminNavigation = [
+    { name: 'Admin - Approvals', href: '/admin/approvals', icon: ShieldCheck },
+];
+
 export default function AppLayout({ children, title }: AppLayoutProps) {
-    const { user } = useApp();
+    const { user } = usePage().props.auth as { user: { id: string; name: string } };
     const page = usePage();
+    const authRoles = (page.props.auth as { roles?: string[] })?.roles ?? [];
+    const isAdminArea = authRoles.some((r) =>
+        ['super_admin', 'administrator', 'category_admin'].includes(r),
+    );
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [profileOpen, setProfileOpen] = useState(false);
 
@@ -76,7 +84,7 @@ export default function AppLayout({ children, title }: AppLayoutProps) {
                                 </button>
                             </div>
                             <nav className="flex-1 space-y-1 px-3">
-                                {navigation.map((item) => (
+                                {[...navigation, ...(isAdminArea ? adminNavigation : [])].map((item) => (
                                     <Link
                                         key={item.name}
                                         href={item.href}
@@ -106,7 +114,7 @@ export default function AppLayout({ children, title }: AppLayoutProps) {
                             </Link>
                         </div>
                         <nav className="mt-8 flex-1 space-y-1 px-3">
-                            {navigation.map((item) => (
+                            {[...navigation, ...(isAdminArea ? adminNavigation : [])].map((item) => (
                                 <Link
                                     key={item.name}
                                     href={item.href}

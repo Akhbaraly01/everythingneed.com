@@ -62,6 +62,11 @@ class ProductService
             $query->where('is_active', $filters['is_active']);
         }
 
+        // Public listings never surface unapproved submissions.
+        if (empty($filters['include_unapproved'])) {
+            $query->whereNotNull('approved_at');
+        }
+
         return $query->orderBy('created_at', 'desc')
             ->paginate($perPage, ['*'], 'page', $page);
     }
