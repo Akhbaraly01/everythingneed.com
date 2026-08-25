@@ -12,6 +12,14 @@ class ProductApprovalTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // The granular matrix gates the admin queue endpoints.
+        $this->seed(\Database\Seeders\PermissionSeeder::class);
+        \Illuminate\Support\Facades\Cache::forget('rbac.matrix');
+    }
+
     private function vendorUser(): array
     {
         $user = User::factory()->create();

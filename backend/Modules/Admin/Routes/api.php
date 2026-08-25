@@ -139,11 +139,11 @@ Route::prefix('api/admin')->middleware(['api', 'auth:sanctum', 'role:super_admin
 
     // Product approval queue
     Route::get('/products/pending', [AdminProductApprovalController::class, 'pending'])
-        ->middleware('role:super_admin,administrator,category_admin');
+        ->middleware('permission:products.approve');
     Route::post('/products/{id}/approve', [AdminProductApprovalController::class, 'approve'])
-        ->middleware('role:super_admin,administrator,category_admin');
+        ->middleware('permission:products.approve');
     Route::post('/products/{id}/reject', [AdminProductApprovalController::class, 'reject'])
-        ->middleware('role:super_admin,administrator,category_admin');
+        ->middleware('permission:products.approve');
 
     // Departments (shared by support + healthcare)
     Route::get('/departments', [AdminDepartmentController::class, 'index'])
