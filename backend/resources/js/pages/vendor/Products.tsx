@@ -5,6 +5,7 @@ import { api, ApiError } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, X, Package } from 'lucide-react';
+import ConfirmDialog, { EmptyState } from '@/components/shared/Ui';
 
 interface Product {
     id: string;
@@ -26,6 +27,7 @@ export default function VendorProducts({ products }: Props) {
     const [creating, setCreating] = useState(false);
     const [form, setForm] = useState(emptyForm);
     const [busy, setBusy] = useState(false);
+    const [pendingDelete, setPendingDelete] = useState<Product | null>(null);
 
     const openCreate = () => { setForm(emptyForm); setEditing(null); setCreating(true); };
     const openEdit = (p: Product) => {
@@ -71,13 +73,16 @@ export default function VendorProducts({ products }: Props) {
     };
 
     const destroy = async (p: Product) => {
-        if (!confirm(`Delete "${p.name}"? This cannot be undone.`)) return;
+        setBusy(true);
         try {
             await api.del(`/api/products/${p.id}`);
             toast.success('Product deleted');
+            setPendingDelete(null);
             router.reload({ only: ['products'] });
         } catch (err) {
             toast.error(err instanceof ApiError ? err.message : 'Delete failed');
+        } finally {
+            setBusy(false);
         }
     };
 
@@ -93,13 +98,15 @@ export default function VendorProducts({ products }: Props) {
                 </div>
 
                 {products.data.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-gray-300 p-16 text-center dark:border-gray-600">
-                        <Package className="mx-auto mb-3 h-10 w-10 text-gray-300" />
-                        <p className="font-medium text-gray-900 dark:text-white">No products yet</p>
-                        <button onClick={openCreate} className="mt-3 inline-block rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
-                            Create your first product
-                        </button>
-                    </div>
+                    <EmptyState
+                        icon={<Package className="h-10 w-10" />}
+                        title="No products yet"
+                        action={
+                            <button onClick={openCreate} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
+                                Create your first product
+                            </button>
+                        }
+                    />
                 ) : (
                     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
                         <table className="w-full text-left text-sm">
@@ -128,7 +135,7 @@ export default function VendorProducts({ products }: Props) {
                                         <td className="px-5 py-3">
                                             <div className="flex justify-end gap-2">
                                                 <button onClick={() => openEdit(p)} className="text-gray-400 hover:text-indigo-600"><Pencil className="h-4 w-4" /></button>
-                                                <button onClick={() => destroy(p)} className="text-gray-400 hover:text-red-500"><Trash2 className="h-4 w-4" /></button>
+                                                <button onClick={() => setPendingDelete(p)} className="text-gray-400 hover:text-red-500"><Trash2 className="h-4 w-4" /></button>
                                             </div>
                                         </td>
                                     </tr>
@@ -162,6 +169,18 @@ export default function VendorProducts({ products }: Props) {
                         </form>
                     </div>
                 )}
+
+                {/* Delete confirmation */}
+                <ConfirmDialog
+                    open={pendingDelete !== null}
+                    title={`Delete "${pendingDelete?.name ?? ''}"?`}
+                    description="This permanently removes the product from your store. This cannot be undone."
+                    confirmLabel="Delete product"
+                    danger
+                    busy={busy}
+                    onConfirm={() => pendingDelete && destroy(pendingDelete)}
+                    onCancel={() => setPendingDelete(null)}
+                />
             </div>
         </AppLayout>
     );

@@ -4,7 +4,8 @@ import AppLayout from '@/layouts/AppLayout';
 import { api, ApiError } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
-import { ShoppingCart, Truck, PackageCheck, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ShoppingCart, Truck, PackageCheck } from 'lucide-react';
+import Pagination from '@/components/shared/Pagination';
 
 interface VendorOrderRow {
     id: string;
@@ -120,21 +121,7 @@ export default function VendorOrders({ orders }: Props) {
                     </div>
                 )}
 
-                {orders.last_page > 1 && (
-                    <div className="mt-6 flex items-center justify-center gap-3">
-                        {orders.current_page > 1 && (
-                            <Link href={`/vendor/orders?page=${orders.current_page - 1}`} preserveState className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 dark:border-gray-600 dark:text-white">
-                                <ChevronLeft className="h-4 w-4" />
-                            </Link>
-                        )}
-                        <span className="text-sm text-gray-600 dark:text-gray-300">Page {orders.current_page} of {orders.last_page}</span>
-                        {orders.current_page < orders.last_page && (
-                            <Link href={`/vendor/orders?page=${orders.current_page + 1}`} preserveState className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 dark:border-gray-600 dark:text-white">
-                                <ChevronRight className="h-4 w-4" />
-                            </Link>
-                        )}
-                    </div>
-                )}
+                <Pagination currentPage={orders.current_page} lastPage={orders.last_page} hrefFor={(p) => `/vendor/orders?page=${p}`} />
             </div>
         </AppLayout>
     );
