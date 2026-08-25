@@ -133,6 +133,10 @@ Route::middleware('role:super_admin,administrator,category_admin')->prefix('admi
     Route::get('/approvals', [AdminPageController::class, 'approvals'])->name('admin.approvals');
 });
 
+Route::middleware('role:super_admin,administrator,customer_service,support_staff')->prefix('admin')->group(function () {
+    Route::get('/departments', [AdminPageController::class, 'departments'])->name('admin.departments');
+});
+
 Route::get('/{path}', function (string $path) use ($frontendUrl) {
     return redirect()->away($frontendUrl($path));
 })->where('path', '^(?!api|up|storage|sanctum|telescope).*$');

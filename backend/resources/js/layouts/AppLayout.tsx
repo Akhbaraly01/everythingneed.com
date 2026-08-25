@@ -26,6 +26,7 @@ import {
     Sprout,
     HardHat,
     ShieldCheck,
+    Building2,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -55,6 +56,7 @@ const navigation = [
 
 const adminNavigation = [
     { name: 'Admin - Approvals', href: '/admin/approvals', icon: ShieldCheck },
+    { name: 'Admin - Departments', href: '/admin/departments', icon: Building2 },
 ];
 
 export default function AppLayout({ children, title }: AppLayoutProps) {

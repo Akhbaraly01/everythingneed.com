@@ -45,4 +45,24 @@ class AdminPageController extends Controller
             'recentDecisions' => $recentDecisions,
         ]);
     }
+
+    public function departments(): Response
+    {
+        $departments = DB::table('departments')
+            ->leftJoin('tickets', 'tickets.department_id', '=', 'departments.id')
+            ->select(
+                'departments.id',
+                'departments.name',
+                'departments.description',
+                'departments.created_at',
+                DB::raw('count(tickets.id) as tickets_count'),
+            )
+            ->groupBy('departments.id')
+            ->orderBy('departments.name')
+            ->get();
+
+        return Inertia::render('admin/Departments', [
+            'departments' => $departments,
+        ]);
+    }
 }

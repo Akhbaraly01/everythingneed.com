@@ -13,6 +13,7 @@ use Modules\Admin\Http\Controllers\AdminCmsController;
 use Modules\Admin\Http\Controllers\AdminSupportController;
 use Modules\Admin\Http\Controllers\AdminRbacController;
 use Modules\Admin\Http\Controllers\AdminProductApprovalController;
+use Modules\Admin\Http\Controllers\AdminDepartmentController;
 
 /*
 |--------------------------------------------------------------------------
@@ -143,6 +144,16 @@ Route::prefix('api/admin')->middleware(['api', 'auth:sanctum', 'role:super_admin
         ->middleware('role:super_admin,administrator,category_admin');
     Route::post('/products/{id}/reject', [AdminProductApprovalController::class, 'reject'])
         ->middleware('role:super_admin,administrator,category_admin');
+
+    // Departments (shared by support + healthcare)
+    Route::get('/departments', [AdminDepartmentController::class, 'index'])
+        ->middleware('role:super_admin,administrator,customer_service,support_staff');
+    Route::post('/departments', [AdminDepartmentController::class, 'store'])
+        ->middleware('role:super_admin,administrator');
+    Route::put('/departments/{id}', [AdminDepartmentController::class, 'update'])
+        ->middleware('role:super_admin,administrator');
+    Route::delete('/departments/{id}', [AdminDepartmentController::class, 'destroy'])
+        ->middleware('role:super_admin,administrator');
 
     Route::get('/permissions', [AdminRbacController::class, 'permissions'])
         ->can('manageUsers');
