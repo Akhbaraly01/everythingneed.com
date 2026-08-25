@@ -3,7 +3,10 @@
 namespace Modules\Orders\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
+use Modules\Orders\Events;
+use Modules\Orders\Listeners;
 
 class OrdersServiceProvider extends ServiceProvider
 {
@@ -16,6 +19,13 @@ class OrdersServiceProvider extends ServiceProvider
     {
         $this->registerRoutes();
         $this->registerResources();
+        $this->registerListeners();
+    }
+
+    protected function registerListeners(): void
+    {
+        Event::listen(Events\OrderPlaced::class, Listeners\SendOrderConfirmation::class);
+        Event::listen(Events\OrderCancelled::class, Listeners\ProcessOrderCancellation::class);
     }
 
     protected function registerRoutes(): void

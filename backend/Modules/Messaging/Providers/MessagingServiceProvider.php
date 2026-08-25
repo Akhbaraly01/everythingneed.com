@@ -25,6 +25,11 @@ class MessagingServiceProvider extends ServiceProvider
             \Modules\Messaging\Events\TicketReplied::class,
             \Modules\Messaging\Listeners\NotifyUserOfReply::class,
         );
+
+        \Illuminate\Support\Facades\Event::listen(
+            \Modules\Messaging\Events\TicketCreated::class,
+            \Modules\Messaging\Listeners\NotifyDepartmentOfTicket::class,
+        );
     }
 
     protected function registerRoutes(): void

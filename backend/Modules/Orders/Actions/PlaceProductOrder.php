@@ -8,6 +8,7 @@ use Modules\Orders\Entities\Order;
 use Modules\Orders\Entities\OrderItem;
 use Modules\Orders\Entities\OrderTracking;
 use Modules\Orders\Entities\VendorOrder;
+use Modules\Orders\Events\OrderPlaced;
 use Modules\Products\Entities\Product;
 use Core\Exceptions\ValidationException;
 
@@ -143,7 +144,11 @@ class PlaceProductOrder
                 'updated_at' => now(),
             ]);
 
-            return $order->fresh(['items']);
-        });
+        $fresh = $order->fresh(['items']);
+
+        OrderPlaced::dispatch($fresh);
+
+        return $fresh;
+    });
     }
 }

@@ -3,6 +3,7 @@
 namespace Modules\Messaging\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use Modules\Messaging\Events\TicketCreated;
 use Modules\Messaging\Services\MessagingService;
 use Modules\Messaging\Http\Requests\CreateTicketRequest;
 use Modules\Messaging\Http\Requests\ReplyTicketRequest;
@@ -54,6 +55,8 @@ class TicketController extends Controller
             $request->user()->id,
             $request->validated()
         );
+
+        TicketCreated::dispatch($ticket);
 
         return response()->json([
             'message' => 'Ticket created successfully',

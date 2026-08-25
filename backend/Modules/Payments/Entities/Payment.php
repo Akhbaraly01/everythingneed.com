@@ -6,6 +6,11 @@ use App\Models\Model;
 
 class Payment extends Model
 {
+    public function order()
+    {
+        return $this->belongsTo(\Modules\Orders\Entities\Order::class, 'order_id');
+    }
+
     protected $fillable = [
         'order_id',
         'user_id',

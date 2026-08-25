@@ -10,6 +10,7 @@ use Modules\Orders\Actions\PlaceProductOrder;
 use Modules\Orders\Entities\Order;
 use Modules\Orders\Entities\OrderItem;
 use Modules\Orders\Entities\OrderTracking;
+use Modules\Orders\Events\OrderCancelled;
 
 class ProductOrderController extends Controller
 {
@@ -132,6 +133,8 @@ class ProductOrderController extends Controller
             \Modules\Orders\Entities\VendorOrder::where('order_id', $order->id)
                 ->whereIn('status', ['pending', 'processing'])
                 ->update(['status' => 'cancelled']);
+
+            OrderCancelled::dispatch($order->fresh());
         });
 
         return response()->json([

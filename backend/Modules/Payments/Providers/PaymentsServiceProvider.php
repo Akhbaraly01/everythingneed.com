@@ -3,7 +3,10 @@
 namespace Modules\Payments\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
+use Modules\Payments\Events;
+use Modules\Payments\Listeners;
 
 class PaymentsServiceProvider extends ServiceProvider
 {
@@ -16,6 +19,13 @@ class PaymentsServiceProvider extends ServiceProvider
     {
         $this->registerRoutes();
         $this->registerResources();
+        $this->registerListeners();
+    }
+
+    protected function registerListeners(): void
+    {
+        Event::listen(Events\PaymentCompleted::class, Listeners\UpdateOrderStatus::class);
+        Event::listen(Events\RefundProcessed::class, Listeners\ProcessRefundNotification::class);
     }
 
     protected function registerRoutes(): void

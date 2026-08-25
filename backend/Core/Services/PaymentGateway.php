@@ -40,6 +40,10 @@ class PaymentGateway extends BaseService implements PaymentGatewayInterface
                 'reference' => $gatewayResponse['transaction_id'] ?? $payment->reference,
             ]);
 
+            if ($payment->status === Payment::STATUS_SUCCEEDED) {
+                \Modules\Payments\Events\PaymentCompleted::dispatch($payment);
+            }
+
             return [
                 'success' => true,
                 'payment_id' => $payment->id,
@@ -47,8 +51,7 @@ class PaymentGateway extends BaseService implements PaymentGatewayInterface
                 'amount' => $payment->amount,
                 'status' => $payment->status,
                 'requires_verification' => $payment->status === Payment::STATUS_PROCESSING,
-            ];
-        } catch (\Exception $e) {
+            ];        } catch (\Exception $e) {
             $payment->update([
                 'status' => Payment::STATUS_FAILED,
                 'gateway_response' => ['error' => $e->getMessage()],
@@ -85,6 +88,7 @@ class PaymentGateway extends BaseService implements PaymentGatewayInterface
                 'status' => 'succeeded',
                 'gateway_response' => $gatewayResponse,
             ]);
+            \Modules\Payments\Events\RefundProcessed::dispatch($refund->fresh());
 
             $newStatus = $refundAmount < $payment->amount
                 ? Payment::STATUS_PARTIALLY_REFUNDED
