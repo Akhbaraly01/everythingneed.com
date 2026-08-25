@@ -8,6 +8,8 @@ Route::prefix('api')->group(function () {
         Route::post('/hotels/{id}/reserve', [HotelController::class, 'reserve']);
         Route::get('/hotels/reservations/mine', [HotelController::class, 'myReservations']);
         Route::post('/hotels/reservations/{id}/cancel', [HotelController::class, 'cancelReservation']);
+        Route::post('/hotels/reservations/{id}/check-in', [HotelController::class, 'checkIn']);
+        Route::post('/hotels/reservations/{id}/check-out', [HotelController::class, 'checkOut']);
     });
 
     // Public reads

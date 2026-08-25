@@ -1,73 +1,67 @@
-# Welcome to your Lovable project
+# EverythingNeed.com
 
-## Project info
+A multi-vendor, multi-service platform: marketplace, services, bookings,
+transportation, hotels, jobs, learning, healthcare, pharmacy, food and more.
 
-**URL**: https://lovable.dev/projects/a3d95fa1-317f-49d0-a553-ced23f7d0321
+**Stack** — Laravel 13 (modular monolith, DDD) · PostgreSQL 18 · Inertia.js v2 ·
+React 18 · TypeScript · Tailwind CSS · Sanctum auth · Reverb realtime.
 
-## How can I edit this code?
+---
 
-There are several ways of editing your application.
+## Repository layout
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/a3d95fa1-317f-49d0-a553-ced23f7d0321) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```
+everythingneed-com/
+├── backend/                 Laravel API + Inertia pages (primary app shell)
+│   ├── Modules/<Name>/      Domain modules: Entities, Http, Actions,
+│   │                        Services, Routes, Providers, Events, Listeners
+│   ├── Core/                Shared kernel: Services+Contracts, Exceptions,
+│   │                        Policies, Traits, Enums
+│   ├── app/Http/Controllers/Web   Inertia page controllers
+│   ├── resources/js/pages         Inertia React pages
+│   └── routes/web.php             Web (Inertia) routes; /api via modules
+├── frontend/                Legacy SPA surface (React Router), still served
+│   └── src/modules/         37 feature modules migrating into backend/
+└── scripts/                 Architecture guard scripts
 ```
 
-**Edit a file directly in GitHub**
+See [ARCHITECTURE.md](ARCHITECTURE.md) for module boundaries and conventions and
+[DEVELOPMENT.md](DEVELOPMENT.md) to get running in five minutes.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Quick start
 
-**Use GitHub Codespaces**
+```bash
+# Backend (API :8000 + Inertia shell)
+cd backend
+composer install && npm install
+cp .env.example .env            # set DB_* to your PostgreSQL
+php artisan key:generate
+php artisan migrate --seed      # demo data: 13 roles, products, flights…
+npm run dev                     # or: php artisan serve
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+# Legacy SPA (:8080, proxies /api to backend)
+cd ../frontend
+npm install && npm run dev
+```
 
-## What technologies are used for this project?
+**Test accounts (DEV ONLY, password `password`):**
+`super@everythingneed.com` · `admin@…` · `vendor@…` · `cs@…`
 
-This project is built with:
+## Testing
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+```bash
+cd backend && php artisan test          # 380+ tests on PostgreSQL
+cd frontend && npx playwright test      # browser smoke suite
+node scripts/check-api-usage.mjs        # architecture tripwires
+```
 
-## How can I deploy this project?
+## Key conventions
 
-Simply open [Lovable](https://lovable.dev/projects/a3d95fa1-317f-49d0-a553-ced23f7d0321) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+- **PostgreSQL only.** UUID primary keys, soft deletes where meaningful.
+- **Authorization is server-side**: role middleware *and* granular
+  `permission:<module.action>` matrix (`role_permissions` table).
+- **Payments** go through `PaymentGatewayInterface` (`config/payments.php`);
+  the `mock` driver is blocked in production.
+- **No BaaS SDKs** — ESLint and CI tripwires reject Supabase/Firebase imports.
+- New user-facing features land as **Inertia pages** under
+  `backend/resources/js/pages/<Module>/`.

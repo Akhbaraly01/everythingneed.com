@@ -206,6 +206,31 @@ Single-section modules keep the flat layer layout (`components/`, `pages/`, ...)
 
 To migrate the next module: move files into `src/modules/<name>/`, rewrite the barrel `index.ts` to use relative paths, and update any direct `@/pages/...` imports in `App.tsx` to use `@modules/<name>`.
 
+## Backend modular monolith (live)
+
+The Laravel backend under `backend/Modules/<Name>/` is the authoritative
+implementation. 34 domain modules ship with:
+
+| Layer | Location | Notes |
+|---|---|---|
+| Entities | `Modules/<X>/Entities` | extend `App\Models\Model` (UUID + soft deletes) |
+| HTTP | `Modules/<X>/Http/{Controllers,Requests,Resources}` | JSON API per module |
+| Actions | `Modules/<X>/Actions` | one command per mutation |
+| Routes | `Modules/<X>/Routes/api.php` | registered by the module provider |
+| Events/Listeners | `Modules/<X>/{Events,Listeners}` | registered in module provider |
+| Web (Inertia) | `app/Http/Controllers/Web/*PageController.php` → `resources/js/pages/**` | new user-facing surfaces land here |
+
+Shared kernel: `Core/Services` + `Core/Services/Contracts`
+(PaymentGateway, Notification, Pricing, Wallet, Audit…), `Core/Exceptions`,
+`Core/Policies`. Authorization = role middleware **and** granular
+`permission:<module.action>` matrix seeded by `PermissionSeeder`
+(`role_permissions` table; enforced by
+`App\Http\Middleware\EnsureUserHasPermission`).
+
+Data plane rules: module REST APIs are canonical. The generic TableGateway
+(`/api/db/{table}`) is a legacy read/write plane with a strict whitelist —
+sensitive tables (`user_certificates`, `orders`, …) are read-only there.
+
 ---
 
 ## Enterprise Enforcement (Laravel 13 parity)

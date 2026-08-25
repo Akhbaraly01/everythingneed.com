@@ -7,6 +7,7 @@ use App\Models\Model;
 class HotelReservation extends Model
 {
     protected $fillable = [
+        'reference',
         'user_id',
         'hotel_id',
         'room_id',
@@ -17,6 +18,8 @@ class HotelReservation extends Model
         'currency',
         'status',
         'special_requests',
+        'checked_in_at',
+        'checked_out_at',
     ];
 
     protected $casts = [
@@ -24,6 +27,8 @@ class HotelReservation extends Model
         'check_out_date' => 'date',
         'guests' => 'integer',
         'total_amount' => 'decimal:2',
+        'checked_in_at' => 'datetime',
+        'checked_out_at' => 'datetime',
     ];
 
     const STATUS_PENDING = 'pending';

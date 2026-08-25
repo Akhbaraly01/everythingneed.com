@@ -115,6 +115,7 @@ class HotelController extends Controller
                 $total = round(((float) $room->price_per_night) * max(1, $nights), 2);
 
                 return HotelReservation::create([
+                    'reference' => 'HTR-'.strtoupper(\Illuminate\Support\Str::random(6)),
                     'user_id' => $request->user()->id,
                     'hotel_id' => $hotelId,
                     'room_id' => $room->id,
@@ -155,6 +156,53 @@ class HotelController extends Controller
                 'per_page' => $reservations->perPage(),
                 'total' => $reservations->total(),
             ],
+        ]);
+    }
+
+    /**
+     * §14 stay lifecycle: confirmed → checked_in → checked_out (→ completed).
+     * Owner or staff; timestamps recorded for the folio.
+     */
+    public function checkIn(Request $request, string $id): JsonResponse
+    {
+        return $this->stayTransition($request, $id, 'confirmed', 'checked_in', 'checked_in_at');
+    }
+
+    public function checkOut(Request $request, string $id): JsonResponse
+    {
+        return $this->stayTransition($request, $id, 'checked_in', 'checked_out', 'checked_out_at');
+    }
+
+    private function stayTransition(Request $request, string $id, string $from, string $to, string $stampColumn): JsonResponse
+    {
+        $reservation = HotelReservation::find($id);
+
+        if (!$reservation) {
+            return response()->json(['message' => 'Reservation not found'], 404);
+        }
+
+        $user = $request->user();
+        $isOwner = (string) $reservation->user_id === (string) $user->id;
+        $isStaff = $user->hasRole('super_admin') || $user->hasRole('administrator');
+
+        if (!$isOwner && !$isStaff) {
+            return response()->json(['message' => 'You do not have access to this reservation'], 403);
+        }
+
+        if ($reservation->status !== $from) {
+            return response()->json([
+                'message' => "Cannot {$to} a reservation in status '{$reservation->status}'",
+            ], 422);
+        }
+
+        $reservation->update([
+            'status' => $to === 'checked_out' ? HotelReservation::STATUS_COMPLETED : $to,
+            $stampColumn => now(),
+        ]);
+
+        return response()->json([
+            'message' => ucfirst(str_replace('_', ' ', $to)).' successfully',
+            'data' => $reservation->fresh(),
         ]);
     }
 
