@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Core\Traits\HasUuid;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -15,7 +16,7 @@ use Modules\Users\Entities\UserCertificate;
 use Modules\Learn\Entities\Enrollment;
 use Modules\Engagement\Entities\Wishlist;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     use HasApiTokens, HasFactory, HasUuid, Notifiable, SoftDeletes;
 

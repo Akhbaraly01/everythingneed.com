@@ -69,6 +69,7 @@ use App\Http\Controllers\Web\VendorPortalPageController;
 use App\Http\Controllers\Web\HealthcarePageController;
 use App\Http\Controllers\Web\ServiceRequestsPageController;
 use App\Http\Controllers\Web\AdminPageController;
+use App\Http\Controllers\Web\VerificationController;
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [WebAuthController::class, 'showLogin'])->name('login');
@@ -80,6 +81,20 @@ Route::middleware('guest')->group(function () {
 Route::post('/logout', [WebAuthController::class, 'logout'])
     ->middleware('auth')
     ->name('logout');
+
+Route::middleware('auth')->group(function () {
+    Route::get('/email/verify', function () {
+        return inertia('auth/VerifyEmail');
+    })->name('verification.notice');
+
+    Route::get('/email/verify/{id}/{hash}', [VerificationController::class, 'verify'])
+        ->middleware(['signed', 'throttle:6,10'])
+        ->name('verification.verify');
+
+    Route::post('/email/verification-notification', [VerificationController::class, 'send'])
+        ->middleware('throttle:6,1')
+        ->name('verification.send');
+});
 
 // Job Seekers (Inertia deep pages)
 Route::get('/job-seekers', [JobSeekersPageController::class, 'index'])->name('job-seekers.index');

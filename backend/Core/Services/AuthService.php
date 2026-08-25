@@ -38,6 +38,13 @@ class AuthService extends BaseService implements AuthServiceInterface
             throw new \InvalidArgumentException('Invalid credentials.');
         }
 
+        // Suspended accounts are locked out of new sessions entirely.
+        if ($user->suspended_at) {
+            throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException(
+                'This account has been suspended. Contact support for assistance.'
+            );
+        }
+
         if ($user->twoFactorSecret && $user->twoFactorSecret->enabled) {
             $pendingToken = Str::random(60);
             cache()->put("2fa_pending:{$pendingToken}", $user->id, 300);

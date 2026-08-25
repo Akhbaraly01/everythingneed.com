@@ -34,6 +34,12 @@ class WebAuthController extends Controller
             ]);
         }
 
+        if ($user->suspended_at) {
+            throw ValidationException::withMessages([
+                'email' => __('This account has been suspended. Contact support for assistance.'),
+            ]);
+        }
+
         Auth::login($user, $request->boolean('remember'));
         $request->session()->regenerate();
 
