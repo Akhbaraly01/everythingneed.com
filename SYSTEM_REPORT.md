@@ -19,9 +19,9 @@
 | 7 | Roles | **13** seeded (super_admin → user incl. `worker`) |
 | 8 | Permissions | **52** granular (`module.action`), **121** role grants in DB matrix |
 | 9 | End-to-end workflows completed this session | **8 deep chains** (see below) |
-| 10 | Tests passed | **348 tests / 1,164 assertions** ✅ |
+| 10 | Tests passed | **387 tests / 1,291 assertions** ✅ |
 | 11 | Tests failed | **0** |
-| 12 | Issues fixed this session | **21** (below) |
+| 12 | Issues fixed this session | **24** (below) |
 | 13 | Remaining issues | **7** (honest list below) |
 
 ### Deep chains delivered end-to-end (backend + frontend + tests + seed data)
