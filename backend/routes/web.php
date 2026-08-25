@@ -137,6 +137,10 @@ Route::middleware('role:super_admin,administrator,customer_service,support_staff
     Route::get('/departments', [AdminPageController::class, 'departments'])->name('admin.departments');
 });
 
+Route::middleware('role:super_admin')->prefix('admin')->group(function () {
+    Route::get('/rbac', [AdminPageController::class, 'rbac'])->name('admin.rbac');
+});
+
 Route::get('/{path}', function (string $path) use ($frontendUrl) {
     return redirect()->away($frontendUrl($path));
 })->where('path', '^(?!api|up|storage|sanctum|telescope).*$');

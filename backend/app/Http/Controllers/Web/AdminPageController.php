@@ -65,4 +65,13 @@ class AdminPageController extends Controller
             'departments' => $departments,
         ]);
     }
+
+    public function rbac(): Response
+    {
+        // Matrix is fetched client-side (super-admin-gated API) so the page
+        // stays in sync after every grant/revoke without a full reload.
+        return Inertia::render('admin/Rbac', [
+            'catalog' => \Database\Seeders\PermissionSeeder::CATALOG,
+        ]);
+    }
 }

@@ -27,6 +27,7 @@ import {
     HardHat,
     ShieldCheck,
     Building2,
+    KeyRound,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -57,6 +58,7 @@ const navigation = [
 const adminNavigation = [
     { name: 'Admin - Approvals', href: '/admin/approvals', icon: ShieldCheck },
     { name: 'Admin - Departments', href: '/admin/departments', icon: Building2 },
+    { name: 'Admin - RBAC', href: '/admin/rbac', icon: KeyRound },
 ];
 
 export default function AppLayout({ children, title }: AppLayoutProps) {
