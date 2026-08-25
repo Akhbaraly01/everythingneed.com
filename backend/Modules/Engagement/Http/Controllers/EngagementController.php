@@ -19,6 +19,62 @@ class EngagementController extends Controller
         return response()->json(['data' => $items]);
     }
 
+    /**
+     * Product comparison set (server-backed, capped).
+     */
+    public function compare(Request $request): JsonResponse
+    {
+        $items = \Modules\Engagement\Entities\ProductComparison::with('product:id,name,price,image_url,rating,vendor_id')
+            ->where('user_id', $request->user()->id)
+            ->orderBy('created_at')
+            ->get();
+
+        return response()->json(['data' => $items]);
+    }
+
+    public function addToCompare(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'product_id' => ['required', 'uuid', 'exists:products,id'],
+        ]);
+
+        $userId = $request->user()->id;
+
+        // Already present → idempotent success
+        if (\Modules\Engagement\Entities\ProductComparison::where('user_id', $userId)
+            ->where('product_id', $validated['product_id'])->exists()) {
+            return response()->json(['message' => 'Already in comparison']);
+        }
+
+        $count = \Modules\Engagement\Entities\ProductComparison::where('user_id', $userId)->count();
+        if ($count >= \Modules\Engagement\Entities\ProductComparison::MAX_ITEMS) {
+            return response()->json([
+                'message' => 'Comparison is full',
+                'error' => 'Remove an item before adding another (max '.\Modules\Engagement\Entities\ProductComparison::MAX_ITEMS.').',
+            ], 422);
+        }
+
+        \Modules\Engagement\Entities\ProductComparison::create([
+            'user_id' => $userId,
+            'product_id' => $validated['product_id'],
+        ]);
+
+        return response()->json(['message' => 'Added to comparison'], 201);
+    }
+
+    public function removeFromCompare(Request $request, string $productId): JsonResponse
+    {
+        $deleted = \Modules\Engagement\Entities\ProductComparison::where('user_id', $request->user()->id)
+            ->where('product_id', $productId)
+            ->delete();
+
+        if (!$deleted) {
+            return response()->json(['message' => 'Not in comparison'], 404);
+        }
+
+        return response()->json(['message' => 'Removed from comparison']);
+    }
+
     public function addToWishlist(Request $request): JsonResponse
     {
         $request->validate([
