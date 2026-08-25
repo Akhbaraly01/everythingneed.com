@@ -10,6 +10,13 @@ class PaymentGateway extends BaseService implements PaymentGatewayInterface
 {
     public function charge(array $data): array
     {
+        // Guardrail: the mock driver must never silently run in production.
+        if (config('payments.driver') === 'mock'
+            && app()->environment('production')
+            && !config('payments.allow_mock_in_production')) {
+            throw new \RuntimeException('Mock payment driver is disabled in production. Set PAYMENTS_DRIVER.');
+        }
+
         $payment = Payment::create([
             'order_id' => $data['order_id'] ?? null,
             'user_id' => $data['user_id'],
@@ -17,14 +24,18 @@ class PaymentGateway extends BaseService implements PaymentGatewayInterface
             'currency' => $data['currency'] ?? 'USD',
             'status' => Payment::STATUS_PENDING,
             'method' => $data['method'],
-            'reference' => $data['reference'] ?? null,
+            'reference' => $data['reference'] ?? ('PAY-'.strtoupper(bin2hex(random_bytes(6)))),
             'gateway_response' => null,
         ]);
 
         try {
             $gatewayResponse = $this->processWithGateway($data);
+
             $payment->update([
-                'status' => Payment::STATUS_SUCCEEDED,
+                // Manual/async drivers leave the payment awaiting verification.
+                'status' => ($gatewayResponse['status'] ?? '') === 'pending_manual'
+                    ? Payment::STATUS_PROCESSING
+                    : Payment::STATUS_SUCCEEDED,
                 'gateway_response' => $gatewayResponse,
                 'reference' => $gatewayResponse['transaction_id'] ?? $payment->reference,
             ]);
@@ -35,6 +46,7 @@ class PaymentGateway extends BaseService implements PaymentGatewayInterface
                 'reference' => $payment->reference,
                 'amount' => $payment->amount,
                 'status' => $payment->status,
+                'requires_verification' => $payment->status === Payment::STATUS_PROCESSING,
             ];
         } catch (\Exception $e) {
             $payment->update([
@@ -132,13 +144,23 @@ class PaymentGateway extends BaseService implements PaymentGatewayInterface
 
     private function processWithGateway(array $data): array
     {
-        // Placeholder for actual gateway integration (Stripe, PayPal, etc.)
-        return [
-            'transaction_id' => 'txn_' . bin2hex(random_bytes(12)),
-            'status' => 'completed',
-            'amount' => $data['amount'],
-            'currency' => $data['currency'] ?? 'USD',
-        ];
+        return match (config('payments.driver')) {
+            'manual' => [
+                'transaction_id' => 'MAN-'.bin2hex(random_bytes(8)),
+                'status' => 'pending_manual',
+                'amount' => $data['amount'],
+                'currency' => $data['currency'] ?? 'USD',
+                'instructions' => 'Awaiting off-platform payment confirmation by finance.',
+            ],
+            // 'mock' and any unknown driver: deterministic dev behaviour.
+            default => [
+                'transaction_id' => 'txn_' . bin2hex(random_bytes(12)),
+                'status' => 'completed',
+                'provider' => 'mock',
+                'amount' => $data['amount'],
+                'currency' => $data['currency'] ?? 'USD',
+            ],
+        };
     }
 
     private function processRefundWithGateway(Payment $payment, float $amount): array

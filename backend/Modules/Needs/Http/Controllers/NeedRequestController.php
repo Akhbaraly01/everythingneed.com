@@ -286,23 +286,26 @@ class NeedRequestController extends Controller
         }
 
         $payment = DB::transaction(function () use ($needRequest, $offer, $request) {
-            $payment = \Modules\Payments\Entities\Payment::create([
+            // Routed through the payment abstraction (§25) — server owns the
+            // amount (accepted offer price), never the client.
+            $result = app(\Core\Services\Contracts\PaymentGatewayInterface::class)->charge([
                 'order_id' => $needRequest->id,
                 'user_id' => $request->user()->id,
                 'amount' => $offer->price,
                 'currency' => 'USD',
-                'status' => 'pending',
                 'method' => $request->input('method', 'card'),
                 'reference' => 'NRPAY-'.strtoupper(uniqid()),
-                'gateway_response' => json_encode([
-                    'provider' => 'everythingneed-pay',
-                    'transaction_id' => 'TXN-'.strtoupper(uniqid()),
-                    'mode' => config('app.env') === 'production' ? 'live' : 'test',
-                    'kind' => 'need_request',
-                ]),
             ]);
 
-            $payment->update(['status' => 'succeeded']);
+            if (!($result['success'] ?? false)) {
+                throw new \RuntimeException($result['error'] ?? 'Payment failed');
+            }
+
+            $payment = \Modules\Payments\Entities\Payment::find($result['payment_id']);
+            $payment->update(['gateway_response' => array_merge(
+                (array) ($payment->gateway_response ?? []),
+                ['kind' => 'need_request'],
+            )]);
 
             $needRequest->update(['status' => NeedRequest::STATUS_PAID]);
 

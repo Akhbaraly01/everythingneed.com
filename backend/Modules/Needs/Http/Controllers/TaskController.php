@@ -270,20 +270,20 @@ class TaskController extends Controller
                 }
 
                 DB::transaction(function () use ($application, $task, $user) {
-                    \Modules\Payments\Entities\Payment::create([
+                    // Routed through the payment abstraction (§25). The payout
+                    // recipient is the worker; driver behaviour is config-driven.
+                    $result = app(\Core\Services\Contracts\PaymentGatewayInterface::class)->charge([
                         'order_id' => $task->id,
                         'user_id' => $application->user_id,
                         'amount' => $task->budget,
                         'currency' => 'USD',
-                        'status' => 'succeeded',
                         'method' => 'platform_escrow',
                         'reference' => 'TKPAY-'.strtoupper(uniqid()),
-                        'gateway_response' => json_encode([
-                            'provider' => 'everythingneed-pay',
-                            'kind' => 'task_payout',
-                            'mode' => config('app.env') === 'production' ? 'live' : 'test',
-                        ]),
                     ]);
+
+                    if (!($result['success'] ?? false)) {
+                        throw new \RuntimeException($result['error'] ?? 'Payout failed');
+                    }
 
                     $application->update(['status' => TaskApplication::STATUS_PAID]);
 
