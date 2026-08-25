@@ -38,10 +38,10 @@ jobs:
       - name: Run Recently Viewed E2E (${{ matrix.browser }})
         run: |
           if [ "${{ github.event.inputs.headed }}" = "true" ]; then
-            xvfb-run -a npx playwright test e2e/recently-viewed.spec.ts \
+            xvfb-run -a npx playwright test e2e/smoke.spec.ts \
               --project=${{ matrix.browser }} --headed --reporter=list
           else
-            npx playwright test e2e/recently-viewed.spec.ts \
+            npx playwright test e2e/smoke.spec.ts \
               --project=${{ matrix.browser }} --reporter=list
           fi
         env:
