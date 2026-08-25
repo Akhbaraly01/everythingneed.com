@@ -14,6 +14,7 @@ Route::prefix('api')->group(function () {
         Route::post('/appointments', [AppointmentController::class, 'store']);
         Route::get('/appointments/{id}', [AppointmentController::class, 'show']);
         Route::get('/appointments/{id}/consultation', [AppointmentController::class, 'consultationRecord']);
+Route::post('/appointments/{id}/video-room', [AppointmentController::class, 'videoRoom']);
         Route::post('/appointments/{id}/cancel', [AppointmentController::class, 'cancel']);
         Route::post('/appointments/{id}/assign-doctor', [AppointmentController::class, 'assignDoctor'])->middleware('role:super_admin');
         Route::post('/appointments/{id}/complete', [AppointmentController::class, 'complete']);

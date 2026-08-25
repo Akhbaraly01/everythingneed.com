@@ -15,6 +15,11 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
+    'video' => [
+        'provider' => env('VIDEO_PROVIDER', 'jitsi'),
+        'base_url' => env('VIDEO_BASE_URL', ''),
+    ],
+
     'ai' => [
         'gateway_url' => env('AI_GATEWAY_URL', ''),
         'api_key' => env('AI_API_KEY', ''),

@@ -38,6 +38,7 @@ interface Props {
 
 export default function AppointmentShow({ appointment: a, consultation }: Props) {
     const [busy, setBusy] = useState(false);
+    const [joining, setJoining] = useState(false);
 
     const cancel = async () => {
         if (!confirm('Cancel this appointment?')) return;
@@ -53,7 +54,21 @@ export default function AppointmentShow({ appointment: a, consultation }: Props)
         }
     };
 
+    const joinVirtual = async () => {
+        setJoining(true);
+        try {
+            const res = await api.post<{ data: { join_url: string; provider: string } }>(`/api/appointments/${a.id}/video-room`);
+            window.open(res.data.join_url, '_blank', 'noopener');
+            toast.info(`Opening ${res.data.provider} room…`, { description: 'The same link is shared with your clinician.' });
+        } catch (err) {
+            toast.error(err instanceof ApiError ? err.message : 'Could not open the room');
+        } finally {
+            setJoining(false);
+        }
+    };
+
     const cancellable = ['pending', 'assigned'].includes(a.status);
+    const canJoin = a.consultation_type === 'virtual' && ['assigned', 'in_consultation'].includes(a.status);
 
     return (
         <AppLayout title="Appointment details">
@@ -92,11 +107,21 @@ export default function AppointmentShow({ appointment: a, consultation }: Props)
                         </Info>
                     </dl>
 
+                    {canJoin && (
+                        <button
+                            onClick={joinVirtual}
+                            disabled={joining}
+                            className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-sky-600 px-4 py-3 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-60 sm:w-auto"
+                        >
+                            <Video className="h-4 w-4" /> {joining ? 'Preparing room…' : 'Join virtual consultation'}
+                        </button>
+                    )}
+
                     {cancellable && (
                         <button
                             onClick={cancel}
                             disabled={busy}
-                            className="mt-5 flex items-center gap-1.5 rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 dark:border-red-900/50"
+                            className={`flex items-center gap-1.5 rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 dark:border-red-900/50 ${canJoin ? 'mt-3' : 'mt-5'}`}
                         >
                             <XCircle className="h-4 w-4" /> Cancel appointment
                         </button>

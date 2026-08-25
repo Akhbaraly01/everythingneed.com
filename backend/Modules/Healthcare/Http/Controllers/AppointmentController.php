@@ -154,6 +154,46 @@ class AppointmentController extends Controller
         return response()->json(['data' => $record]);
     }
 
+    /**
+     * §21 Virtual-care adapter: returns a joinable room URL for virtual
+     * consultations. Provider is config-driven (default: free Jitsi rooms);
+     * swapping to Zoom/Meet/Whereby is a config change, not a rewrite.
+     */
+    public function videoRoom(Request $request, string $id): JsonResponse
+    {
+        $ticket = $this->healthcareService->getTicket($id);
+
+        if (!$ticket) {
+            return response()->json(['message' => 'Appointment not found'], 404);
+        }
+
+        if (!$this->canAccess($request, $ticket)) {
+            return response()->json(['message' => 'You do not have access to this appointment'], 403);
+        }
+
+        if ((string) $ticket->consultation_type !== 'virtual') {
+            return response()->json([
+                'message' => 'This appointment is not a virtual consultation.',
+            ], 422);
+        }
+
+        $provider = config('services.video.provider', 'jitsi');
+        $roomName = 'everythingneed-'.preg_replace('/[^A-Za-z0-9]/', '', (string) $ticket->ticket_number);
+
+        $url = match ($provider) {
+            'jitsi' => 'https://meet.jit.si/'.$roomName,
+            default => rtrim((string) config('services.video.base_url', ''), '/').'/'.$roomName,
+        };
+
+        return response()->json([
+            'data' => [
+                'provider' => $provider,
+                'room' => $roomName,
+                'join_url' => $url,
+            ],
+        ]);
+    }
+
     private function canAccess(Request $request, object $ticket): bool
     {
         $user = $request->user();
