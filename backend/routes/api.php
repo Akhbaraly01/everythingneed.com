@@ -77,6 +77,9 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 use App\Http\Controllers\Api\TableGatewayController;
 
+Route::post('/ai/chat', [App\Http\Controllers\Api\AiController::class, 'chat'])
+    ->middleware('throttle:10,1');
+
 Route::middleware(['auth:sanctum'])->prefix('db')->group(function () {
     Route::get('/{table}', [TableGatewayController::class, 'index']);
     Route::post('/{table}', [TableGatewayController::class, 'store']);

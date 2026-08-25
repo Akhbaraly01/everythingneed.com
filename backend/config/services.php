@@ -15,4 +15,9 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
+    'ai' => [
+        'gateway_url' => env('AI_GATEWAY_URL', ''),
+        'api_key' => env('AI_API_KEY', ''),
+        'model' => env('AI_MODEL', ''),
+    ],
 ];
