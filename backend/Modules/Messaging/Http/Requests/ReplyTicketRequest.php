@@ -15,6 +15,9 @@ class ReplyTicketRequest extends FormRequest
     {
         return [
             'message' => 'required|string|max:5000',
+            // Agents may file internal notes; the controller enforces that
+            // non-staff callers cannot set this flag.
+            'is_internal' => ['nullable', 'boolean'],
         ];
     }
 }

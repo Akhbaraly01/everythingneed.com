@@ -14,6 +14,9 @@ Route::prefix('api')->group(function () {
         Route::patch('/tickets/{id}/status', [TicketController::class, 'updateStatus']);
         Route::post('/tickets/{id}/assign-department', [TicketController::class, 'assignDepartment']);
         Route::post('/tickets/{id}/close', [TicketController::class, 'close']);
+        Route::post('/tickets/{id}/escalate', [TicketController::class, 'escalate']);
+        Route::post('/tickets/{id}/satisfaction', [TicketController::class, 'satisfaction']);
+        Route::get('/tickets/{id}/events', [TicketController::class, 'events']);
 
         // Direct chat
         Route::get('/chat/users', [ChatController::class, 'users']);

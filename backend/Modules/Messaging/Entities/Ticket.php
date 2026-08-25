@@ -15,6 +15,9 @@ class Ticket extends Model
         'status',
         'assigned_to',
         'department_id',
+        'satisfaction_rating',
+        'satisfaction_comment',
+        'escalated_at',
     ];
 
     const PRIORITY_LOW = 'low';

@@ -20,6 +20,17 @@ class TicketResource extends JsonResource
                 'name' => $this->department?->name,
             ],
             'messages_count' => $this->messages_count ?? $this->messages->count(),
+            // Detail view: conversation thread (internal notes pre-filtered
+            // by the controller for non-staff viewers).
+            'messages' => $this->whenLoaded('messages', fn () => $this->messages->map(fn ($m) => [
+                'id' => $m->id,
+                'sender_id' => $m->sender_id,
+                'message' => $m->message,
+                'is_internal' => (bool) $m->is_internal,
+                'created_at' => $m->created_at,
+            ])),
+            'satisfaction_rating' => $this->satisfaction_rating ?? null,
+            'escalated_at' => $this->escalated_at ?? null,
             'created_at' => $this->created_at,
         ];
     }

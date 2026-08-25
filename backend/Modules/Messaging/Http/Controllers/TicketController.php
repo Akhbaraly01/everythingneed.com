@@ -36,12 +36,21 @@ class TicketController extends Controller
         ]);
     }
 
-    public function show(string $id): JsonResponse
+    public function show(Request $request, string $id): JsonResponse
     {
         $ticket = $this->messagingService->getTicket($id);
 
         if (!$ticket) {
             return response()->json(['message' => 'Ticket not found'], 404);
+        }
+
+        if (!$this->canAccess($request, $ticket)) {
+            return response()->json(['message' => 'You do not have access to this ticket'], 403);
+        }
+
+        // Internal notes are agent-only. Strip them for the ticket owner.
+        if (!$this->isStaff($request)) {
+            $ticket->setRelation('messages', $ticket->messages->where('is_internal', false)->values());
         }
 
         return response()->json([
@@ -56,6 +65,12 @@ class TicketController extends Controller
             $request->validated()
         );
 
+        $this->messagingService->recordEvent(
+            (string) $ticket->id,
+            (string) $request->user()->id,
+            \Modules\Messaging\Entities\TicketEvent::CREATED,
+        );
+
         TicketCreated::dispatch($ticket);
 
         return response()->json([
@@ -66,10 +81,26 @@ class TicketController extends Controller
 
     public function reply(ReplyTicketRequest $request, string $id): JsonResponse
     {
+        $ticket = \Modules\Messaging\Entities\Ticket::find($id);
+
+        if (!$ticket) {
+            return response()->json(['message' => 'Ticket not found'], 404);
+        }
+
+        if (!$this->canAccess($request, $ticket)) {
+            return response()->json(['message' => 'You do not have access to this ticket'], 403);
+        }
+
+        // Only support-side roles may file internal notes.
+        $data = $request->validated();
+        if (!$this->isStaff($request)) {
+            unset($data['is_internal']);
+        }
+
         $message = $this->messagingService->replyToTicket(
             $id,
             $request->user()->id,
-            $request->validated()
+            $data
         );
 
         return response()->json([
@@ -77,13 +108,15 @@ class TicketController extends Controller
             'data' => [
                 'id' => $message->id,
                 'message' => $message->message,
+                'is_internal' => $message->is_internal,
             ],
         ], 201);
     }
 
-    public function close(string $id): JsonResponse
+    public function close(Request $request, string $id): JsonResponse
     {
         $this->messagingService->closeTicket($id);
+        $this->messagingService->recordEvent($id, (string) $request->user()->id, 'closed');
 
         return response()->json([
             'message' => 'Ticket closed successfully',
@@ -110,7 +143,16 @@ class TicketController extends Controller
             return response()->json(['message' => 'Only support staff can transfer tickets'], 403);
         }
 
+        $from = $ticket->department_id;
+
         $ticket->update(['department_id' => $validated['department_id'] ?? null]);
+
+        $this->messagingService->recordEvent(
+            (string) $ticket->id,
+            (string) $user->id,
+            \Modules\Messaging\Entities\TicketEvent::DEPARTMENT_TRANSFERRED,
+            ['from' => $from ?? null, 'to' => $validated['department_id'] ?? null],
+        );
 
         return response()->json([
             'message' => 'Ticket transferred successfully',
@@ -143,11 +185,124 @@ class TicketController extends Controller
             return response()->json(['message' => 'You may only reopen or close your own ticket'], 403);
         }
 
+        $from = $ticket->status;
+
         $ticket->update(['status' => $validated['status']]);
+
+        $this->messagingService->recordEvent(
+            (string) $ticket->id,
+            (string) $user->id,
+            \Modules\Messaging\Entities\TicketEvent::STATUS_CHANGED,
+            ['from' => $from, 'to' => $validated['status']],
+        );
 
         return response()->json([
             'message' => 'Status updated',
             'data' => $ticket->fresh(),
         ]);
+    }
+
+    /**
+     * §23 Escalation — support-side agents may escalate; priority jumps to
+     * urgent, stamped + audited.
+     */
+    public function escalate(Request $request, string $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'reason' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        try {
+            $ticket = $this->messagingService->escalate(
+                $id,
+                (string) $request->user()->id,
+                $validated['reason'] ?? null,
+            );
+        } catch (\Core\Exceptions\NotFoundException) {
+            return response()->json(['message' => 'Ticket not found'], 404);
+        } catch (\Core\Exceptions\ValidationException | \Core\Exceptions\ConflictException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'message' => 'Ticket escalated',
+            'data' => [
+                'id' => $ticket->id,
+                'priority' => $ticket->priority,
+                'status' => $ticket->status,
+                'escalated_at' => $ticket->escalated_at,
+            ],
+        ]);
+    }
+
+    /**
+     * §23 Post-resolution satisfaction rating (owner only).
+     */
+    public function satisfaction(Request $request, string $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'rating' => ['required', 'integer', 'min:1', 'max:5'],
+            'comment' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        try {
+            $ticket = $this->messagingService->rateSatisfaction(
+                $id,
+                (string) $request->user()->id,
+                (int) $validated['rating'],
+                $validated['comment'] ?? null,
+            );
+        } catch (\Core\Exceptions\NotFoundException) {
+            return response()->json(['message' => 'Ticket not found'], 404);
+        } catch (\Core\Exceptions\ValidationException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'message' => 'Thank you for your feedback',
+            'data' => [
+                'id' => $ticket->id,
+                'satisfaction_rating' => $ticket->satisfaction_rating,
+                'satisfaction_comment' => $ticket->satisfaction_comment,
+            ],
+        ]);
+    }
+
+    /**
+     * Complete audit history (staff + ticket owner).
+     */
+    public function events(Request $request, string $id): JsonResponse
+    {
+        $ticket = \Modules\Messaging\Entities\Ticket::find($id);
+
+        if (!$ticket) {
+            return response()->json(['message' => 'Ticket not found'], 404);
+        }
+
+        if (!$this->canAccess($request, $ticket)) {
+            return response()->json(['message' => 'You do not have access to this ticket'], 403);
+        }
+
+        $events = \Modules\Messaging\Entities\TicketEvent::where('ticket_id', $id)
+            ->orderBy('created_at')
+            ->get();
+
+        return response()->json(['data' => $events]);
+    }
+
+    private function isStaff(Request $request): bool
+    {
+        $roles = $request->user()?->roles->pluck('role');
+
+        return $roles?->contains('super_admin')
+            || $roles?->contains('administrator')
+            || $roles?->contains('support_staff')
+            || $roles?->contains('customer_service');
+    }
+
+    private function canAccess(Request $request, object $ticket): bool
+    {
+        return (string) $ticket->user_id === (string) $request->user()->id
+            || $this->isStaff($request);
     }
 }
