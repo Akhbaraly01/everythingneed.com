@@ -12,7 +12,7 @@ class PaymentGateway extends BaseService implements PaymentGatewayInterface
     {
         // Guardrail: the mock driver must never silently run in production.
         if (config('payments.driver') === 'mock'
-            && app()->environment('production')
+            && config('app.env') === 'production'
             && !config('payments.allow_mock_in_production')) {
             throw new \RuntimeException('Mock payment driver is disabled in production. Set PAYMENTS_DRIVER.');
         }
