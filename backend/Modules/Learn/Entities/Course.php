@@ -3,9 +3,16 @@
 namespace Modules\Learn\Entities;
 
 use App\Models\Model;
+use Database\Factories\CourseFactory;
+use Illuminate\Database\Eloquent\Factories\Factory;
 
 class Course extends Model
 {
+    protected static function newFactory(): Factory
+    {
+        return CourseFactory::new();
+    }
+
     protected $fillable = [
         'title',
         'slug',

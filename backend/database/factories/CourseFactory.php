@@ -3,40 +3,32 @@
 namespace Database\Factories;
 
 use Modules\Learn\Entities\Course;
-use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class CourseFactory extends Factory
 {
     protected $model = Course::class;
 
+    /**
+     * Schema-aligned with the live `courses` table:
+     * id title slug description category course_type instructor_name price
+     * thumbnail_url video_url duration_hours students_count rating
+     * is_featured created_at updated_at deleted_at
+     */
     public function definition(): array
     {
         return [
-            'creator_id' => User::factory(),
             'title' => fake()->sentence(4),
             'slug' => fake()->unique()->slug(),
             'description' => fake()->paragraph(),
-            'category' => fake()->randomElement(['programming', 'design', 'business', 'marketing']),
-            'level' => fake()->randomElement(['beginner', 'intermediate', 'advanced']),
-            'type' => fake()->randomElement(['free', 'paid']),
+            'category' => fake()->randomElement(['programming', 'design', 'business', 'agriculture', 'healthcare']),
+            'course_type' => fake()->randomElement(['theory', 'practical', 'both']),
+            'instructor_name' => fake()->name(),
             'price' => fake()->randomFloat(2, 0, 199.99),
-            'is_published' => false,
+            'duration_hours' => fake()->numberBetween(1, 40),
+            'students_count' => 0,
+            'rating' => 0,
+            'is_featured' => false,
         ];
-    }
-
-    public function published(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'is_published' => true,
-        ]);
-    }
-
-    public function free(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'type' => 'free',
-            'price' => 0,
-        ]);
     }
 }

@@ -36,14 +36,16 @@ class TableGatewayController extends Controller
         'favorites' => ['scope' => 'user_id', 'write' => true],
         'recently_viewed' => ['scope' => 'user_id', 'write' => true],
         'video_progress' => ['scope' => 'user_id', 'write' => true],
-        'user_certificates' => ['scope' => 'user_id', 'write' => true],
+        // Certificates are issued ONLY via Modules/Learn REST API after
+        // server-side completion checks — never client-writable.
+        'user_certificates' => ['scope' => 'user_id', 'write' => false],
         'enrollments' => ['scope' => 'user_id', 'write' => true],
         'learn_posts' => ['scope' => 'user_id', 'write' => true],
         'learn_post_comments' => ['scope' => 'user_id', 'write' => true],
         'learn_post_likes' => ['scope' => 'user_id', 'write' => true],
         'expert_wishlists' => ['scope' => 'user_id', 'write' => true],
         'addresses' => ['scope' => 'user_id', 'write' => true],
-        'cart_items_v2' => ['scope' => 'user_id', 'write' => true],
+        // Cart lives behind Modules/Checkout REST (/api/cart/*).
         'prescriptions' => ['scope' => 'user_id', 'write' => true],
         'health_tickets' => ['scope' => 'user_id', 'write' => true],
         'building_service_bookings' => ['scope' => 'user_id', 'write' => true],

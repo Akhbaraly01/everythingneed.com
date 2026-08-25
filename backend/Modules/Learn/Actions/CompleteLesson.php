@@ -35,6 +35,7 @@ class CompleteLesson
                 'lesson_id' => $lessonId,
             ],
             [
+                'course_id' => $courseId,
                 'completed' => true,
                 'watch_time_seconds' => $data['watch_time_seconds'] ?? 0,
                 'progress_percent' => 100,
