@@ -14,6 +14,7 @@ class Product extends Model
     }
     protected $fillable = [
         'vendor_id',
+        'brand_id',
         'name',
         'description',
         'category',
@@ -41,6 +42,16 @@ class Product extends Model
         'rating' => 'decimal:1',
         'reviews_count' => 'integer',
     ];
+
+    public function brand()
+    {
+        return $this->belongsTo(Brand::class);
+    }
+
+    public function variants()
+    {
+        return $this->hasMany(ProductVariant::class);
+    }
 
     public function vendor()
     {

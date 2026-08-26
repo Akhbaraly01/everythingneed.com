@@ -74,4 +74,15 @@ class AdminPageController extends Controller
             'catalog' => \Database\Seeders\PermissionSeeder::CATALOG,
         ]);
     }
+
+    public function categories(): Response
+    {
+        $categories = DB::table('categories')
+            ->orderBy('name')
+            ->get();
+
+        return Inertia::render('admin/Categories', [
+            'categories' => $categories,
+        ]);
+    }
 }

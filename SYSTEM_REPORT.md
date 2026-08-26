@@ -1,6 +1,6 @@
 # EverythingNeed — Final System Report
 
-**Date**: August 25, 2026
+**Date**: August 26, 2026
 **Stack**: Laravel 13 · Inertia.js v2 · React 18 · TypeScript · PostgreSQL 18 · Modular Monolith (DDD)
 **Supabase**: Fully eradicated (zero connections, zero references; guards actively block any BaaS SDK)
 
@@ -19,7 +19,7 @@
 | 7 | Roles | **13** seeded (super_admin → user incl. `worker`) |
 | 8 | Permissions | **52** granular (`module.action`), **121** role grants in DB matrix |
 | 9 | End-to-end workflows completed this session | **8 deep chains** (see below) |
-| 10 | Tests passed | **387 tests / 1,291 assertions** ✅ |
+| 10 | Tests passed | **409 tests / 1,343 assertions** ✅ |
 | 11 | Tests failed | **0** |
 | 12 | Issues fixed this session | **24** (below) |
 | 13 | Remaining issues | **7** (honest list below) |
@@ -68,7 +68,7 @@
 
 ## Verification performed
 
-- Full backend suite: **348 passed / 0 failed** against live PostgreSQL 18
+- Full backend suite: **409 passed / 0 failed** against live PostgreSQL 18
 - Production builds: backend Vite ✅ (16 s) · frontend Vite ✅ (112 s)
 - Navigation graph: all 15 nav destinations return 200/302-to-valid-target; zero 404s, zero dead ends
 - Isolation checks: vendor scoping (products/orders), booking ownership (flight confirmation 403s strangers), thread participation guards, RBAC endpoint gating — all covered by feature tests

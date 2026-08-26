@@ -14,6 +14,7 @@ use Modules\Admin\Http\Controllers\AdminSupportController;
 use Modules\Admin\Http\Controllers\AdminRbacController;
 use Modules\Admin\Http\Controllers\AdminProductApprovalController;
 use Modules\Admin\Http\Controllers\AdminDepartmentController;
+use Modules\Admin\Http\Controllers\AdminBrandController;
 
 /*
 |--------------------------------------------------------------------------
@@ -165,4 +166,14 @@ Route::prefix('api/admin')->middleware(['api', 'auth:sanctum', 'role:super_admin
         ->middleware('role:super_admin');
     Route::put('/roles/assign', [AdminRbacController::class, 'updateRole'])
         ->can('manageUsers');
+
+    // Brand management
+    Route::get('/brands', [AdminBrandController::class, 'index'])
+        ->middleware('role:super_admin,administrator,category_admin');
+    Route::post('/brands', [AdminBrandController::class, 'store'])
+        ->middleware('role:super_admin,administrator');
+    Route::put('/brands/{id}', [AdminBrandController::class, 'update'])
+        ->middleware('role:super_admin,administrator');
+    Route::delete('/brands/{id}', [AdminBrandController::class, 'destroy'])
+        ->middleware('role:super_admin,administrator');
 });

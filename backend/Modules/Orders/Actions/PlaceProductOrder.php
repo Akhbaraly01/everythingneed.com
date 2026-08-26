@@ -10,6 +10,7 @@ use Modules\Orders\Entities\OrderTracking;
 use Modules\Orders\Entities\VendorOrder;
 use Modules\Orders\Events\OrderPlaced;
 use Modules\Products\Entities\Product;
+use Modules\Products\Entities\ProductVariant;
 use Core\Exceptions\ValidationException;
 
 class PlaceProductOrder
@@ -20,6 +21,7 @@ class PlaceProductOrder
             $items = collect($data['items'])
                 ->map(fn ($i) => [
                     'product_id' => $i['product_id'],
+                    'variant_id' => $i['variant_id'] ?? null,
                     'quantity' => max(1, (int) $i['quantity']),
                 ]);
 
@@ -33,6 +35,12 @@ class PlaceProductOrder
                 ->get()
                 ->keyBy('id');
 
+            // Eager-load active variants for all products in this order.
+            $variants = ProductVariant::whereIn('product_id', $items->pluck('product_id'))
+                ->where('is_active', true)
+                ->get()
+                ->keyBy('id');
+
             $subtotal = 0.0;
             $itemRows = [];
 
@@ -43,21 +51,34 @@ class PlaceProductOrder
                     throw new ValidationException("Product unavailable: {$requested['product_id']}");
                 }
 
-                if ((int) $product->stock_quantity < $requested['quantity']) {
-                    throw new ValidationException("Insufficient stock for {$product->name}");
+                $variant = null;
+                if ($requested['variant_id']) {
+                    $variant = $variants->get($requested['variant_id']);
+                    if (!$variant || $variant->product_id !== $product->id) {
+                        throw new ValidationException("Variant unavailable: {$requested['variant_id']}");
+                    }
+                    if ((int) $variant->stock_quantity < $requested['quantity']) {
+                        throw new ValidationException("Insufficient stock for {$product->name} - {$variant->name}");
+                    }
+                    $variant->decrement('stock_quantity', $requested['quantity']);
+                } else {
+                    if ((int) $product->stock_quantity < $requested['quantity']) {
+                        throw new ValidationException("Insufficient stock for {$product->name}");
+                    }
+                    $product->decrement('stock_quantity', $requested['quantity']);
                 }
 
                 // Server-side price only — never trust the client.
-                $unitPrice = (float) $product->price;
+                $unitPrice = $variant ? (float) $variant->price : (float) $product->price;
                 $lineTotal = round($unitPrice * $requested['quantity'], 2);
                 $subtotal += $lineTotal;
 
-                $product->decrement('stock_quantity', $requested['quantity']);
-
                 $itemRows[] = [
                     'product_id' => $product->id,
+                    'variant_id' => $variant?->id,
                     'vendor_id' => $product->vendor_id,
                     'product_name' => $product->name,
+                    'variant_name' => $variant?->name,
                     'quantity' => $requested['quantity'],
                     'unit_price' => $unitPrice,
                     'total_price' => $lineTotal,
@@ -77,14 +98,45 @@ class PlaceProductOrder
 
                 if ($coupon
                     && (!$coupon->expires_at || !$coupon->expires_at->isPast())
-                    && (!$coupon->min_order_amount || $subtotal >= (float) $coupon->min_order_amount)) {
-                    $discount = match ($coupon->type) {
-                        'percentage' => round($subtotal * ((float) $coupon->value / 100), 2),
-                        'fixed' => min((float) $coupon->value, $subtotal),
-                        default => 0.0,
-                    };
-                    $couponCode = $coupon->code;
-                    $coupon->increment('used_count');
+                    && (!$coupon->min_order_amount || $subtotal >= (float) $coupon->min_order_amount)
+                    && (!$coupon->max_uses || $coupon->used_count < $coupon->max_uses)) {
+
+                    // Per-user usage limit.
+                    if ($coupon->per_user_limit) {
+                        $userUsage = Order::where('user_id', $data['user_id'])
+                            ->where('coupon_code', $coupon->code)
+                            ->count();
+                        if ($userUsage >= $coupon->per_user_limit) {
+                            $coupon = null;
+                        }
+                    }
+
+                    // Applicable categories restriction.
+                    if ($coupon && $coupon->applicable_categories) {
+                        $itemCategories = $items->map(fn ($i) => $products[$i['product_id']]->category)->unique()->all();
+                        $allowed = array_intersect($itemCategories, $coupon->applicable_categories);
+                        if (empty($allowed)) {
+                            $coupon = null;
+                        }
+                    }
+
+                    // Single product restriction.
+                    if ($coupon && $coupon->applicable_product_id) {
+                        $hasProduct = $items->contains('product_id', $coupon->applicable_product_id);
+                        if (!$hasProduct) {
+                            $coupon = null;
+                        }
+                    }
+
+                    if ($coupon) {
+                        $discount = match ($coupon->type) {
+                            'percentage' => round($subtotal * ((float) $coupon->value / 100), 2),
+                            'fixed' => min((float) $coupon->value, $subtotal),
+                            default => 0.0,
+                        };
+                        $couponCode = $coupon->code;
+                        $coupon->increment('used_count');
+                    }
                 }
             }
 

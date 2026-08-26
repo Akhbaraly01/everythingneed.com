@@ -76,6 +76,15 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [WebAuthController::class, 'login'])->middleware('throttle:10,1');
     Route::get('/register', [WebAuthController::class, 'showRegister'])->name('register');
     Route::post('/register', [WebAuthController::class, 'register'])->middleware('throttle:10,1');
+    Route::get('/forgot-password', function () {
+        return inertia('auth/ForgotPassword');
+    })->name('password.request');
+    Route::post('/forgot-password', [WebAuthController::class, 'sendResetLink'])->middleware('throttle:6,1');
+    Route::get('/reset-password/{token}', function (string $token) {
+        $email = request()->query('email');
+        return inertia('auth/ResetPassword', ['token' => $token, 'email' => $email]);
+    })->name('password.reset');
+    Route::post('/reset-password', [WebAuthController::class, 'resetPassword'])->middleware('throttle:6,1');
 });
 
 Route::post('/logout', [WebAuthController::class, 'logout'])
@@ -147,6 +156,7 @@ Route::get('/building-services', [ServiceRequestsPageController::class, 'buildin
 // Admin console (Inertia, role-gated)
 Route::middleware('role:super_admin,administrator,category_admin')->prefix('admin')->group(function () {
     Route::get('/approvals', [AdminPageController::class, 'approvals'])->name('admin.approvals');
+    Route::get('/categories', [AdminPageController::class, 'categories'])->name('admin.categories');
 });
 
 Route::middleware('role:super_admin,administrator,customer_service,support_staff')->prefix('admin')->group(function () {

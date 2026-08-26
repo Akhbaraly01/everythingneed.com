@@ -58,6 +58,10 @@ class ProductService
             $query->where('vendor_id', $filters['vendor_id']);
         }
 
+        if (!empty($filters['brand_id'])) {
+            $query->where('brand_id', $filters['brand_id']);
+        }
+
         if (isset($filters['is_active'])) {
             $query->where('is_active', $filters['is_active']);
         }
