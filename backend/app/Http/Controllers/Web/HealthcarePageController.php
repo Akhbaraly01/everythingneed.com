@@ -12,6 +12,27 @@ use Modules\Healthcare\Entities\HealthTicket;
 
 class HealthcarePageController extends Controller
 {
+    public function index(Request $request): Response
+    {
+        $doctors = Doctor::where('is_available', true)
+            ->orderByDesc('rating')
+            ->get(['id', 'full_name', 'specialization', 'qualification', 'experience_years', 'consultation_fee', 'virtual_fee', 'avatar_url', 'is_available', 'rating']);
+
+        $appointments = [];
+        if ($request->user()) {
+            $appointments = HealthTicket::with('doctor:id,full_name,specialization')
+                ->where('patient_id', $request->user()->id)
+                ->orderByDesc('created_at')
+                ->limit(5)
+                ->get();
+        }
+
+        return Inertia::render('healthcare/Index', [
+            'doctors' => $doctors,
+            'appointments' => $appointments,
+        ]);
+    }
+
     public function appointments(Request $request): Response
     {
         $tickets = HealthTicket::with('doctor:id,full_name,specialization,consultation_fee')

@@ -30,6 +30,11 @@ import {
     Building2,
     KeyRound,
     FolderTree,
+    Hotel,
+    UtensilsCrossed,
+    BookOpen,
+    MapPin,
+    Wallet,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -42,6 +47,12 @@ const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Products', href: '/products', icon: ShoppingBag },
     { name: 'Orders', href: '/orders', icon: Package },
+    { name: 'Hotels', href: '/hotels', icon: Hotel },
+    { name: 'Food', href: '/food', icon: UtensilsCrossed },
+    { name: 'Learn', href: '/learn', icon: BookOpen },
+    { name: 'Properties', href: '/properties', icon: Building2 },
+    { name: 'Jobs', href: '/jobs', icon: Briefcase },
+    { name: 'Vendors', href: '/vendors', icon: Store },
     { name: 'Job Seekers', href: '/job-seekers', icon: Briefcase },
     { name: 'Flights', href: '/flights', icon: Plane },
     { name: 'Task Center', href: '/tasks', icon: ListChecks },
@@ -53,8 +64,10 @@ const navigation = [
     { name: 'Messages', href: '/messages', icon: MessageSquare },
     { name: 'Vendor Portal', href: '/vendor', icon: Store },
     { name: 'Payouts', href: '/vendor/payouts', icon: Wallet },
-    { name: 'Healthcare', href: '/healthcare/appointments', icon: Stethoscope },
+    { name: 'Healthcare', href: '/healthcare', icon: Stethoscope },
     { name: 'Notifications', href: '/notifications', icon: Bell },
+    { name: 'Wallet', href: '/wallet', icon: CreditCard },
+    { name: 'Settings', href: '/settings', icon: Settings },
     { name: 'Help', href: '/support/tickets', icon: HelpCircle },
 ];
 

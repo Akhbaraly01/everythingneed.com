@@ -49,18 +49,9 @@ Route::get('/robots.txt', function () {
     return response("User-agent: *\nDisallow: /api/\n", 200, ['Content-Type' => 'text/plain']);
 });
 
-Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/dashboard', function () {
-        return inertia('Dashboard');
-    })->name('dashboard');
-
-    Route::get('/profile', function () {
-        return inertia('Profile/Edit');
-    })->name('profile.edit');
-});
-
-// Web (Inertia) authentication
+// Web (Inertia) authentication & controllers
 use App\Http\Controllers\Web\WebAuthController;
+use App\Http\Controllers\Web\VerificationController;
 use App\Http\Controllers\Web\JobSeekersPageController;
 use App\Http\Controllers\Web\FlightsPageController;
 use App\Http\Controllers\Web\TasksPageController;
@@ -69,7 +60,16 @@ use App\Http\Controllers\Web\VendorPortalPageController;
 use App\Http\Controllers\Web\HealthcarePageController;
 use App\Http\Controllers\Web\ServiceRequestsPageController;
 use App\Http\Controllers\Web\AdminPageController;
-use App\Http\Controllers\Web\VerificationController;
+use App\Http\Controllers\Web\ProductsPageController;
+use App\Http\Controllers\Web\OrdersPageController;
+use App\Http\Controllers\Web\WalletPageController;
+use App\Http\Controllers\Web\SettingsPageController;
+use App\Http\Controllers\Web\JobsPageController;
+use App\Http\Controllers\Web\HotelsPageController;
+use App\Http\Controllers\Web\FoodPageController;
+use App\Http\Controllers\Web\VendorsPageController;
+use App\Http\Controllers\Web\LearnPageController;
+use App\Http\Controllers\Web\PropertiesPageController;
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [WebAuthController::class, 'showLogin'])->name('login');
@@ -105,55 +105,92 @@ Route::middleware('auth')->group(function () {
         ->name('verification.send');
 });
 
-// Job Seekers (Inertia deep pages)
+// ─── Auth-protected Inertia pages ─────────────────────────────────────────────
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/dashboard', function () {
+        return inertia('Dashboard');
+    })->name('dashboard');
+
+    Route::get('/profile', function () {
+        return inertia('Profile/Edit');
+    })->name('profile.edit');
+
+    Route::get('/settings', [SettingsPageController::class, 'index'])->name('settings.index');
+    Route::get('/wallet', [WalletPageController::class, 'index'])->name('wallet.index');
+    Route::get('/orders', [OrdersPageController::class, 'index'])->name('orders.index');
+    Route::get('/orders/{id}', [OrdersPageController::class, 'show'])->name('orders.show');
+});
+
+// ─── Public Inertia pages ─────────────────────────────────────────────────────
+Route::get('/products', [ProductsPageController::class, 'index'])->name('products.index');
+Route::get('/products/{id}', [ProductsPageController::class, 'show'])->name('products.show');
+
+Route::get('/jobs', [JobsPageController::class, 'index'])->name('jobs.index');
+Route::get('/jobs/{id}', [JobsPageController::class, 'show'])->name('jobs.show');
+
+Route::get('/hotels', [HotelsPageController::class, 'index'])->name('hotels.index');
+Route::get('/hotels/{id}', [HotelsPageController::class, 'show'])->name('hotels.show');
+
+Route::get('/food', [FoodPageController::class, 'index'])->name('food.index');
+Route::get('/food/{id}', [FoodPageController::class, 'show'])->name('food.show');
+
+Route::get('/vendors', [VendorsPageController::class, 'index'])->name('vendors.index');
+Route::get('/vendors/{id}', [VendorsPageController::class, 'show'])->name('vendors.show');
+
+Route::get('/learn', [LearnPageController::class, 'index'])->name('learn.index');
+Route::get('/learn/{id}', [LearnPageController::class, 'show'])->name('learn.show');
+
+Route::get('/properties', [PropertiesPageController::class, 'index'])->name('properties.index');
+Route::get('/properties/{id}', [PropertiesPageController::class, 'show'])->name('properties.show');
+
+Route::get('/healthcare', [HealthcarePageController::class, 'index'])->name('healthcare.index');
+
+// ─── Job Seekers (Inertia deep pages) ─────────────────────────────────────────
 Route::get('/job-seekers', [JobSeekersPageController::class, 'index'])->name('job-seekers.index');
+Route::get('/job-seekers/{id}', [JobSeekersPageController::class, 'show'])->name('job-seekers.show');
 Route::middleware('auth')->group(function () {
     Route::get('/job-seekers/my-requests', [JobSeekersPageController::class, 'myRequests'])->name('job-seekers.my-requests');
     Route::get('/job-seekers/request/{worker}', [JobSeekersPageController::class, 'createRequest'])->name('job-seekers.request');
 });
-Route::get('/job-seekers/{id}', [JobSeekersPageController::class, 'show'])->name('job-seekers.show');
 
-// Flights (Inertia deep pages)
+// ─── Flights (Inertia deep pages) ─────────────────────────────────────────────
 Route::get('/flights', [FlightsPageController::class, 'search'])->name('flights.search');
+Route::get('/flights/{id}', [FlightsPageController::class, 'show'])->name('flights.show');
 Route::middleware('auth')->group(function () {
     Route::get('/flights/confirmation/{booking}', [FlightsPageController::class, 'confirmation'])->name('flights.confirmation');
     Route::get('/bookings', [FlightsPageController::class, 'myBookings'])->name('bookings.index');
 });
-Route::get('/flights/{id}', [FlightsPageController::class, 'show'])->name('flights.show');
 
-// Task Center (Inertia deep pages)
+// ─── Task Center (Inertia deep pages) ─────────────────────────────────────────
 Route::get('/tasks', [TasksPageController::class, 'index'])->name('tasks.index');
+Route::get('/tasks/{id}', [TasksPageController::class, 'show'])->name('tasks.show');
 Route::middleware('auth')->group(function () {
     Route::get('/tasks/create', [TasksPageController::class, 'create'])->name('tasks.create');
     Route::get('/tasks/my-applications', [TasksPageController::class, 'myApplications'])->name('tasks.my-applications');
 });
-Route::get('/tasks/{id}', [TasksPageController::class, 'show'])->name('tasks.show');
 
-// Messaging (Inertia deep pages)
+// ─── Messaging + Vendor portal (Inertia, auth) ────────────────────────────────
 Route::middleware('auth')->group(function () {
     Route::get('/messages', [MessagingPageController::class, 'inbox'])->name('messages.inbox');
     Route::get('/messages/{id}', [MessagingPageController::class, 'thread'])->name('messages.thread');
 
-    // Vendor portal (Inertia)
     Route::get('/vendor', [VendorPortalPageController::class, 'dashboard'])->name('vendor.dashboard');
     Route::get('/vendor/products', [VendorPortalPageController::class, 'products'])->name('vendor.products');
     Route::get('/vendor/orders', [VendorPortalPageController::class, 'orders'])->name('vendor.orders');
     Route::get('/vendor/payouts', [VendorPortalPageController::class, 'payouts'])->name('vendor.payouts');
 
-    // Healthcare patient portal (Inertia)
     Route::get('/healthcare/appointments', [HealthcarePageController::class, 'appointments'])->name('healthcare.appointments');
     Route::get('/healthcare/prescriptions', [HealthcarePageController::class, 'prescriptions'])->name('healthcare.prescriptions');
     Route::get('/healthcare/appointments/{id}', [HealthcarePageController::class, 'appointmentDetail'])->name('healthcare.appointment.show');
 
-    // Service requests (Deals/Needs deep chain)
     Route::get('/requests', [ServiceRequestsPageController::class, 'requests'])->name('requests.index');
 });
 
-// Public vertical landings (Inertia)
+// ─── Public vertical landings (Inertia) ───────────────────────────────────────
 Route::get('/agriculture', [ServiceRequestsPageController::class, 'agriculture'])->name('agriculture.index');
 Route::get('/building-services', [ServiceRequestsPageController::class, 'buildingServices'])->name('building-services.index');
 
-// Admin console (Inertia, role-gated)
+// ─── Admin console (Inertia, role-gated) ──────────────────────────────────────
 Route::middleware('role:super_admin,administrator,category_admin')->prefix('admin')->group(function () {
     Route::get('/approvals', [AdminPageController::class, 'approvals'])->name('admin.approvals');
     Route::get('/categories', [AdminPageController::class, 'categories'])->name('admin.categories');
@@ -167,6 +204,7 @@ Route::middleware('role:super_admin')->prefix('admin')->group(function () {
     Route::get('/rbac', [AdminPageController::class, 'rbac'])->name('admin.rbac');
 });
 
+// ─── Catch-all: redirect unknown paths to SPA ────────────────────────────────
 Route::get('/{path}', function (string $path) use ($frontendUrl) {
     return redirect()->away($frontendUrl($path));
 })->where('path', '^(?!api|up|storage|sanctum|telescope).*$');

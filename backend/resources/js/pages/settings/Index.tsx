@@ -1,9 +1,39 @@
 import AppLayout from '@/layouts/AppLayout';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
+import { api } from '@/lib/api';
 
-export default function Settings() {
+interface SettingsProps {
+    user: { id: string; name: string; email: string; phone?: string };
+    settings: {
+        language: string;
+        currency: string;
+        email_notifications: boolean;
+        push_notifications: boolean;
+        marketing_emails: boolean;
+    };
+}
+
+export default function Settings({ user, settings }: SettingsProps) {
     const [activeTab, setActiveTab] = useState<'general' | 'notifications' | 'security'>('general');
+    const { data, setData, post, processing } = useForm({
+        name: user.name,
+        email: user.email,
+        phone: user.phone ?? '',
+        language: settings.language,
+        currency: settings.currency,
+        email_notifications: settings.email_notifications,
+        push_notifications: settings.push_notifications,
+        marketing_emails: settings.marketing_emails,
+    });
+
+    const handleSaveGeneral = () => {
+        post('/settings', { preserveScroll: true });
+    };
+
+    const handleSaveNotifications = () => {
+        post('/settings', { preserveScroll: true });
+    };
 
     return (
         <AppLayout title="Settings">
@@ -33,33 +63,71 @@ export default function Settings() {
                         {activeTab === 'general' && (
                             <div className="space-y-6">
                                 <div>
-                                    <h3 className="text-lg font-medium text-gray-900 dark:text-white">Appearance</h3>
-                                    <p className="mt-1 text-sm text-gray-500">Customize how EverythingNeed looks on your device.</p>
+                                    <h3 className="text-lg font-medium text-gray-900 dark:text-white">Profile</h3>
+                                    <p className="mt-1 text-sm text-gray-500">Update your profile information.</p>
                                 </div>
                                 <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-sm font-medium text-gray-900 dark:text-white">Language</p>
-                                            <p className="text-sm text-gray-500">Select your preferred language.</p>
-                                        </div>
-                                        <select className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700">
-                                            <option>English</option>
-                                            <option>Spanish</option>
-                                            <option>French</option>
-                                        </select>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
+                                        <input
+                                            type="text"
+                                            value={data.name}
+                                            onChange={(e) => setData('name', e.target.value)}
+                                            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                        />
                                     </div>
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-sm font-medium text-gray-900 dark:text-white">Currency</p>
-                                            <p className="text-sm text-gray-500">Select your preferred currency.</p>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+                                        <input
+                                            type="email"
+                                            value={data.email}
+                                            onChange={(e) => setData('email', e.target.value)}
+                                            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Phone</label>
+                                        <input
+                                            type="text"
+                                            value={data.phone}
+                                            onChange={(e) => setData('phone', e.target.value)}
+                                            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                        />
+                                    </div>
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Language</label>
+                                            <select
+                                                value={data.language}
+                                                onChange={(e) => setData('language', e.target.value)}
+                                                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                            >
+                                                <option value="en">English</option>
+                                                <option value="es">Spanish</option>
+                                                <option value="fr">French</option>
+                                            </select>
                                         </div>
-                                        <select className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700">
-                                            <option>USD</option>
-                                            <option>EUR</option>
-                                            <option>GBP</option>
-                                        </select>
+                                        <div className="flex-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Currency</label>
+                                            <select
+                                                value={data.currency}
+                                                onChange={(e) => setData('currency', e.target.value)}
+                                                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                            >
+                                                <option value="USD">USD</option>
+                                                <option value="EUR">EUR</option>
+                                                <option value="GBP">GBP</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
+                                <button
+                                    onClick={handleSaveGeneral}
+                                    disabled={processing}
+                                    className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+                                >
+                                    {processing ? 'Saving...' : 'Save Changes'}
+                                </button>
                             </div>
                         )}
 
@@ -71,22 +139,34 @@ export default function Settings() {
                                 </div>
                                 <div className="space-y-4">
                                     {[
-                                        { name: 'Order updates', description: 'Get notified about order status changes' },
-                                        { name: 'Promotions', description: 'Receive deals and promotional offers' },
-                                        { name: 'Security alerts', description: 'Get notified about suspicious activity' },
+                                        { key: 'email_notifications' as const, name: 'Email notifications', description: 'Receive notifications via email' },
+                                        { key: 'push_notifications' as const, name: 'Push notifications', description: 'Receive push notifications in browser' },
+                                        { key: 'marketing_emails' as const, name: 'Marketing emails', description: 'Receive deals and promotional offers' },
                                     ].map((item) => (
-                                        <div key={item.name} className="flex items-center justify-between">
+                                        <div key={item.key} className="flex items-center justify-between">
                                             <div>
                                                 <p className="text-sm font-medium text-gray-900 dark:text-white">{item.name}</p>
                                                 <p className="text-sm text-gray-500">{item.description}</p>
                                             </div>
                                             <label className="relative inline-flex cursor-pointer items-center">
-                                                <input type="checkbox" className="peer sr-only" defaultChecked />
+                                                <input
+                                                    type="checkbox"
+                                                    className="peer sr-only"
+                                                    checked={data[item.key]}
+                                                    onChange={(e) => setData(item.key, e.target.checked)}
+                                                />
                                                 <div className="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all peer-checked:bg-indigo-600 peer-checked:after:translate-x-full peer-checked:after:border-white" />
                                             </label>
                                         </div>
                                     ))}
                                 </div>
+                                <button
+                                    onClick={handleSaveNotifications}
+                                    disabled={processing}
+                                    className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+                                >
+                                    {processing ? 'Saving...' : 'Save Preferences'}
+                                </button>
                             </div>
                         )}
 
@@ -100,23 +180,15 @@ export default function Settings() {
                                     <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <p className="text-sm font-medium text-gray-900 dark:text-white">Two-Factor Authentication</p>
-                                                <p className="text-sm text-gray-500">Add an extra layer of security to your account.</p>
-                                            </div>
-                                            <button className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50 dark:border-gray-600">
-                                                Enable
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
-                                        <div className="flex items-center justify-between">
-                                            <div>
                                                 <p className="text-sm font-medium text-gray-900 dark:text-white">Change Password</p>
                                                 <p className="text-sm text-gray-500">Update your password regularly.</p>
                                             </div>
-                                            <button className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50 dark:border-gray-600">
+                                            <a
+                                                href="/forgot-password"
+                                                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50 dark:border-gray-600"
+                                            >
                                                 Change
-                                            </button>
+                                            </a>
                                         </div>
                                     </div>
                                 </div>
