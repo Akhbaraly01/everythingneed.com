@@ -72,6 +72,7 @@ use App\Http\Controllers\Web\LearnPageController;
 use App\Http\Controllers\Web\PropertiesPageController;
 use App\Http\Controllers\Web\CartPageController;
 use App\Http\Controllers\Web\CheckoutPageController;
+use App\Http\Controllers\Web\TicketsPageController;
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [WebAuthController::class, 'showLogin'])->name('login');
@@ -128,6 +129,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/orders/disputes', function () {
         return inertia('orders/Disputes');
     })->name('orders.disputes');
+
+    Route::get('/tickets', [TicketsPageController::class, 'index'])->name('tickets.index');
+    Route::get('/tickets/create', [TicketsPageController::class, 'create'])->name('tickets.create');
+    Route::get('/tickets/{id}', [TicketsPageController::class, 'show'])->name('tickets.show');
 });
 
 Route::get('/cart', [CartPageController::class, 'index'])->name('cart.index');

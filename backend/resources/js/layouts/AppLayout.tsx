@@ -74,7 +74,7 @@ const navigation = [
     { name: 'Notifications', href: '/notifications', icon: Bell },
     { name: 'Wallet', href: '/wallet', icon: CreditCard },
     { name: 'Settings', href: '/settings', icon: Settings },
-    { name: 'Help', href: '/support/tickets', icon: HelpCircle },
+    { name: 'Help / Tickets', href: '/tickets', icon: HelpCircle },
 ];
 
 const adminNavigation = [
