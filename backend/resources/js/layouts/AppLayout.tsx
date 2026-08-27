@@ -41,11 +41,13 @@ import {
     AlertTriangle,
     GraduationCap,
     Award,
-    Stethoscope,
     Pill,
     Users,
     DollarSign,
     Server,
+    Star,
+    Truck,
+    BarChart3,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -81,6 +83,8 @@ const navigation = [
     { name: 'Vendor Portal', href: '/vendor', icon: Store },
     { name: 'Payouts', href: '/vendor/payouts', icon: Wallet },
     { name: 'Healthcare', href: '/healthcare', icon: Stethoscope },
+    { name: 'Lab Tests', href: '/healthcare/labs', icon: Stethoscope },
+    { name: 'Experts', href: '/experts', icon: User },
     { name: 'Pharmacy', href: '/pharmacy', icon: Pill },
     { name: 'Find Doctors', href: '/healthcare/doctors', icon: Stethoscope },
     { name: 'Appointments', href: '/healthcare/appointments', icon: Calendar },
@@ -93,6 +97,15 @@ const navigation = [
     { name: 'Help / Tickets', href: '/tickets', icon: HelpCircle },
     { name: 'My Account', href: '/account/dashboard', icon: User },
     { name: 'Stores', href: '/stores', icon: Store },
+    { name: 'Deals', href: '/deals', icon: Handshake },
+    { name: 'Needs & Services', href: '/needs', icon: Handshake },
+    { name: 'Subscriptions', href: '/subscriptions', icon: CreditCard },
+    { name: 'Reviews', href: '/reviews', icon: Star },
+    { name: 'Payments', href: '/payments', icon: CreditCard },
+    { name: 'Categories', href: '/categories', icon: FolderTree },
+    { name: 'Deliveries', href: '/deliveries', icon: Truck },
+    { name: 'Inventory', href: '/inventory', icon: Package },
+    { name: 'My Analytics', href: '/analytics', icon: BarChart3 },
 ];
 
 const adminNavigation = [
