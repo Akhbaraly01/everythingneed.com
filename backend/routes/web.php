@@ -70,6 +70,8 @@ use App\Http\Controllers\Web\FoodPageController;
 use App\Http\Controllers\Web\VendorsPageController;
 use App\Http\Controllers\Web\LearnPageController;
 use App\Http\Controllers\Web\PropertiesPageController;
+use App\Http\Controllers\Web\CartPageController;
+use App\Http\Controllers\Web\CheckoutPageController;
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [WebAuthController::class, 'showLogin'])->name('login');
@@ -119,7 +121,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/wallet', [WalletPageController::class, 'index'])->name('wallet.index');
     Route::get('/orders', [OrdersPageController::class, 'index'])->name('orders.index');
     Route::get('/orders/{id}', [OrdersPageController::class, 'show'])->name('orders.show');
+    Route::get('/orders/checkout', [CheckoutPageController::class, 'index'])->name('orders.checkout');
+    Route::get('/orders/returns', function () {
+        return inertia('orders/Returns');
+    })->name('orders.returns');
+    Route::get('/orders/disputes', function () {
+        return inertia('orders/Disputes');
+    })->name('orders.disputes');
 });
+
+Route::get('/cart', [CartPageController::class, 'index'])->name('cart.index');
 
 // ─── Public Inertia pages ─────────────────────────────────────────────────────
 Route::get('/products', [ProductsPageController::class, 'index'])->name('products.index');

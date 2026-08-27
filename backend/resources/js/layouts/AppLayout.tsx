@@ -35,6 +35,9 @@ import {
     BookOpen,
     MapPin,
     Wallet,
+    ShoppingCart,
+    RotateCcw,
+    AlertTriangle,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -46,7 +49,10 @@ interface AppLayoutProps {
 const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Products', href: '/products', icon: ShoppingBag },
+    { name: 'Cart', href: '/cart', icon: ShoppingCart },
     { name: 'Orders', href: '/orders', icon: Package },
+    { name: 'Returns', href: '/orders/returns', icon: RotateCcw },
+    { name: 'Disputes', href: '/orders/disputes', icon: AlertTriangle },
     { name: 'Hotels', href: '/hotels', icon: Hotel },
     { name: 'Food', href: '/food', icon: UtensilsCrossed },
     { name: 'Learn', href: '/learn', icon: BookOpen },

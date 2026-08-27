@@ -1,8 +1,9 @@
 import AppLayout from '@/layouts/AppLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
+import { api } from '@/lib/api';
 import type { Product } from '@/types';
 import { formatCurrency } from '@/lib/utils';
-import { ShoppingCart, Heart, Star } from 'lucide-react';
+import { ShoppingCart, Heart, Star, Search } from 'lucide-react';
 import { useState } from 'react';
 
 interface ProductsProps {
@@ -23,33 +24,60 @@ interface ProductsProps {
 
 export default function Products({ products, filters }: ProductsProps) {
     const [search, setSearch] = useState(filters?.search ?? '');
+    const [cartMessage, setCartMessage] = useState<string | null>(null);
+
+    const handleSearch = (e: React.FormEvent) => {
+        e.preventDefault();
+        router.get('/products', { search: search || undefined, category: filters?.category }, { preserveState: true });
+    };
+
+    const handleAddToCart = async (productId: string, e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+            await api.post('/api/cart/items', { product_id: productId, quantity: 1 });
+            setCartMessage('Added to cart!');
+            setTimeout(() => setCartMessage(null), 2000);
+        } catch {
+        }
+    };
 
     return (
         <AppLayout title="Products">
             <Head title="Products" />
 
             <div className="space-y-6">
+                {/* Cart toast */}
+                {cartMessage && (
+                    <div className="fixed bottom-4 right-4 z-50 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-lg">
+                        {cartMessage}
+                    </div>
+                )}
+
                 {/* Filters */}
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex gap-2">
-                        <input
-                            type="text"
-                            placeholder="Search products..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                        />
-                        <button className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
+                    <form onSubmit={handleSearch} className="flex gap-2">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                            <input
+                                type="text"
+                                placeholder="Search products..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="rounded-lg border border-gray-300 py-2 pl-10 pr-4 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                            />
+                        </div>
+                        <button type="submit" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
                             Search
                         </button>
-                    </div>
+                    </form>
                     <div className="flex gap-2">
                         {['All', 'Electronics', 'Clothing', 'Home', 'Beauty'].map((cat) => (
                             <Link
                                 key={cat}
-                                href={cat === 'All' ? '/products' : `/products?category=${cat.toLowerCase()}`}
+                                href={cat === 'All' ? '/products' : `/products?category=${cat.toLowerCase()}${search ? `&search=${search}` : ''}`}
                                 className={`rounded-lg px-4 py-2 text-sm font-medium ${
-                                    (filters?.category ?? 'all') === cat.toLowerCase()
+                                    (filters?.category ?? 'all') === cat.toLowerCase() || (cat === 'All' && !filters?.category)
                                         ? 'bg-indigo-600 text-white'
                                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
                                 }`}
@@ -60,11 +88,15 @@ export default function Products({ products, filters }: ProductsProps) {
                     </div>
                 </div>
 
+                {/* Product count */}
+                <p className="text-sm text-gray-500">{products.meta.total} product{products.meta.total !== 1 ? 's' : ''} found</p>
+
                 {/* Product Grid */}
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {products.data.map((product) => (
-                        <div
+                        <Link
                             key={product.id}
+                            href={`/products/${product.id}`}
                             className="group rounded-lg bg-white shadow transition hover:shadow-md dark:bg-gray-800"
                         >
                             <div className="relative aspect-square overflow-hidden rounded-t-lg bg-gray-100">
@@ -79,16 +111,18 @@ export default function Products({ products, filters }: ProductsProps) {
                                         No image
                                     </div>
                                 )}
-                                <button className="absolute right-2 top-2 rounded-full bg-white p-2 shadow-md opacity-0 transition group-hover:opacity-100">
-                                    <Heart className="h-4 w-4 text-gray-600" />
+                                <button
+                                    onClick={(e) => handleAddToCart(product.id, e)}
+                                    className="absolute right-2 top-2 rounded-full bg-white p-2 shadow-md opacity-0 transition group-hover:opacity-100 hover:bg-indigo-50"
+                                    title="Add to cart"
+                                >
+                                    <ShoppingCart className="h-4 w-4 text-indigo-600" />
                                 </button>
                             </div>
                             <div className="p-4">
-                                <Link href={`/products/${product.id}`}>
-                                    <h3 className="text-sm font-semibold text-gray-900 hover:text-indigo-600 dark:text-white">
-                                        {product.name}
-                                    </h3>
-                                </Link>
+                                <h3 className="text-sm font-semibold text-gray-900 hover:text-indigo-600 dark:text-white">
+                                    {product.name}
+                                </h3>
                                 <p className="mt-1 text-xs text-gray-500">{product.category}</p>
                                 <div className="mt-2 flex items-center gap-1">
                                     <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
@@ -106,12 +140,9 @@ export default function Products({ products, filters }: ProductsProps) {
                                             </span>
                                         )}
                                     </div>
-                                    <button className="rounded-lg bg-indigo-600 p-2 text-white hover:bg-indigo-500">
-                                        <ShoppingCart className="h-4 w-4" />
-                                    </button>
                                 </div>
                             </div>
-                        </div>
+                        </Link>
                     ))}
                 </div>
 
@@ -121,7 +152,7 @@ export default function Products({ products, filters }: ProductsProps) {
                         {Array.from({ length: products.meta.last_page }, (_, i) => i + 1).map((page) => (
                             <Link
                                 key={page}
-                                href={`/products?page=${page}`}
+                                href={`/products?page=${page}${filters?.category ? `&category=${filters.category}` : ''}${filters?.search ? `&search=${filters.search}` : ''}`}
                                 className={`rounded-lg px-4 py-2 text-sm font-medium ${
                                     page === products.meta.current_page
                                         ? 'bg-indigo-600 text-white'

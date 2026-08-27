@@ -1,14 +1,49 @@
 import AppLayout from '@/layouts/AppLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { api } from '@/lib/api';
 import type { Product } from '@/types';
 import { formatCurrency } from '@/lib/utils';
-import { ShoppingCart, Heart, Star, Truck, Shield, RotateCcw } from 'lucide-react';
+import { ShoppingCart, Heart, Star, Truck, Shield, RotateCcw, Minus, Plus, Check } from 'lucide-react';
+import { useState } from 'react';
 
 interface ProductShowProps {
     product: Product;
 }
 
 export default function ProductShow({ product }: ProductShowProps) {
+    const { auth } = usePage().props as { auth?: { user?: { id: string } } };
+    const [quantity, setQuantity] = useState(1);
+    const [adding, setAdding] = useState(false);
+    const [added, setAdded] = useState(false);
+
+    const handleAddToCart = async () => {
+        if (!auth?.user) {
+            router.visit('/login');
+            return;
+        }
+        setAdding(true);
+        try {
+            await api.post('/api/cart/items', {
+                product_id: product.id,
+                quantity,
+            });
+            setAdded(true);
+            setTimeout(() => setAdded(false), 2000);
+        } catch (e: any) {
+            alert(e.message ?? 'Failed to add to cart');
+        } finally {
+            setAdding(false);
+        }
+    };
+
+    const handleWishlist = () => {
+        if (!auth?.user) {
+            router.visit('/login');
+            return;
+        }
+        api.post('/api/wishlist', { product_id: product.id }).catch(() => {});
+    };
+
     return (
         <AppLayout>
             <Head title={product.name} />
@@ -35,6 +70,15 @@ export default function ProductShow({ product }: ProductShowProps) {
                                 <div className="flex h-full items-center justify-center text-gray-400">No image</div>
                             )}
                         </div>
+                        {product.images && product.images.length > 1 && (
+                            <div className="grid grid-cols-4 gap-2">
+                                {product.images.slice(0, 4).map((img, i) => (
+                                    <div key={i} className="aspect-square overflow-hidden rounded-lg bg-gray-100">
+                                        <img src={img} alt="" className="h-full w-full object-cover" />
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {/* Details */}
@@ -48,6 +92,12 @@ export default function ProductShow({ product }: ProductShowProps) {
                                     <span className="ml-1 text-sm text-gray-500">({product.reviews_count ?? 0} reviews)</span>
                                 </div>
                             </div>
+                            {product.vendor && (
+                                <Link href={`/vendors/${product.vendor_id}`} className="mt-1 inline-flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-500">
+                                    {product.vendor.store_name}
+                                    {product.vendor.is_verified && <span className="text-green-500">✓</span>}
+                                </Link>
+                            )}
                         </div>
 
                         <div className="flex items-baseline gap-3">
@@ -80,11 +130,44 @@ export default function ProductShow({ product }: ProductShowProps) {
                             </div>
                         </div>
 
-                        <div className="flex gap-4">
-                            <button className="flex-1 rounded-lg bg-indigo-600 px-6 py-3 text-lg font-semibold text-white hover:bg-indigo-500">
-                                Add to Cart
+                        {/* Quantity + Add to Cart */}
+                        <div className="flex items-center gap-4">
+                            <div className="flex items-center rounded-lg border border-gray-300 dark:border-gray-600">
+                                <button
+                                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                                    className="p-3 hover:bg-gray-50 dark:hover:bg-gray-700"
+                                >
+                                    <Minus className="h-4 w-4" />
+                                </button>
+                                <span className="w-12 text-center font-medium">{quantity}</span>
+                                <button
+                                    onClick={() => setQuantity(quantity + 1)}
+                                    className="p-3 hover:bg-gray-50 dark:hover:bg-gray-700"
+                                >
+                                    <Plus className="h-4 w-4" />
+                                </button>
+                            </div>
+                            <button
+                                onClick={handleAddToCart}
+                                disabled={adding || product.stock_quantity <= 0}
+                                className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-6 py-3 text-lg font-semibold text-white transition ${
+                                    added ? 'bg-green-600' : 'bg-indigo-600 hover:bg-indigo-500'
+                                } disabled:opacity-50`}
+                            >
+                                {added ? (
+                                    <><Check className="h-5 w-5" /> Added!</>
+                                ) : adding ? (
+                                    'Adding...'
+                                ) : product.stock_quantity <= 0 ? (
+                                    'Out of Stock'
+                                ) : (
+                                    <><ShoppingCart className="h-5 w-5" /> Add to Cart</>
+                                )}
                             </button>
-                            <button className="rounded-lg border border-gray-300 p-3 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700">
+                            <button
+                                onClick={handleWishlist}
+                                className="rounded-lg border border-gray-300 p-3 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700"
+                            >
                                 <Heart className="h-6 w-6 text-gray-600 dark:text-gray-400" />
                             </button>
                         </div>
