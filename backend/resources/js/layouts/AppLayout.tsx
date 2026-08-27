@@ -40,6 +40,8 @@ import {
     AlertTriangle,
     GraduationCap,
     Award,
+    Stethoscope,
+    Pill,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -75,6 +77,7 @@ const navigation = [
     { name: 'Vendor Portal', href: '/vendor', icon: Store },
     { name: 'Payouts', href: '/vendor/payouts', icon: Wallet },
     { name: 'Healthcare', href: '/healthcare', icon: Stethoscope },
+    { name: 'Pharmacy', href: '/pharmacy', icon: Pill },
     { name: 'Find Doctors', href: '/healthcare/doctors', icon: Stethoscope },
     { name: 'Appointments', href: '/healthcare/appointments', icon: Calendar },
     { name: 'Notifications', href: '/notifications', icon: Bell },

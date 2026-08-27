@@ -196,6 +196,14 @@ Route::get('/properties/{id}', [PropertiesPageController::class, 'show'])->name(
 
 Route::get('/healthcare', [HealthcarePageController::class, 'index'])->name('healthcare.index');
 
+Route::get('/pharmacy', function () {
+    return inertia('pharmacy/Index');
+})->name('pharmacy.index');
+
+Route::get('/pharmacy/cart', function () {
+    return inertia('pharmacy/Cart');
+})->name('pharmacy.cart');
+
 Route::middleware('auth')->group(function () {
     Route::get('/healthcare/doctors', function () {
         return inertia('healthcare/Doctors');
