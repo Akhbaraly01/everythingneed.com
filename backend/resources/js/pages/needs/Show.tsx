@@ -24,6 +24,10 @@ export default function NeedShow({ need_id }: { need_id?: string }) {
     const [loading, setLoading] = useState(true);
     const id = need_id || (typeof window !== 'undefined' ? window.location.pathname.split('/').pop() : undefined);
 
+    const reload = () => {
+        if (id) api.get<{ data: Need }>(`/api/need-requests/${id}`).then((res) => setNeed(res.data)).catch(() => {});
+    };
+
     useEffect(() => {
         if (id) {
             api.get<{ data: Need }>(`/api/need-requests/${id}`)
@@ -32,6 +36,22 @@ export default function NeedShow({ need_id }: { need_id?: string }) {
                 .finally(() => setLoading(false));
         } else setLoading(false);
     }, [id]);
+
+    const handleOfferAction = async (offerId: string, action: 'accept') => {
+        if (!id) return;
+        try {
+            await api.post(`/api/need-requests/${id}/offers/${offerId}/accept`);
+            reload();
+        } catch (e: any) { alert(e.response?.data?.message || 'Action failed'); }
+    };
+
+    const handleTransition = async (action: string) => {
+        if (!id) return;
+        try {
+            await api.post(`/api/need-requests/${id}/${action}`);
+            reload();
+        } catch (e: any) { alert(e.response?.data?.message || 'Action failed'); }
+    };
 
     if (loading) return <AppLayout title="Need Details"><p className="p-12 text-center text-gray-500">Loading...</p></AppLayout>;
     if (!need) return <AppLayout title="Need Details"><p className="p-12 text-center text-red-500">Request not found</p></AppLayout>;
@@ -62,11 +82,27 @@ export default function NeedShow({ need_id }: { need_id?: string }) {
                                 <div key={o.id} className="rounded-lg border p-4 dark:border-gray-600">
                                     <div className="flex justify-between"><span className="font-semibold dark:text-white">{o.provider?.name || 'Provider'}</span><span className="font-bold text-green-600">${o.price}</span></div>
                                     <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{o.message}</p>
-                                    <span className={`mt-2 inline-block rounded-full px-2 py-1 text-xs ${o.status === 'accepted' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>{o.status}</span>
+                                    <div className="mt-2 flex items-center gap-2">
+                                        <span className={`rounded-full px-2 py-1 text-xs ${o.status === 'accepted' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>{o.status}</span>
+                                        {o.status === 'pending' && need.status === 'offered' && (
+                                            <button onClick={() => handleOfferAction(o.id, 'accept')} className="rounded bg-green-600 px-3 py-1 text-xs text-white hover:bg-green-700">Accept Offer</button>
+                                        )}
+                                    </div>
                                 </div>
                             ))}
                         </div>
                     ) : <p className="text-sm text-gray-500">No offers yet. Providers will respond soon.</p>}
+                </div>
+
+                <div className="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
+                    <h2 className="font-semibold dark:text-white mb-3">Workflow</h2>
+                    <div className="flex flex-wrap gap-2">
+                        {need.status === 'accepted' && <button onClick={() => handleTransition('pay')} className="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700">Pay Now</button>}
+                        {need.status === 'paid' && <button onClick={() => handleTransition('start')} className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700">Start Work</button>}
+                        {need.status === 'in_progress' && <button onClick={() => handleTransition('complete')} className="rounded bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700">Mark Complete</button>}
+                        {['pending','reviewing','offered'].includes(need.status) && <button onClick={() => handleTransition('cancel')} className="rounded border px-4 py-2 text-sm hover:bg-gray-50 dark:border-gray-600">Cancel Request</button>}
+                        <a href={`/needs/history`} className="rounded border px-4 py-2 text-sm hover:bg-gray-50 dark:border-gray-600">History</a>
+                    </div>
                 </div>
             </div>
         </AppLayout>

@@ -115,6 +115,14 @@ export default function OrderShow({ order }: OrderShowProps) {
                     </div>
                 )}
 
+                {/* Actions */}
+                <div className="flex flex-wrap gap-3">
+                    <Link href={`/orders/${order.id}/tracking`} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">Track Order</Link>
+                    <Link href={`/orders/returns?order=${order.id}`} className="rounded-lg border px-4 py-2 text-sm hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700">Request Return</Link>
+                    <Link href={`/orders/disputes?order=${order.id}`} className="rounded-lg border px-4 py-2 text-sm hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700">Open Dispute</Link>
+                    <Link href={`/reviews/create?type=product&id=${(order.items?.[0] as any)?.product_id || ''}`} className="rounded-lg border px-4 py-2 text-sm hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700">Write Review</Link>
+                </div>
+
                 {/* Tracking */}
                 {order.tracking && (order.tracking as any[]).length > 0 && (
                     <div className="rounded-lg bg-white p-6 shadow dark:bg-gray-800">

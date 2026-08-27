@@ -36,12 +36,32 @@ export default function ProductShow({ product }: ProductShowProps) {
         }
     };
 
-    const handleWishlist = () => {
+    const handleWishlist = async () => {
         if (!auth?.user) {
             router.visit('/login');
             return;
         }
-        api.post('/api/wishlist', { product_id: product.id }).catch(() => {});
+        try {
+            await api.post('/api/wishlist', { product_id: product.id });
+            alert('Added to wishlist');
+        } catch (e: any) {
+            if (e.response?.status === 409) alert('Already in wishlist');
+            else alert(e.response?.data?.message || 'Wishlist failed');
+        }
+    };
+
+    const handleCompare = async () => {
+        if (!auth?.user) {
+            router.visit('/login');
+            return;
+        }
+        try {
+            await api.post('/api/compare', { product_id: product.id });
+            router.visit('/products/compare');
+        } catch (e: any) {
+            if (e.response?.status === 409) router.visit('/products/compare');
+            else alert(e.response?.data?.message || 'Compare failed');
+        }
     };
 
     return (
@@ -166,9 +186,17 @@ export default function ProductShow({ product }: ProductShowProps) {
                             </button>
                             <button
                                 onClick={handleWishlist}
+                                title="Add to wishlist"
                                 className="rounded-lg border border-gray-300 p-3 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700"
                             >
                                 <Heart className="h-6 w-6 text-gray-600 dark:text-gray-400" />
+                            </button>
+                            <button
+                                onClick={handleCompare}
+                                title="Add to compare"
+                                className="rounded-lg border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700 dark:text-gray-300"
+                            >
+                                Compare
                             </button>
                         </div>
 
