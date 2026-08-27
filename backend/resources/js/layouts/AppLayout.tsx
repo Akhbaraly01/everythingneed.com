@@ -44,6 +44,8 @@ import {
     Stethoscope,
     Pill,
     Users,
+    DollarSign,
+    Server,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -89,6 +91,8 @@ const navigation = [
     { name: 'Change Password', href: '/account/change-password', icon: Lock },
     { name: 'My Addresses', href: '/account/addresses', icon: MapPin },
     { name: 'Help / Tickets', href: '/tickets', icon: HelpCircle },
+    { name: 'My Account', href: '/account/dashboard', icon: User },
+    { name: 'Stores', href: '/stores', icon: Store },
 ];
 
 const adminNavigation = [
@@ -102,6 +106,9 @@ const adminNavigation = [
     { name: 'Admin - Departments', href: '/admin/departments', icon: Building2 },
     { name: 'Admin - RBAC', href: '/admin/rbac', icon: KeyRound },
     { name: 'Admin - Payouts', href: '/admin/payouts', icon: Wallet },
+    { name: 'Admin - Finance', href: '/admin/finance', icon: DollarSign },
+    { name: 'Admin - Audit Logs', href: '/admin/audit-logs', icon: ShieldCheck },
+    { name: 'Admin - System', href: '/admin/system', icon: Server },
 ];
 
 export default function AppLayout({ children, title }: AppLayoutProps) {

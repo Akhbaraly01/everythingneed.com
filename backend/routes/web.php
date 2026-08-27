@@ -120,6 +120,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/settings', [SettingsPageController::class, 'index'])->name('settings.index');
 
+Route::middleware('auth')->group(function () {
+    Route::get('/settings/profile', function () {
+        return inertia('settings/Profile');
+    })->name('settings.profile');
+
+    Route::get('/settings/security', function () {
+        return inertia('settings/Security');
+    })->name('settings.security');
+
+    Route::get('/settings/notifications', function () {
+        return inertia('settings/Notifications');
+    })->name('settings.notifications');
+});
+
     Route::get('/account/profile', function () {
         return inertia('account/Profile');
     })->name('account.profile');
@@ -131,6 +145,22 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/account/addresses', function () {
         return inertia('account/Addresses');
     })->name('account.addresses');
+
+    Route::get('/account/dashboard', function () {
+        return inertia('account/Dashboard');
+    })->name('account.dashboard');
+
+    Route::get('/wishlist', function () {
+        return inertia('Wishlist');
+    })->name('wishlist');
+
+    Route::get('/stores', function () {
+        return inertia('stores/Index');
+    })->name('stores.index');
+
+    Route::get('/stores/{id}', function () {
+        return inertia('stores/Show');
+    })->name('stores.show');
 
     Route::get('/wallet', [WalletPageController::class, 'index'])->name('wallet.index');
     Route::get('/orders', [OrdersPageController::class, 'index'])->name('orders.index');
@@ -165,6 +195,28 @@ Route::get('/products/{id}', [ProductsPageController::class, 'show'])->name('pro
 Route::get('/jobs', [JobsPageController::class, 'index'])->name('jobs.index');
 Route::get('/jobs/{id}', [JobsPageController::class, 'show'])->name('jobs.show');
 
+Route::middleware('auth')->group(function () {
+    Route::get('/jobs/{id}/apply', function ($id) {
+        return inertia('jobs/Apply', ['job_id' => $id]);
+    })->name('jobs.apply');
+
+    Route::get('/jobs/applications', function () {
+        return inertia('jobs/Applications');
+    })->name('jobs.applications');
+
+    Route::get('/food/orders/{id}', function () {
+        return inertia('food/OrderTracking');
+    })->name('food.order-tracking');
+
+    Route::get('/pharmacy/checkout', function () {
+        return inertia('pharmacy/Checkout');
+    })->name('pharmacy.checkout');
+
+    Route::get('/pharmacy/orders/{id}', function () {
+        return inertia('pharmacy/OrderTracking');
+    })->name('pharmacy.order-tracking');
+});
+
 Route::get('/hotels', [HotelsPageController::class, 'index'])->name('hotels.index');
 Route::get('/hotels/{id}', [HotelsPageController::class, 'show'])->name('hotels.show');
 Route::get('/hotels/{id}/book', [HotelsPageController::class, 'booking'])->name('hotels.booking');
@@ -185,6 +237,9 @@ Route::get('/vendors/{id}', [VendorsPageController::class, 'show'])->name('vendo
 
 Route::get('/learn', [LearnPageController::class, 'index'])->name('learn.index');
 Route::get('/learn/{id}', [LearnPageController::class, 'show'])->name('learn.show');
+Route::get('/learn/courses', function () {
+    return inertia('learn/Catalog');
+})->name('learn.catalog');
 
 Route::middleware('auth')->group(function () {
     Route::get('/learn/my-learning', function () {
@@ -207,6 +262,20 @@ Route::middleware('auth')->group(function () {
 Route::get('/properties', [PropertiesPageController::class, 'index'])->name('properties.index');
 Route::get('/properties/{id}', [PropertiesPageController::class, 'show'])->name('properties.show');
 
+Route::middleware('auth')->group(function () {
+    Route::get('/properties/create', function () {
+        return inertia('properties/Create');
+    })->name('properties.create');
+
+    Route::get('/vendor/register', function () {
+        return inertia('vendors/Register');
+    })->name('vendor.register');
+
+    Route::get('/vendor/analytics', function () {
+        return inertia('vendor/Analytics');
+    })->name('vendor.analytics');
+});
+
 Route::get('/healthcare', [HealthcarePageController::class, 'index'])->name('healthcare.index');
 
 Route::get('/pharmacy', function () {
@@ -218,13 +287,17 @@ Route::get('/pharmacy/cart', function () {
 })->name('pharmacy.cart');
 
 Route::middleware('auth')->group(function () {
-    Route::get('/healthcare/doctors', function () {
-        return inertia('healthcare/Doctors');
-    })->name('healthcare.doctors');
+Route::get('/healthcare/doctors', function () {
+    return inertia('healthcare/Doctors');
+})->name('healthcare.doctors');
 
-    Route::get('/healthcare/doctors/{id}', function ($id) {
-        return inertia('healthcare/Book', ['doctor_id' => $id]);
-    })->name('healthcare.book');
+Route::get('/healthcare/doctors/{id}/profile', function ($id) {
+    return inertia('healthcare/DoctorProfile', ['doctor_id' => $id]);
+})->name('healthcare.doctor-profile');
+
+Route::get('/healthcare/doctors/{id}', function ($id) {
+    return inertia('healthcare/Book', ['doctor_id' => $id]);
+})->name('healthcare.book');
 
     Route::get('/healthcare/appointments', function () {
         return inertia('healthcare/Appointments');
@@ -306,6 +379,15 @@ Route::middleware('role:super_admin')->prefix('admin')->group(function () {
     Route::get('/payouts', function () {
         return inertia('admin/Payouts');
     })->name('admin.payouts');
+    Route::get('/finance', function () {
+        return inertia('admin/Finance');
+    })->name('admin.finance');
+    Route::get('/audit-logs', function () {
+        return inertia('admin/AuditLogs');
+    })->name('admin.audit-logs');
+    Route::get('/system', function () {
+        return inertia('admin/System');
+    })->name('admin.system');
 });
 
 // ─── Catch-all: redirect unknown paths to SPA ────────────────────────────────
