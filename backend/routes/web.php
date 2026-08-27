@@ -18,8 +18,11 @@ $frontendUrl = function (string $path = ''): string {
     return $base.'/'.ltrim($path, '/');
 };
 
-Route::get('/', function () use ($frontendUrl) {
-    return redirect()->away($frontendUrl());
+Route::get('/', function () {
+    if (auth()->check()) {
+        return redirect()->route('dashboard');
+    }
+    return redirect()->route('login');
 })->name('home');
 
 Route::get('/up', function () {
