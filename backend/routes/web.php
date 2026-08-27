@@ -173,10 +173,42 @@ Route::get('/vendors/{id}', [VendorsPageController::class, 'show'])->name('vendo
 Route::get('/learn', [LearnPageController::class, 'index'])->name('learn.index');
 Route::get('/learn/{id}', [LearnPageController::class, 'show'])->name('learn.show');
 
+Route::middleware('auth')->group(function () {
+    Route::get('/learn/my-learning', function () {
+        return inertia('learn/MyLearning');
+    })->name('learn.my-learning');
+
+    Route::get('/learn/courses/{courseId}/lessons/{lessonId}', function ($courseId, $lessonId) {
+        return inertia('learn/Lesson', ['course_id' => $courseId, 'lesson_id' => $lessonId]);
+    })->name('learn.lesson');
+
+    Route::get('/learn/courses/{courseId}/quiz', function ($courseId) {
+        return inertia('learn/Quiz', ['course_id' => $courseId]);
+    })->name('learn.quiz');
+
+    Route::get('/learn/certificates', function () {
+        return inertia('learn/Certificates');
+    })->name('learn.certificates');
+});
+
 Route::get('/properties', [PropertiesPageController::class, 'index'])->name('properties.index');
 Route::get('/properties/{id}', [PropertiesPageController::class, 'show'])->name('properties.show');
 
 Route::get('/healthcare', [HealthcarePageController::class, 'index'])->name('healthcare.index');
+
+Route::middleware('auth')->group(function () {
+    Route::get('/healthcare/doctors', function () {
+        return inertia('healthcare/Doctors');
+    })->name('healthcare.doctors');
+
+    Route::get('/healthcare/doctors/{id}', function ($id) {
+        return inertia('healthcare/Book', ['doctor_id' => $id]);
+    })->name('healthcare.book');
+
+    Route::get('/healthcare/appointments', function () {
+        return inertia('healthcare/Appointments');
+    })->name('healthcare.appointments');
+});
 
 // ─── Job Seekers (Inertia deep pages) ─────────────────────────────────────────
 Route::get('/job-seekers', [JobSeekersPageController::class, 'index'])->name('job-seekers.index');

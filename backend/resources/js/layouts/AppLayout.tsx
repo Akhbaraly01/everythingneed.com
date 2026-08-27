@@ -38,6 +38,8 @@ import {
     ShoppingCart,
     RotateCcw,
     AlertTriangle,
+    GraduationCap,
+    Award,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -56,6 +58,8 @@ const navigation = [
     { name: 'Hotels', href: '/hotels', icon: Hotel },
     { name: 'Food', href: '/food', icon: UtensilsCrossed },
     { name: 'Learn', href: '/learn', icon: BookOpen },
+    { name: 'My Learning', href: '/learn/my-learning', icon: GraduationCap },
+    { name: 'Certificates', href: '/learn/certificates', icon: Award },
     { name: 'Properties', href: '/properties', icon: Building2 },
     { name: 'Jobs', href: '/jobs', icon: Briefcase },
     { name: 'Vendors', href: '/vendors', icon: Store },
@@ -71,6 +75,8 @@ const navigation = [
     { name: 'Vendor Portal', href: '/vendor', icon: Store },
     { name: 'Payouts', href: '/vendor/payouts', icon: Wallet },
     { name: 'Healthcare', href: '/healthcare', icon: Stethoscope },
+    { name: 'Find Doctors', href: '/healthcare/doctors', icon: Stethoscope },
+    { name: 'Appointments', href: '/healthcare/appointments', icon: Calendar },
     { name: 'Notifications', href: '/notifications', icon: Bell },
     { name: 'Wallet', href: '/wallet', icon: CreditCard },
     { name: 'Settings', href: '/settings', icon: Settings },
