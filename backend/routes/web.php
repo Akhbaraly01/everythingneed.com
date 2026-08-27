@@ -133,9 +133,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/tickets', [TicketsPageController::class, 'index'])->name('tickets.index');
     Route::get('/tickets/create', [TicketsPageController::class, 'create'])->name('tickets.create');
     Route::get('/tickets/{id}', [TicketsPageController::class, 'show'])->name('tickets.show');
+
+    Route::get('/notifications', function () {
+        return inertia('notifications/Index');
+    })->name('notifications.index');
 });
 
 Route::get('/cart', [CartPageController::class, 'index'])->name('cart.index');
+
+Route::get('/search', function () {
+    return inertia('search/Results');
+})->name('search.results');
 
 // ─── Public Inertia pages ─────────────────────────────────────────────────────
 Route::get('/products', [ProductsPageController::class, 'index'])->name('products.index');
