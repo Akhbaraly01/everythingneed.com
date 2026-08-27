@@ -35,6 +35,15 @@ Route::prefix('api')->group(function () {
         ]);
     });
 
+    // Deals (public)
+    Route::get('/deals', function (\Illuminate\Http\Request $request) {
+        $deals = \Modules\Needs\Entities\NeedItem::where('is_available', true)->orderByDesc('created_at')->paginate($request->get('per_page', 12));
+        return response()->json(['data' => $deals->items(), 'meta' => ['current_page' => $deals->currentPage(), 'last_page' => $deals->lastPage(), 'per_page' => $deals->perPage(), 'total' => $deals->total()]]);
+    });
+    Route::get('/deals/{id}', function (string $id) {
+        $deal = \Modules\Needs\Entities\NeedItem::find($id); if (!$deal) return response()->json(['message' => 'Deal not found'], 404); return response()->json(['data' => $deal]);
+    });
+
     Route::middleware('auth:sanctum')->group(function () {
         // Catalog management (vendor-published need items)
         Route::post('/need-items', [NeedController::class, 'store']);

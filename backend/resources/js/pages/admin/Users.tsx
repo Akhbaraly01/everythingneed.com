@@ -4,6 +4,11 @@ import { api } from '@/lib/api';
 import { formatDateTime } from '@/lib/utils';
 import { Users, Shield, Ban, CheckCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import DataTable from '@/components/shared/DataTable';
+import SearchInput from '@/components/shared/SearchInput';
+import { StatusBadge, EmptyState } from '@/components/shared/Ui';
+import LoadingState from '@/components/shared/LoadingState';
+import Breadcrumb from '@/components/shared/Breadcrumb';
 
 interface User {
     id: string;
@@ -50,63 +55,26 @@ export default function AdminUsers() {
             <Head title="Manage Users" />
 
             <div className="space-y-6">
+                <Breadcrumb items={[{ label: 'Admin' }, { label: 'Users' }]} />
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Manage Users</h1>
 
-                <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name or email..."
-                    className="w-full max-w-md rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700" />
+                <div className="max-w-md">
+                    <SearchInput value={search} onChange={setSearch} placeholder="Search by name or email..." />
+                </div>
 
-                {loading ? (
-                    <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800"><p className="text-gray-500">Loading...</p></div>
-                ) : (
-                    <div className="overflow-x-auto rounded-lg bg-white shadow dark:bg-gray-800">
-                        <table className="w-full text-left text-sm">
-                            <thead className="border-b bg-gray-50 dark:border-gray-700 dark:bg-gray-700">
-                                <tr>
-                                    <th className="px-4 py-3">User</th>
-                                    <th className="px-4 py-3">Role</th>
-                                    <th className="px-4 py-3">Status</th>
-                                    <th className="px-4 py-3">Joined</th>
-                                    <th className="px-4 py-3">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y dark:divide-gray-700">
-                                {users.map((u) => (
-                                    <tr key={u.id}>
-                                        <td className="px-4 py-3">
-                                            <p className="font-medium text-gray-900 dark:text-white">{u.name}</p>
-                                            <p className="text-xs text-gray-500">{u.email}</p>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <select value={u.role} onChange={(e) => changeRole(u.id, e.target.value)}
-                                                className="rounded border px-2 py-1 text-xs dark:border-gray-600 dark:bg-gray-700">
-                                                <option value="customer">Customer</option>
-                                                <option value="vendor">Vendor</option>
-                                                <option value="rider">Rider</option>
-                                                <option value="admin">Admin</option>
-                                                <option value="super_admin">Super Admin</option>
-                                            </select>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
-                                                u.is_suspended ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
-                                            }`}>
-                                                {u.is_suspended ? <Ban className="h-3 w-3" /> : <CheckCircle className="h-3 w-3" />}
-                                                {u.is_suspended ? 'Suspended' : 'Active'}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3 text-xs text-gray-500">{formatDateTime(u.created_at)}</td>
-                                        <td className="px-4 py-3">
-                                            <button onClick={() => toggleSuspend(u.id, !u.is_suspended)}
-                                                className={`text-xs font-medium ${u.is_suspended ? 'text-green-600' : 'text-red-600'}`}>
-                                                {u.is_suspended ? 'Unsuspend' : 'Suspend'}
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+                <DataTable
+                    loading={loading}
+                    emptyTitle="No users found"
+                    emptyDescription="Try adjusting your search."
+                    columns={[
+                        { key: 'user', header: 'User', render: (u: User) => <div><p className="font-medium text-gray-900 dark:text-white">{u.name}</p><p className="text-xs text-gray-500">{u.email}</p></div> },
+                        { key: 'role', header: 'Role', render: (u: User) => <select value={u.role} onChange={(e) => changeRole(u.id, e.target.value)} className="rounded border px-2 py-1 text-xs dark:border-gray-600 dark:bg-gray-700"><option value="customer">Customer</option><option value="vendor">Vendor</option><option value="rider">Rider</option><option value="admin">Admin</option><option value="super_admin">Super Admin</option></select> },
+                        { key: 'status', header: 'Status', render: (u: User) => <StatusBadge status={u.is_suspended ? 'Suspended' : 'Active'} tone={u.is_suspended ? 'red' : 'green'} /> },
+                        { key: 'joined', header: 'Joined', render: (u: User) => <span className="text-xs text-gray-500">{formatDateTime(u.created_at)}</span> },
+                        { key: 'actions', header: 'Actions', render: (u: User) => <button onClick={() => toggleSuspend(u.id, !u.is_suspended)} className={`text-xs font-medium ${u.is_suspended ? 'text-green-600' : 'text-red-600'}`}>{u.is_suspended ? 'Unsuspend' : 'Suspend'}</button> },
+                    ]}
+                    data={users}
+                />
             </div>
         </AppLayout>
     );

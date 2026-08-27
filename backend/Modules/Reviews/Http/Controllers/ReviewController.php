@@ -13,6 +13,9 @@ class ReviewController extends Controller
     {
         $query = Review::with(['user']);
 
+        if ($request->boolean('mine') && $request->user()) {
+            $query->where('user_id', $request->user()->id);
+        }
         if ($request->has('reviewable_type')) {
             $query->where('reviewable_type', $request->reviewable_type);
         }
@@ -71,5 +74,15 @@ class ReviewController extends Controller
             'message' => 'Review updated successfully',
             'data' => $review->fresh(),
         ]);
+    }
+
+    public function destroy(Request $request, string $id): JsonResponse
+    {
+        $review = Review::find($id);
+        if (!$review || $review->user_id !== $request->user()->id) {
+            return response()->json(['message' => 'Review not found'], 404);
+        }
+        $review->delete();
+        return response()->json(['message' => 'Review deleted']);
     }
 }
