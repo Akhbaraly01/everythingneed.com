@@ -119,6 +119,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('profile.edit');
 
     Route::get('/settings', [SettingsPageController::class, 'index'])->name('settings.index');
+
+    Route::get('/account/profile', function () {
+        return inertia('account/Profile');
+    })->name('account.profile');
+
+    Route::get('/account/change-password', function () {
+        return inertia('account/ChangePassword');
+    })->name('account.change-password');
+
+    Route::get('/account/addresses', function () {
+        return inertia('account/Addresses');
+    })->name('account.addresses');
+
     Route::get('/wallet', [WalletPageController::class, 'index'])->name('wallet.index');
     Route::get('/orders', [OrdersPageController::class, 'index'])->name('orders.index');
     Route::get('/orders/{id}', [OrdersPageController::class, 'show'])->name('orders.show');

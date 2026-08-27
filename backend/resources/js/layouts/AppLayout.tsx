@@ -15,6 +15,7 @@ import {
     X,
     ChevronDown,
     User,
+    Lock,
     Package,
     CreditCard,
     HelpCircle,
@@ -84,6 +85,9 @@ const navigation = [
     { name: 'Notifications', href: '/notifications', icon: Bell },
     { name: 'Wallet', href: '/wallet', icon: CreditCard },
     { name: 'Settings', href: '/settings', icon: Settings },
+    { name: 'My Profile', href: '/account/profile', icon: User },
+    { name: 'Change Password', href: '/account/change-password', icon: Lock },
+    { name: 'My Addresses', href: '/account/addresses', icon: MapPin },
     { name: 'Help / Tickets', href: '/tickets', icon: HelpCircle },
 ];
 
