@@ -275,6 +275,24 @@ Route::middleware('role:super_admin,administrator,customer_service,support_staff
 
 Route::middleware('role:super_admin')->prefix('admin')->group(function () {
     Route::get('/rbac', [AdminPageController::class, 'rbac'])->name('admin.rbac');
+    Route::get('/dashboard', function () {
+        return inertia('admin/Dashboard');
+    })->name('admin.dashboard');
+    Route::get('/users', function () {
+        return inertia('admin/Users');
+    })->name('admin.users');
+    Route::get('/vendors', function () {
+        return inertia('admin/Vendors');
+    })->name('admin.vendors');
+    Route::get('/products', function () {
+        return inertia('admin/Products');
+    })->name('admin.products');
+    Route::get('/orders', function () {
+        return inertia('admin/Orders');
+    })->name('admin.orders');
+    Route::get('/payouts', function () {
+        return inertia('admin/Payouts');
+    })->name('admin.payouts');
 });
 
 // ─── Catch-all: redirect unknown paths to SPA ────────────────────────────────

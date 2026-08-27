@@ -42,6 +42,7 @@ import {
     Award,
     Stethoscope,
     Pill,
+    Users,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -87,10 +88,16 @@ const navigation = [
 ];
 
 const adminNavigation = [
+    { name: 'Admin Dashboard', href: '/admin/dashboard', icon: ShieldCheck },
+    { name: 'Admin - Users', href: '/admin/users', icon: Users },
+    { name: 'Admin - Vendors', href: '/admin/vendors', icon: Store },
+    { name: 'Admin - Products', href: '/admin/products', icon: Package },
+    { name: 'Admin - Orders', href: '/admin/orders', icon: ShoppingCart },
     { name: 'Admin - Approvals', href: '/admin/approvals', icon: ShieldCheck },
     { name: 'Admin - Categories', href: '/admin/categories', icon: FolderTree },
     { name: 'Admin - Departments', href: '/admin/departments', icon: Building2 },
     { name: 'Admin - RBAC', href: '/admin/rbac', icon: KeyRound },
+    { name: 'Admin - Payouts', href: '/admin/payouts', icon: Wallet },
 ];
 
 export default function AppLayout({ children, title }: AppLayoutProps) {
