@@ -41,4 +41,14 @@ class HotelsPageController extends Controller
             'hotel' => $hotel,
         ]);
     }
+
+    public function booking(string $id): Response
+    {
+        $hotel = Hotel::with('rooms')->where('is_active', true)->findOrFail($id);
+
+        return Inertia::render('hotels/Booking', [
+            'hotel' => $hotel->only('id', 'name', 'city', 'star_rating', 'image_url'),
+            'rooms' => $hotel->rooms->where('is_available', true),
+        ]);
+    }
 }

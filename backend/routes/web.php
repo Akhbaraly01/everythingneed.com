@@ -154,9 +154,18 @@ Route::get('/jobs/{id}', [JobsPageController::class, 'show'])->name('jobs.show')
 
 Route::get('/hotels', [HotelsPageController::class, 'index'])->name('hotels.index');
 Route::get('/hotels/{id}', [HotelsPageController::class, 'show'])->name('hotels.show');
+Route::get('/hotels/{id}/book', [HotelsPageController::class, 'booking'])->name('hotels.booking');
+Route::middleware('auth')->group(function () {
+    Route::get('/hotels/reservations', function () {
+        return inertia('hotels/Reservations');
+    })->name('hotels.reservations');
+});
 
 Route::get('/food', [FoodPageController::class, 'index'])->name('food.index');
 Route::get('/food/{id}', [FoodPageController::class, 'show'])->name('food.show');
+Route::get('/food/cart', function () {
+    return inertia('food/Cart');
+})->name('food.cart');
 
 Route::get('/vendors', [VendorsPageController::class, 'index'])->name('vendors.index');
 Route::get('/vendors/{id}', [VendorsPageController::class, 'show'])->name('vendors.show');
