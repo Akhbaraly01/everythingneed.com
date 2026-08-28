@@ -637,4 +637,4 @@ Route::middleware('role:super_admin')->prefix('admin')->group(function () {
 // ─── Catch-all: redirect unknown paths to SPA ────────────────────────────────
 Route::get('/{path}', function (string $path) use ($frontendUrl) {
     return redirect()->away($frontendUrl($path));
-})->where('path', '^(?!api|up|storage|sanctum|telescope).*$');
+})->where('path', '^(?!api|up|storage|sanctum|telescope|build).*$');

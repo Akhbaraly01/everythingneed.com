@@ -27,7 +27,8 @@ interface DashboardStats {
 }
 
 export default function Dashboard() {
-    const { user } = usePage().props.auth as { user: { id: string; name: string; email: string } };
+    const auth = usePage().props.auth as { id: string; name: string; email: string } | null;
+    const user = (auth as unknown as { user?: { id: string; name: string; email: string } })?.user ?? auth;
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [loading, setLoading] = useState(true);
 

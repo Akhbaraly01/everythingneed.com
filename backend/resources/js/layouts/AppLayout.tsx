@@ -149,7 +149,8 @@ const adminNavigation = [
 ];
 
 export default function AppLayout({ children, title }: AppLayoutProps) {
-    const { user } = usePage().props.auth as { user: { id: string; name: string } };
+    const auth = usePage().props.auth as { id: string; name: string; email: string; roles?: string[] } | null;
+    const user = (auth as unknown as { user?: { id: string; name: string; email: string } })?.user ?? auth;
     const page = usePage();
     const authRoles = (page.props.auth as { roles?: string[] })?.roles ?? [];
     const isAdminArea = authRoles.some((r) =>
