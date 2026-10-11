@@ -33,11 +33,12 @@ class CartApiTest extends TestCase
         ]);
     }
 
-    private function makeProduct(float $price): Product
+private function makeProduct(float $price): Product
     {
         return Product::factory()->create([
             'vendor_id' => $this->vendorId,
             'price' => $price,
+            'stock_quantity' => 50,
         ]);
     }
 
@@ -50,10 +51,14 @@ class CartApiTest extends TestCase
         ])->assertStatus(401);
     }
 
-    public function test_add_item_uses_server_side_pricing_and_merges_duplicates(): void
+public function test_add_item_uses_server_side_pricing_and_merges_duplicates(): void
     {
         $user = User::factory()->create();
-        $product = Product::factory()->create(['vendor_id' => $this->vendorId, 'price' => 40.00]);
+        $product = Product::factory()->create([
+            'vendor_id' => $this->vendorId,
+            'price' => 40.00,
+            'stock_quantity' => 50,
+        ]);
 
         $add = $this->actingAs($user, 'sanctum')->postJson('/api/cart/items', [
             'product_id' => $product->id,
@@ -78,11 +83,11 @@ class CartApiTest extends TestCase
         $this->assertEquals(5, $cart->items()->first()->quantity);
     }
 
-    public function test_show_returns_computed_totals(): void
+public function test_show_returns_computed_totals(): void
     {
         $user = User::factory()->create();
-        $p1 = Product::factory()->create(['vendor_id' => $this->vendorId, 'price' => 30]);
-        $p2 = Product::factory()->create(['vendor_id' => $this->vendorId, 'price' => 12.5]);
+        $p1 = Product::factory()->create(['vendor_id' => $this->vendorId, 'price' => 30, 'stock_quantity' => 50]);
+        $p2 = Product::factory()->create(['vendor_id' => $this->vendorId, 'price' => 12.5, 'stock_quantity' => 50]);
 
         $api = $this->actingAs($user, 'sanctum');
         $api->postJson('/api/cart/items', ['product_id' => $p1->id, 'quantity' => 2]); // 60
@@ -95,10 +100,14 @@ class CartApiTest extends TestCase
         $this->assertEquals(6, $show->json('data.item_count'));
     }
 
-    public function test_update_quantity_recomputes_total(): void
+public function test_update_quantity_recomputes_total(): void
     {
         $user = User::factory()->create();
-        $product = Product::factory()->create(['vendor_id' => $this->vendorId, 'price' => 20]);
+        $product = Product::factory()->create([
+            'vendor_id' => $this->vendorId,
+            'price' => 20,
+            'stock_quantity' => 50,
+        ]);
 
         $itemId = null;
         $this->actingAs($user, 'sanctum')
@@ -115,10 +124,14 @@ class CartApiTest extends TestCase
         $this->assertEquals('140.00', $total);
     }
 
-    public function test_percentage_coupon_applies_discount(): void
+public function test_percentage_coupon_applies_discount(): void
     {
         $user = User::factory()->create();
-        $product = Product::factory()->create(['vendor_id' => $this->vendorId, 'price' => 100]);
+        $product = Product::factory()->create([
+            'vendor_id' => $this->vendorId,
+            'price' => 100,
+            'stock_quantity' => 50,
+        ]);
 
         Coupon::create([
             'code' => 'SAVE10',

@@ -42,4 +42,18 @@ class JobsPageController extends Controller
             'job' => $job,
         ]);
     }
+
+    public function apply(string $id): Response
+    {
+        $job = JobPost::where('is_active', true)->findOrFail($id);
+
+        return Inertia::render('jobs/Apply', [
+            'job' => [
+                'id' => $job->id,
+                'title' => $job->title,
+                'company' => $job->company,
+                'location' => $job->location,
+            ],
+        ]);
+    }
 }

@@ -15,6 +15,7 @@ use Modules\Notifications\Entities\Notification;
 use Modules\Users\Entities\UserCertificate;
 use Modules\Learn\Entities\Enrollment;
 use Modules\Engagement\Entities\Wishlist;
+use Modules\Healthcare\Entities\Doctor;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -51,31 +52,30 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(UserRole::class);
     }
 
+    public function twoFactorSecret()
+    {
+        return $this->hasOne(\Modules\Authentication\Entities\TwoFactorSecret::class, 'user_id');
+    }
+
     public function hasRole(string $role): bool
     {
         return $this->roles()->where('role', $role)->exists();
     }
 
     /**
-     * Granular RBAC check against the seeded role→permission matrix.
+     * Granular RBAC check: role matrix UNION per-user grants (user_permissions).
      * super_admin implicitly holds every permission.
+     *
+     * W2: delegated to EffectivePermissionResolver (single owner of
+     * effective-permission truth). Signature kept for all callers.
+     *
+     * Spec S64 2-segment aliases (e.g. "users.view") resolve to every canonical
+     * 3-segment catalog entry sharing the same action (module.*.action), so a
+     * single alias check is satisfied when the role holds any of them.
      */
     public function hasPermission(string $permission): bool
     {
-        if ($this->hasRole('super_admin')) {
-            return true;
-        }
-
-        $matrix = \Illuminate\Support\Facades\Cache::remember('rbac.matrix', 300, function () {
-            return \Illuminate\Support\Facades\DB::table('role_permissions')
-                ->get()
-                ->groupBy('role')
-                ->map->pluck('permission');
-        });
-
-        return $this->roles()->get(['role'])->contains(
-            fn ($r) => ($matrix[$r->role] ?? collect())->contains($permission),
-        );
+        return app(\Core\Services\Contracts\EffectivePermissionResolverInterface::class)->has($this, $permission);
     }
 
     public function wallet()
@@ -91,6 +91,11 @@ class User extends Authenticatable implements MustVerifyEmail
     public function vendor()
     {
         return $this->hasOne(Vendor::class);
+    }
+
+    public function doctor()
+    {
+        return $this->hasOne(Doctor::class);
     }
 
     public function notifications()

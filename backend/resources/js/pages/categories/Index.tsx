@@ -40,7 +40,7 @@ export default function CategoriesIndex() {
                 ) : (
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                         {categories.map((cat) => (
-                            <Link key={cat.id} href={`/categories/${cat.id}`}
+                            <Link key={cat.id} href={`/categories/${cat.slug ?? cat.id}`}
                                 className="rounded-lg bg-white p-6 shadow transition hover:shadow-md dark:bg-gray-800">
                                 <h3 className="font-semibold text-gray-900 hover:text-indigo-600 dark:text-white">{cat.name}</h3>
                                 {cat.description && <p className="mt-2 text-sm text-gray-500 line-clamp-2">{cat.description}</p>}

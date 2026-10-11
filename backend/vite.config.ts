@@ -4,6 +4,20 @@ import react from '@vitejs/plugin-react-swc';
 import path from 'path';
 
 export default defineConfig({
+    build: {
+        rollupOptions: {
+            output: {
+                // W17 (F-02): split the long-lived vendor runtime from app code
+                // so deploys keep the react/vendor cache warm.
+                manualChunks(id) {
+                    if (!id.includes('node_modules')) return;
+                    if (/node_modules[\\/](react|react-dom|scheduler)[\\/]/.test(id)) return 'react-vendor';
+                    if (id.includes('@inertiajs')) return 'inertia';
+                    return 'vendor';
+                },
+            },
+        },
+    },
     plugins: [
         laravel({
             input: ['resources/css/app.css', 'resources/js/app.tsx'],
@@ -22,8 +36,5 @@ export default defineConfig({
             '@types': path.resolve(__dirname, './resources/js/types'),
             '@core': path.resolve(__dirname, './resources/js/core'),
         },
-    },
-    ssr: {
-        noExternal: ['@radix-ui/*'],
     },
 });

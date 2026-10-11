@@ -19,9 +19,8 @@ class DemoDataSeeder extends Seeder
         if (DB::table('properties')->count() === 0) {
             $this->seedProperties();
         }
-        if (DB::table('job_posts')->count() === 0) {
-            $this->seedJobs();
-        }
+        // W5: job board moved to JobsDemoSeeder (local listings + repair
+        // of the foreign rows this file used to plant).
         if (DB::table('restaurants')->count() === 0) {
             $this->seedRestaurants();
         }
@@ -170,11 +169,11 @@ class DemoDataSeeder extends Seeder
     private function seedHotels(): void
     {
         $hotels = [
-            ['id'=>Str::uuid(),'name'=>'Grand Palace Hotel','address'=>'123 Main St','city'=>'New York','state'=>'NY','country'=>'US','star_rating'=>5,'description'=>'Luxury 5-star hotel in Manhattan.','amenities'=>json_encode(['WiFi','Pool','Spa','Gym']),'is_active'=>true,'created_at'=>now(),'updated_at'=>now()],
-            ['id'=>Str::uuid(),'name'=>'Seaside Resort & Spa','address'=>'456 Ocean Dr','city'=>'Miami Beach','state'=>'FL','country'=>'US','star_rating'=>4,'description'=>'Beachfront resort with spa.','amenities'=>json_encode(['WiFi','Beach','Spa','Pool']),'is_active'=>true,'created_at'=>now(),'updated_at'=>now()],
-            ['id'=>Str::uuid(),'name'=>'Mountain View Lodge','address'=>'789 Pine Rd','city'=>'Aspen','state'=>'CO','country'=>'US','star_rating'=>4,'description'=>'Cozy mountain lodge.','amenities'=>json_encode(['WiFi','Ski Access','Fireplace']),'is_active'=>true,'created_at'=>now(),'updated_at'=>now()],
-            ['id'=>Str::uuid(),'name'=>'City Center Inn','address'=>'321 Center Ave','city'=>'Chicago','state'=>'IL','country'=>'US','star_rating'=>3,'description'=>'Affordable downtown hotel.','amenities'=>json_encode(['WiFi','Breakfast','Gym']),'is_active'=>true,'created_at'=>now(),'updated_at'=>now()],
-            ['id'=>Str::uuid(),'name'=>'Tropical Paradise Resort','address'=>'999 Beach Blvd','city'=>'Honolulu','state'=>'HI','country'=>'US','star_rating'=>5,'description'=>'Exclusive beachfront resort.','amenities'=>json_encode(['WiFi','Private Beach','Pool','Spa']),'is_active'=>true,'created_at'=>now(),'updated_at'=>now()],
+            ['id'=>Str::uuid(),'name'=>'Accra Grand Hotel','address'=>'14 Independence Ave','city'=>'Accra','state'=>'GR','country'=>'GH','star_rating'=>5,'description'=>'Luxury 5-star hotel in Osu, Accra.','amenities'=>json_encode(['WiFi','Pool','Spa','Gym']),'is_active'=>true,'created_at'=>now(),'updated_at'=>now()],
+            ['id'=>Str::uuid(),'name'=>'Kumasi Royal Resort','address'=>'22 Prempeh Rd','city'=>'Kumasi','state'=>'AH','country'=>'GH','star_rating'=>4,'description'=>'Garden resort near the Manhyia Palace.','amenities'=>json_encode(['WiFi','Pool','Spa','Gym']),'is_active'=>true,'created_at'=>now(),'updated_at'=>now()],
+            ['id'=>Str::uuid(),'name'=>'Takoradi Beach Lodge','address'=>'7 Beach Rd','city'=>'Takoradi','state'=>'WR','country'=>'GH','star_rating'=>4,'description'=>'Relaxed beachfront lodge on the Atlantic.','amenities'=>json_encode(['WiFi','Beach','Spa','Pool']),'is_active'=>true,'created_at'=>now(),'updated_at'=>now()],
+            ['id'=>Str::uuid(),'name'=>'Cape Coast Castle View Inn','address'=>'3 Castle Dr','city'=>'Cape Coast','state'=>'CR','country'=>'GH','star_rating'=>3,'description'=>'Heritage inn minutes from the Castle.','amenities'=>json_encode(['WiFi','Breakfast','Gym']),'is_active'=>true,'created_at'=>now(),'updated_at'=>now()],
+            ['id'=>Str::uuid(),'name'=>'Tamale Savannah Lodge','address'=>'9 Dagomba Ave','city'=>'Tamale','state'=>'NR','country'=>'GH','star_rating'=>3,'description'=>'Comfortable lodge in the northern savannah.','amenities'=>json_encode(['WiFi','Pool','Restaurant']),'is_active'=>true,'created_at'=>now(),'updated_at'=>now()],
         ];
         foreach ($hotels as $h) {
             $hid = $h['id'];
@@ -197,18 +196,6 @@ class DemoDataSeeder extends Seeder
             ['id'=>Str::uuid(),'user_id'=>$uid,'title'=>'Luxury Penthouse','description'=>'Penthouse with panoramic views.','price'=>1200000,'property_type'=>'buy','bedrooms'=>3,'bathrooms'=>3,'area_sqft'=>3500,'address'=>'400 Sky Way','city'=>'Miami','state'=>'FL','country'=>'US','created_at'=>now(),'updated_at'=>now()],
             ['id'=>Str::uuid(),'user_id'=>$uid,'title'=>'Office Space','description'=>'Modern office in business district.','price'=>2800,'property_type'=>'rent','bedrooms'=>0,'bathrooms'=>2,'area_sqft'=>2000,'address'=>'500 Market St','city'=>'San Francisco','state'=>'CA','country'=>'US','created_at'=>now(),'updated_at'=>now()],
             ['id'=>Str::uuid(),'user_id'=>$uid,'title'=>'Beachfront Cottage','description'=>'Cottage with beach access.','price'=>1800,'property_type'=>'rent','bedrooms'=>2,'bathrooms'=>1,'area_sqft'=>900,'address'=>'600 Shore Dr','city'=>'Malibu','state'=>'CA','country'=>'US','created_at'=>now(),'updated_at'=>now()],
-        ]);
-    }
-
-    private function seedJobs(): void
-    {
-        $uid = DB::table('users')->first()->id;
-        DB::table('job_posts')->insert([
-            ['id'=>Str::uuid(),'user_id'=>$uid,'title'=>'Senior React Developer','company'=>'TechCorp','description'=>'Experienced React developer needed.','location'=>'San Francisco, CA','job_type'=>'full_time','salary_min'=>120000,'salary_max'=>160000,'requirements'=>json_encode(['5+ years React','TypeScript']),'is_active'=>true,'created_at'=>now(),'updated_at'=>now()],
-            ['id'=>Str::uuid(),'user_id'=>$uid,'title'=>'Marketing Manager','company'=>'GrowthCo','description'=>'Lead marketing team.','location'=>'New York, NY','job_type'=>'full_time','salary_min'=>80000,'salary_max'=>110000,'requirements'=>json_encode(['3+ years marketing management']),'is_active'=>true,'created_at'=>now(),'updated_at'=>now()],
-            ['id'=>Str::uuid(),'user_id'=>$uid,'title'=>'Registered Nurse','company'=>'City Hospital','description'=>'Join ER nursing team.','location'=>'Chicago, IL','job_type'=>'full_time','salary_min'=>65000,'salary_max'=>85000,'requirements'=>json_encode(['BSN','RN license']),'is_active'=>true,'created_at'=>now(),'updated_at'=>now()],
-            ['id'=>Str::uuid(),'user_id'=>$uid,'title'=>'Full Stack Engineer','company'=>'StartupXYZ','description'=>'Build core platform.','location'=>'Remote','job_type'=>'full_time','salary_min'=>100000,'salary_max'=>140000,'requirements'=>json_encode(['3+ years Laravel','React']),'is_active'=>true,'created_at'=>now(),'updated_at'=>now()],
-            ['id'=>Str::uuid(),'user_id'=>$uid,'title'=>'Restaurant Manager','company'=>'Grand Kitchen','description'=>'Manage daily operations.','location'=>'Los Angeles, CA','job_type'=>'full_time','salary_min'=>55000,'salary_max'=>70000,'requirements'=>json_encode(['5+ years restaurant management']),'is_active'=>true,'created_at'=>now(),'updated_at'=>now()],
         ]);
     }
 

@@ -8,8 +8,11 @@ use Modules\Authentication\Actions\LoginUser;
 use Modules\Authentication\Actions\LogoutUser;
 use Modules\Authentication\Actions\RequestOtp;
 use Modules\Authentication\Actions\VerifyOtp;
+use Modules\Authentication\Actions\RequestEmailOtp;
+use Modules\Authentication\Actions\VerifyEmailOtp;
 use Modules\Authentication\Actions\EnableTwoFactor;
 use Modules\Authentication\Actions\VerifyTwoFactor;
+use Modules\Authentication\Actions\DisableTwoFactor;
 
 class AuthService implements AuthServiceInterface
 {
@@ -19,8 +22,11 @@ class AuthService implements AuthServiceInterface
         private LogoutUser $logoutUser,
         private RequestOtp $requestOtp,
         private VerifyOtp $verifyOtp,
+        private RequestEmailOtp $requestEmailOtp,
+        private VerifyEmailOtp $verifyEmailOtp,
         private EnableTwoFactor $enableTwoFactor,
         private VerifyTwoFactor $verifyTwoFactor,
+        private DisableTwoFactor $disableTwoFactor,
     ) {}
 
     public function register(array $data): array
@@ -53,6 +59,16 @@ class AuthService implements AuthServiceInterface
         return $this->verifyOtp->execute($phone, $code);
     }
 
+    public function requestEmailOtp(string $email): array
+    {
+        return $this->requestEmailOtp->execute($email);
+    }
+
+    public function verifyEmailOtp(string $email, string $code): bool
+    {
+        return $this->verifyEmailOtp->execute($email, $code);
+    }
+
     public function enableTwoFactor(string $userId): array
     {
         return $this->enableTwoFactor->execute($userId);
@@ -61,5 +77,10 @@ class AuthService implements AuthServiceInterface
     public function verifyTwoFactor(string $userId, string $code): bool
     {
         return $this->verifyTwoFactor->execute($userId, $code);
+    }
+
+    public function disableTwoFactor(string $userId): bool
+    {
+        return $this->disableTwoFactor->execute($userId);
     }
 }

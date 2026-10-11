@@ -43,11 +43,11 @@ class SuspensionTest extends TestCase
             'suspended_at' => now(),
         ]);
 
-        // Web login uses WebAuthController which shares the same guard path.
+        // Suspended web logins land on the appeal page (plan Q), still guest.
         $this->from('/login')->post('/login', [
             'email' => $user->email,
             'password' => 'password',
-        ])->assertRedirect('/login');
+        ])->assertRedirect('/suspended?email='.urlencode($user->email));
 
         $this->assertGuest();
     }

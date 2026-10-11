@@ -17,6 +17,9 @@ class RegisterVendorRequest extends FormRequest
             'store_name' => 'required|string|max:255',
             'category' => 'required|string|max:100',
             'description' => 'nullable|string|max:2000',
+            'business_type' => 'nullable|string|in:individual,business,corporation',
+            'phone' => 'nullable|string|max:30',
+            'address' => 'nullable|string|max:500',
         ];
     }
 }

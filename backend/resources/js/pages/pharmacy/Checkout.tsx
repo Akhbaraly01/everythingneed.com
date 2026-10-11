@@ -1,7 +1,8 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, router } from '@inertiajs/react';
-import { api } from '@/lib/api';
-import { formatCurrency } from '@/lib/utils';
+import {  api, errorMessage } from '@/lib/api';
+import { toast } from 'sonner';
+import { formatPrice } from '@/lib/currency';
 import { ArrowRight, Pill } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -22,7 +23,10 @@ export default function PharmacyCheckout() {
         try {
             const stored = localStorage.getItem('pharmacy_cart');
             if (stored) setItems(JSON.parse(stored));
-        } catch {}
+        } catch {
+            toast.warning('Your saved cart could not be read and has been cleared.');
+            try { localStorage.removeItem('pharmacy_cart'); } catch { /* storage unavailable */ }
+        }
     }, []);
 
     const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
@@ -31,14 +35,14 @@ export default function PharmacyCheckout() {
         if (!address.trim() || items.length === 0) return;
         setSubmitting(true);
         try {
-            await api.post('/api/orders/pharmacy', {
+            const res = await api.post<{ data: { id: string } }>('/api/pharmacy/orders', {
                 items: items.map((i) => ({ medicine_id: i.medicine_id, quantity: i.quantity })),
-                shipping_address: address,
+                delivery_address: address,
             });
             localStorage.removeItem('pharmacy_cart');
-            router.visit('/orders');
-        } catch (e: any) {
-            alert(e.message ?? 'Failed to place order');
+            router.visit(`/pharmacy/orders/${res.data.id}/confirmation`);
+        } catch (e) {
+            toast.error(errorMessage(e, 'Failed to place order'));
         }
         setSubmitting(false);
     };
@@ -67,11 +71,11 @@ export default function PharmacyCheckout() {
                     {items.map((item, idx) => (
                         <div key={idx} className="flex justify-between text-sm py-1">
                             <span>{item.quantity}x {item.name}</span>
-                            <span>{formatCurrency(item.price * item.quantity)}</span>
+                            <span>{formatPrice(item.price * item.quantity)}</span>
                         </div>
                     ))}
                     <div className="mt-3 border-t pt-3 flex justify-between font-bold">
-                        <span>Total</span><span>{formatCurrency(subtotal)}</span>
+                        <span>Total</span><span>{formatPrice(subtotal)}</span>
                     </div>
                 </div>
 

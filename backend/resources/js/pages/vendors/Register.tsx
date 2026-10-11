@@ -1,22 +1,31 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, router, usePage } from '@inertiajs/react';
-import { api } from '@/lib/api';
+import {  api, errorMessage } from '@/lib/api';
+import { toast } from 'sonner';
 import { Store } from 'lucide-react';
 import { useState } from 'react';
 
 export default function VendorRegister() {
     const { auth } = usePage().props as { auth?: { user?: { id: string } } };
-    const [form, setForm] = useState({ store_name: '', description: '', business_type: 'individual', phone: '', address: '' });
+    const [form, setForm] = useState({ store_name: '', category: '', description: '', business_type: 'individual', phone: '', address: '' });
     const [submitting, setSubmitting] = useState(false);
 
     const handleRegister = async () => {
         if (!auth?.user) { router.visit('/login'); return; }
+        if (!form.category.trim()) { toast.warning('Please enter a store category'); return; }
         setSubmitting(true);
         try {
-            await api.post('/api/vendors/register', form);
+            await api.post('/api/vendors', {
+                store_name: form.store_name,
+                category: form.category,
+                description: form.description,
+                business_type: form.business_type,
+                phone: form.phone,
+                address: form.address,
+            });
             router.visit('/vendor');
-        } catch (e: any) {
-            alert(e.message ?? 'Failed to register');
+        } catch (e) {
+            toast.error(errorMessage(e, 'Failed to register'));
         }
         setSubmitting(false);
     };
@@ -37,6 +46,8 @@ export default function VendorRegister() {
                     <div className="space-y-4">
                         <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Store Name *</label>
                             <input type="text" value={form.store_name} onChange={(e) => setForm({ ...form, store_name: e.target.value })} className={inputClass} /></div>
+                        <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Store Category *</label>
+                            <input type="text" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="e.g. Electronics, Fashion, Food" className={inputClass} /></div>
                         <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
                             <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} className={inputClass} /></div>
                         <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Business Type</label>

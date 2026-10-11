@@ -9,6 +9,136 @@ export interface User {
     updated_at: string;
 }
 
+/** Server-computed workspace context (HandleInertiaRequests). */
+export interface WorkspaceProps {
+    current: 'marketplace' | 'admin' | 'vendor' | 'provider';
+    available: string[];
+    landing: string;
+    /** Admin route hrefs this user's roles may open (from route role: middleware). */
+    adminHrefs: string[];
+}
+
+/** One DB-driven menu entry (spec S46; shared `siteNav` Inertia prop). */
+export interface SiteNavItem {
+    id: string;
+    title: string;
+    url: string;
+    icon?: string | null;
+    /** '_blank' when the admin enabled open-in-new-tab. */
+    target?: string | null;
+    /** null = all devices; otherwise subset of ['desktop', 'mobile']. */
+    devices?: string[] | null;
+    children?: SiteNavItem[];
+}
+
+/** Menus by location for the current viewer (guest/auth/role filtered). */
+export interface SiteNav {
+    header?: SiteNavItem[];
+    footer?: SiteNavItem[];
+    mobile?: SiteNavItem[];
+    category?: SiteNavItem[];
+    more?: SiteNavItem[];
+}
+
+/** Uniform card payload for Home vertical rails (spec S8). */
+export interface HomeSectionItem {
+    id: string | number;
+    title: string;
+    subtitle?: string | null;
+    image?: string | null;
+    url: string;
+    badge?: string | null;
+    price?: number | null;
+    rating?: number | null;
+}
+
+/** Spec S13 need-request lifecycle (spec S10/S12/S14 pages). */
+export type NeedStatus =
+    | 'draft'
+    | 'pending'
+    | 'published'
+    | 'reviewing'
+    | 'offered'
+    | 'negotiating'
+    | 'accepted'
+    | 'payment_pending'
+    | 'paid'
+    | 'in_progress'
+    | 'fulfilled'
+    | 'completed'
+    | 'cancelled'
+    | 'rejected'
+    | 'expired'
+    | 'disputed'
+    | 'refunded';
+
+export interface NeedCategory {
+    id: string;
+    name: string;
+    slug: string;
+    description?: string | null;
+    icon?: string | null;
+    color?: string | null;
+}
+
+export interface NeedOffer {
+    id: string;
+    provider_id: string;
+    provider?: { id: string; name: string } | null;
+    price: number | string;
+    message?: string | null;
+    status: 'pending' | 'accepted' | 'rejected' | 'withdrawn';
+    created_at: string;
+}
+
+export interface NeedTimelineEvent {
+    id: string;
+    from_status?: NeedStatus | null;
+    to_status: NeedStatus;
+    action: string;
+    note?: string | null;
+    created_at: string;
+    actor?: { id: string; name: string } | null;
+}
+
+export interface NeedPaymentSummary {
+    reference: string;
+    amount: number | string;
+    currency?: string;
+    status: string;
+    created_at?: string;
+}
+
+export interface NeedRequestDetail {
+    id: string;
+    user_id: string;
+    category_id?: string | null;
+    request_number: string;
+    title: string;
+    description: string;
+    subcategory?: string | null;
+    budget_min?: number | string | null;
+    budget_max?: number | string | null;
+    quantity?: number | null;
+    currency?: string;
+    country?: string | null;
+    location?: string | null;
+    preferred_date?: string | null;
+    deadline?: string | null;
+    attachments?: string[] | null;
+    images?: string[] | null;
+    service_requirements?: string | null;
+    delivery_requirements?: string | null;
+    notes?: string | null;
+    status: NeedStatus;
+    category?: NeedCategory | null;
+    user?: { id: string; name: string } | null;
+    offers?: NeedOffer[];
+    timeline?: NeedTimelineEvent[];
+    payment?: NeedPaymentSummary | null;
+    created_at: string;
+}
+
 export interface Profile {
     id: string;
     user_id: string;
@@ -16,6 +146,17 @@ export interface Profile {
     phone?: string;
     avatar_url?: string;
     created_at: string;
+}
+
+export interface ProductVariant {
+    id: string;
+    product_id?: string;
+    name: string;
+    sku?: string | null;
+    price: number | string;
+    stock_quantity: number;
+    attributes?: Record<string, string> | null;
+    is_active: boolean;
 }
 
 export interface Product {
@@ -35,6 +176,7 @@ export interface Product {
     is_active: boolean;
     rating?: number;
     reviews_count?: number;
+    variants?: ProductVariant[];
     created_at: string;
     vendor?: Vendor;
 }
@@ -43,10 +185,12 @@ export interface Vendor {
     id: string;
     user_id: string;
     store_name: string;
+    slug?: string;
     category: string;
     description?: string;
     is_verified: boolean;
     rating?: number;
+    settings?: { accepting_orders?: boolean } | null;
     created_at: string;
 }
 
@@ -60,6 +204,41 @@ export interface MedicineOrder {
     status: string;
     created_at: string;
     items?: MedicineOrderItem[];
+}
+
+export interface OrderItem {
+    id: string;
+    product_name: string;
+    quantity: number;
+    unit_price: number;
+    total_price: number;
+    product?: { id?: string; image_url?: string };
+    variant?: { name?: string } | null;
+    product_id?: string;
+}
+
+export interface TrackingEvent {
+    id: string;
+    status: string;
+    status_message?: string | null;
+    created_at: string;
+}
+
+export interface Order {
+    id: string;
+    order_number: string;
+    status: string;
+    created_at: string;
+    subtotal: number;
+    discount: number;
+    shipping_fee: number;
+    tax?: number | string;
+    total_amount: number;
+    shipping_address?: string;
+    shipping_city?: string;
+    shipping_country?: string;
+    tracking?: TrackingEvent[];
+    items?: OrderItem[];
 }
 
 export interface MedicineOrderItem {
@@ -160,13 +339,20 @@ export interface Course {
     category: string;
     level: string;
     type: string;
+    course_type?: string;
+    instructor_name?: string | null;
+    objectives?: string[] | null;
+    requirements?: string | null;
+    language?: string | null;
     price?: number;
     thumbnail_url?: string;
     video_url?: string;
     duration_hours?: number;
     students_count?: number;
     rating?: number;
+    reviews_count?: number;
     is_published: boolean;
+    is_featured?: boolean;
     created_at: string;
     lessons?: CourseLesson[];
 }
@@ -179,6 +365,8 @@ export interface CourseLesson {
     video_url?: string;
     duration_minutes?: number;
     lesson_order: number;
+    resources?: { title: string; url: string }[] | null;
+    is_free_preview?: boolean;
 }
 
 export interface Enrollment {
@@ -187,7 +375,18 @@ export interface Enrollment {
     course_id: string;
     progress: number;
     completed_at?: string;
+    last_active_at?: string | null;
+    lessons_count?: number;
+    completed_lessons?: number;
+    is_completed?: boolean;
     course?: Course;
+}
+
+export interface CourseQuiz {
+    id: string;
+    title: string;
+    pass_score_percent?: number;
+    passed?: boolean;
 }
 
 export interface Medicine {
@@ -237,6 +436,7 @@ export interface Property {
     title: string;
     description?: string;
     property_type: string;
+    type?: string;
     price: number;
     currency: string;
     bedrooms?: number;
@@ -382,6 +582,7 @@ export interface Review {
     comment?: string;
     is_verified_purchase: boolean;
     helpful_count: number;
+    status?: 'approved' | 'pending' | 'hidden' | 'rejected';
     created_at: string;
     user?: User;
 }
@@ -402,6 +603,22 @@ export interface WalletTransaction {
     reference?: string;
     description?: string;
     created_at: string;
+}
+
+export interface KycVerification {
+    id?: string;
+    user_id?: string;
+    status: string;
+    verification_state: string;
+    document_type?: string | null;
+    document_number_masked?: string | null;
+    full_name?: string | null;
+    nationality?: string | null;
+    rejection_reason?: string | null;
+    attempts?: number;
+    submitted_at?: string | null;
+    reviewed_at?: string | null;
+    verified_at?: string | null;
 }
 
 export interface Notification {

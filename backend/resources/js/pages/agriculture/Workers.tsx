@@ -1,8 +1,8 @@
 import AppLayout from '@/layouts/AppLayout';
-import { Head } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import { api } from '@/lib/api';
 import { useEffect, useState } from 'react';
-import { Users, Star, MapPin, Briefcase } from 'lucide-react';
+import {Users, Star, Briefcase} from 'lucide-react';
 
 interface Worker {
     id: string;
@@ -46,6 +46,12 @@ export default function AgricultureWorkers() {
                                     <span className="flex items-center gap-1 text-gray-500"><Briefcase className="h-3 w-3" />{w.completed_jobs} jobs</span>
                                 </div>
                                 <span className={`mt-2 inline-block rounded-full px-2 py-1 text-xs ${w.is_available ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{w.is_available ? 'Available' : 'Busy'}</span>
+                                <Link
+                                    href={`/building-services/workers/${w.id}`}
+                                    className="mt-3 block rounded-lg bg-indigo-600 px-3 py-1.5 text-center text-sm font-medium text-white hover:bg-indigo-500"
+                                >
+                                    View & Hire
+                                </Link>
                             </div>
                         ))}
                     </div>

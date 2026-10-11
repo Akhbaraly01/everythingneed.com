@@ -15,69 +15,156 @@ use Illuminate\Validation\Rule;
  *
  * Replaces the legacy hosted-DB protocol with strict server-side rules:
  *  - table whitelist
+ *  - per-table write policy (column allowlists, not denylists)
  *  - column validation against the live PostgreSQL schema
  *  - operator whitelist
  *  - automatic ownership scoping on every operation
+ *
+ * Write policy model — clients may write their own content and
+ * preferences; they may NEVER write state-machine fields, money,
+ * identity/verification fields, engagement counters, or references
+ * they do not own:
+ *  - 'create'  => columns settable at insert (null = the table is
+ *                 read-only through this plane; all mutations belong
+ *                 to the module REST APIs).
+ *  - 'update'  => columns settable on update (null/omitted = none).
+ *  - 'update_values' => column => exact values permitted on update
+ *                     (e.g. cancelling your own ticket). Any other
+ *                     value is silently stripped.
+ * Columns absent from every list are stripped from the payload, so
+ * lifecycle columns (status, is_active, approved_at, is_verified,
+ * email_verified_at), ownership columns (user_id, patient_id),
+ * counters (likes_count …) and amounts (total_amount, consultation_fee
+ * on update) can never be flipped through this plane.
  */
 class TableGatewayController extends Controller
 {
     /**
-     * Gateway registry: table => [ownership column|null, writable].
-     * Shared catalogs are readable but never writable through this plane;
-     * mutations for those belong to their module's REST resources.
+     * Gateway registry: table => write policy + ownership scope.
      *
-     * @var array<string, array{scope: ?string, write: bool}>
+     * @var array<string, array{scope: ?string, create?: ?list<string>, update?: ?list<string>, update_values?: array<string, list<string>>}>
      */
     private const TABLES = [
-        // user-scoped, fully writable
-        'profiles' => ['scope' => 'user_id', 'write' => true],
-        'user_settings' => ['scope' => 'user_id', 'write' => true],
-        'wishlists' => ['scope' => 'user_id', 'write' => true],
-        'favorites' => ['scope' => 'user_id', 'write' => true],
-        'recently_viewed' => ['scope' => 'user_id', 'write' => true],
-        'video_progress' => ['scope' => 'user_id', 'write' => true],
-        // Certificates are issued ONLY via Modules/Learn REST API after
+        // ── user-scoped content & preferences (client-writable) ──
+        'profiles' => [
+            'scope' => 'user_id',
+            'create' => ['email', 'full_name', 'phone', 'avatar_url'],
+            'update' => ['email', 'full_name', 'phone', 'avatar_url'],
+        ],
+        'user_settings' => [
+            'scope' => 'user_id',
+            'create' => ['key', 'value'],
+            'update' => ['value'],
+        ],
+        'addresses' => [
+            'scope' => 'user_id',
+            'create' => ['line1', 'line2', 'city', 'region', 'postal_code', 'country', 'lat', 'lng', 'is_default'],
+            'update' => ['line1', 'line2', 'city', 'region', 'postal_code', 'country', 'lat', 'lng', 'is_default'],
+        ],
+        'wishlists' => [
+            'scope' => 'user_id',
+            'create' => ['product_id'],
+            'update' => [],
+        ],
+        'favorites' => [
+            'scope' => 'user_id',
+            'create' => ['entity_type', 'entity_id'],
+            'update' => [],
+        ],
+        'recently_viewed' => [
+            'scope' => 'user_id',
+            'create' => ['entity_type', 'entity_id', 'viewed_at'],
+            'update' => ['viewed_at'],
+        ],
+        'expert_wishlists' => [
+            'scope' => 'user_id',
+            'create' => ['expert_id'],
+            'update' => [],
+        ],
+
+        // ── learning: content yes, completion state server-owned ──
+        // enrollments are created ONLY through LearnService::enroll
+        // (POST /api/courses/{id}/enroll), which charges paid courses;
+        // a gateway insert would hand out a free enrollment, and
+        // enrollments.progress / completed_at are recomputed ONLY by
+        // Modules/Learn CompleteLesson (feeds IssueCertificate's
+        // progress check) — never client-writable, or certificates
+        // could be self-issued by faking completion here.
+        'enrollments' => ['scope' => 'user_id'],
+        // video_progress is likewise server-owned: CompleteLesson counts
+        // `completed = true` rows to recompute enrollment progress, so a
+        // client-writable `completed`/`progress_percent` is a direct
+        // certificate forgery path. Watch data is persisted by the module
+        // REST layer, never by the generic plane.
+        'video_progress' => ['scope' => 'user_id'],
+        'learn_posts' => [
+            'scope' => 'user_id',
+            'create' => ['title', 'content', 'category', 'media_type', 'media_url', 'thumbnail_url', 'video_url', 'duration_minutes', 'author_name', 'author_avatar'],
+            'update' => ['title', 'content', 'category', 'media_type', 'media_url', 'thumbnail_url', 'video_url', 'duration_minutes', 'author_name', 'author_avatar'],
+        ],
+        'learn_post_comments' => [
+            'scope' => 'user_id',
+            'create' => ['post_id', 'content'],
+            'update' => ['content'],
+        ],
+        'learn_post_likes' => [
+            'scope' => 'user_id',
+            'create' => ['post_id'],
+            'update' => [],
+        ],
+
+        // ── healthcare: patient content + self-cancel only ────────
+        // status flips (assigned/completed/…) and doctor reassignment
+        // belong to Modules/Healthcare; patients may cancel their own
+        // ticket (update_values) but never set status at insert — the
+        // DB default ('pending') applies. Consultation fee is settable
+        // only at booking (SPA quote) — BookAppointment overwrites it
+        // from the doctor's published fee on assignment.
+        'prescriptions' => ['scope' => 'patient_id'],
+        'health_tickets' => [
+            'scope' => 'patient_id',
+            'create' => ['ticket_number', 'symptoms', 'description', 'consultation_type', 'consultation_fee', 'appointment_date', 'appointment_time', 'is_random_assignment', 'doctor_id'],
+            'update' => ['symptoms', 'description', 'status'],
+            'update_values' => ['status' => ['cancelled']],
+        ],
+
+        // ── bookings / orders: created via module REST; gateway ───
+        // offers content edits only (no status, no amounts).
+        'building_service_bookings' => [
+            'scope' => 'user_id',
+            'create' => ['worker_type', 'service_category', 'description', 'address', 'scheduled_date', 'scheduled_time', 'estimated_cost', 'notes'],
+            'update' => ['description', 'address', 'notes'],
+        ],
+        'medicine_orders' => ['scope' => 'user_id'],
+
+        // ── user-scoped reads (writes go through module APIs) ─────
+        'bookings' => ['scope' => 'user_id'],
+        'orders' => ['scope' => 'user_id'],
+        'notifications' => ['scope' => 'user_id'],
+        'tickets' => ['scope' => 'user_id'],
+
+        // Certificates are issued ONLY via Modules/Learn REST after
         // server-side completion checks — never client-writable.
-        'user_certificates' => ['scope' => 'user_id', 'write' => false],
-        'enrollments' => ['scope' => 'user_id', 'write' => true],
-        'learn_posts' => ['scope' => 'user_id', 'write' => true],
-        'learn_post_comments' => ['scope' => 'user_id', 'write' => true],
-        'learn_post_likes' => ['scope' => 'user_id', 'write' => true],
-        'expert_wishlists' => ['scope' => 'user_id', 'write' => true],
-        'addresses' => ['scope' => 'user_id', 'write' => true],
-        // Cart lives behind Modules/Checkout REST (/api/cart/*).
-        'prescriptions' => ['scope' => 'user_id', 'write' => true],
-        'health_tickets' => ['scope' => 'user_id', 'write' => true],
-        'building_service_bookings' => ['scope' => 'user_id', 'write' => true],
-        'medicine_orders' => ['scope' => 'user_id', 'write' => true],
+        'user_certificates' => ['scope' => 'user_id'],
 
-        // user-scoped reads (writes go through module APIs)
-        'bookings' => ['scope' => 'user_id', 'write' => false],
-        'orders' => ['scope' => 'user_id', 'write' => false],
-        'notifications' => ['scope' => 'user_id', 'write' => false],
-        'tickets' => ['scope' => 'user_id', 'write' => false],
-
-        // conversation participants
-        'chat_conversations' => ['scope' => null, 'write' => false],
-        'chat_messages' => ['scope' => null, 'write' => false],
-        'ticket_messages' => ['scope' => null, 'write' => false],
-        'learn_direct_messages' => ['scope' => null, 'write' => false],
-
-        // shared catalog / public data — read-only
-        'doctors' => ['scope' => null, 'write' => false],
-        'departments' => ['scope' => null, 'write' => false],
-        'courses' => ['scope' => null, 'write' => false],
-        'course_lessons' => ['scope' => null, 'write' => false],
-        'medicines' => ['scope' => null, 'write' => false],
-        'need_categories' => ['scope' => null, 'write' => false],
-        'need_items' => ['scope' => null, 'write' => false],
-        'expert_availability' => ['scope' => null, 'write' => false],
-        'expert_reviews' => ['scope' => null, 'write' => false],
-        'vendor_orders' => ['scope' => null, 'write' => false],
-        'medicine_order_items' => ['scope' => null, 'write' => false],
-        'order_tracking' => ['scope' => null, 'write' => false],
-        'service_workers' => ['scope' => null, 'write' => false],
-        'health_content' => ['scope' => null, 'write' => false],
+        // ── shared catalog / public data — read-only ──────────────
+        // NOTE: conversation/message tables (chat_conversations, chat_messages,
+        // ticket_messages, learn_direct_messages) and order internals
+        // (vendor_orders, medicine_order_items, order_tracking) are intentionally
+        // NOT exposed here: they carry cross-user rows with no safe generic scope.
+        // Use their module REST APIs (Messaging, Orders, Pharmacy), which enforce
+        // participant/owner/vendor scoping per request.
+        'doctors' => ['scope' => null],
+        'departments' => ['scope' => null],
+        'courses' => ['scope' => null],
+        'course_lessons' => ['scope' => null],
+        'medicines' => ['scope' => null],
+        'need_categories' => ['scope' => null],
+        'need_items' => ['scope' => null],
+        'expert_availability' => ['scope' => null],
+        'expert_reviews' => ['scope' => null],
+        'service_workers' => ['scope' => null],
+        'health_content' => ['scope' => null],
     ];
 
     private const OPS = [
@@ -151,13 +238,14 @@ class TableGatewayController extends Controller
 
         $payload = collect($request->all())
             ->only($columns)
-            ->except(['id', 'created_at', 'updated_at', 'deleted_at'])
+            ->only($meta['create'] ?? [])
             ->toArray();
 
         if ($payload === []) {
             return response()->json(['message' => 'No valid fields provided'], 422);
         }
 
+        // Always force ownership server-side; never trust client scope column.
         if ($meta['scope'] && Schema::hasColumn($table, $meta['scope'])) {
             $payload[$meta['scope']] = $request->user()->id;
         }
@@ -207,8 +295,14 @@ class TableGatewayController extends Controller
 
         $payload = collect($request->all())
             ->only($columns)
-            ->except(['id', 'created_at'])
+            ->only($meta['update'] ?? [])
             ->toArray();
+
+        foreach ($meta['update_values'] ?? [] as $column => $allowedValues) {
+            if (array_key_exists($column, $payload) && !in_array($payload[$column], $allowedValues, true)) {
+                unset($payload[$column]);
+            }
+        }
 
         if ($payload === []) {
             return response()->json(['message' => 'No valid fields provided'], 422);
@@ -255,7 +349,7 @@ class TableGatewayController extends Controller
     // ── Internals ────────────────────────────────────────────────
 
     /**
-     * @return array{scope: ?string}
+     * @return array{scope: ?string, create?: ?list<string>, update?: ?list<string>, update_values?: array<string, list<string>>}
      */
     private function resolveTable(string $table, bool $write = false): array
     {
@@ -263,7 +357,9 @@ class TableGatewayController extends Controller
             abort(404, "Unknown resource '{$table}'.");
         }
 
-        if ($write && !self::TABLES[$table]['write']) {
+        $policy = self::TABLES[$table];
+
+        if ($write && ($policy['create'] ?? null) === null && ($policy['update'] ?? null) === null) {
             abort(405, "Resource '{$table}' is read-only through the gateway.");
         }
 
@@ -271,13 +367,18 @@ class TableGatewayController extends Controller
             abort(404, "Resource '{$table}' is not available.");
         }
 
-        return ['scope' => self::TABLES[$table]['scope']];
+        return $policy;
     }
 
     private function applyScope(Request $request, $query, string $table, ?string $scopeColumn): void
     {
-        if (!$scopeColumn || !Schema::hasColumn($table, $scopeColumn)) {
+        if ($scopeColumn === null) {
             return;
+        }
+
+        if (!Schema::hasColumn($table, $scopeColumn)) {
+            // Fail closed: never expose unscoped rows when ownership column is missing.
+            abort(404, "Resource '{$table}' is not available.");
         }
 
         $user = $request->user();

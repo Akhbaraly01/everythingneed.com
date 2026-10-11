@@ -9,15 +9,22 @@ use Modules\Users\Http\Requests\AddAddressRequest;
 use Modules\Users\Http\Resources\UserResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Core\Services\Contracts\ReportingServiceInterface;
 
 class UserController extends Controller
 {
     public function __construct(
-        private UserService $userService
+        private UserService $userService,
+        private ReportingServiceInterface $reporting,
     ) {}
 
-    public function show(string $id): JsonResponse
+    public function show(Request $request, string $id): JsonResponse
     {
+        $me = $request->user();
+        if ($me->id !== $id && !$me->hasPermission('users.users.view')) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $user = $this->userService->getUser($id);
 
         if (!$user) {
@@ -74,9 +81,68 @@ class UserController extends Controller
         ], 201);
     }
 
+    public function indexAddresses(Request $request): JsonResponse
+    {
+        $addresses = \Modules\Users\Entities\Address::where('user_id', $request->user()->id)
+            ->orderByDesc('is_default')
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json(['data' => $addresses]);
+    }
+
+    public function setDefaultAddress(Request $request, string $id): JsonResponse
+    {
+        $address = \Modules\Users\Entities\Address::where('user_id', $request->user()->id)
+            ->where('id', $id)
+            ->first();
+
+        if (!$address) {
+            return response()->json(['message' => 'Address not found'], 404);
+        }
+
+        \Modules\Users\Entities\Address::where('user_id', $request->user()->id)
+            ->update(['is_default' => false]);
+        $address->update(['is_default' => true]);
+
+        return response()->json(['message' => 'Default address updated', 'data' => $address->fresh()]);
+    }
+
+    public function deleteAddress(Request $request, string $id): JsonResponse
+    {
+        $address = \Modules\Users\Entities\Address::where('user_id', $request->user()->id)
+            ->where('id', $id)
+            ->first();
+
+        if (!$address) {
+            return response()->json(['message' => 'Address not found'], 404);
+        }
+
+        $wasDefault = (bool) $address->is_default;
+        $address->delete();
+
+        if ($wasDefault) {
+            $next = \Modules\Users\Entities\Address::where('user_id', $request->user()->id)
+                ->orderBy('created_at')
+                ->first();
+            $next?->update(['is_default' => true]);
+        }
+
+        return response()->json(['message' => 'Address deleted']);
+    }
+
+    public function stats(Request $request): JsonResponse
+    {
+        return response()->json($this->reporting->userStats($request->user()->id));
+    }
+
     public function destroy(Request $request): JsonResponse
     {
-        $this->userService->deleteAccount($request->user()->id);
+        $request->validate([
+            'password' => 'required|string',
+        ]);
+
+        $this->userService->deleteAccount($request->user()->id, $request->input('password'));
 
         return response()->json([
             'message' => 'Account deleted successfully',

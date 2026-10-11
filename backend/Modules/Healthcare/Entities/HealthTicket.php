@@ -16,14 +16,19 @@ class HealthTicket extends Model
         'consultation_fee',
         'appointment_date',
         'appointment_time',
+        'home_address',
         'is_random_assignment',
         'status',
+        'payment_status',
+        'payment_id',
+        'paid_at',
     ];
 
     protected $casts = [
         'consultation_fee' => 'decimal:2',
         'appointment_date' => 'date',
         'is_random_assignment' => 'boolean',
+        'paid_at' => 'datetime',
     ];
 
     const STATUS_PENDING = 'pending';
@@ -31,6 +36,10 @@ class HealthTicket extends Model
     const STATUS_IN_CONSULTATION = 'in_consultation';
     const STATUS_COMPLETED = 'completed';
     const STATUS_CANCELLED = 'cancelled';
+
+    const PAYMENT_UNPAID = 'unpaid';
+    const PAYMENT_PAID = 'paid';
+    const PAYMENT_REFUNDED = 'refunded';
 
     public function patient()
     {

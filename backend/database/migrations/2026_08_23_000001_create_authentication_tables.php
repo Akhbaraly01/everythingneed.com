@@ -33,12 +33,17 @@ return new class extends Migration
                 $table->boolean('enabled')->default(false);
                 $table->timestamp('verified_at')->nullable();
                 $table->timestamps();
+                $table->softDeletes();
 
                 $table->unique('user_id');
 
                 $table->foreign('user_id')
                     ->references('id')->on('users')
                     ->cascadeOnDelete();
+            });
+        } elseif (!Schema::hasColumn('two_factor_secrets', 'deleted_at')) {
+            Schema::table('two_factor_secrets', function (Blueprint $table) {
+                $table->softDeletes();
             });
         }
     }

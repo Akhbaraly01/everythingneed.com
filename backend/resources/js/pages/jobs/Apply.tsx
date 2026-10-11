@@ -1,7 +1,8 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, router } from '@inertiajs/react';
-import { api } from '@/lib/api';
-import { Briefcase, ArrowLeft, Check } from 'lucide-react';
+import {  api, errorMessage } from '@/lib/api';
+import { toast } from 'sonner';
+import {ArrowLeft, Check} from 'lucide-react';
 import { useState } from 'react';
 
 interface JobApplyProps {
@@ -20,10 +21,10 @@ export default function JobApply({ job }: JobApplyProps) {
                 cover_letter: coverLetter || undefined,
                 resume_url: resumeUrl || undefined,
             });
-            alert('Application submitted!');
+            toast.success('Application submitted!');
             router.visit('/jobs/applications');
-        } catch (e: any) {
-            alert(e.message ?? 'Failed to apply');
+        } catch (e) {
+            toast.error(errorMessage(e, 'Failed to apply'));
         }
         setSubmitting(false);
     };

@@ -1,11 +1,18 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, router } from '@inertiajs/react';
-import { api } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
+import { toast } from 'sonner';
 import { useState } from 'react';
-import { MapPin, ArrowRight } from 'lucide-react';
+import {ArrowRight} from 'lucide-react';
 
 export default function CustomTransportRequest() {
-    const [form, setForm] = useState({ pickup_address: '', dropoff_address: '', vehicle_type: 'car', description: '', scheduled_date: '' });
+    // Deep links (e.g. Trucks card) preselect the vehicle type.
+    const initialVehicle = (() => {
+        if (typeof window === 'undefined') return 'car';
+        const v = new URLSearchParams(window.location.search).get('vehicle') ?? 'car';
+        return ['car', 'truck', 'motorcycle', 'lorry', 'other'].includes(v) ? v : 'car';
+    })();
+    const [form, setForm] = useState({ pickup_address: '', dropoff_address: '', vehicle_type: initialVehicle, description: '', scheduled_date: '' });
     const [submitting, setSubmitting] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -14,7 +21,10 @@ export default function CustomTransportRequest() {
         try {
             const res = await api.post<{ data: { id: string } }>('/api/transport/requests', form);
             router.visit(`/transportation/tracking/${res.data.id}`);
-        } catch { setSubmitting(false); }
+        } catch (err) {
+            toast.error(errorMessage(err, 'Failed to submit the request'));
+            setSubmitting(false);
+        }
     };
 
     return (

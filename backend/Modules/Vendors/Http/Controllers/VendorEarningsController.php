@@ -24,7 +24,7 @@ class VendorEarningsController extends Controller
 
         $paidOut = (float) DB::table('vendor_withdrawals')
             ->where('vendor_id', $vendor->id)
-            ->where('status', 'paid')
+            ->whereIn('status', ['paid', 'completed'])
             ->sum('amount');
 
         $pendingWithdrawals = (float) DB::table('vendor_withdrawals')
@@ -38,7 +38,7 @@ class VendorEarningsController extends Controller
                 'withdrawn' => round($paidOut, 2),
                 'pending_withdrawals' => round($pendingWithdrawals, 2),
                 'available' => round(max(0, $earned - $paidOut - $pendingWithdrawals), 2),
-                'currency' => 'USD',
+                'currency' => \Core\Support\Currencies::default(),
             ],
         ]);
     }
@@ -76,7 +76,7 @@ class VendorEarningsController extends Controller
         $earned = (float) DB::table('vendor_commissions')->where('vendor_id', $vendor->id)->sum('amount');
         $reserved = (float) DB::table('vendor_withdrawals')
             ->where('vendor_id', $vendor->id)
-            ->whereIn('status', ['pending', 'paid'])
+            ->whereIn('status', ['pending', 'paid', 'completed'])
             ->sum('amount');
         $available = max(0, $earned - $reserved);
 

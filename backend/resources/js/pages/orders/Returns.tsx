@@ -1,8 +1,11 @@
+import { statusTone } from '@/lib/lifecycle';
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link } from '@inertiajs/react';
-import { api } from '@/lib/api';
-import { formatCurrency, formatDateTime } from '@/lib/utils';
-import { RotateCcw, Package, ArrowLeft, Plus, X } from 'lucide-react';
+import { api, errorMessage } from '@/lib/api';
+import { toast } from 'sonner';
+import { formatDateTime } from '@/lib/utils';
+import { formatPrice } from '@/lib/currency';
+import { RotateCcw, ArrowLeft, Plus, X, RefreshCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface ReturnRequest {
@@ -22,16 +25,10 @@ interface ReturnsResponse {
     meta: { current_page: number; last_page: number; per_page: number; total: number };
 }
 
-const statusColors: Record<string, string> = {
-    pending: 'bg-yellow-100 text-yellow-800',
-    approved: 'bg-green-100 text-green-800',
-    rejected: 'bg-red-100 text-red-800',
-    completed: 'bg-blue-100 text-blue-800',
-};
-
 export default function ReturnsPage() {
     const [returns, setReturns] = useState<ReturnRequest[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [showForm, setShowForm] = useState(false);
     const [orderId, setOrderId] = useState('');
     const [reason, setReason] = useState('');
@@ -39,9 +36,14 @@ export default function ReturnsPage() {
     const [submitting, setSubmitting] = useState(false);
 
     const fetchReturns = () => {
+        setLoading(true);
+        setError(null);
         api.get<ReturnsResponse>('/api/returns')
             .then((res) => setReturns(res.data))
-            .catch(() => setReturns([]))
+            .catch((e) => {
+                setError(errorMessage(e, 'Failed to load returns'));
+                setReturns([]);
+            })
             .finally(() => setLoading(false));
     };
 
@@ -57,8 +59,8 @@ export default function ReturnsPage() {
             setReason('');
             setDescription('');
             fetchReturns();
-        } catch (e: any) {
-            alert(e.message ?? 'Failed to create return request');
+        } catch (e) {
+            toast.error(errorMessage(e, 'Failed to create return request'));
         } finally {
             setSubmitting(false);
         }
@@ -129,6 +131,13 @@ export default function ReturnsPage() {
 
                 {loading ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800"><p className="text-gray-500">Loading...</p></div>
+                ) : error ? (
+                    <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
+                        <p className="text-red-600 font-medium">{error}</p>
+                        <button onClick={fetchReturns} className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-500">
+                            <RefreshCcw className="h-4 w-4" /> Retry
+                        </button>
+                    </div>
                 ) : returns.length === 0 ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
                         <RotateCcw className="mx-auto h-12 w-12 text-gray-400" />
@@ -149,11 +158,11 @@ export default function ReturnsPage() {
                                         <p className="mt-1 text-xs text-gray-400">{formatDateTime(ret.created_at)}</p>
                                     </div>
                                     <div className="text-right">
-                                        <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusColors[ret.status] ?? 'bg-gray-100 text-gray-800'}`}>
+                                        <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusTone(ret.status)}`}>
                                             {ret.status}
                                         </span>
                                         {ret.refund_amount != null && (
-                                            <p className="mt-2 text-sm font-semibold text-green-600">Refund: {formatCurrency(ret.refund_amount)}</p>
+                                            <p className="mt-2 text-sm font-semibold text-green-600">Refund: {formatPrice(ret.refund_amount)}</p>
                                         )}
                                     </div>
                                 </div>

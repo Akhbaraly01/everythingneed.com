@@ -121,4 +121,33 @@ class PasswordResetTest extends TestCase
         ]);
         $stale->assertStatus(401);
     }
+
+    public function test_web_password_reset_revokes_api_tokens(): void
+    {
+        $user = User::factory()->create(['password' => bcrypt('old-secret')]);
+
+        // A live API session exists before the reset.
+        $user->createToken('auth-token')->plainTextToken;
+        $this->assertEquals(1, $user->tokens()->count());
+
+        // Web broker token (same hashing as Password::sendResetLink).
+        $token = 'web-reset-token-123';
+        DB::table('password_reset_tokens')->updateOrInsert(
+            ['email' => $user->email],
+            ['token' => Hash::make($token), 'created_at' => now()]
+        );
+
+        $this->post('/reset-password', [
+            'token' => $token,
+            'email' => $user->email,
+            'password' => 'new-web-pass-1',
+            'password_confirmation' => 'new-web-pass-1',
+        ])->assertRedirect(route('login'));
+
+        $user->refresh();
+        $this->assertTrue(Hash::check('new-web-pass-1', $user->password));
+
+        // Every prior API token must be revoked with the credential change.
+        $this->assertEquals(0, $user->tokens()->count());
+    }
 }

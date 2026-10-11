@@ -1,9 +1,11 @@
 import AppLayout from '@/layouts/AppLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import { api } from '@/lib/api';
-import { formatCurrency } from '@/lib/utils';
-import { BookOpen, Star, Users } from 'lucide-react';
+import { BookOpen } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import CourseCard from '@/components/learn/CourseCard';
+import EmptyState from '@/components/shared/EmptyState';
+import LoadingState from '@/components/shared/LoadingState';
 
 interface Course {
     id: string;
@@ -22,24 +24,43 @@ export default function LearnCatalog() {
     const [courses, setCourses] = useState<Course[]>([]);
     const [loading, setLoading] = useState(true);
     const [categoryFilter, setCategoryFilter] = useState('');
+    const [search, setSearch] = useState('');
+    const [categories, setCategories] = useState<string[]>([]);
 
     useEffect(() => {
-        const params = categoryFilter ? `?category=${encodeURIComponent(categoryFilter)}` : '';
-        api.get<{ data: Course[] }>(`/api/courses${params}`)
-            .then((res) => setCourses(res.data))
+        api.get<{ data: Array<{ name: string }> }>('/api/course-categories')
+            .then((res) => setCategories((res.data ?? []).map((c) => c.name).filter(Boolean)))
+            .catch(() => setCategories([]));
+    }, []);
+
+    useEffect(() => {
+        const params = new URLSearchParams();
+        if (categoryFilter) params.set('category', categoryFilter);
+        if (search.trim()) params.set('q', search.trim());
+        const qs = params.toString();
+        setLoading(true);
+        api.get<{ data: Course[] }>(`/api/courses${qs ? `?${qs}` : ''}`)
+            .then((res) => setCourses(res.data ?? []))
             .catch(() => setCourses([]))
             .finally(() => setLoading(false));
-    }, [categoryFilter]);
-
-    const categories = ['Web Development', 'Mobile Development', 'Data Science', 'Business', 'Design', 'Marketing'];
+    }, [categoryFilter, search]);
 
     return (
-        <AppLayout title="Course Catalog">
+        <AppLayout>
             <Head title="Course Catalog" />
             <div className="space-y-6">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Course Catalog</h1>
                     <p className="text-sm text-gray-500">Browse all available courses</p>
+                </div>
+
+                <div>
+                    <input
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Search courses..."
+                        className="w-full max-w-sm rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700"
+                    />
                 </div>
 
                 <div className="flex flex-wrap gap-2">
@@ -50,29 +71,13 @@ export default function LearnCatalog() {
                 </div>
 
                 {loading ? (
-                    <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800"><p className="text-gray-500">Loading...</p></div>
+                    <LoadingState message="Loading courses..." />
                 ) : courses.length === 0 ? (
-                    <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
-                        <BookOpen className="mx-auto h-12 w-12 text-gray-400" />
-                        <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">No courses found</h3>
-                    </div>
+                    <EmptyState icon={<BookOpen className="h-10 w-10" />} title="No courses found" />
                 ) : (
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                         {courses.map((c) => (
-                            <Link key={c.id} href={`/learn/${c.id}`} className="group overflow-hidden rounded-lg bg-white shadow transition hover:shadow-lg dark:bg-gray-800">
-                                <div className="h-40 bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
-                                    {c.image_url ? <img src={c.image_url} alt="" className="h-full w-full object-cover" /> : <BookOpen className="h-12 w-12 text-indigo-400" />}
-                                </div>
-                                <div className="p-4">
-                                    <h3 className="font-semibold text-gray-900 group-hover:text-indigo-600 dark:text-white">{c.title}</h3>
-                                    <p className="text-sm text-gray-500">{c.instructor}</p>
-                                    {c.category && <p className="mt-1 text-xs text-indigo-600">{c.category}</p>}
-                                    <div className="mt-2 flex items-center justify-between">
-                                        <span className="text-lg font-bold text-gray-900 dark:text-white">{formatCurrency(c.price)}</span>
-                                        {c.rating && <span className="flex items-center gap-1 text-xs text-yellow-600"><Star className="h-3 w-3 fill-yellow-400" />{c.rating}</span>}
-                                    </div>
-                                </div>
-                            </Link>
+                            <CourseCard key={c.id} course={c} />
                         ))}
                     </div>
                 )}

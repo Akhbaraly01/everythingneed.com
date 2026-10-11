@@ -21,8 +21,13 @@ class RegisterUser
         ]);
 
         $user->wallet()->create([
-            'currency' => 'USD',
+            'currency' => \Core\Support\Currencies::default(),
             'balance' => 0,
+        ]);
+
+        \App\Models\UserRole::firstOrCreate([
+            'user_id' => $user->id,
+            'role' => 'user',
         ]);
 
         $token = $user->createToken('auth-token')->plainTextToken;

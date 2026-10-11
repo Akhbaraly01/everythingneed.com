@@ -1,9 +1,10 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link } from '@inertiajs/react';
 import { api } from '@/lib/api';
-import { formatCurrency } from '@/lib/utils';
+import { formatPrice } from '@/lib/currency';
 import { ArrowLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import Image from '@/components/shared/Image';
 
 interface CategoryDetailProps {
     category_id: string;
@@ -18,6 +19,7 @@ interface Category {
 
 interface Product {
     id: string;
+    slug?: string;
     name: string;
     price: number;
     image_url?: string;
@@ -30,14 +32,17 @@ export default function CategoriesShow({ category_id }: CategoryDetailProps) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        Promise.all([
-            api.get<Category>(`/api/categories/${category_id}`),
-            api.get<{ data: Product[] }>(`/api/db/products?category_id=${category_id}&limit=20`),
-        ]).then(([catRes, prodRes]) => {
-            setCategory(catRes.data);
-            setProducts(prodRes.data);
-        }).catch(() => {})
-        .finally(() => setLoading(false));
+        api.get<{ data: Category }>(`/api/categories/${category_id}`)
+            .then((catRes) => {
+                const cat = catRes.data;
+                setCategory(cat);
+                return api.get<{ data: Product[] }>(
+                    `/api/products?category=${encodeURIComponent(cat?.name ?? '')}&per_page=20`,
+                );
+            })
+            .then((prodRes) => setProducts(prodRes.data ?? []))
+            .catch(() => {})
+            .finally(() => setLoading(false));
     }, [category_id]);
 
     return (
@@ -57,12 +62,12 @@ export default function CategoriesShow({ category_id }: CategoryDetailProps) {
 
                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                             {products.map((p) => (
-                                <Link key={p.id} href={`/products/${p.id}`} className="rounded-lg bg-white p-4 shadow transition hover:shadow-md dark:bg-gray-800">
+                                <Link key={p.id} href={`/products/${p.slug ?? p.id}`} className="rounded-lg bg-white p-4 shadow transition hover:shadow-md dark:bg-gray-800">
                                     <div className="h-32 rounded-lg bg-gray-100 dark:bg-gray-700">
-                                        {p.image_url && <img src={p.image_url} alt="" className="h-full w-full rounded-lg object-cover" />}
+                                        {p.image_url && <Image src={p.image_url} alt="" className="h-full w-full rounded-lg object-cover" />}
                                     </div>
                                     <p className="mt-2 font-medium text-gray-900 dark:text-white">{p.name}</p>
-                                    <p className="text-lg font-bold text-indigo-600">{formatCurrency(p.price)}</p>
+                                    <p className="text-lg font-bold text-indigo-600">{formatPrice(p.price)}</p>
                                     {p.vendor_name && <p className="text-xs text-gray-400">by {p.vendor_name}</p>}
                                 </Link>
                             ))}

@@ -8,9 +8,12 @@ use Core\Exceptions\NotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Core\Services\Contracts\FlightSeatInterface;
 
 class BookingController extends Controller
 {
+    public function __construct(private FlightSeatInterface $flights) {}
+
     private const TRANSITIONS = [
         'confirm' => ['pending', 'confirmed'],
         'complete' => ['confirmed', 'in_progress'],
@@ -114,10 +117,7 @@ class BookingController extends Controller
                 $seats = (int) ($booking->details['seat_count'] ?? 0);
 
                 if ($seats > 0) {
-                    DB::table('flights')
-                        ->where('id', $booking->service_id)
-                        ->lockForUpdate()
-                        ->increment('seats_available', $seats);
+                    $this->flights->releaseSeats($booking->service_id, $seats);
                 }
             }
         });

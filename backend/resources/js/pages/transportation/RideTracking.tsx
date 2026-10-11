@@ -2,7 +2,7 @@ import AppLayout from '@/layouts/AppLayout';
 import { Head } from '@inertiajs/react';
 import { api } from '@/lib/api';
 import { useEffect, useState } from 'react';
-import { MapPin, Clock, CheckCircle, Truck } from 'lucide-react';
+import {MapPin, CheckCircle} from 'lucide-react';
 
 interface Ride {
     id: string;

@@ -3,49 +3,77 @@
 namespace Modules\Admin\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use Core\Services\Contracts\SupportQueryInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class AdminSupportController extends Controller
 {
+    public function __construct(
+        private SupportQueryInterface $support,
+        private \Core\Services\Contracts\ScopeResolverInterface $scopes,
+    ) {}
+
     public function tickets(Request $request): JsonResponse
     {
-        $query = DB::table('support_tickets')->orderByDesc('created_at');
-
-        if ($request->has('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('subject', 'ilike', "%{$search}%")
-                  ->orWhere('description', 'ilike', "%{$search}%");
-            });
-        }
-
-        if ($request->has('status') && $request->status !== 'all') {
-            $query->where('status', $request->status);
-        }
-
-        $total = $query->count();
-        $tickets = $query->offset(($request->get('page', 1) - 1) * 15)->limit(15)->get();
-
-        return response()->json([
-            'data' => $tickets,
-            'total' => $total,
+        $validated = $request->validate([
+            'search'   => ['nullable', 'string', 'max:120'],
+            'status'   => ['nullable', 'string', 'in:all,open,in_progress,pending,resolved,closed'],
+            'priority' => ['nullable', 'string', 'in:all,low,medium,high,urgent'],
+            'page'     => ['nullable', 'integer', 'min:1'],
         ]);
+
+        $result = $this->support->supportTickets([
+            'search'   => $validated['search'] ?? null,
+            'status'   => $validated['status'] ?? null,
+            'priority' => $validated['priority'] ?? null,
+            'page'     => (int) ($validated['page'] ?? 1),
+            // W1.6 row scoping — OWN = assigned to me, DOMAIN = department.
+            'scope_context' => $this->scopes->contextFor($request->user(), 'support.tickets.view'),
+        ]);
+
+        return response()->json($result);
     }
 
     public function assign(Request $request, string $id): JsonResponse
     {
-        $request->validate(['assigned_to' => 'required|string']);
+        $request->validate([
+            'assigned_to' => 'required|uuid|exists:users,id',
+        ]);
 
-        DB::table('support_tickets')
-            ->where('id', $id)
-            ->update([
-                'assigned_to' => $request->assigned_to,
-                'status' => 'in_progress',
-                'updated_at' => now(),
-            ]);
+        $assigned = $this->support->assignSupportTicket(
+            $id,
+            $request->assigned_to,
+            $this->scopes->contextFor($request->user(), 'support.tickets.view'),
+        );
+
+        if (! $assigned) {
+            return response()->json(['message' => 'Ticket not found'], 404);
+        }
 
         return response()->json(['message' => 'Ticket assigned successfully']);
+    }
+
+    /** Staff ticket detail: full thread including internal notes + events. */
+    public function show(Request $request, string $id): JsonResponse
+    {
+        $ticket = \Modules\Messaging\Entities\Ticket::with([
+            'messages.sender:id,name',
+            'department:id,name',
+            'user:id,name,email',
+        ])->find($id);
+
+        if (!$ticket) {
+            return response()->json(['message' => 'Ticket not found'], 404);
+        }
+
+        $events = \Modules\Messaging\Entities\TicketEvent::where('ticket_id', $id)
+            ->orderBy('created_at')
+            ->get();
+
+        return response()->json(['data' => [
+            'ticket' => $ticket,
+            'events' => $events,
+        ]]);
     }
 }

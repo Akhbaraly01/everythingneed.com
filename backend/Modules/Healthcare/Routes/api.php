@@ -7,17 +7,60 @@ use Modules\Healthcare\Http\Controllers\HealthContentController;
 
 Route::prefix('api')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
-        Route::post('/doctors', [DoctorController::class, 'store'])->middleware('role:super_admin');
+        Route::post('/doctors', [DoctorController::class, 'store'])->middleware('role:super_admin,administrator,healthcare_admin');
         Route::put('/doctors/{id}/availability', [DoctorController::class, 'setAvailability']);
 
         Route::get('/appointments', [AppointmentController::class, 'index']);
         Route::post('/appointments', [AppointmentController::class, 'store']);
         Route::get('/appointments/{id}', [AppointmentController::class, 'show']);
+        Route::post('/appointments/{id}/pay', [AppointmentController::class, 'pay']);
         Route::get('/appointments/{id}/consultation', [AppointmentController::class, 'consultationRecord']);
 Route::post('/appointments/{id}/video-room', [AppointmentController::class, 'videoRoom']);
         Route::post('/appointments/{id}/cancel', [AppointmentController::class, 'cancel']);
-        Route::post('/appointments/{id}/assign-doctor', [AppointmentController::class, 'assignDoctor'])->middleware('role:super_admin');
+        Route::post('/appointments/{id}/assign-doctor', [AppointmentController::class, 'assignDoctor'])->middleware('role:super_admin,administrator,healthcare_admin');
+        Route::post('/appointments/{id}/start', [AppointmentController::class, 'start']);
         Route::post('/appointments/{id}/complete', [AppointmentController::class, 'complete']);
+
+        // Admin console reads (healthcare workspace)
+        Route::get('/admin/healthcare/tickets', [AppointmentController::class, 'adminTickets'])
+            ->middleware('role:super_admin,administrator,healthcare_admin');
+        Route::get('/admin/healthcare/consultations', [\Modules\Healthcare\Http\Controllers\HealthCompatController::class, 'adminConsultations'])
+            ->middleware('role:super_admin,administrator,healthcare_admin');
+
+        // Lab console (healthcare workspace): manage the catalog + overview bookings.
+        // Bookings must precede /labs/{id} or "bookings" matches {id}.
+        Route::get('/admin/healthcare/labs', [\Modules\Healthcare\Http\Controllers\LabController::class, 'adminList'])
+            ->middleware('role:super_admin,administrator,healthcare_admin');
+        Route::get('/admin/healthcare/labs/bookings', [\Modules\Healthcare\Http\Controllers\LabController::class, 'adminBookings'])
+            ->middleware('role:super_admin,administrator,healthcare_admin');
+        Route::post('/admin/healthcare/labs', [\Modules\Healthcare\Http\Controllers\LabController::class, 'store'])
+            ->middleware('role:super_admin,administrator,healthcare_admin');
+        Route::put('/admin/healthcare/labs/{id}', [\Modules\Healthcare\Http\Controllers\LabController::class, 'update'])
+            ->middleware('role:super_admin,administrator,healthcare_admin')
+            ->where('id', '[0-9a-f-]{36}');
+
+        // H-C: Aid / Charity review queue (requester files -> support reviews).
+        Route::get('/admin/healthcare/aid', [\Modules\Healthcare\Http\Controllers\AidController::class, 'adminList'])
+            ->middleware('role:super_admin,administrator,healthcare_admin');
+        Route::put('/admin/healthcare/aid/{id}', [\Modules\Healthcare\Http\Controllers\AidController::class, 'adminDecide'])
+            ->middleware('role:super_admin,administrator,healthcare_admin')
+            ->where('id', '[0-9a-f-]{36}');
+
+        // H-D: "Others" service-request triage queue.
+        Route::get('/admin/healthcare/service-requests', [\Modules\Healthcare\Http\Controllers\ServiceRequestController::class, 'adminList'])
+            ->middleware('role:super_admin,administrator,healthcare_admin');
+        Route::put('/admin/healthcare/service-requests/{id}', [\Modules\Healthcare\Http\Controllers\ServiceRequestController::class, 'adminDecide'])
+            ->middleware('role:super_admin,administrator,healthcare_admin')
+            ->where('id', '[0-9a-f-]{36}');
+
+        // H-D: Documentation hub library management (all types incl. inactive).
+        Route::get('/admin/healthcare/content', [\Modules\Healthcare\Http\Controllers\HealthContentController::class, 'adminList'])
+            ->middleware('role:super_admin,administrator,healthcare_admin');
+        Route::post('/admin/healthcare/content', [\Modules\Healthcare\Http\Controllers\HealthContentController::class, 'adminStore'])
+            ->middleware('role:super_admin,administrator,healthcare_admin');
+        Route::put('/admin/healthcare/content/{id}', [\Modules\Healthcare\Http\Controllers\HealthContentController::class, 'adminUpdate'])
+            ->middleware('role:super_admin,administrator,healthcare_admin')
+            ->where('id', '[0-9a-f-]{36}');
     });
 
     // Public reads (single registration — no shadowing)
@@ -33,33 +76,40 @@ Route::post('/appointments/{id}/video-room', [AppointmentController::class, 'vid
     Route::get('/healthcare/categories', [HealthContentController::class, 'index'])->defaults('type', 'categories');
     Route::get('/healthcare/prevention-guides', [HealthContentController::class, 'index'])->defaults('type', 'prevention-guides');
 
-    // Compat aliases for deep Inertia pages (virtual/labs/tickets shorthand)
-    Route::get('/health/tickets/{id}', [AppointmentController::class, 'show'])->middleware('auth:sanctum');
-    Route::get('/health/tickets', [AppointmentController::class, 'index'])->middleware('auth:sanctum');
-    Route::post('/health/tickets', [AppointmentController::class, 'store'])->middleware('auth:sanctum');
-    Route::get('/health/labs', function () {
-        $labs = \Modules\Healthcare\Entities\Doctor::where('specialization', 'ilike', '%lab%')->limit(20)->get();
-        if ($labs->isEmpty()) {
-            $labs = collect([
-                ['id' => 'lab-1', 'name' => 'Complete Blood Count', 'description' => 'Full blood panel', 'price' => 45, 'preparation_instructions' => 'Fasting 8 hours', 'result_time' => '24 hours'],
-                ['id' => 'lab-2', 'name' => 'Lipid Profile', 'description' => 'Cholesterol screening', 'price' => 55, 'preparation_instructions' => 'Fasting 12 hours', 'result_time' => '24 hours'],
-                ['id' => 'lab-3', 'name' => 'Thyroid Function', 'description' => 'T3, T4, TSH', 'price' => 65, 'preparation_instructions' => 'No special preparation', 'result_time' => '48 hours'],
-            ]);
-        }
-        return response()->json(['data' => $labs]);
-    });
-    Route::get('/health/labs/{id}', function (string $id) {
-        $lab = ['id' => $id, 'name' => 'Lab Test ' . $id, 'description' => 'Comprehensive lab test', 'price' => 50, 'preparation_instructions' => 'Fasting 8 hours', 'result_time' => '24 hours'];
-        $doctor = \Modules\Healthcare\Entities\Doctor::where('specialization', 'ilike', '%lab%')->first();
-        if ($doctor) { $lab['name'] = $doctor->full_name; $lab['price'] = (float) $doctor->consultation_fee; }
-        return response()->json(['data' => $lab]);
-    });
-    Route::post('/health/labs/book', [AppointmentController::class, 'store'])->middleware('auth:sanctum');
-    Route::get('/health/doctors', [DoctorController::class, 'index']);
-    Route::get('/health/consultations', function (\Illuminate\Http\Request $request) {
-        $user = $request->user();
-        if (!$user) return response()->json(['data' => []]);
-        $consultations = \Modules\Healthcare\Entities\Consultation::whereHas('ticket', fn($q) => $q->where('patient_id', $user->id))->with('ticket')->get();
-        return response()->json(['data' => $consultations]);
-    })->middleware('auth:sanctum');
+    // H-C: Aid / Charity - public reads (approved/funded only; detail is
+    // 404 for pending/rejected unless the requester views their own).
+    Route::get('/health/aid', [\Modules\Healthcare\Http\Controllers\AidController::class, 'index']);
+    Route::get('/health/aid/{id}', [\Modules\Healthcare\Http\Controllers\AidController::class, 'show'])->where('id', '[0-9a-f-]{36}');
+
+        // Compat aliases for deep Inertia pages (virtual/labs/tickets shorthand)
+        Route::get('/health/tickets/{id}', [AppointmentController::class, 'show'])->middleware('auth:sanctum');
+        Route::get('/health/tickets', [AppointmentController::class, 'index'])->middleware('auth:sanctum');
+        Route::post('/health/tickets', [AppointmentController::class, 'store'])->middleware('auth:sanctum');
+
+        // Laboratory (spec 24): real catalog + booking + payment + history.
+        // Booking routes must precede /labs/{id} or "bookings" matches {id}.
+        Route::get('/health/labs', [\Modules\Healthcare\Http\Controllers\LabController::class, 'index']);
+        Route::post('/health/labs/book', [\Modules\Healthcare\Http\Controllers\LabController::class, 'book'])->middleware('auth:sanctum');
+        Route::get('/health/labs/bookings', [\Modules\Healthcare\Http\Controllers\LabController::class, 'myBookings'])->middleware('auth:sanctum');
+        Route::get('/health/labs/bookings/{id}', [\Modules\Healthcare\Http\Controllers\LabController::class, 'bookingShow'])->middleware('auth:sanctum')->where('id', '[0-9a-f-]{36}');
+        Route::post('/health/labs/bookings/{id}/pay', [\Modules\Healthcare\Http\Controllers\LabController::class, 'pay'])->middleware('auth:sanctum')->where('id', '[0-9a-f-]{36}');
+        Route::post('/health/labs/bookings/{id}/cancel', [\Modules\Healthcare\Http\Controllers\LabController::class, 'cancel'])->middleware('auth:sanctum')->where('id', '[0-9a-f-]{36}');
+        Route::get('/health/labs/{id}', [\Modules\Healthcare\Http\Controllers\LabController::class, 'show'])->where('id', '[0-9a-f-]{36}');
+
+        // H-C: Aid / Charity - requester + donor surfaces (authed).
+        // "mine"/"donations" must precede /{id} or they match {id}.
+        Route::get('/health/aid/mine', [\Modules\Healthcare\Http\Controllers\AidController::class, 'myRequests'])->middleware('auth:sanctum');
+        Route::get('/health/aid/donations', [\Modules\Healthcare\Http\Controllers\AidController::class, 'myDonations'])->middleware('auth:sanctum');
+        Route::post('/health/aid', [\Modules\Healthcare\Http\Controllers\AidController::class, 'store'])->middleware('auth:sanctum');
+        Route::post('/health/aid/{id}/donate', [\Modules\Healthcare\Http\Controllers\AidController::class, 'donate'])->middleware('auth:sanctum')->where('id', '[0-9a-f-]{36}');
+
+        // H-D: "Others" custom service requests (authed). "mine" must
+        // precede any /{id} route on the same prefix.
+        Route::get('/health/service-requests/mine', [\Modules\Healthcare\Http\Controllers\ServiceRequestController::class, 'mine'])->middleware('auth:sanctum');
+        Route::post('/health/service-requests', [\Modules\Healthcare\Http\Controllers\ServiceRequestController::class, 'store'])->middleware(['auth:sanctum', 'throttle:20,1']);
+
+        Route::get('/health/doctors', [DoctorController::class, 'index']);
+    Route::get('/health/emergency', [\Modules\Healthcare\Http\Controllers\HealthCompatController::class, 'emergency']);
+    Route::get('/health/consultations', [\Modules\Healthcare\Http\Controllers\HealthCompatController::class, 'consultations'])
+        ->middleware('auth:sanctum');
 });

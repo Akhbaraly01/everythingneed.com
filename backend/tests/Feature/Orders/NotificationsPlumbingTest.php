@@ -65,7 +65,7 @@ class NotificationsPlumbingTest extends TestCase
         $agentA = User::factory()->create();
         UserRole::create(['user_id' => $agentA->id, 'role' => 'customer_service']);
         $agentB = User::factory()->create();
-        UserRole::create(['user_id' => $agentB->id, 'role' => 'support_staff']);
+        UserRole::create(['user_id' => $agentB->id, 'role' => 'support_agent']);
         $bystander = User::factory()->create();
         UserRole::create(['user_id' => $bystander->id, 'role' => 'user']);
 

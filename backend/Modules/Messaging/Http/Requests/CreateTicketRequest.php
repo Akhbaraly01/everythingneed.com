@@ -18,6 +18,8 @@ class CreateTicketRequest extends FormRequest
             'message' => 'required|string|max:5000',
             'priority' => 'nullable|string|in:low,medium,high,urgent',
             'department_id' => 'nullable|uuid|exists:departments,id',
+            'attachments' => 'nullable|array|max:5',
+            'attachments.*' => 'nullable|string|max:500',
         ];
     }
 }

@@ -2,7 +2,7 @@ import AppLayout from '@/layouts/AppLayout';
 import { Head, Link } from '@inertiajs/react';
 import { api } from '@/lib/api';
 import { useEffect, useState } from 'react';
-import { Stethoscope, Calendar, FileText, Pill } from 'lucide-react';
+import {Stethoscope, Calendar, Pill} from 'lucide-react';
 
 interface Ticket {
     id: string;
@@ -14,17 +14,23 @@ interface Ticket {
     created_at: string;
 }
 
+interface Consultation {
+    id: string;
+    diagnosis?: string;
+    notes?: string | null;
+}
+
 export default function HealthcareHistory() {
     const [tickets, setTickets] = useState<Ticket[]>([]);
-    const [consultations, setConsultations] = useState<any[]>([]);
+    const [consultations, setConsultations] = useState<Consultation[]>([]);
     const [loading, setLoading] = useState(true);
     const [tab, setTab] = useState<'appointments' | 'prescriptions'>('appointments');
 
     useEffect(() => {
         Promise.all([
             api.get<{ data: Ticket[] }>('/api/health/tickets').catch(() => ({ data: [] as Ticket[] })),
-            api.get<{ data: any[] }>('/api/health/consultations').catch(() => ({ data: [] as any[] })),
-        ]).then(([t, c]) => { setTickets((t as any).data || []); setConsultations((c as any).data || []); }).finally(() => setLoading(false));
+            api.get<{ data: Consultation[] }>('/api/health/consultations').catch(() => ({ data: [] as Consultation[] })),
+        ]).then(([t, c]) => { setTickets(t.data || []); setConsultations(c.data || []); }).finally(() => setLoading(false));
     }, []);
 
     return (
@@ -55,7 +61,7 @@ export default function HealthcareHistory() {
                         <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800"><Pill className="mx-auto h-12 w-12 text-gray-400" /><p className="mt-4 text-gray-500">No prescriptions yet</p></div>
                     ) : (
                         <div className="space-y-3">
-                            {consultations.map((c: any) => (
+                            {consultations.map((c) => (
                                 <div key={c.id} className="rounded-lg bg-white p-4 shadow dark:bg-gray-800">
                                     <p className="font-semibold dark:text-white">{c.diagnosis || 'Consultation'}</p>
                                     <p className="text-sm text-gray-500">{c.notes?.slice(0, 100)}</p>

@@ -3,11 +3,14 @@
 namespace Modules\Products\Entities;
 
 use App\Models\Model;
+use Core\Support\HasSlug;
 use Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class Product extends Model
 {
+    use HasSlug;
+
     protected static function newFactory(): Factory
     {
         return ProductFactory::new();
@@ -16,11 +19,21 @@ class Product extends Model
         'vendor_id',
         'brand_id',
         'name',
+        'slug',
+        'sku',
         'description',
         'category',
         'subcategory',
         'price',
         'compare_price',
+        'currency',
+        'tax_rate',
+        'discount_percent',
+        'featured',
+        'publication_state',
+        'specifications',
+        'attributes',
+        'shipping',
         'image_url',
         'images',
         'video_url',
@@ -35,6 +48,12 @@ class Product extends Model
     protected $casts = [
         'price' => 'decimal:2',
         'compare_price' => 'decimal:2',
+        'tax_rate' => 'decimal:2',
+        'discount_percent' => 'decimal:2',
+        'featured' => 'boolean',
+        'specifications' => 'array',
+        'attributes' => 'array',
+        'shipping' => 'array',
         'images' => 'array',
         'stock_quantity' => 'integer',
         'is_active' => 'boolean',
@@ -42,6 +61,9 @@ class Product extends Model
         'rating' => 'decimal:1',
         'reviews_count' => 'integer',
     ];
+
+    /** Spec 37 publication states (draft / published / hidden / archived). */
+    const PUBLICATION_STATES = ['draft', 'published', 'hidden', 'archived'];
 
     public function brand()
     {
@@ -61,5 +83,32 @@ class Product extends Model
     public function reviews()
     {
         return $this->hasMany(ProductReview::class);
+    }
+
+    /**
+     * Whitelisted server-side listing sorts (spec §87).
+     */
+    public function scopeApplySort($query, ?string $sort)
+    {
+        $map = [
+            'price_asc' => ['price', 'asc'],
+            'price_desc' => ['price', 'desc'],
+            'name_asc' => ['name', 'asc'],
+            'name_desc' => ['name', 'desc'],
+        ];
+
+        if (isset($map[$sort])) {
+            return $query->orderBy($map[$sort][0], $map[$sort][1]);
+        }
+
+        if ($sort === 'rating') {
+            return $query->orderByRaw('coalesce(rating, -1) desc')->orderBy('created_at', 'desc');
+        }
+
+        if ($sort === 'popular') {
+            return $query->orderBy('reviews_count', 'desc')->orderBy('created_at', 'desc');
+        }
+
+        return $query->orderBy('created_at', 'desc');
     }
 }

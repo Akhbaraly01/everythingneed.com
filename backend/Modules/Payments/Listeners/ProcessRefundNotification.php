@@ -27,7 +27,7 @@ class ProcessRefundNotification implements ShouldQueue
             'Refund processed',
             sprintf(
                 'Your refund of %s %s for payment %s has been processed.',
-                $payment->currency ?? 'USD',
+                $payment->currency ?? \Core\Support\Currencies::default(),
                 number_format((float) $refund->amount, 2),
                 $payment->reference ?? $payment->id,
             ),

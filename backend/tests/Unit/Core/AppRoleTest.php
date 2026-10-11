@@ -16,13 +16,13 @@ class AppRoleTest extends TestCase
         $this->assertSame(8, $hierarchy['administrator']);
         $this->assertSame(6, $hierarchy['vendor_admin']);
         $this->assertSame(5, $hierarchy['moderator']);
-        $this->assertSame(4, $hierarchy['support_staff']);
+        $this->assertSame(4, $hierarchy['support_agent']);
         $this->assertSame(4, $hierarchy['content_manager']);
         $this->assertSame(4, $hierarchy['finance_admin']);
         $this->assertSame(4, $hierarchy['healthcare_admin']);
         $this->assertSame(4, $hierarchy['learning_admin']);
         $this->assertSame(3, $hierarchy['customer_service']);
-        $this->assertSame(3, $hierarchy['category_admin']);
+        $this->assertSame(3, $hierarchy['marketplace_admin']);
         $this->assertSame(1, $hierarchy['user']);
     }
 
@@ -41,9 +41,9 @@ class AppRoleTest extends TestCase
 
         $this->assertTrue($superAdmin->canAccess(AppRole::USER));
         $this->assertTrue($superAdmin->canAccess(AppRole::CUSTOMER_SERVICE));
-        $this->assertTrue($superAdmin->canAccess(AppRole::CATEGORY_ADMIN));
+        $this->assertTrue($superAdmin->canAccess(AppRole::MARKETPLACE_ADMIN));
         $this->assertTrue($superAdmin->canAccess(AppRole::MODERATOR));
-        $this->assertTrue($superAdmin->canAccess(AppRole::SUPPORT_STAFF));
+        $this->assertTrue($superAdmin->canAccess(AppRole::SUPPORT_AGENT));
         $this->assertTrue($superAdmin->canAccess(AppRole::VENDOR_ADMIN));
         $this->assertTrue($superAdmin->canAccess(AppRole::ADMINISTRATOR));
         $this->assertTrue($superAdmin->canAccess(AppRole::SUPER_ADMIN));
@@ -55,9 +55,9 @@ class AppRoleTest extends TestCase
 
         $this->assertTrue($user->canAccess(AppRole::USER));
         $this->assertFalse($user->canAccess(AppRole::CUSTOMER_SERVICE));
-        $this->assertFalse($user->canAccess(AppRole::CATEGORY_ADMIN));
+        $this->assertFalse($user->canAccess(AppRole::MARKETPLACE_ADMIN));
         $this->assertFalse($user->canAccess(AppRole::MODERATOR));
-        $this->assertFalse($user->canAccess(AppRole::SUPPORT_STAFF));
+        $this->assertFalse($user->canAccess(AppRole::SUPPORT_AGENT));
         $this->assertFalse($user->canAccess(AppRole::VENDOR_ADMIN));
         $this->assertFalse($user->canAccess(AppRole::ADMINISTRATOR));
         $this->assertFalse($user->canAccess(AppRole::SUPER_ADMIN));
@@ -71,11 +71,11 @@ class AppRoleTest extends TestCase
         $this->assertTrue(AppRole::SUPER_ADMIN->canAccess(AppRole::SUPER_ADMIN));
     }
 
-    public function test_can_access_moderator_can_access_support_staff(): void
+    public function test_can_access_moderator_can_access_support_agent(): void
     {
         $moderator = AppRole::MODERATOR;
 
-        $this->assertTrue($moderator->canAccess(AppRole::SUPPORT_STAFF));
+        $this->assertTrue($moderator->canAccess(AppRole::SUPPORT_AGENT));
         $this->assertTrue($moderator->canAccess(AppRole::CONTENT_MANAGER));
         $this->assertTrue($moderator->canAccess(AppRole::FINANCE_ADMIN));
         $this->assertTrue($moderator->canAccess(AppRole::USER));
@@ -107,13 +107,22 @@ class AppRoleTest extends TestCase
         $this->assertContains('administrator', $values);
         $this->assertContains('vendor_admin', $values);
         $this->assertContains('moderator', $values);
-        $this->assertContains('support_staff', $values);
+        $this->assertContains('support_agent', $values);
         $this->assertContains('content_manager', $values);
         $this->assertContains('finance_admin', $values);
         $this->assertContains('healthcare_admin', $values);
         $this->assertContains('learning_admin', $values);
         $this->assertContains('customer_service', $values);
-        $this->assertContains('category_admin', $values);
+        $this->assertContains('marketplace_admin', $values);
+        $this->assertContains('hotel_admin', $values);
+        $this->assertContains('food_admin', $values);
+        $this->assertContains('transport_admin', $values);
+        $this->assertContains('agriculture_admin', $values);
+        $this->assertContains('building_admin', $values);
+        $this->assertContains('jobs_admin', $values);
+        $this->assertContains('pharmacy_admin', $values);
+        $this->assertContains('kyc_reviewer', $values);
+        $this->assertContains('worker', $values);
         $this->assertContains('user', $values);
     }
 
@@ -121,19 +130,26 @@ class AppRoleTest extends TestCase
     {
         $values = AppRole::values();
 
-        $this->assertCount(12, $values);
+        // Canonical role set (ADMIN_WORKSPACE_AUTHORIZATION_MATRIX.md):
+        // 21 legacy roles + W1 Batch B (platform_ops, security_admin,
+        // analytics_admin) + Batch C (orders/wallet/support/real_estate/
+        // needs_admin) + Batch D (payout_reviewer, refund_agent,
+        // inventory_manager, cms_editor, auditor, analyst) = 35,
+        // + spec §65 named admin roles (category_admin, vendor_manager,
+        // content_admin) = 38, + learn 2.0 learning_reviewer = 39.
+        $this->assertCount(39, $values);
     }
 
     public function test_label_returns_human_readable_labels(): void
     {
         $this->assertSame('Super Admin', AppRole::SUPER_ADMIN->label());
-        $this->assertSame('Category Admin', AppRole::CATEGORY_ADMIN->label());
+        $this->assertSame('Marketplace Admin', AppRole::MARKETPLACE_ADMIN->label());
         $this->assertSame('Customer Service', AppRole::CUSTOMER_SERVICE->label());
         $this->assertSame('User', AppRole::USER->label());
         $this->assertSame('Administrator', AppRole::ADMINISTRATOR->label());
         $this->assertSame('Vendor Admin', AppRole::VENDOR_ADMIN->label());
         $this->assertSame('Moderator', AppRole::MODERATOR->label());
-        $this->assertSame('Support Staff', AppRole::SUPPORT_STAFF->label());
+        $this->assertSame('Support Agent', AppRole::SUPPORT_AGENT->label());
         $this->assertSame('Content Manager', AppRole::CONTENT_MANAGER->label());
         $this->assertSame('Finance Admin', AppRole::FINANCE_ADMIN->label());
         $this->assertSame('Healthcare Admin', AppRole::HEALTHCARE_ADMIN->label());
@@ -152,13 +168,13 @@ class AppRoleTest extends TestCase
     public function test_enum_backed_values_match(): void
     {
         $this->assertSame('super_admin', AppRole::SUPER_ADMIN->value);
-        $this->assertSame('category_admin', AppRole::CATEGORY_ADMIN->value);
+        $this->assertSame('marketplace_admin', AppRole::MARKETPLACE_ADMIN->value);
         $this->assertSame('customer_service', AppRole::CUSTOMER_SERVICE->value);
         $this->assertSame('user', AppRole::USER->value);
         $this->assertSame('administrator', AppRole::ADMINISTRATOR->value);
         $this->assertSame('vendor_admin', AppRole::VENDOR_ADMIN->value);
         $this->assertSame('moderator', AppRole::MODERATOR->value);
-        $this->assertSame('support_staff', AppRole::SUPPORT_STAFF->value);
+        $this->assertSame('support_agent', AppRole::SUPPORT_AGENT->value);
         $this->assertSame('content_manager', AppRole::CONTENT_MANAGER->value);
         $this->assertSame('finance_admin', AppRole::FINANCE_ADMIN->value);
         $this->assertSame('healthcare_admin', AppRole::HEALTHCARE_ADMIN->value);

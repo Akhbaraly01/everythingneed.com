@@ -13,7 +13,10 @@ class JobController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = JobPost::where('is_active', true);
+        $query = JobPost::where('is_active', true)
+            ->where(function ($q) {
+                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            });
 
         if ($request->filled('job_type')) {
             $query->where('job_type', $request->job_type);
@@ -32,7 +35,7 @@ class JobController extends Controller
             });
         }
 
-        if ($request->boolean('mine')) {
+        if ($request->boolean('mine') && $request->user()) {
             $query->where('user_id', $request->user()->id);
         }
 
@@ -147,6 +150,14 @@ class JobController extends Controller
             throw new NotFoundException('Job', $jobId);
         }
 
+        if ($job->expires_at && $job->expires_at->isPast()) {
+            return response()->json(['message' => 'This job posting has expired'], 422);
+        }
+
+        if ((string) $job->user_id === (string) $request->user()->id) {
+            return response()->json(['message' => 'You cannot apply to your own job posting'], 422);
+        }
+
         $existing = JobApplication::where('job_post_id', $jobId)
             ->where('user_id', $request->user()->id)
             ->first();
@@ -213,5 +224,127 @@ class JobController extends Controller
                 'total' => $applications->total(),
             ],
         ]);
+    }
+
+    /** One application: visible to the applicant and the job owner. */
+    public function showApplication(Request $request, string $id): JsonResponse
+    {
+        $application = JobApplication::with(['jobPost', 'user'])->find($id);
+
+        if (!$application) {
+            return response()->json(['message' => 'Application not found'], 404);
+        }
+
+        $me = (string) $request->user()->id;
+        $isApplicant = (string) $application->user_id === $me;
+        $isOwner = (string) ($application->jobPost?->user_id ?? '') === $me;
+
+        if (!$isApplicant && !$isOwner) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        return response()->json(['data' => $application]);
+    }
+
+    /** Job owners move their applicants through the hiring pipeline. */
+    public function updateApplication(Request $request, string $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'status' => 'required|string|in:pending,reviewed,shortlisted,rejected,hired',
+        ]);
+
+        $application = JobApplication::with('jobPost')->find($id);
+
+        if (!$application) {
+            return response()->json(['message' => 'Application not found'], 404);
+        }
+
+        if ((string) ($application->jobPost?->user_id ?? '') !== (string) $request->user()->id) {
+            return response()->json(['message' => 'Only the job owner can update applications'], 403);
+        }
+
+        $application->update(['status' => $validated['status']]);
+
+        return response()->json([
+            'message' => 'Application updated',
+            'data' => $application->fresh(),
+        ]);
+    }
+
+    /** Employer dashboard: own posts plus received-application counts. */
+    public function profile(Request $request): JsonResponse
+    {
+        $userId = $request->user()->id;
+
+        $posts = JobPost::withCount('applications')
+            ->where('user_id', $userId)
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json(['data' => [
+            'posts' => $posts,
+            'total_posts' => $posts->count(),
+            'active_posts' => $posts->where('is_active', true)->count(),
+            'applications_received' => (int) $posts->sum('applications_count'),
+        ]]);
+    }
+
+    /** Admin console: every application with job + applicant context. */
+    public function adminApplications(Request $request): JsonResponse
+    {
+        $applications = JobApplication::with(['jobPost:id,title,company', 'user:id,name,email'])
+            ->orderByDesc('created_at')
+            ->paginate($request->get('per_page', 25));
+
+        return response()->json([
+            'data' => $applications->items(),
+            'meta' => [
+                'current_page' => $applications->currentPage(),
+                'last_page' => $applications->lastPage(),
+                'per_page' => $applications->perPage(),
+                'total' => $applications->total(),
+            ],
+        ]);
+    }
+
+    /**
+     * Admin console: every job post including inactive/expired (public hides them).
+     */
+    public function adminIndex(Request $request): JsonResponse
+    {
+        $query = JobPost::query()->orderByDesc('created_at');
+
+        if ($request->filled('q')) {
+            $q = $request->q;
+            $query->where(fn ($sub) => $sub->where('title', 'ilike', "%{$q}%")->orWhere('company', 'ilike', "%{$q}%"));
+        }
+        if (in_array($request->get('status', 'all'), ['active', 'inactive'], true)) {
+            $query->where('is_active', $request->get('status') === 'active');
+        }
+
+        $jobs = $query->paginate($request->get('per_page', 25));
+
+        return response()->json([
+            'data' => $jobs->items(),
+            'meta' => [
+                'current_page' => $jobs->currentPage(),
+                'last_page' => $jobs->lastPage(),
+                'per_page' => $jobs->perPage(),
+                'total' => $jobs->total(),
+            ],
+        ]);
+    }
+
+    public function adminUpdate(Request $request, string $id): JsonResponse
+    {
+        $request->validate(['is_active' => 'required|boolean']);
+
+        $job = JobPost::find($id);
+        if (!$job) {
+            return response()->json(['message' => 'Job not found'], 404);
+        }
+        $job->update(['is_active' => $request->boolean('is_active')]);
+
+        return response()->json(['data' => $job]);
     }
 }

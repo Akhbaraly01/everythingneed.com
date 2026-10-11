@@ -18,6 +18,14 @@ class VerificationController extends Controller
             return redirect()->intended('/dashboard?verified=1');
         }
 
+        // Paused for local testing (MAIL_ENABLED=false): verify instantly
+        // instead of sending mail. Flip MAIL_ENABLED=true to restore delivery.
+        if (!config('verification.mail_enabled', true)) {
+            $request->user()->markEmailAsVerified();
+
+            return redirect()->intended('/dashboard?verified=1');
+        }
+
         $request->user()->sendEmailVerificationNotification();
 
         return back()->with('status', 'verification-link-sent');

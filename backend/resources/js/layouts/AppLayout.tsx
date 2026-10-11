@@ -1,6 +1,13 @@
 import { type ReactNode } from 'react';
-import { Link, usePage } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import GlobalSearch from '@/components/shared/GlobalSearch';
+import Footer from '@/components/Marketplace/Footer';
+import NotificationBell from '@/components/notifications/NotificationBell';
+import { CartDrawerProvider } from '@/components/cart/CartDrawerContext';
+import GlobalCartDrawer from '@/components/cart/GlobalCartDrawer';
+import CompareDrawer from '@/components/compare/CompareDrawer';
+import PushNotificationPrompt from '@/components/notifications/PushNotificationPrompt';
+import WorkspaceSwitcher from '@/components/workspace/WorkspaceSwitcher';
 import { getInitials } from '@/lib/utils';
 import {
     LayoutDashboard,
@@ -27,9 +34,7 @@ import {
     Handshake,
     Sprout,
     HardHat,
-    ShieldCheck,
     Building2,
-    KeyRound,
     FolderTree,
     Hotel,
     UtensilsCrossed,
@@ -42,14 +47,14 @@ import {
     GraduationCap,
     Award,
     Pill,
+    Receipt,
     Users,
-    DollarSign,
-    Server,
     Star,
     Truck,
     BarChart3,
+    ClipboardList,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 interface AppLayoutProps {
     children: ReactNode;
@@ -67,6 +72,7 @@ const navigation = [
     { name: 'Food', href: '/food', icon: UtensilsCrossed },
     { name: 'Learn', href: '/learn', icon: BookOpen },
     { name: 'My Learning', href: '/learn/my-learning', icon: GraduationCap },
+    { name: 'Instructors', href: '/learn/instructors', icon: Users },
     { name: 'Certificates', href: '/learn/certificates', icon: Award },
     { name: 'Properties', href: '/properties', icon: Building2 },
     { name: 'Jobs', href: '/jobs', icon: Briefcase },
@@ -88,13 +94,18 @@ const navigation = [
     { name: 'Pharmacy', href: '/pharmacy', icon: Pill },
     { name: 'Find Doctors', href: '/healthcare/doctors', icon: Stethoscope },
     { name: 'Appointments', href: '/healthcare/appointments', icon: Calendar },
+    { name: 'Health Bookings', href: '/healthcare/bookings', icon: Calendar },
+    { name: 'Healthcare Aid', href: '/healthcare/aid', icon: Heart },
+    { name: 'Records', href: '/healthcare/records', icon: ClipboardList },
+    { name: 'Prescriptions', href: '/healthcare/prescriptions', icon: Pill },
     { name: 'Notifications', href: '/notifications', icon: Bell },
     { name: 'Wallet', href: '/wallet', icon: CreditCard },
+    { name: 'Bills', href: '/bills', icon: Receipt },
     { name: 'Settings', href: '/settings', icon: Settings },
     { name: 'My Profile', href: '/account/profile', icon: User },
     { name: 'Change Password', href: '/account/change-password', icon: Lock },
     { name: 'My Addresses', href: '/account/addresses', icon: MapPin },
-    { name: 'Help / Tickets', href: '/tickets', icon: HelpCircle },
+    { name: 'Help / Tickets', href: '/account/support', icon: HelpCircle },
     { name: 'My Account', href: '/account/dashboard', icon: User },
     { name: 'Stores', href: '/stores', icon: Store },
     { name: 'Deals', href: '/deals', icon: Handshake },
@@ -123,67 +134,63 @@ const navigation = [
     { name: 'Vendor - Add Product', href: '/vendor/products/create', icon: Package },
 ];
 
-const adminNavigation = [
-    { name: 'Admin Dashboard', href: '/admin/dashboard', icon: ShieldCheck },
-    { name: 'Admin - Users', href: '/admin/users', icon: Users },
-    { name: 'Admin - Vendors', href: '/admin/vendors', icon: Store },
-    { name: 'Admin - Products', href: '/admin/products', icon: Package },
-    { name: 'Admin - Orders', href: '/admin/orders', icon: ShoppingCart },
-    { name: 'Admin - Approvals', href: '/admin/approvals', icon: ShieldCheck },
-    { name: 'Admin - Categories', href: '/admin/categories', icon: FolderTree },
-    { name: 'Admin - Departments', href: '/admin/departments', icon: Building2 },
-    { name: 'Admin - RBAC', href: '/admin/rbac', icon: KeyRound },
-    { name: 'Admin - Payouts', href: '/admin/payouts', icon: Wallet },
-    { name: 'Admin - Finance', href: '/admin/finance', icon: DollarSign },
-    { name: 'Admin - Hotels', href: '/admin/hotels', icon: Hotel },
-    { name: 'Admin - Food', href: '/admin/food', icon: UtensilsCrossed },
-    { name: 'Admin - Transport', href: '/admin/transport', icon: Plane },
-    { name: 'Admin - Jobs', href: '/admin/jobs', icon: Briefcase },
-    { name: 'Admin - Healthcare', href: '/admin/healthcare/doctors', icon: Stethoscope },
-    { name: 'Admin - Learning', href: '/admin/learning/courses', icon: BookOpen },
-    { name: 'Admin - CMS', href: '/admin/cms', icon: Building2 },
-    { name: 'Admin - Support', href: '/admin/support/tickets', icon: HelpCircle },
-    { name: 'Admin - Audit Logs', href: '/admin/audit-logs', icon: ShieldCheck },
-    { name: 'Admin - Analytics', href: '/admin/analytics', icon: BarChart3 },
-    { name: 'Admin - System', href: '/admin/system', icon: Server },
-];
+// NOTE: administration navigation was removed from the customer shell.
+// Admin pages render inside resources/js/layouts/AdminLayout.tsx and pull
+// their nav from config/consoleNavigation.ts (filtered server-side by
+// workspace.adminHrefs). Server middleware remains the only authority.
 
-export default function AppLayout({ children, title }: AppLayoutProps) {
+export default function AppLayout(props: AppLayoutProps) {
+    return (
+        <CartDrawerProvider>
+            <AppLayoutShell {...props} />
+            <GlobalCartDrawer />
+            <CompareDrawer />
+            <PushNotificationPrompt />
+        </CartDrawerProvider>
+    );
+}
+
+function AppLayoutShell({ children, title }: AppLayoutProps) {
     const auth = usePage().props.auth as { id: string; name: string; email: string; roles?: string[] } | null;
     const user = (auth as unknown as { user?: { id: string; name: string; email: string } })?.user ?? auth;
     const page = usePage();
-    const authRoles = (page.props.auth as { roles?: string[] })?.roles ?? [];
-    const isAdminArea = authRoles.some((r) =>
-        ['super_admin', 'administrator', 'category_admin'].includes(r),
-    );
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [profileOpen, setProfileOpen] = useState(false);
 
+    useEffect(() => {
+        if (!profileOpen) return;
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setProfileOpen(false);
+        };
+        document.addEventListener('keydown', onKey);
+        return () => document.removeEventListener('keydown', onKey);
+    }, [profileOpen]);
+
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="min-h-dvh bg-background text-foreground">
             {/* Mobile sidebar */}
             {sidebarOpen && (
-                <div className="fixed inset-0 z-50 lg:hidden">
-                    <div className="fixed inset-0 bg-gray-900/80" onClick={() => setSidebarOpen(false)} />
-                    <div className="fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-gray-800">
+                <div className="fixed inset-0 z-modal lg:hidden">
+                    <div className="fixed inset-0 bg-black/45 backdrop-blur-[2px]" onClick={() => setSidebarOpen(false)} />
+                    <div className="glass-3 fixed inset-y-0 left-0 z-modal w-72 border-r border-border/60">
                         <div className="flex h-full flex-col">
                             <div className="flex items-center justify-between p-4">
-                                <Link href="/dashboard" className="text-xl font-bold text-gray-900 dark:text-white">
+                                <Link href="/dashboard" className="text-xl font-bold text-foreground">
                                     EverythingNeed
                                 </Link>
-                                <button onClick={() => setSidebarOpen(false)}>
+                                <button type="button" aria-label="Close menu" onClick={() => setSidebarOpen(false)} className="tap-safe rounded-full p-2 text-muted-foreground hover:bg-muted">
                                     <X className="h-6 w-6" />
                                 </button>
                             </div>
-                            <nav className="flex-1 space-y-1 px-3">
-                                {[...navigation, ...(isAdminArea ? adminNavigation : [])].map((item) => (
+                            <nav className="flex-1 space-y-1 overflow-y-auto px-3 pb-[var(--dock-clearance)]">
+                                {navigation.map((item) => (
                                     <Link
                                         key={item.name}
                                         href={item.href}
-                                        className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium ${
+                                        className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium ${
                                             page.url === item.href
-                                                ? 'bg-gray-100 text-gray-900'
-                                                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                                ? 'bg-primary/[0.12] text-primary'
+                                                : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
                                         }`}
                                     >
                                         <item.icon className="h-5 w-5" />
@@ -195,25 +202,24 @@ export default function AppLayout({ children, title }: AppLayoutProps) {
                     </div>
                 </div>
             )}
-
             {/* Desktop sidebar */}
             <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-72 lg:flex-col">
-                <div className="flex min-h-0 flex-1 flex-col border-r border-gray-200 bg-white dark:bg-gray-800">
+                <div className="flex min-h-0 flex-1 flex-col border-r border-border/60 bg-card">
                     <div className="flex flex-1 flex-col overflow-y-auto pt-5 pb-4">
                         <div className="flex flex-shrink-0 items-center px-4">
-                            <Link href="/dashboard" className="text-xl font-bold text-gray-900 dark:text-white">
+                            <Link href="/dashboard" className="text-xl font-bold text-foreground">
                                 EverythingNeed
                             </Link>
                         </div>
-                        <nav className="mt-8 flex-1 space-y-1 px-3">
-                            {[...navigation, ...(isAdminArea ? adminNavigation : [])].map((item) => (
+                        <nav className="mt-8 flex-1 space-y-1 overflow-y-auto px-3">
+                            {navigation.map((item) => (
                                 <Link
                                     key={item.name}
                                     href={item.href}
-                                    className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium ${
+                                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium ${
                                         page.url === item.href
-                                            ? 'bg-gray-100 text-gray-900'
-                                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                            ? 'bg-primary/[0.12] text-primary'
+                                            : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
                                     }`}
                                 >
                                     <item.icon className="h-5 w-5" />
@@ -222,32 +228,32 @@ export default function AppLayout({ children, title }: AppLayoutProps) {
                             ))}
                         </nav>
                     </div>
-                    <div className="flex flex-shrink-0 border-t border-gray-200 p-4">
+                    <div className="flex flex-shrink-0 border-t border-border/60 p-4">
                         <div className="group block w-full flex-shrink-0">
                             <div className="flex items-center">
-                                <div className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gray-500">
-                                    <span className="text-sm font-medium text-white">
+                                <div className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary/[0.85] text-primary-foreground">
+                                    <span className="text-sm font-medium">
                                         {getInitials(user?.name ?? 'U')}
                                     </span>
                                 </div>
                                 <div className="ml-3">
-                                    <p className="text-sm font-medium text-gray-700 dark:text-gray-200">{user?.name}</p>
-                                    <p className="text-xs font-medium text-gray-500">{user?.email}</p>
+                                    <p className="text-sm font-medium text-foreground">{user?.name}</p>
+                                    <p className="text-xs font-medium text-muted-foreground">{user?.email}</p>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-
             {/* Main content */}
             <div className="lg:pl-72">
                 {/* Top bar */}
-                <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm dark:bg-gray-800 sm:gap-x-6 sm:px-6 lg:px-8">
+                <div className="glass-2 sticky top-0 z-sticky flex h-16 shrink-0 items-center gap-x-4 border-b border-border/60 px-4 sm:gap-x-6 sm:px-6 lg:px-8">
                     <button
                         type="button"
-                        className="-m-2.5 p-2.5 text-gray-700 lg:hidden"
+                        className="tap-safe -m-2.5 rounded-full p-2.5 text-foreground lg:hidden"
                         onClick={() => setSidebarOpen(true)}
+                        aria-label="Open menu"
                     >
                         <Menu className="h-6 w-6" />
                     </button>
@@ -255,78 +261,94 @@ export default function AppLayout({ children, title }: AppLayoutProps) {
                         <GlobalSearch />
                         <div className="flex flex-1" />
                         <div className="flex items-center gap-x-4 lg:gap-x-6">
+                            <WorkspaceSwitcher />
+                            <NotificationBell />
                             {/* Profile dropdown */}
                             <div className="relative">
                                 <button
                                     type="button"
                                     className="-m-1.5 flex items-center p-1.5"
                                     onClick={() => setProfileOpen(!profileOpen)}
+                                    aria-label="Open profile menu"
+                                    aria-expanded={profileOpen}
+                                    aria-haspopup="menu"
                                 >
-                                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gray-500">
-                                        <span className="text-sm font-medium text-white">
+                                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary/[0.85] text-primary-foreground">
+                                        <span className="text-sm font-medium">
                                             {getInitials(user?.name ?? 'U')}
                                         </span>
                                     </span>
                                     <span className="hidden lg:flex lg:items-center">
-                                        <span className="ml-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
+                                        <span className="ml-2 text-sm font-semibold text-foreground">
                                             {user?.name}
                                         </span>
-                                        <ChevronDown className="ml-2 h-4 w-4 text-gray-400" />
+                                        <ChevronDown className="ml-2 h-4 w-4 text-muted-foreground" />
                                     </span>
                                 </button>
                                 {profileOpen && (
-                                    <div className="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5">
+                                    <button
+                                        type="button"
+                                        aria-label="Close profile menu"
+                                        onClick={() => setProfileOpen(false)}
+                                        className="fixed inset-0 z-[5] cursor-default bg-transparent"
+                                    />
+                                )}
+                                {profileOpen && (
+                                    <div className="glass-3 glass-edge absolute right-0 z-modal mt-2 w-48 origin-top-right rounded-xl py-1">
                                         <Link
                                             href="/profile"
-                                            className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                            className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted/70"
                                             onClick={() => setProfileOpen(false)}
                                         >
-                                            <User className="h-4 w-4" />
-                                            Profile
+                                            <User className="h-4 w-4" /> Profile
                                         </Link>
                                         <Link
                                             href="/settings"
-                                            className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                            className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted/70"
                                             onClick={() => setProfileOpen(false)}
                                         >
-                                            <Settings className="h-4 w-4" />
-                                            Settings
+                                            <Settings className="h-4 w-4" /> Settings
                                         </Link>
                                         <Link
                                             href="/wallet"
-                                            className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                            className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted/70"
                                             onClick={() => setProfileOpen(false)}
                                         >
-                                            <CreditCard className="h-4 w-4" />
-                                            Wallet
+                                            <CreditCard className="h-4 w-4" /> Wallet
                                         </Link>
-                                        <Link
-                                            href="/logout"
-                                            method="post"
-                                            className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                            onClick={() => setProfileOpen(false)}
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setProfileOpen(false);
+                                                router.post('/logout');
+                                            }}
+                                            className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-foreground hover:bg-muted/70"
                                         >
-                                            <LogOut className="h-4 w-4" />
-                                            Sign out
-                                        </Link>
+                                            <LogOut className="h-4 w-4" /> Sign out
+                                        </button>
                                     </div>
                                 )}
                             </div>
                         </div>
                     </div>
                 </div>
-
                 {/* Page content */}
                 <main className="py-6">
                     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                         {title && (
                             <div className="mb-6">
-                                <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{title}</h1>
+                                <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
                             </div>
                         )}
                         {children}
                     </div>
                 </main>
+                <Footer
+                    socialLinks={
+                        (page.props.socialLinks as { facebook?: string | null; twitter?: string | null; instagram?: string | null; linkedin?: string | null; youtube?: string | null }) ?? {}
+                    }
+                    appLinks={(page.props.appLinks as { ios?: string | null; android?: string | null }) ?? {}}
+                />
             </div>
         </div>
     );

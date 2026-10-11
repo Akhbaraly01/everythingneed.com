@@ -13,6 +13,8 @@ use Modules\Authentication\Entities\Session;
 
 class AuthService extends BaseService implements AuthServiceInterface
 {
+    public function __construct(private OtpSender $otpSender) {}
+
     public function register(array $data): array
     {
         $user = User::create([
@@ -21,6 +23,11 @@ class AuthService extends BaseService implements AuthServiceInterface
             'phone' => $data['phone'] ?? null,
             'password' => Hash::make($data['password']),
         ]);
+
+        \App\Models\UserRole::firstOrCreate(
+            ['user_id' => $user->id],
+            ['role' => 'user']
+        );
 
         $token = $user->createToken('auth-token')->plainTextToken;
 
@@ -106,8 +113,9 @@ class AuthService extends BaseService implements AuthServiceInterface
             'verified' => false,
         ]);
 
-        // TODO: dispatch SMS notification job
-        // SendSmsJob::dispatch($phone, "Your verification code is: {$code}");
+        // Delivery runs through the single OTP seam; disabled by design until a
+        // provider is configured (see Core\Services\OtpSender).
+        $this->otpSender->send('sms', $phone, $code);
 
         return [
             'challenge_id' => $challenge->id,

@@ -3,24 +3,26 @@
 namespace Modules\Admin\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use Core\Services\Contracts\SettingsQueryInterface;
+use Core\Services\Contracts\UiTextServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
-use Throwable;
+use Modules\Admin\Http\Requests\AdminToggleFeatureFlagRequest;
+use Modules\Admin\Http\Requests\AdminUpdateSettingsRequest;
 
 /**
  * AdminSettingsController
  *
  * Manages system-wide settings and feature flags stored in the database.
- * All routes require auth:sanctum + manageSettings gate (super_admin only).
+ * All routes require auth:sanctum + manageSettings gate (super_admin and
+ * administrator — both hold settings.* in the role matrix).
  */
 class AdminSettingsController extends Controller
 {
-    private const CACHE_KEY_SETTINGS = 'admin_system_settings';
-    private const CACHE_KEY_FLAGS    = 'admin_feature_flags';
-    private const CACHE_TTL          = 300; // 5 minutes
+    public function __construct(
+        private SettingsQueryInterface $settings,
+        private UiTextServiceInterface $uiTexts,
+    ) {}
 
     /**
      * Returns all system settings.
@@ -29,14 +31,18 @@ class AdminSettingsController extends Controller
      */
     public function index(): JsonResponse
     {
-        $settings = Cache::remember(self::CACHE_KEY_SETTINGS, self::CACHE_TTL, function () {
-            $rows = DB::table('system_settings')->get();
+        return response()->json(['data' => $this->settings->all()]);
+    }
 
-            // If the table doesn't exist yet, return safe defaults
-            return $rows->mapWithKeys(fn ($row) => [$row->key => $row->value])->toArray();
-        });
-
-        return response()->json(['data' => $settings]);
+    /**
+     * Editable system text for the Settings -> UI Text editor:
+     * key, label and current value (stored `ui.*` rows override defaults).
+     *
+     * GET /api/admin/ui-texts
+     */
+    public function uiTexts(): JsonResponse
+    {
+        return response()->json(['data' => $this->uiTexts->all()]);
     }
 
     /**
@@ -44,32 +50,30 @@ class AdminSettingsController extends Controller
      *
      * PUT /api/admin/settings
      */
-    public function update(Request $request): JsonResponse
+    public function update(AdminUpdateSettingsRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'settings'             => ['required', 'array'],
-            'settings.*.key'       => ['required', 'string', 'max:100'],
-            'settings.*.value'     => ['present'],
-        ]);
+        $validated = $request->validated();
 
-        DB::transaction(function () use ($validated) {
-            foreach ($validated['settings'] as $item) {
-                DB::table('system_settings')->updateOrInsert(
-                    ['key' => $item['key']],
-                    [
-                        'value'      => is_array($item['value']) ? json_encode($item['value']) : (string) $item['value'],
-                        'updated_by' => auth()->id(),
-                        'updated_at' => now(),
-                    ]
-                );
-            }
-        });
-
-        Cache::forget(self::CACHE_KEY_SETTINGS);
-
-        $this->logAudit('update', 'settings', 'system', 'Updated ' . count($validated['settings']) . ' settings');
+        $this->settings->updateMany($validated['settings'], auth()->id());
 
         return response()->json(['message' => 'Settings updated successfully']);
+    }
+
+    /**
+     * Removes one system setting (keys are immutable — delete is the
+     * rename path, and it really deletes: no resurrect-on-reload).
+     *
+     * DELETE /api/admin/settings/{key}
+     */
+    public function destroy(string $key): JsonResponse
+    {
+        $result = $this->settings->delete($key, auth()->id());
+
+        if ($result === 'missing') {
+            return response()->json(['message' => 'Setting not found'], 404);
+        }
+
+        return response()->json(['message' => 'Setting deleted']);
     }
 
     /**
@@ -79,71 +83,25 @@ class AdminSettingsController extends Controller
      */
     public function featureFlags(): JsonResponse
     {
-        $flags = Cache::remember(self::CACHE_KEY_FLAGS, self::CACHE_TTL, function () {
-            return DB::table('feature_flags')
-                ->select(['id', 'key', 'name', 'description', 'is_enabled as enabled', 'default_value', 'conditions', 'created_at', 'updated_at'])
-                ->get();
-        });
-
-        return response()->json(['data' => $flags]);
+        return response()->json(['data' => $this->settings->featureFlags()]);
     }
 
     /**
-     * Toggles a single feature flag.
+     * Toggles a single feature flag (unknown keys answer 404 — flags are
+     * seeded, never invented by the toggle).
      *
      * PUT /api/admin/feature-flags/{key}
      */
-    public function toggleFlag(Request $request, string $key): JsonResponse
+    public function toggleFlag(AdminToggleFeatureFlagRequest $request, string $key): JsonResponse
     {
-        $validated = $request->validate([
-            'enabled' => ['required', 'boolean'],
-        ]);
+        $validated = $request->validated();
 
-        $affected = DB::table('feature_flags')
-            ->where('key', $key)
-            ->update([
-                'is_enabled' => $validated['enabled'],
-                'updated_at' => now(),
-            ]);
+        $state = $this->settings->toggleFlag($key, (bool) $validated['enabled'], auth()->id());
 
-        if (! $affected) {
-            // Auto-create if not found
-            DB::table('feature_flags')->insert([
-                'id'         => Str::uuid()->toString(),
-                'key'        => $key,
-                'name'       => Str::title(str_replace('_', ' ', $key)),
-                'is_enabled' => $validated['enabled'],
-                'default_value' => false,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+        if ($state === 'missing') {
+            return response()->json(['message' => 'Feature flag not found'], 404);
         }
-
-        Cache::forget(self::CACHE_KEY_FLAGS);
-
-        $state = $validated['enabled'] ? 'enabled' : 'disabled';
-        $this->logAudit('update', 'feature_flag', $key, "Feature flag '{$key}' {$state}");
 
         return response()->json(['message' => "Feature flag '{$key}' {$state}"]);
-    }
-
-    /**
-     * Writes an audit log entry.
-     */
-    private function logAudit(string $action, string $entityType, string $entityId, string $details): void
-    {
-        try {
-            DB::table('audit_logs')->insert([
-                'id'           => Str::uuid()->toString(),
-                'action'       => $action,
-                'entity_type'  => $entityType,
-                'entity_id'    => $entityId,
-                'new_values'   => json_encode(['details' => $details]),
-                'performed_by' => auth()->id(),
-                'created_at'   => now(),
-            ]);
-        } catch (Throwable) {
-            // Never let audit failures break responses
-        }
     }
 }

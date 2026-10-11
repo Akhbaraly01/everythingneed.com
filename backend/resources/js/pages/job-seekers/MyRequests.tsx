@@ -1,26 +1,18 @@
+import { statusTone } from '@/lib/lifecycle';
+import { EmptyState } from '@/components/shared/Ui';
 import { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/AppLayout';
 import { type WorkRequest, type WorkOffer } from '@/types';
-import { api, ApiError } from '@/lib/api';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { api, errorMessage } from '@/lib/api';
+import { formatDate } from '@/lib/utils';
+import { formatPrice } from '@/lib/currency';
 import { toast } from 'sonner';
 import { ArrowLeft, Star, XCircle, BadgeDollarSign, Check, Handshake } from 'lucide-react';
 
 interface Props {
     requests: { data: WorkRequest[]; current_page: number; last_page: number; total: number };
 }
-
-const statusStyles: Record<string, string> = {
-    open: 'bg-blue-100 text-blue-800',
-    negotiating: 'bg-amber-100 text-amber-800',
-    accepted: 'bg-indigo-100 text-indigo-800',
-    paid: 'bg-purple-100 text-purple-800',
-    in_progress: 'bg-cyan-100 text-cyan-800',
-    completed: 'bg-green-100 text-green-800',
-    cancelled: 'bg-gray-100 text-gray-600',
-    disputed: 'bg-red-100 text-red-700',
-};
 
 export default function MyWorkRequests({ requests }: Props) {
     const [busyId, setBusyId] = useState<string | null>(null);
@@ -34,7 +26,7 @@ export default function MyWorkRequests({ requests }: Props) {
             toast.success(successMsg);
             router.reload({ only: ['requests'] });
         } catch (err) {
-            toast.error(err instanceof ApiError ? err.message : 'Action failed');
+            toast.error(errorMessage(err, 'Action failed'));
         } finally {
             setBusyId(null);
         }
@@ -60,13 +52,16 @@ export default function MyWorkRequests({ requests }: Props) {
                 </div>
 
                 {requests.data.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-gray-300 p-16 text-center dark:border-gray-600">
-                        <p className="font-medium text-gray-900 dark:text-white">No requests yet</p>
-                        <p className="mb-4 text-sm text-gray-500">Find a worker and send your first request.</p>
-                        <Link href="/job-seekers" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
-                            Browse directory
-                        </Link>
-                    </div>
+                    <EmptyState
+                        icon={<Handshake className="h-10 w-10 text-gray-300" />}
+                        title="No requests yet"
+                        description="Find a worker and send your first request."
+                        action={
+                            <Link href="/job-seekers" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
+                                Browse directory
+                            </Link>
+                        }
+                    />
                 ) : (
                     <div className="space-y-4">
                         {requests.data.map((req) => {
@@ -77,11 +72,11 @@ export default function MyWorkRequests({ requests }: Props) {
                                         <div>
                                             <div className="flex items-center gap-2">
                                                 <h3 className="font-semibold text-gray-900 dark:text-white">{req.title}</h3>
-                                                <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${statusStyles[req.status]}`}>{req.status.replace('_', ' ')}</span>
+                                                <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${statusTone(req.status)}`}>{req.status.replace('_', ' ')}</span>
                                             </div>
                                             <p className="mt-0.5 text-xs text-gray-500">
                                                 {req.worker_profile?.user?.name ?? 'Open to offers'} · created {formatDate(req.created_at)}
-                                                {req.agreed_rate ? ` · agreed ${formatCurrency(Number(req.agreed_rate))}` : ''}
+                                                {req.agreed_rate ? ` · agreed ${formatPrice(Number(req.agreed_rate))}` : ''}
                                             </p>
                                         </div>
                                         {!['cancelled', 'completed'].includes(req.status) && (
@@ -100,7 +95,7 @@ export default function MyWorkRequests({ requests }: Props) {
                                         <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-950/30">
                                             <p className="mb-2 flex items-center gap-1.5 text-sm font-medium text-amber-900 dark:text-amber-200">
                                                 <Handshake className="h-4 w-4" />
-                                                Offer received: {formatCurrency(Number(offer.rate))}
+                                                Offer received: {formatPrice(Number(offer.rate))}
                                                 {offer.message && <span className="font-normal">— “{offer.message}”</span>}
                                             </p>
                                             <div className="flex gap-2">
@@ -138,7 +133,7 @@ export default function MyWorkRequests({ requests }: Props) {
                                                 onClick={() => act(req, () => api.post(`/api/work-requests/${req.id}/pay`), 'Marked as paid')}
                                                 className="flex items-center gap-1.5 rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-700"
                                             >
-                                                <BadgeDollarSign className="h-3.5 w-3.5" /> Mark as paid ({formatCurrency(Number(req.agreed_rate ?? 0))})
+                                                <BadgeDollarSign className="h-3.5 w-3.5" /> Mark as paid ({formatPrice(Number(req.agreed_rate ?? 0))})
                                             </button>
                                         )}
                                         {req.status === 'in_progress' && (

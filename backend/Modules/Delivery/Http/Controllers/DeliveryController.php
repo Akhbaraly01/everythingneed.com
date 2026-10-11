@@ -3,22 +3,28 @@
 namespace Modules\Delivery\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use Modules\Delivery\Entities\Delivery;
 use Modules\Delivery\Entities\DeliveryManager;
+use Modules\Orders\Entities\Order;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class DeliveryController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = DeliveryManager::with('user');
+        $query = DeliveryManager::query()->select([
+            'id', 'full_name', 'vehicle_type', 'is_available', 'completed_deliveries', 'rating', 'created_at',
+        ]);
 
         if ($request->has('is_available')) {
             $query->where('is_available', $request->boolean('is_available'));
         }
 
-        $managers = $query->orderByDesc('rating')->paginate($request->get('per_page', 15));
+        $perPage = min(max((int) $request->get('per_page', 15), 1), 100);
+        $managers = $query->orderByDesc('rating')->paginate($perPage);
 
         return response()->json([
             'data' => $managers->items(),
@@ -55,15 +61,28 @@ class DeliveryController extends Controller
         ], 201);
     }
 
-    public function show(string $id): JsonResponse
+    public function show(Request $request, string $id): JsonResponse
     {
-        $manager = DeliveryManager::with('user')->find($id);
+        $manager = DeliveryManager::find($id);
 
         if (!$manager) {
             return response()->json(['message' => 'Delivery manager not found'], 404);
         }
 
-        return response()->json(['data' => $manager]);
+        $isSelf = $manager->user_id === Auth::id();
+        if (!$isSelf && !$this->isAdmin($request) && !$request->user()->hasRole('vendor_admin')) {
+            return response()->json(['message' => 'You do not have access to this delivery profile'], 403);
+        }
+
+        $data = $manager->only([
+            'id', 'full_name', 'vehicle_type', 'is_available', 'completed_deliveries', 'rating', 'created_at',
+        ]);
+        if ($isSelf || $this->isAdmin($request)) {
+            $data['phone'] = $manager->phone;
+            $data['user_id'] = $manager->user_id;
+        }
+
+        return response()->json(['data' => $data]);
     }
 
     public function updateAvailability(Request $request): JsonResponse
@@ -191,5 +210,179 @@ class DeliveryController extends Controller
     {
         return $request->user()->hasRole('super_admin')
             || $request->user()->hasRole('administrator');
+    }
+
+    private function ownManager(Request $request): ?DeliveryManager
+    {
+        return DeliveryManager::where('user_id', $request->user()->id)->first();
+    }
+
+    /**
+     * Plan G2: attach a delivery row to a paid order (admin ops only).
+     * One row per order - duplicates are rejected, never silently merged.
+     */
+    public function assign(Request $request, string $orderId): JsonResponse
+    {
+        if (! $this->isAdmin($request)) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $order = Order::find($orderId);
+        if (! $order) {
+            return response()->json(['message' => 'Order not found'], 404);
+        }
+
+        if (! in_array($order->status, [Order::STATUS_PAID, Order::STATUS_CONFIRMED, Order::STATUS_PROCESSING, Order::STATUS_SHIPPED], true)) {
+            return response()->json(['message' => 'Only paid or processing orders can be assigned for delivery.'], 422);
+        }
+
+        if (Delivery::where('order_id', $order->id)->exists()) {
+            return response()->json(['message' => 'Order already has a delivery assignment.'], 422);
+        }
+
+        $validated = $request->validate([
+            'manager_id' => 'nullable|uuid|exists:delivery_managers,id',
+            'pickup_address' => 'nullable|string|max:500',
+            'delivery_address' => 'nullable|string|max:500',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        if (! empty($validated['manager_id'])) {
+            $manager = DeliveryManager::find($validated['manager_id']);
+            if (! $manager || ! $manager->is_available) {
+                return response()->json(['message' => 'Manager is not available for assignment.'], 422);
+            }
+        }
+
+        $delivery = null;
+        try {
+            $delivery = Delivery::create([
+                'order_id' => $order->id,
+                'manager_id' => $validated['manager_id'] ?? null,
+                'status' => Delivery::STATUS_ASSIGNED,
+                'pickup_address' => $validated['pickup_address'] ?? null,
+                'delivery_address' => $validated['delivery_address'] ?? $order->shipping_address ?? null,
+                'notes' => $validated['notes'] ?? null,
+                'assigned_at' => now(),
+            ]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Concurrent double-assign: the loser hits the unique order_id
+            // index instead of creating a second delivery row.
+            if ((string) ($e->errorInfo[0] ?? '') === '23505') {
+                return response()->json(['message' => 'Order already has a delivery assignment.'], 422);
+            }
+
+            throw $e;
+        }
+
+        return response()->json(['message' => 'Delivery assigned.', 'data' => $delivery], 201);
+    }
+
+    /** Rider's active queue (own assignments only). */
+    public function queue(Request $request): JsonResponse
+    {
+        $manager = $this->ownManager($request);
+        if (! $manager) {
+            return response()->json(['message' => 'Not registered as delivery manager'], 404);
+        }
+
+        $rows = Delivery::with('order:id,order_number,status,total_amount,user_id')
+            ->where('manager_id', $manager->id)
+            ->whereIn('status', Delivery::ACTIVE)
+            ->orderBy('assigned_at')
+            ->get();
+
+        return response()->json(['data' => $rows]);
+    }
+
+    /** Rider's completed history. */
+    public function history(Request $request): JsonResponse
+    {
+        $manager = $this->ownManager($request);
+        if (! $manager) {
+            return response()->json(['message' => 'Not registered as delivery manager'], 404);
+        }
+
+        $rows = Delivery::with('order:id,order_number,status,total_amount')
+            ->where('manager_id', $manager->id)
+            ->whereIn('status', [Delivery::STATUS_DELIVERED, Delivery::STATUS_FAILED])
+            ->orderByDesc('delivered_at')
+            ->paginate(20);
+
+        return response()->json(['data' => $rows->items(), 'meta' => [
+            'current_page' => $rows->currentPage(),
+            'last_page' => $rows->lastPage(),
+            'total' => $rows->total(),
+        ]]);
+    }
+
+    /**
+     * Rider advances their own delivery one strict step:
+     * assigned -> picked_up -> in_transit -> delivered | failed.
+     */
+    public function transition(Request $request, string $id): JsonResponse
+    {
+        $manager = $this->ownManager($request);
+        if (! $manager) {
+            return response()->json(['message' => 'Not registered as delivery manager'], 404);
+        }
+
+        $delivery = Delivery::where('id', $id)->where('manager_id', $manager->id)->first();
+        if (! $delivery) {
+            return response()->json(['message' => 'Delivery not found'], 404);
+        }
+
+        $validated = $request->validate([
+            'status' => 'required|string|in:picked_up,in_transit,delivered,failed',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        $allowed = [
+            Delivery::STATUS_ASSIGNED => [Delivery::STATUS_PICKED_UP],
+            Delivery::STATUS_PICKED_UP => [Delivery::STATUS_IN_TRANSIT],
+            Delivery::STATUS_IN_TRANSIT => [Delivery::STATUS_DELIVERED, Delivery::STATUS_FAILED],
+        ];
+
+        if (! in_array($validated['status'], $allowed[$delivery->status] ?? [], true)) {
+            return response()->json([
+                'message' => "Cannot move delivery from {$delivery->status} to {$validated['status']}.",
+            ], 422);
+        }
+
+        DB::transaction(function () use ($delivery, $validated, $manager) {
+            $patch = ['status' => $validated['status']];
+            if (array_key_exists('notes', $validated)) {
+                $patch['notes'] = $validated['notes'];
+            }
+            if ($validated['status'] === Delivery::STATUS_PICKED_UP) {
+                $patch['picked_up_at'] = now();
+            }
+            if (in_array($validated['status'], [Delivery::STATUS_DELIVERED, Delivery::STATUS_FAILED], true)) {
+                $patch['delivered_at'] = now();
+            }
+            $delivery->update($patch);
+
+            if ($validated['status'] === Delivery::STATUS_DELIVERED) {
+                $manager->increment('completed_deliveries');
+            }
+        });
+
+        return response()->json(['message' => 'Delivery updated.', 'data' => $delivery->fresh()]);
+    }
+
+    /** Customer tracking view for their own order's delivery. */
+    public function trackingForOrder(Request $request, string $orderId): JsonResponse
+    {
+        $order = Order::where('id', $orderId)->where('user_id', $request->user()->id)->first();
+        if (! $order) {
+            return response()->json(['message' => 'Order not found'], 404);
+        }
+
+        $delivery = Delivery::where('order_id', $order->id)->first();
+        if (! $delivery) {
+            return response()->json(['data' => null, 'message' => 'No rider assigned yet.']);
+        }
+
+        return response()->json(['data' => $delivery]);
     }
 }

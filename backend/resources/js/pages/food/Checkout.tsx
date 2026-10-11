@@ -1,12 +1,13 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, router } from '@inertiajs/react';
-import { api } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
+import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
-import { CreditCard, MapPin, Clock, CheckCircle, ArrowRight } from 'lucide-react';
+import {ArrowRight} from 'lucide-react';
 
 interface CartItem {
     id: string;
-    menu_item: { name: string; price: number; image_url: string };
+    menu_item: { id?: string; name: string; price: number; image_url: string };
     quantity: number;
     special_instructions: string;
 }
@@ -17,6 +18,21 @@ interface Restaurant {
     delivery_fee: number;
 }
 
+interface StoredCartItem {
+    id: string;
+    menu_item_id: string;
+    menu_item?: { id: string; name: string; price: number; image_url?: string | null };
+    unit_price: number;
+    quantity: number;
+    special_instructions?: string;
+}
+
+interface StoredCart {
+    restaurant_id?: string;
+    restaurant_name?: string;
+    items: StoredCartItem[];
+}
+
 export default function FoodCheckout() {
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
     const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
@@ -25,13 +41,32 @@ export default function FoodCheckout() {
     const [form, setForm] = useState({ delivery_address: '', phone: '', notes: '' });
 
     useEffect(() => {
-        api.get('/api/food/cart')
-            .then((res: any) => {
-                setCartItems(res.data?.items || []);
-                setRestaurant(res.data?.restaurant || null);
-            })
-            .catch(() => {})
-            .finally(() => setLoading(false));
+        // The food cart lives client-side (localStorage), same store Cart.tsx uses.
+        try {
+            const stored = localStorage.getItem('food_cart');
+            if (stored) {
+                const cart = JSON.parse(stored) as StoredCart;
+                const items = (cart.items ?? []).map((item) => ({
+                    id: item.id,
+                    menu_item: {
+                        id: item.menu_item?.id ?? item.menu_item_id,
+                        name: item.menu_item?.name ?? 'Item',
+                        price: item.menu_item?.price ?? item.unit_price,
+                        image_url: item.menu_item?.image_url ?? '',
+                    },
+                    quantity: item.quantity,
+                    special_instructions: item.special_instructions ?? '',
+                }));
+                setCartItems(items);
+                if (cart.restaurant_id) {
+                    setRestaurant({ id: cart.restaurant_id, name: cart.restaurant_name ?? 'Restaurant', delivery_fee: 0 });
+                }
+            }
+        } catch {
+            toast.warning('Your saved cart could not be read and has been cleared.');
+            try { localStorage.removeItem('food_cart'); } catch { /* storage unavailable */ }
+        }
+        setLoading(false);
     }, []);
 
     const subtotal = cartItems.reduce((sum, i) => sum + i.menu_item.price * i.quantity, 0);
@@ -47,8 +82,10 @@ export default function FoodCheckout() {
                 items: cartItems.map((i) => ({ menu_item_id: i.menu_item.id || i.id, quantity: i.quantity, special_instructions: i.special_instructions })),
                 ...form,
             });
+            localStorage.removeItem('food_cart');
             router.visit(`/food/orders/${res.data.id}`);
-        } catch {
+        } catch (err) {
+            toast.error(errorMessage(err, 'Failed to place your order'));
             setSubmitting(false);
         }
     };

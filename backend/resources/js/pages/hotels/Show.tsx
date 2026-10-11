@@ -1,8 +1,10 @@
 import AppLayout from '@/layouts/AppLayout';
-import { Head, Link } from '@inertiajs/react';
+import {Head, usePage} from '@inertiajs/react';
 import type { Hotel, HotelRoom } from '@/types';
-import { MapPin, Star, Wifi, Car, Coffee, Users, Calendar } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils';
+import {MapPin, Star, Wifi, Car, Coffee, Users} from 'lucide-react';
+import { formatPrice } from '@/lib/currency';
+import ReviewSection from '@/components/reviews/ReviewSection';
+import Image from '@/components/shared/Image';
 
 interface HotelShowProps {
     hotel: Hotel & { rooms?: HotelRoom[] };
@@ -15,6 +17,7 @@ const amenityIcons: Record<string, typeof Wifi> = {
 };
 
 export default function HotelShow({ hotel }: HotelShowProps) {
+    const { auth } = usePage().props as { auth?: { user?: { id: string } } };
     return (
         <AppLayout>
             <Head title={hotel.name} />
@@ -25,7 +28,7 @@ export default function HotelShow({ hotel }: HotelShowProps) {
                     <div className="flex flex-col gap-6 lg:flex-row">
                         <div className="aspect-video w-full overflow-hidden rounded-lg bg-gray-100 lg:w-1/2">
                             {hotel.image_url ? (
-                                <img src={hotel.image_url} alt={hotel.name} className="h-full w-full object-cover" />
+                                <Image src={hotel.image_url} alt={hotel.name} className="h-full w-full object-cover" />
                             ) : (
                                 <div className="flex h-full items-center justify-center text-gray-400">No image</div>
                             )}
@@ -82,7 +85,7 @@ export default function HotelShow({ hotel }: HotelShowProps) {
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-xl font-bold text-gray-900 dark:text-white">{formatCurrency(room.price_per_night)}</p>
+                                        <p className="text-xl font-bold text-gray-900 dark:text-white">{formatPrice(room.price_per_night)}</p>
                                         <p className="text-xs text-gray-500">per night</p>
                                     </div>
                                 </div>
@@ -90,6 +93,8 @@ export default function HotelShow({ hotel }: HotelShowProps) {
                         )}
                     </div>
                 </div>
+
+                <ReviewSection reviewableType="hotel" reviewableId={hotel.id} authenticated={Boolean(auth?.user)} />
             </div>
         </AppLayout>
     );

@@ -1,8 +1,8 @@
 import AppLayout from '@/layouts/AppLayout';
-import { Head, Link, router } from '@inertiajs/react';
-import { api } from '@/lib/api';
-import { formatCurrency } from '@/lib/utils';
+import { Head, Link } from '@inertiajs/react';
+import { formatPrice } from '@/lib/currency';
 import { ShoppingCart, Trash2, Plus, Minus, ArrowRight } from 'lucide-react';
+import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
 
 interface FoodCartItem {
@@ -32,7 +32,10 @@ export default function FoodCartPage() {
             if (stored) {
                 setCart(JSON.parse(stored));
             }
-        } catch {}
+        } catch {
+            toast.warning('Your saved cart could not be read and has been cleared.');
+            try { localStorage.removeItem('food_cart'); } catch { /* storage unavailable */ }
+        }
         setLoading(false);
     }, []);
 
@@ -54,20 +57,6 @@ export default function FoodCartPage() {
         } else {
             setCart(updated);
             localStorage.setItem('food_cart', JSON.stringify(updated));
-        }
-    };
-
-    const placeOrder = async () => {
-        if (!cart || cart.items.length === 0) return;
-        try {
-            await api.post(`/api/restaurants/${cart.restaurant_id}/order`, {
-                items: cart.items.map((i) => ({ menu_item_id: i.menu_item_id, quantity: i.quantity, special_instructions: i.special_instructions })),
-                delivery_address: 'Delivery address',
-            });
-            localStorage.removeItem('food_cart');
-            router.visit('/food');
-        } catch (e: any) {
-            alert(e.message ?? 'Failed to place order');
         }
     };
 
@@ -100,18 +89,21 @@ export default function FoodCartPage() {
                                     <span className="w-6 text-center text-sm">{item.quantity}</span>
                                     <button onClick={() => updateQty(item.id, item.quantity + 1)} className="rounded border p-1 hover:bg-gray-50 dark:border-gray-600"><Plus className="h-3 w-3" /></button>
                                 </div>
-                                <p className="w-20 text-right font-semibold">{formatCurrency(item.unit_price * item.quantity)}</p>
+                                <p className="w-20 text-right font-semibold">{formatPrice(item.unit_price * item.quantity)}</p>
                                 <button onClick={() => removeItem(item.id)} className="text-red-500 hover:text-red-700"><Trash2 className="h-4 w-4" /></button>
                             </div>
                         ))}
                         <div className="rounded-lg bg-white p-4 shadow dark:bg-gray-800">
                             <div className="flex justify-between text-lg font-bold">
                                 <span>Total</span>
-                                <span>{formatCurrency(cart.subtotal)}</span>
+                                <span>{formatPrice(cart.subtotal)}</span>
                             </div>
-                            <button onClick={placeOrder} className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-6 py-3 text-lg font-semibold text-white hover:bg-indigo-500">
-                                Place Order <ArrowRight className="h-5 w-5" />
-                            </button>
+                            <Link
+                                href="/food/checkout"
+                                className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-6 py-3 text-lg font-semibold text-white hover:bg-indigo-500"
+                            >
+                                Proceed to Checkout <ArrowRight className="h-5 w-5" />
+                            </Link>
                         </div>
                     </div>
                 )}

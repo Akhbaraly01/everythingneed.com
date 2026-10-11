@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/AppLayout';
-import { api, ApiError } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
 import { formatDateTime } from '@/lib/utils';
 import { toast } from 'sonner';
 import { MessageSquare, Plus, Search, X, UserSearch } from 'lucide-react';
@@ -44,6 +44,7 @@ export default function MessagesInbox({ conversations }: Props) {
                 setResults(res.data);
             } catch {
                 setResults([]);
+                if (userQuery.trim()) toast.error('Could not search for users');
             } finally {
                 setSearching(false);
             }
@@ -56,7 +57,7 @@ export default function MessagesInbox({ conversations }: Props) {
             const res = await api.post<{ data: { id: string } }>('/api/chat/conversations', { recipient_id: recipientId });
             router.visit(`/messages/${res.data.id}`);
         } catch (err) {
-            toast.error(err instanceof ApiError ? err.message : 'Could not start conversation');
+            toast.error(errorMessage(err, 'Could not start conversation'));
             setStarting(null);
         }
     };

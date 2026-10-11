@@ -62,6 +62,11 @@ class HotelLifecycleTest extends TestCase
         }
         $this->assertNotNull($reservationId);
 
+        // Payment confirms the reservation (check-in only works once paid).
+        $this->actingAs($guest)->postJson("/api/hotels/reservations/{$reservationId}/pay", ['method' => 'card'])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'confirmed');
+
         $mine = $this->actingAs($guest)->getJson('/api/hotels/reservations/mine');
         $row = collect($mine->json('data'))->firstWhere('id', $reservationId);
         $this->assertStringStartsWith('HTR-', $row['reference']);
@@ -86,6 +91,9 @@ class HotelLifecycleTest extends TestCase
         ])->assertStatus(201);
 
         $rid = \Modules\Hotels\Entities\HotelReservation::first()->id;
+
+        $this->actingAs($guest)->postJson("/api/hotels/reservations/{$rid}/pay", ['method' => 'card'])
+            ->assertOk();
 
         $this->actingAs($guest)->postJson("/api/hotels/reservations/{$rid}/check-in")->assertStatus(200);
         $this->actingAs($guest)->postJson("/api/hotels/reservations/{$rid}/check-in")->assertStatus(422);

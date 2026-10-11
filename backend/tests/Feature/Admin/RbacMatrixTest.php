@@ -44,8 +44,8 @@ class RbacMatrixTest extends TestCase
         $cs = User::factory()->create();
         \App\Models\UserRole::create(['user_id' => $cs->id, 'role' => 'customer_service']);
 
-        $this->assertTrue($cs->hasPermission('support.escalate'));
-        $this->assertFalse($cs->hasPermission('orders.refund'));
+        $this->assertTrue($cs->hasPermission('support.tickets.escalate'));
+        $this->assertFalse($cs->hasPermission('orders.orders.refund'));
     }
 
     public function test_plain_user_has_no_permissions(): void
@@ -55,8 +55,8 @@ class RbacMatrixTest extends TestCase
         $user = User::factory()->create();
         \App\Models\UserRole::create(['user_id' => $user->id, 'role' => 'user']);
 
-        $this->assertFalse($user->hasPermission('products.view'));
-        $this->assertFalse($user->hasPermission('analytics.export'));
+        $this->assertFalse($user->hasPermission('products.products.view'));
+        $this->assertFalse($user->hasPermission('analytics.overview.export'));
     }
 
     public function test_super_admin_can_grant_and_revoke_via_api(): void
@@ -66,37 +66,37 @@ class RbacMatrixTest extends TestCase
         $super = User::factory()->create();
         \App\Models\UserRole::create(['user_id' => $super->id, 'role' => 'super_admin']);
 
-        // Grant a new pair (moderator gets analytics.export)
+        // Grant a new pair (moderator gets analytics.overview.export)
         $grant = $this->actingAs($super)->postJson('/api/admin/rbac/grant', [
             'role' => 'moderator',
-            'permission' => 'analytics.export',
+            'permission' => 'analytics.overview.export',
         ]);
         $grant->assertStatus(200);
 
         $matrix = $this->actingAs($super)->getJson('/api/admin/rbac/matrix');
         $matrix->assertStatus(200);
         $moderator = collect($matrix->json('data'))->firstWhere('role', 'moderator');
-        $this->assertContains('analytics.export', $moderator['permissions']);
+        $this->assertContains('analytics.overview.export', $moderator['permissions']);
 
         // Non-super admin is blocked
         $pleb = User::factory()->create();
         $blocked = $this->actingAs($pleb)->postJson('/api/admin/rbac/revoke', [
             'role' => 'moderator',
-            'permission' => 'analytics.export',
+            'permission' => 'analytics.overview.export',
         ]);
         $blocked->assertStatus(403);
 
         // Revoke works for super admin
         $revoke = $this->actingAs($super)->postJson('/api/admin/rbac/revoke', [
             'role' => 'moderator',
-            'permission' => 'analytics.export',
+            'permission' => 'analytics.overview.export',
         ]);
         $revoke->assertStatus(200);
 
         $after = collect(
             $this->actingAs($super)->getJson('/api/admin/rbac/matrix')->json('data')
         )->firstWhere('role', 'moderator');
-        $this->assertNotContains('analytics.export', $after['permissions']);
+        $this->assertNotContains('analytics.overview.export', $after['permissions']);
     }
 
     public function test_invalid_role_or_permission_rejected(): void
@@ -108,7 +108,7 @@ class RbacMatrixTest extends TestCase
 
         $this->actingAs($super)->postJson('/api/admin/rbac/grant', [
             'role' => 'hacker_role',
-            'permission' => 'products.view',
+            'permission' => 'products.products.view',
         ])->assertStatus(422);
 
         $this->actingAs($super)->postJson('/api/admin/rbac/grant', [

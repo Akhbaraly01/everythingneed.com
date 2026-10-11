@@ -1,7 +1,13 @@
+import { statusTone } from '@/lib/lifecycle';
+import { EmptyState } from '@/components/shared/Ui';
 import AppLayout from '@/layouts/AppLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
+import { useState } from 'react';
+import { toast } from 'sonner';
+import { api, errorMessage } from '@/lib/api';
 import type { MedicineOrder } from '@/types';
-import { formatCurrency, formatDateTime } from '@/lib/utils';
+import { formatDateTime } from '@/lib/utils';
+import { formatPrice } from '@/lib/currency';
 import { Package, Eye, XCircle } from 'lucide-react';
 
 interface OrdersProps {
@@ -16,36 +22,42 @@ interface OrdersProps {
     };
 }
 
-const statusColors: Record<string, string> = {
-    pending: 'bg-yellow-100 text-yellow-800',
-    confirmed: 'bg-blue-100 text-blue-800',
-    processing: 'bg-indigo-100 text-indigo-800',
-    shipped: 'bg-purple-100 text-purple-800',
-    delivered: 'bg-green-100 text-green-800',
-    cancelled: 'bg-red-100 text-red-800',
-};
-
 export default function Orders({ orders }: OrdersProps) {
+    const list = orders?.data ?? [];
+    const [cancellingId, setCancellingId] = useState<string | null>(null);
+
+    const cancelOrder = async (orderId: string) => {
+        setCancellingId(orderId);
+        try {
+            await api.post(`/api/product-orders/${orderId}/cancel`, {});
+            toast.success('Order cancelled');
+            router.reload({ only: ['orders'] });
+        } catch (e) {
+            toast.error(errorMessage(e, 'Could not cancel this order'));
+        } finally {
+            setCancellingId(null);
+        }
+    };
+
     return (
         <AppLayout title="My Orders">
             <Head title="Orders" />
 
             <div className="space-y-6">
-                {orders.data.length === 0 ? (
-                    <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
-                        <Package className="mx-auto h-12 w-12 text-gray-400" />
-                        <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">No orders yet</h3>
-                        <p className="mt-2 text-gray-500">Start shopping to see your orders here.</p>
-                        <Link
-                            href="/products"
-                            className="mt-4 inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
-                        >
-                            Browse Products
-                        </Link>
-                    </div>
+                {list.length === 0 ? (
+                    <EmptyState
+                        icon={<Package className="h-10 w-10 text-gray-300" />}
+                        title="No orders yet"
+                        description="Start shopping to see your orders here."
+                        action={
+                            <Link href="/products" className="inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
+                                Browse Products
+                            </Link>
+                        }
+                    />
                 ) : (
                     <div className="space-y-4">
-                        {orders.data.map((order) => (
+                        {list.map((order) => (
                             <div key={order.id} className="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
                                 <div className="flex items-center justify-between">
                                     <div>
@@ -54,7 +66,7 @@ export default function Orders({ orders }: OrdersProps) {
                                         </h3>
                                         <p className="text-sm text-gray-500">{formatDateTime(order.created_at)}</p>
                                     </div>
-                                    <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusColors[order.status] ?? 'bg-gray-100 text-gray-800'}`}>
+                                    <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusTone(order.status)}`}>
                                         {order.status}
                                     </span>
                                 </div>
@@ -64,7 +76,7 @@ export default function Orders({ orders }: OrdersProps) {
                                             {order.items?.length ?? 0} items
                                         </p>
                                         <p className="text-lg font-bold text-gray-900 dark:text-white">
-                                            {formatCurrency(order.total_amount)}
+                                            {formatPrice(order.total_amount)}
                                         </p>
                                     </div>
                                     <div className="flex gap-2">
@@ -75,15 +87,16 @@ export default function Orders({ orders }: OrdersProps) {
                                             <Eye className="h-4 w-4" />
                                             View
                                         </Link>
-                                        {['pending', 'confirmed'].includes(order.status) && (
-                                            <Link
-                                                href={`/orders/${order.id}/cancel`}
-                                                method="post"
-                                                className="inline-flex items-center gap-2 rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+                                        {['pending', 'paid'].includes(order.status) && (
+                                            <button
+                                                type="button"
+                                                disabled={cancellingId === order.id}
+                                                onClick={() => cancelOrder(order.id)}
+                                                className="inline-flex items-center gap-2 rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
                                             >
                                                 <XCircle className="h-4 w-4" />
-                                                Cancel
-                                            </Link>
+                                                {cancellingId === order.id ? 'Cancelling…' : 'Cancel'}
+                                            </button>
                                         )}
                                     </div>
                                 </div>

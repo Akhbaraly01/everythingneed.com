@@ -20,6 +20,12 @@ class AddAddress
             $user->addresses()->update(['is_default' => false]);
         }
 
-        return $user->addresses()->create($data);
+        $address = $user->addresses()->create($data);
+
+        if (!$user->addresses()->where('is_default', true)->exists()) {
+            $address->update(['is_default' => true]);
+        }
+
+        return $address->fresh();
     }
 }

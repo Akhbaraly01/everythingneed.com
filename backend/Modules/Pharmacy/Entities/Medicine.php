@@ -15,6 +15,10 @@ class Medicine extends Model
         'image_url',
         'requires_prescription',
         'stock_quantity',
+        'vendor_id',
+        'dosage_form',
+        'strength',
+        'manufacturer',
     ];
 
     protected $casts = [
@@ -22,6 +26,11 @@ class Medicine extends Model
         'requires_prescription' => 'boolean',
         'stock_quantity' => 'integer',
     ];
+
+    public function vendor()
+    {
+        return $this->belongsTo(\Modules\Vendors\Entities\Vendor::class);
+    }
 
     public function orderItems()
     {

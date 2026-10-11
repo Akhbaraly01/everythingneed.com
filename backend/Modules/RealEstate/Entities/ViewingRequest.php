@@ -9,14 +9,19 @@ class ViewingRequest extends Model
     protected $fillable = [
         'property_id',
         'user_id',
+        'name',
+        'email',
+        'phone',
+        'message',
+        'viewing_date',
         'preferred_date',
         'preferred_time',
-        'message',
         'status',
     ];
 
     protected $casts = [
         'preferred_date' => 'date',
+        'viewing_date' => 'date',
     ];
 
     const STATUS_PENDING = 'pending';

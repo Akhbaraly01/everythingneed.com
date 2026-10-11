@@ -1,6 +1,6 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, router } from '@inertiajs/react';
-import { api } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
 import { useState } from 'react';
 import { Star, ArrowRight } from 'lucide-react';
 
@@ -10,6 +10,8 @@ export default function ReviewCreate() {
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
 
+    const TYPES = ['product', 'vendor', 'doctor', 'hotel', 'worker', 'restaurant', 'course', 'property', 'need_request'];
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!form.reviewable_id) { setError('Missing target ID'); return; }
@@ -17,7 +19,7 @@ export default function ReviewCreate() {
         try {
             await api.post('/api/reviews', form);
             router.visit(`/reviews`);
-        } catch (err: any) { setError(err.response?.data?.message || 'Failed to submit review'); setSubmitting(false); }
+        } catch (err) { setError(errorMessage(err, 'Failed to submit review')); setSubmitting(false); }
     };
 
     return (
@@ -27,6 +29,29 @@ export default function ReviewCreate() {
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Write a Review</h1>
                 {error && <div className="rounded bg-red-50 p-3 text-sm text-red-600 dark:bg-red-900/20">{error}</div>}
                 <div className="rounded-lg bg-white p-6 shadow dark:bg-gray-800 space-y-4">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label className="block text-sm font-medium mb-1 dark:text-gray-300">Reviewing</label>
+                            <select
+                                value={form.reviewable_type}
+                                onChange={(e) => setForm({ ...form, reviewable_type: e.target.value })}
+                                className="w-full rounded-lg border px-3 py-2 dark:border-gray-600 dark:bg-gray-700"
+                            >
+                                {TYPES.map((t) => (
+                                    <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium mb-1 dark:text-gray-300">Target ID</label>
+                            <input
+                                value={form.reviewable_id}
+                                onChange={(e) => setForm({ ...form, reviewable_id: e.target.value })}
+                                placeholder="Paste the item ID (pre-filled from product pages)"
+                                className="w-full rounded-lg border px-3 py-2 dark:border-gray-600 dark:bg-gray-700"
+                            />
+                        </div>
+                    </div>
                     <div>
                         <label className="block text-sm font-medium mb-2 dark:text-gray-300">Rating</label>
                         <div className="flex gap-1">

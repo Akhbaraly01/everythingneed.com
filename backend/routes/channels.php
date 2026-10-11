@@ -40,7 +40,7 @@ Broadcast::channel('ticket.{ticketId}', function ($user, $ticketId) {
         || ($ticket->assigned_to && (string) $ticket->assigned_to === (string) $user->id)
         || $user->hasRole('super_admin')
         || $user->hasRole('administrator')
-        || $user->hasRole('support_staff')
+        || $user->hasRole('support_agent')
         || $user->hasRole('customer_service');
 });
 

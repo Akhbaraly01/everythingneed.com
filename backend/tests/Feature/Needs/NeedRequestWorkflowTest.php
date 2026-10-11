@@ -135,4 +135,38 @@ class NeedRequestWorkflowTest extends TestCase
         $this->postJson("/api/need-requests/{$requestId}/pay")
             ->assertStatus(422);
     }
+
+    public function test_owner_can_reject_offer(): void
+    {
+        $category = $this->createCategory();
+        $customer = $this->actingAsUser();
+
+        $requestId = $this->postJson('/api/need-requests', [
+            'title' => 'Garden tidy up',
+            'description' => 'Mow and weed a small lawn',
+            'category_id' => $category->id,
+        ])->json('data.id');
+
+        $provider = $this->actingAsUser();
+        $offerId = $this->postJson("/api/need-requests/{$requestId}/offers", [
+            'price' => 40,
+            'message' => 'I can do this today.',
+        ])->json('data.id');
+
+        $this->actingAs($customer, 'sanctum');
+        $reject = $this->postJson("/api/need-requests/{$requestId}/offers/{$offerId}/reject");
+        $reject->assertOk();
+        $this->assertEquals('rejected', $reject->json('data.offer.status'));
+        $this->assertEquals('reviewing', $reject->json('data.request.status'));
+
+        // Rejected offer cannot be accepted
+        $this->postJson("/api/need-requests/{$requestId}/offers/{$offerId}/accept")
+            ->assertStatus(404);
+
+        // Stranger cannot reject
+        $stranger = $this->createUser();
+        $this->actingAs($stranger, 'sanctum');
+        $this->postJson("/api/need-requests/{$requestId}/offers/{$offerId}/reject")
+            ->assertStatus(404);
+    }
 }

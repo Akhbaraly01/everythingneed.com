@@ -42,17 +42,12 @@ class CompleteLesson
             ]
         );
 
-        $totalLessons = CourseLesson::where('course_id', $courseId)->count();
-        $completedLessons = VideoProgress::where('user_id', $userId)
-            ->whereHas('lesson', fn ($q) => $q->where('course_id', $courseId))
-            ->where('completed', true)
-            ->count();
-
-        $progress = $totalLessons > 0 ? round(($completedLessons / $totalLessons) * 100) : 0;
+        $detail = (new ComputeCourseProgress())->execute($userId, $courseId);
 
         $enrollment->update([
-            'progress' => $progress,
-            'completed_at' => $progress === 100 ? Carbon::now() : null,
+            'progress' => $detail['progress'],
+            'completed_at' => $detail['progress'] === 100 ? Carbon::now() : null,
+            'last_active_at' => Carbon::now(),
         ]);
 
         return $enrollment->fresh();

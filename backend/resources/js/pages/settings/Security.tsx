@@ -1,8 +1,10 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head } from '@inertiajs/react';
-import { api } from '@/lib/api';
+import {  api, errorMessage } from '@/lib/api';
+import { toast } from 'sonner';
 import { Shield } from 'lucide-react';
 import { useState } from 'react';
+import TwoFactorCard from '@/components/account/TwoFactorCard';
 
 export default function SettingsSecurity() {
     const [current, setCurrent] = useState('');
@@ -11,15 +13,15 @@ export default function SettingsSecurity() {
     const [saving, setSaving] = useState(false);
 
     const handleChangePassword = async () => {
-        if (password !== confirmation) { alert('Passwords do not match'); return; }
-        if (password.length < 8) { alert('Password must be at least 8 characters'); return; }
+        if (password !== confirmation) { toast.warning('Passwords do not match'); return; }
+        if (password.length < 8) { toast.warning('Password must be at least 8 characters'); return; }
         setSaving(true);
         try {
-            await api.put('/api/user/password', { current_password: current, password, password_confirmation: confirmation });
-            alert('Password changed');
+            await api.post('/api/auth/change-password', { current_password: current, password, password_confirmation: confirmation });
+            toast.success('Password changed');
             setCurrent(''); setPassword(''); setConfirmation('');
-        } catch (e: any) {
-            alert(e.message ?? 'Failed');
+        } catch (e) {
+            toast.error(errorMessage(e, 'Failed'));
         }
         setSaving(false);
     };
@@ -53,6 +55,7 @@ export default function SettingsSecurity() {
                         {saving ? 'Saving...' : 'Update Password'}
                     </button>
                 </div>
+                <TwoFactorCard />
             </div>
         </AppLayout>
     );

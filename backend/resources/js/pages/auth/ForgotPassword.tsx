@@ -1,10 +1,12 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, usePage, useForm } from '@inertiajs/react';
 import AuthLayout from '@/layouts/AuthLayout';
+import type { SharedData } from '@/hooks/use-app';
 
 export default function ForgotPassword() {
-    const { data, setData, post, processing, errors, status } = useForm({
+    const { data, setData, post, processing, errors } = useForm({
         email: '',
     });
+    const status = (usePage<SharedData>().props.flash as { status?: string } | undefined)?.status;
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();

@@ -2,17 +2,30 @@
 
 use Illuminate\Support\Facades\Route;
 use Modules\Reviews\Http\Controllers\ReviewController;
+use Modules\Reviews\Http\Controllers\ReviewModerationController;
 
 Route::prefix('api')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
-        Route::post('/reviews', [ReviewController::class, 'store']);
-        Route::put('/reviews/{id}', [ReviewController::class, 'update']);
-        Route::delete('/reviews/{id}', [ReviewController::class, 'destroy']);
-        Route::get('/reviews/mine', function (\Illuminate\Http\Request $request) {
-            $reviews = \Modules\Reviews\Entities\Review::where('user_id', $request->user()->id)->orderByDesc('created_at')->get();
-            return response()->json(['data' => $reviews]);
-        });
+        Route::post('/reviews', [ReviewController::class, 'store'])
+            ->middleware('throttle:30,1');
+        Route::put('/reviews/{id}', [ReviewController::class, 'update'])
+            ->middleware('throttle:30,1');
+        Route::delete('/reviews/{id}', [ReviewController::class, 'destroy'])
+            ->middleware('throttle:30,1');
+        Route::post('/reviews/{id}/vote', [ReviewController::class, 'vote'])
+            ->middleware('throttle:60,1');
+        Route::get('/reviews/mine', [ReviewController::class, 'mine']);
     });
+
+    // Moderation console (L-B.5): list every status + transition rows.
+    // super_admin holds '*' implicitly; administrator has reviews.* and
+    // moderator holds reviews.reviews.moderate (PermissionSeeder::MATRIX).
+    Route::middleware(['role:super_admin,administrator,moderator', 'permission:reviews.reviews.moderate'])
+        ->group(function () {
+            Route::get('/admin/reviews', [ReviewModerationController::class, 'index']);
+            Route::post('/admin/reviews/{id}/status', [ReviewModerationController::class, 'status'])
+                ->middleware('throttle:60,1');
+        });
 
     // Public read
     Route::get('/reviews', [ReviewController::class, 'index']);

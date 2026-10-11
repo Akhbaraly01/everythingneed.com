@@ -1,13 +1,11 @@
 import { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/AppLayout';
-import { api, ApiError } from '@/lib/api';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { api, errorMessage } from '@/lib/api';
+import { formatDate } from '@/lib/utils';
+import { formatPrice } from '@/lib/currency';
 import { toast } from 'sonner';
-import {
-    ArrowLeft, Plus, Trash2, CheckCircle2, FileText,
-    ClipboardList, BadgeCheck, Send,
-} from 'lucide-react';
+import {ArrowLeft, CheckCircle2, FileText, ClipboardList, BadgeCheck, Send} from 'lucide-react';
 
 interface TaskApplication {
     id: string;
@@ -63,7 +61,7 @@ export default function TaskShow({ task, isOwner, myApplication, applications }:
             toast.success(`${label} successful`);
             router.reload({ only: ['task', 'myApplication', 'applications'] });
         } catch (err) {
-            toast.error(err instanceof ApiError ? err.message : 'Action failed');
+            toast.error(errorMessage(err, 'Action failed'));
         } finally {
             setBusy(null);
         }
@@ -81,13 +79,13 @@ export default function TaskShow({ task, isOwner, myApplication, applications }:
                 <div className="mb-6 rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
                     <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                         <span className="font-mono text-xs text-gray-400">{task.post_number}</span>
-                        <span className="text-sm font-bold text-violet-600">{formatCurrency(Number(task.budget))}</span>
+                        <span className="text-sm font-bold text-violet-600">{formatPrice(Number(task.budget))}</span>
                     </div>
                     <h1 className="mb-2 text-xl font-bold text-gray-900 dark:text-white">{task.title}</h1>
                     <p className="whitespace-pre-line text-sm leading-relaxed text-gray-600 dark:text-gray-300">{task.description}</p>
                     <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
                         <Stat label="Quantity" value={String(task.quantity)} />
-                        <Stat label="Budget" value={formatCurrency(Number(task.budget))} />
+                        <Stat label="Budget" value={formatPrice(Number(task.budget))} />
                         <Stat label="Deadline" value={task.deadline ? formatDate(task.deadline) : 'Flexible'} />
                         <Stat label="Applicants" value={String(task.applications_count ?? 0)} />
                     </div>
@@ -128,10 +126,10 @@ export default function TaskShow({ task, isOwner, myApplication, applications }:
                                     />
                                 )}
                                 {myApplication.status === 'submitted' && <p className="text-sm text-amber-600">⏳ Evidence submitted — awaiting owner verification.</p>}
-                                {myApplication.status === 'verified' && <p className="text-sm text-green-600">✓ Work verified! Payment of {formatCurrency(Number(myApplication.payout ?? task.budget))} is being released.</p>}
+                                {myApplication.status === 'verified' && <p className="text-sm text-green-600">✓ Work verified! Payment of {formatPrice(Number(myApplication.payout ?? task.budget))} is being released.</p>}
                                 {myApplication.status === 'paid' && (
                                     <p className="flex items-center gap-2 text-sm font-medium text-purple-600">
-                                        <BadgeCheck className="h-4 w-4" /> Paid {formatCurrency(Number(myApplication.payout ?? task.budget))} — check your payments history.
+                                        <BadgeCheck className="h-4 w-4" /> Paid {formatPrice(Number(myApplication.payout ?? task.budget))} — check your payments history.
                                     </p>
                                 )}
                             </div>
@@ -217,7 +215,7 @@ export default function TaskShow({ task, isOwner, myApplication, applications }:
                                                     onClick={() => act('Payment', () => api.post(`/api/task-applications/${a.id}/mark-paid`))}
                                                     className="rounded-md bg-purple-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-700"
                                                 >
-                                                    Release payment ({formatCurrency(Number(task.budget))})
+                                                    Release payment ({formatPrice(Number(task.budget))})
                                                 </button>
                                             )}
                                             {a.status === 'paid' && <span className="text-xs text-purple-600 font-medium">✓ Completed & paid</span>}

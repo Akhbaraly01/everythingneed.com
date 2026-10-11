@@ -5,6 +5,7 @@ namespace Modules\Healthcare\Services;
 use Modules\Healthcare\Actions\BookAppointment;
 use Modules\Healthcare\Actions\CancelAppointment;
 use Modules\Healthcare\Actions\AssignDoctor;
+use Modules\Healthcare\Actions\StartConsultation;
 use Modules\Healthcare\Actions\CompleteConsultation;
 use Modules\Healthcare\Actions\CreateDoctor;
 use Modules\Healthcare\Entities\HealthTicket;
@@ -16,6 +17,7 @@ class HealthcareService
         private BookAppointment $bookAppointment,
         private CancelAppointment $cancelAppointment,
         private AssignDoctor $assignDoctor,
+        private StartConsultation $startConsultation,
         private CompleteConsultation $completeConsultation,
         private CreateDoctor $createDoctor,
     ) {}
@@ -33,6 +35,11 @@ class HealthcareService
     public function assignDoctor(string $ticketId, string $doctorId): void
     {
         $this->assignDoctor->execute($ticketId, $doctorId);
+    }
+
+    public function startConsultation(string $ticketId): void
+    {
+        $this->startConsultation->execute($ticketId);
     }
 
     public function completeConsultation(string $ticketId, array $data): void
@@ -58,12 +65,29 @@ class HealthcareService
             ->paginate($perPage, ['*'], 'page', $page);
     }
 
-    public function getDoctors(string $specialization = null, int $page = 1, int $perPage = 15): object
+    public function getDoctors(string $specialization = null, int $page = 1, int $perPage = 15, ?string $q = null, ?string $profession = null, ?bool $virtual = null): object
     {
         $query = Doctor::query();
 
         if ($specialization) {
             $query->where('specialization', $specialization);
+        }
+
+        if ($profession) {
+            $query->where('profession', $profession);
+        }
+
+        if ($virtual) {
+            $query->whereNotNull('virtual_fee')->where('virtual_fee', '>', 0);
+        }
+
+        if (is_string($q) && trim($q) !== '') {
+            $like = '%'.trim($q).'%';
+            $query->where(function ($scoped) use ($like) {
+                $scoped->where('full_name', 'ilike', $like)
+                    ->orWhere('specialization', 'ilike', $like)
+                    ->orWhere('qualification', 'ilike', $like);
+            });
         }
 
         return $query->orderBy('full_name')

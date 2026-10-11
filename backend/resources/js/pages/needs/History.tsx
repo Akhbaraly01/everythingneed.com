@@ -1,8 +1,8 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link } from '@inertiajs/react';
-import { api } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
 import { useEffect, useState } from 'react';
-import { Clock, FileText } from 'lucide-react';
+import {FileText, RefreshCcw} from 'lucide-react';
 
 interface Need {
     id: string;
@@ -15,20 +15,35 @@ interface Need {
 export default function NeedHistory() {
     const [needs, setNeeds] = useState<Need[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
+    const load = () => {
+        setLoading(true);
+        setError(null);
         api.get<{ data: Need[] }>('/api/need-requests')
             .then((res) => setNeeds(res.data))
-            .catch(() => setNeeds([]))
+            .catch((e) => {
+                setError(errorMessage(e, 'Failed to load needs'));
+                setNeeds([]);
+            })
             .finally(() => setLoading(false));
-    }, []);
+    };
+
+    useEffect(load, []);
 
     return (
         <AppLayout title="Need History">
             <Head title="Need History" />
             <div className="space-y-6">
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">My Need Requests</h1>
-                {loading ? <p className="text-gray-500">Loading...</p> : needs.length === 0 ? (
+                {loading ? <p className="text-gray-500">Loading...</p> : error ? (
+                    <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
+                        <p className="text-red-600 font-medium">{error}</p>
+                        <button onClick={load} className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-500">
+                            <RefreshCcw className="h-4 w-4" /> Retry
+                        </button>
+                    </div>
+                ) : needs.length === 0 ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
                         <FileText className="mx-auto h-12 w-12 text-gray-400" />
                         <p className="mt-4 text-gray-500">No requests yet</p>

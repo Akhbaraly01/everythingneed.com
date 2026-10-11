@@ -1,8 +1,8 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link } from '@inertiajs/react';
-import { api } from '@/lib/api';
-import { formatCurrency, formatDateTime } from '@/lib/utils';
-import { User, Package, Heart, CreditCard, Bell, Award, BookOpen, MapPin, Lock, Settings } from 'lucide-react';
+import { api, errorMessage } from '@/lib/api';
+import { formatPrice } from '@/lib/currency';
+import { User, Package, Heart, CreditCard, Receipt, Bell, Award, BookOpen, MapPin, Lock, Settings, BadgeCheck, Landmark, Headphones, RefreshCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface AccountStats {
@@ -18,18 +18,30 @@ interface AccountStats {
 export default function AccountDashboard() {
     const [stats, setStats] = useState<AccountStats | null>(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
+    const load = () => {
+        setLoading(true);
+        setError(null);
         api.get<AccountStats>('/api/user/stats')
-            .then((res) => setStats(res.data))
-            .catch(() => setStats(null))
+            .then((data) => setStats(data))
+            .catch((e) => {
+                setError(errorMessage(e, 'Failed to load your account summary'));
+                setStats(null);
+            })
             .finally(() => setLoading(false));
-    }, []);
+    };
+
+    useEffect(load, []);
 
     const links = [
         { label: 'My Orders', href: '/orders', icon: Package, color: 'text-blue-600' },
         { label: 'Wishlist', href: '/wishlist', icon: Heart, color: 'text-red-500' },
         { label: 'Wallet', href: '/wallet', icon: CreditCard, color: 'text-green-600' },
+        { label: 'Bills', href: '/bills', icon: Receipt, color: 'text-amber-600' },
+        { label: 'Financial Services', href: '/account/financial-services', icon: Landmark, color: 'text-emerald-600' },
+        { label: 'Identity Verification', href: '/account/kyc', icon: BadgeCheck, color: 'text-cyan-600' },
+        { label: 'Support', href: '/account/support', icon: Headphones, color: 'text-rose-600' },
         { label: 'Notifications', href: '/notifications', icon: Bell, color: 'text-yellow-600' },
         { label: 'My Learning', href: '/learn/my-learning', icon: BookOpen, color: 'text-purple-600' },
         { label: 'Certificates', href: '/learn/certificates', icon: Award, color: 'text-indigo-600' },
@@ -48,6 +60,13 @@ export default function AccountDashboard() {
 
                 {loading ? (
                     <p className="text-gray-500">Loading...</p>
+                ) : error ? (
+                    <div className="rounded-lg bg-white p-8 text-center shadow dark:bg-gray-800">
+                        <p className="text-red-600 font-medium">{error}</p>
+                        <button onClick={load} className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-500">
+                            <RefreshCcw className="h-4 w-4" /> Retry
+                        </button>
+                    </div>
                 ) : stats ? (
                     <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
                         <div className="rounded-lg bg-white p-4 shadow dark:bg-gray-800">
@@ -60,7 +79,7 @@ export default function AccountDashboard() {
                         </div>
                         <div className="rounded-lg bg-white p-4 shadow dark:bg-gray-800">
                             <p className="text-sm text-gray-500">Wallet</p>
-                            <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(stats.wallet_balance)}</p>
+                            <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatPrice(stats.wallet_balance)}</p>
                         </div>
                         <div className="rounded-lg bg-white p-4 shadow dark:bg-gray-800">
                             <p className="text-sm text-gray-500">Courses</p>

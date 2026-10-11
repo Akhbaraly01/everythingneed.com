@@ -1,5 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
 import AppLayout from '@/layouts/AppLayout';
+import VendorTabs from '@/components/vendor/VendorTabs';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import {
     Package, ShoppingCart, Wallet, Star, ArrowRight,
@@ -32,6 +33,7 @@ export default function VendorDashboard({ vendor, stats, recentOrders }: Props) 
         <AppLayout title="Vendor portal">
             <Head title="Vendor dashboard" />
             <div className="mx-auto max-w-6xl px-4 py-8">
+                <VendorTabs />
                 {/* Header */}
                 <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-3">

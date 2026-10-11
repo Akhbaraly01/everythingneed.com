@@ -13,6 +13,12 @@ class LocalAccessSeeder extends Seeder
 {
     public function run(): void
     {
+        if (!app()->environment(['local', 'testing'])) {
+            $this->command?->error('LocalAccessSeeder refuses to run outside local/testing.');
+
+            return;
+        }
+
         $this->ensureUser('super@everythingneed.com', 'Super Admin', 'super_admin');
         $this->ensureUser('admin@everythingneed.com', 'Administrator', 'administrator');
         $this->ensureUser('user@everythingneed.com', 'John Customer', 'user');

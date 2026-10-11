@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/AppLayout';
-import { api, ApiError } from '@/lib/api';
+import {  api, ApiError, errorMessage } from '@/lib/api';
 import { toast } from 'sonner';
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
 
@@ -40,7 +40,7 @@ export default function CreateTask() {
         } catch (err) {
             if (err instanceof ApiError) {
                 setErrors(err.errors ?? {});
-                toast.error(err.message);
+                toast.error(errorMessage(err, 'Action failed'));
             } else {
                 toast.error('Something went wrong. Please try again.');
             }
@@ -88,7 +88,7 @@ export default function CreateTask() {
                         <Field label="Quantity / units" error={errors.quantity?.[0]}>
                             <input type="number" min={1} value={form.quantity} onChange={set('quantity')} className="w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
                         </Field>
-                        <Field label={`Budget (USD)`} error={errors.budget?.[0]}>
+                        <Field label={`Budget`} error={errors.budget?.[0]}>
                             <input type="number" min={0.01} step="0.01" value={form.budget} onChange={set('budget')} placeholder="50.00" className="w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
                         </Field>
                         <Field label="Deadline" optional error={errors.deadline?.[0]}>

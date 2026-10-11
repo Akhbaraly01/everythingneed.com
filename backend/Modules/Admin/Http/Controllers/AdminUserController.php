@@ -4,11 +4,14 @@ namespace Modules\Admin\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Core\Enums\AppRole;
+use Core\Services\Contracts\RoleAssignmentInterface;
+use Core\Services\Contracts\UserAdminInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Throwable;
+use Modules\Admin\Http\Requests\AdminStoreUserRequest;
+use Modules\Admin\Http\Requests\AdminUpdateRoleRequest;
 
 /**
  * AdminUserController
@@ -18,6 +21,11 @@ use Throwable;
  */
 class AdminUserController extends Controller
 {
+    public function __construct(
+        private UserAdminInterface $users,
+        private RoleAssignmentInterface $assignments,
+    ) {}
+
     /**
      * Paginated list of users with optional search and role filter.
      *
@@ -32,44 +40,7 @@ class AdminUserController extends Controller
             'page'     => ['nullable', 'integer', 'min:1'],
         ]);
 
-        $query = DB::table('users as u')
-            ->leftJoin('user_roles as ur', 'ur.user_id', '=', 'u.id')
-            ->leftJoin('profiles as up', 'up.user_id', '=', 'u.id')
-            ->whereNull('u.deleted_at')
-            ->select([
-                'u.id', 'u.name', 'u.email', 'u.created_at',
-                'u.suspended_at', 'u.email_verified_at',
-                'ur.role',
-            ]);
-
-        if (! empty($validated['search'])) {
-            $term = '%' . $validated['search'] . '%';
-            $query->where(function ($q) use ($term) {
-                $q->where('u.name', 'like', $term)
-                  ->orWhere('u.email', 'like', $term);
-            });
-        }
-
-        if (! empty($validated['role'])) {
-            $query->where('ur.role', $validated['role']);
-        }
-
-        $perPage  = (int) ($validated['per_page'] ?? 20);
-        $page     = (int) ($validated['page'] ?? 1);
-        $total    = $query->count();
-        $users    = $query->orderByDesc('u.created_at')
-            ->offset(($page - 1) * $perPage)
-            ->limit($perPage)
-            ->get()
-            ->map(fn ($u) => [
-                ...(array) $u,
-                'status' => $u->suspended_at ? 'suspended' : ($u->email_verified_at ? 'active' : 'unverified'),
-            ]);
-
-        return response()->json([
-            'data'  => $users,
-            'meta'  => ['total' => $total, 'page' => $page, 'per_page' => $perPage],
-        ]);
+        return response()->json($this->users->paginate($validated));
     }
 
     /**
@@ -79,13 +50,7 @@ class AdminUserController extends Controller
      */
     public function show(string $id): JsonResponse
     {
-        $user = DB::table('users as u')
-            ->leftJoin('user_roles as ur', 'ur.user_id', '=', 'u.id')
-            ->leftJoin('profiles as up', 'up.user_id', '=', 'u.id')
-            ->where('u.id', $id)
-            ->whereNull('u.deleted_at')
-            ->select(['u.*', 'ur.role', 'up.phone', 'up.avatar_url'])
-            ->first();
+        $user = $this->users->find($id);
 
         if (! $user) {
             return response()->json(['message' => 'User not found'], 404);
@@ -95,48 +60,77 @@ class AdminUserController extends Controller
     }
 
     /**
+     * Creates a user and assigns their initial role through the single
+     * guarded write path. Escalation guards run BEFORE any row exists,
+     * so a rejected request leaves nothing behind.
+     *
+     * POST /api/admin/users
+     */
+    public function store(AdminStoreUserRequest $request): JsonResponse
+    {
+        $validated = $request->validated();
+
+        if ($this->users->emailExists($validated['email'])) {
+            return response()->json(['message' => 'A user with this email already exists.'], 422);
+        }
+
+        $userId = (string) Str::uuid();
+
+        // Guards first: unknown role, self-assignment, non-admin actor,
+        // super-only grant rules - all checked before any row exists, so a
+        // rejected request leaves nothing behind.
+        $this->assignments->assertAssignable($request->user(), $userId, $validated['role']);
+
+        $this->users->create($validated + ['id' => $userId]);
+
+        // Single guarded write path for the initial role grant.
+        $this->assignments->assign($request->user(), $userId, $validated['role']);
+
+        return response()->json([
+            'message' => 'User created successfully',
+            'data' => $this->users->find($userId),
+        ], 201);
+    }
+
+    /**
      * Updates a user's role.
      *
      * PUT /api/admin/users/{id}/role
      */
-    public function updateRole(Request $request, string $id): JsonResponse
+    public function updateRole(AdminUpdateRoleRequest $request, string $id): JsonResponse
     {
-        $validated = $request->validate([
-            'role' => ['required', 'string', Rule::in(AppRole::values())],
-        ]);
+        $validated = $request->validated();
 
-        $user = DB::table('users')->where('id', $id)->whereNull('deleted_at')->first();
-        if (! $user) {
+        // Escalation guards + single guarded write path live in the service.
+        if (! $this->assignments->assign($request->user(), $id, $validated['role'])) {
             return response()->json(['message' => 'User not found'], 404);
         }
-
-        DB::table('user_roles')->updateOrInsert(
-            ['user_id' => $id],
-            ['role' => $validated['role'], 'updated_at' => now()]
-        );
-
-        $this->logAudit('update', 'user', $id, "Changed role to {$validated['role']}");
 
         return response()->json(['message' => 'Role updated successfully']);
     }
 
     /**
-     * Suspends a user account.
+     * Suspends a user account (the dashboard access on/off switch).
+     * Never allowed on yourself, and never on the last active super admin.
      *
      * POST /api/admin/users/{id}/suspend
      */
-    public function suspend(string $id): JsonResponse
+    public function suspend(Request $request, string $id): JsonResponse
     {
-        $affected = DB::table('users')
-            ->where('id', $id)
-            ->whereNull('deleted_at')
-            ->update(['suspended_at' => now()]);
+        $actor = $request->user();
 
-        if (! $affected) {
-            return response()->json(['message' => 'User not found'], 404);
+        if ($actor !== null && $actor->id === $id) {
+            return response()->json(['message' => 'You cannot suspend your own account.'], 403);
         }
 
-        $this->logAudit('update', 'user', $id, 'User suspended');
+        // Lockout guard: the last active super admin can never be switched off.
+        if ($this->users->isLastActiveSuperAdmin($id)) {
+            return response()->json(['message' => 'The last active super admin cannot be suspended.'], 409);
+        }
+
+        if (! $this->users->suspend($id)) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
 
         return response()->json(['message' => 'User suspended']);
     }
@@ -148,16 +142,9 @@ class AdminUserController extends Controller
      */
     public function restore(string $id): JsonResponse
     {
-        $affected = DB::table('users')
-            ->where('id', $id)
-            ->whereNull('deleted_at')
-            ->update(['suspended_at' => null]);
-
-        if (! $affected) {
+        if (! $this->users->restore($id)) {
             return response()->json(['message' => 'User not found'], 404);
         }
-
-        $this->logAudit('update', 'user', $id, 'User restored');
 
         return response()->json(['message' => 'User restored']);
     }
@@ -169,37 +156,10 @@ class AdminUserController extends Controller
      */
     public function destroy(string $id): JsonResponse
     {
-        $affected = DB::table('users')
-            ->where('id', $id)
-            ->whereNull('deleted_at')
-            ->update(['deleted_at' => now()]);
-
-        if (! $affected) {
+        if (! $this->users->softDelete($id)) {
             return response()->json(['message' => 'User not found'], 404);
         }
 
-        $this->logAudit('delete', 'user', $id, 'User soft-deleted');
-
         return response()->json(['message' => 'User deleted']);
-    }
-
-    /**
-     * Writes an audit log entry.
-     */
-    private function logAudit(string $action, string $entityType, string $entityId, string $details): void
-    {
-        try {
-            DB::table('audit_logs')->insert([
-                'id'          => \Illuminate\Support\Str::uuid()->toString(),
-                'action'      => $action,
-                'entity_type' => $entityType,
-                'entity_id'   => $entityId,
-                'new_values'  => json_encode(['details' => $details]),
-                'performed_by' => auth()->id(),
-                'created_at'  => now(),
-            ]);
-        } catch (Throwable) {
-            // Audit log failures must not break the response
-        }
     }
 }

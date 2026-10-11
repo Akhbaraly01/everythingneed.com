@@ -11,6 +11,7 @@ class VendorResource extends JsonResource
         return [
             'id' => $this->id,
             'store_name' => $this->store_name,
+            'slug' => $this->slug,
             'category' => $this->category,
             'description' => $this->description,
             'is_verified' => $this->is_verified,

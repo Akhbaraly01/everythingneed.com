@@ -157,4 +157,106 @@ class ProductApprovalTest extends TestCase
         $product = Product::find($created->json('data.id'));
         $this->assertTrue((bool) $product->is_active);
     }
+
+    private function pendingProduct(string $name, string $category): string
+    {
+        // StoreProductRequest authorizes against the submitting vendor's owner.
+        $owner = User::factory()->create();
+        $vendor = Vendor::create([
+            'user_id' => $owner->id,
+            'store_name' => 'Scope Store',
+            'category' => 'general',
+        ]);
+
+        $response = $this->actingAs($owner)
+            ->postJson('/api/products', [
+                'vendor_id' => $vendor->id,
+                'name' => $name,
+                'category' => $category,
+                'price' => 30,
+                'stock_quantity' => 2,
+            ]);
+        $response->assertStatus(201);
+
+        return $response->json('data.id');
+    }
+
+    private function categoryAdmin(?string $categoryName): User
+    {
+        $user = User::factory()->create();
+
+        $categoryId = null;
+        if ($categoryName !== null) {
+            $categoryId = \Modules\Categories\Entities\Category::create([
+                'name' => $categoryName,
+                'slug' => strtolower($categoryName),
+            ])->id;
+        }
+
+        \App\Models\UserRole::create([
+            'user_id' => $user->id,
+            'role' => 'marketplace_admin',
+            'category_id' => $categoryId,
+        ]);
+
+        return $user;
+    }
+
+    public function test_marketplace_admin_is_confined_to_its_category_scope(): void
+    {
+        $inScope = $this->pendingProduct('In Scope Widget', 'electronics');
+        $outOfScope = $this->pendingProduct('Out Of Scope Widget', 'home');
+
+        $admin = $this->categoryAdmin('electronics');
+
+        // Queue only shows the scoped category.
+        $queue = $this->actingAs($admin)->getJson('/api/admin/products/pending');
+        $queue->assertStatus(200);
+        $this->assertEquals(1, $queue->json('meta.total'));
+        $this->assertEquals('In Scope Widget', $queue->json('data.0.name'));
+
+        // Deciding out of scope is indistinguishable from missing (no ID probe).
+        $leak = $this->actingAs($admin)->postJson("/api/admin/products/{$outOfScope}/approve");
+        $leak->assertStatus(404);
+        $this->assertFalse((bool) Product::find($outOfScope)->is_active);
+
+        // In-scope decisions still work.
+        $approve = $this->actingAs($admin)->postJson("/api/admin/products/{$inScope}/approve");
+        $approve->assertStatus(200);
+        $this->assertNotNull($approve->json('data.approved_at'));
+    }
+
+    public function test_unassigned_marketplace_admin_fails_closed(): void
+    {
+        $productId = $this->pendingProduct('Unreachable Product', 'electronics');
+        $admin = $this->categoryAdmin(null);
+
+        $queue = $this->actingAs($admin)->getJson('/api/admin/products/pending');
+        $queue->assertStatus(200);
+        $this->assertEquals(0, $queue->json('meta.total'));
+
+        $decide = $this->actingAs($admin)->postJson("/api/admin/products/{$productId}/approve");
+        $decide->assertStatus(404);
+        $this->assertNull(Product::find($productId)->approved_at);
+    }
+
+    public function test_moderator_keeps_the_full_queue_and_super_admin_is_unscoped(): void
+    {
+        $this->pendingProduct('Product A', 'electronics');
+        $this->pendingProduct('Product B', 'home');
+
+        $moderator = User::factory()->create();
+        \App\Models\UserRole::create(['user_id' => $moderator->id, 'role' => 'moderator']);
+
+        $queue = $this->actingAs($moderator)->getJson('/api/admin/products/pending');
+        $queue->assertStatus(200);
+        $this->assertEquals(2, $queue->json('meta.total'));
+
+        $super = User::factory()->create();
+        \App\Models\UserRole::create(['user_id' => $super->id, 'role' => 'super_admin']);
+
+        $superQueue = $this->actingAs($super)->getJson('/api/admin/products/pending');
+        $superQueue->assertStatus(200);
+        $this->assertEquals(2, $superQueue->json('meta.total'));
+    }
 }

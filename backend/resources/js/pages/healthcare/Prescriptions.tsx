@@ -1,7 +1,10 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
+import { useState } from 'react';
 import AppLayout from '@/layouts/AppLayout';
 import { formatDate } from '@/lib/utils';
-import { Pill, CalendarClock, Stethoscope, FileText } from 'lucide-react';
+import { api, errorMessage } from '@/lib/api';
+import { toast } from 'sonner';
+import { Pill, CalendarClock, Stethoscope, FileText, Send, CheckCircle2 } from 'lucide-react';
 
 interface PrescriptionItem {
     name: string;
@@ -12,11 +15,15 @@ interface PrescriptionItem {
 
 interface PrescriptionView {
     id: string;
-    ticket_number?: string;
-    date?: string;
-    follow_up_date?: string | null;
-    diagnosis?: string;
+    code: string;
+    status: 'active' | 'filled' | 'expired';
+    is_expired: boolean;
+    expires_at?: string | null;
+    created_at?: string | null;
+    notes?: string | null;
     items: PrescriptionItem[];
+    diagnosis?: string | null;
+    follow_up_date?: string | null;
     doctor?: { full_name: string; specialization?: string } | null;
 }
 
@@ -24,11 +31,54 @@ interface Props {
     prescriptions: PrescriptionView[];
 }
 
+function statusChip(p: PrescriptionView) {
+    if (p.status === 'filled') {
+        return (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+                <CheckCircle2 className="h-3.5 w-3.5" /> Filled
+            </span>
+        );
+    }
+    if (p.status === 'expired' || p.is_expired) {
+        return (
+            <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                Expired
+            </span>
+        );
+    }
+    return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
+            Active
+        </span>
+    );
+}
+
 export default function HealthcarePrescriptions({ prescriptions }: Props) {
+    const [ordering, setOrdering] = useState<string | null>(null);
+
+    const sendToPharmacy = async (p: PrescriptionView) => {
+        setOrdering(p.id);
+        try {
+            await api.post(`/api/prescriptions/${p.id}/order`, {
+                items: p.items.map((it) => ({ name: it.name, quantity: 1 })),
+            });
+            toast.success('Sent to pharmacy');
+            router.reload({ only: ['prescriptions'] });
+        } catch (e) {
+            toast.error(errorMessage(e, 'Failed to send to pharmacy'));
+        } finally {
+            setOrdering(null);
+        }
+    };
+
     return (
         <AppLayout title="My prescriptions">
             <Head title="My prescriptions" />
             <div className="mx-auto max-w-3xl px-4 py-8">
+                <div className="mb-4 flex flex-wrap gap-2 text-sm">
+                    <Link href="/healthcare/bookings" className="font-medium text-indigo-600 hover:underline">← Health Bookings</Link>
+                    <Link href="/healthcare/records" className="font-medium text-indigo-600 hover:underline">Health Records</Link>
+                </div>
                 <div className="mb-6 flex items-center gap-3">
                     <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-teal-100"><Pill className="h-6 w-6 text-teal-600" /></span>
                     <div>
@@ -51,14 +101,14 @@ export default function HealthcarePrescriptions({ prescriptions }: Props) {
                             <div key={p.id} className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
                                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-dashed border-gray-200 bg-gray-50 px-5 py-3 dark:border-gray-600 dark:bg-gray-700/40">
                                     <div>
-                                        <p className="text-xs uppercase tracking-wide text-gray-400">Issued {p.date ? formatDate(p.date) : 'recently'}</p>
+                                        <p className="font-mono text-xs uppercase tracking-wide text-gray-400">{p.code}</p>
                                         <p className="flex items-center gap-1.5 text-sm font-semibold text-gray-900 dark:text-white">
                                             <Stethoscope className="h-4 w-4 text-teal-500" />
                                             {p.doctor?.full_name ?? 'Healthcare provider'}
                                             {p.doctor?.specialization && <span className="font-normal text-gray-500">· {p.doctor.specialization}</span>}
                                         </p>
                                     </div>
-                                    {p.ticket_number && <span className="font-mono text-xs text-gray-400">{p.ticket_number}</span>}
+                                    {statusChip(p)}
                                 </div>
 
                                 <div className="px-5 py-4">
@@ -75,10 +125,31 @@ export default function HealthcarePrescriptions({ prescriptions }: Props) {
                                             </li>
                                         ))}
                                     </ul>
-                                    {p.follow_up_date && (
-                                        <p className="mt-3 flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-800 dark:bg-blue-950/40 dark:text-blue-300">
-                                            <CalendarClock className="h-3.5 w-3.5" /> Follow-up: {formatDate(p.follow_up_date)}
-                                        </p>
+
+                                    {(p.expires_at || p.follow_up_date) && (
+                                        <div className="mt-3 flex flex-wrap gap-2">
+                                            {p.expires_at && (
+                                                <span className="flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                                                    <CalendarClock className="h-3.5 w-3.5" /> Expires: {formatDate(p.expires_at)}
+                                                </span>
+                                            )}
+                                            {p.follow_up_date && (
+                                                <span className="flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-800 dark:bg-blue-950/40 dark:text-blue-300">
+                                                    <CalendarClock className="h-3.5 w-3.5" /> Follow-up: {formatDate(p.follow_up_date)}
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {p.status === 'active' && !p.is_expired && (
+                                        <button
+                                            onClick={() => sendToPharmacy(p)}
+                                            disabled={ordering === p.id}
+                                            className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50"
+                                        >
+                                            <Send className="h-4 w-4" />
+                                            {ordering === p.id ? 'Ordering…' : 'Send to pharmacy'}
+                                        </button>
                                     )}
                                 </div>
                             </div>

@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Modules\Admin\Http\Requests\AdminBrandStoreRequest;
+use Modules\Admin\Http\Requests\AdminBrandUpdateRequest;
 use Modules\Products\Entities\Brand;
 
 class AdminBrandController extends Controller
@@ -27,14 +29,8 @@ class AdminBrandController extends Controller
         ]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(AdminBrandStoreRequest $request): JsonResponse
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'logo_url' => 'nullable|string|max:500',
-            'is_active' => 'boolean',
-        ]);
-
         $brand = Brand::create([
             'name' => $request->name,
             'slug' => Str::slug($request->name),
@@ -45,18 +41,12 @@ class AdminBrandController extends Controller
         return response()->json(['data' => $brand], 201);
     }
 
-    public function update(Request $request, string $id): JsonResponse
+    public function update(AdminBrandUpdateRequest $request, string $id): JsonResponse
     {
         $brand = Brand::find($id);
         if (!$brand) {
             return response()->json(['message' => 'Brand not found'], 404);
         }
-
-        $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'logo_url' => 'nullable|string|max:500',
-            'is_active' => 'boolean',
-        ]);
 
         if ($request->has('name')) {
             $brand->slug = Str::slug($request->name);

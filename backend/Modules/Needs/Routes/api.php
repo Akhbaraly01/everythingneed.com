@@ -16,33 +16,11 @@ Route::prefix('api')->group(function () {
     Route::get('/tasks', [TaskController::class, 'index']);
 
     // Agriculture marketplace: products in the agriculture category
-    Route::get('/agriculture', function () {
-        $products = \Modules\Products\Entities\Product::query()
-            ->where('is_active', true)
-            ->where('category', 'ilike', '%agric%')
-            ->with('vendor')
-            ->orderByDesc('created_at')
-            ->paginate(request()->get('per_page', 15));
-
-        return response()->json([
-            'data' => $products->items(),
-            'meta' => [
-                'current_page' => $products->currentPage(),
-                'last_page' => $products->lastPage(),
-                'per_page' => $products->perPage(),
-                'total' => $products->total(),
-            ],
-        ]);
-    });
+    Route::get('/agriculture', [NeedController::class, 'agriculture']);
 
     // Deals (public)
-    Route::get('/deals', function (\Illuminate\Http\Request $request) {
-        $deals = \Modules\Needs\Entities\NeedItem::where('is_available', true)->orderByDesc('created_at')->paginate($request->get('per_page', 12));
-        return response()->json(['data' => $deals->items(), 'meta' => ['current_page' => $deals->currentPage(), 'last_page' => $deals->lastPage(), 'per_page' => $deals->perPage(), 'total' => $deals->total()]]);
-    });
-    Route::get('/deals/{id}', function (string $id) {
-        $deal = \Modules\Needs\Entities\NeedItem::find($id); if (!$deal) return response()->json(['message' => 'Deal not found'], 404); return response()->json(['data' => $deal]);
-    });
+    Route::get('/deals', [NeedController::class, 'deals']);
+    Route::get('/deals/{id}', [NeedController::class, 'deal']);
 
     Route::middleware('auth:sanctum')->group(function () {
         // Catalog management (vendor-published need items)
@@ -55,9 +33,13 @@ Route::prefix('api')->group(function () {
         Route::get('/need-requests/{id}/offers', [NeedRequestController::class, 'offers']);
         Route::post('/need-requests/{id}/offers', [NeedRequestController::class, 'submitOffer']);
         Route::post('/need-requests/{id}/offers/{offerId}/accept', [NeedRequestController::class, 'acceptOffer']);
+        Route::post('/need-requests/{id}/offers/{offerId}/reject', [NeedRequestController::class, 'rejectOffer']);
         Route::post('/need-requests/{id}/pay', [NeedRequestController::class, 'pay']);
         Route::post('/need-requests/{id}/{action}', [NeedRequestController::class, 'transition'])
-            ->whereIn('action', ['start', 'complete', 'cancel']);
+            ->whereIn('action', [
+                'start', 'complete', 'cancel', 'submit', 'publish', 'payment',
+                'fulfill', 'reject', 'expire', 'dispute', 'refund',
+            ]);
 
         // Task Center
         Route::post('/tasks', [TaskController::class, 'store']);

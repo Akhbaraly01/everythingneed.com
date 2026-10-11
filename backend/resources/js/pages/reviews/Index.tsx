@@ -1,7 +1,7 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head } from '@inertiajs/react';
-import { api } from '@/lib/api';
-import { Star } from 'lucide-react';
+import { api, errorMessage } from '@/lib/api';
+import { Star, RefreshCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface Review {
@@ -17,15 +17,22 @@ interface Review {
 export default function ReviewsIndex() {
     const [reviews, setReviews] = useState<Review[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [ratingFilter, setRatingFilter] = useState(0);
+    const [retryTick, setRetryTick] = useState(0);
 
     useEffect(() => {
+        setLoading(true);
+        setError(null);
         const params = ratingFilter ? `?rating=${ratingFilter}` : '';
         api.get<{ data: Review[] }>(`/api/reviews${params}`)
             .then((res) => setReviews(res.data))
-            .catch(() => setReviews([]))
+            .catch((e) => {
+                setError(errorMessage(e, 'Failed to load reviews'));
+                setReviews([]);
+            })
             .finally(() => setLoading(false));
-    }, [ratingFilter]);
+    }, [ratingFilter, retryTick]);
 
     return (
         <AppLayout title="Reviews">
@@ -44,6 +51,13 @@ export default function ReviewsIndex() {
 
                 {loading ? (
                     <p className="text-gray-500">Loading...</p>
+                ) : error ? (
+                    <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
+                        <p className="text-red-600 font-medium">{error}</p>
+                        <button onClick={() => setRetryTick((t) => t + 1)} className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-500">
+                            <RefreshCcw className="h-4 w-4" /> Retry
+                        </button>
+                    </div>
                 ) : reviews.length === 0 ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
                         <Star className="mx-auto h-12 w-12 text-gray-400" />

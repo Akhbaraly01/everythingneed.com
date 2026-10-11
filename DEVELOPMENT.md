@@ -18,6 +18,7 @@ cp .env.example .env
 php artisan key:generate
 # .env: DB_CONNECTION=pgsql, DB_DATABASE=everythingneed, DB_USERNAME=postgres
 php artisan migrate --seed
+php artisan storage:link   # serve product/CMS/upload images (admin shell on Windows)
 npm install
 ```
 
@@ -27,20 +28,17 @@ flights, tasks, worker profiles and the RBAC permission matrix.
 ## Daily commands
 
 ```bash
-# Backend API + Inertia dev server
+# Backend API + Inertia dev server (the single app)
 php artisan serve --port=8000        # http://127.0.0.1:8000
 npm run dev                          # backend Vite (Inertia HMR)
-
-# Legacy SPA
-cd ../frontend && npm run dev        # http://localhost:8080 (proxies /api)
 
 # Tests
 php artisan test                     # full suite (~6 min)
 php artisan test --filter CartApiTest
+npm run test:e2e                     # Playwright (server must be up)
 
-# Frontend builds
-cd backend && npm run build          # Inertia production bundle
-cd frontend && npm run build         # SPA production bundle
+# Production build
+npm run build                        # Inertia production bundle
 ```
 
 ## Where things live
@@ -79,6 +77,12 @@ Configure SMTP keys for staging/production.
 
 ## Architecture guardrails
 
-- `scripts/check-api-usage.mjs` — blocks BaaS imports, bare fetch, cross-module leaks
-- ESLint boundaries in `frontend/eslint.config.js`
-- CI: `.github/workflows/module-boundaries.yml` enforces ≥5 e2e tests
+- Backend: `php artisan test --filter=ModularMonolithTest` — cross-module
+  `DB::table` ownership + no route closures (Modules only)
+- ESLint BaaS tripwire in `backend/eslint.config.js`
+  (`no-restricted-imports` rejects Supabase/legacy-generator packages)
+- CI: `.github/workflows/module-boundaries.yml` runs the architecture gates
+  (ModularMonolith + FrontendPolicy + AdminAuthorizationMatrix);
+  `.github/workflows/backend.yml` runs PHPUnit, lint/typecheck/build and the
+  Playwright browser suite (`≥6 tests` enforced by
+  `scripts/check-e2e-results.mjs`)

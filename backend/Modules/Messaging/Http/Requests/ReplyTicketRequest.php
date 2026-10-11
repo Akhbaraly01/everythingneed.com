@@ -18,6 +18,8 @@ class ReplyTicketRequest extends FormRequest
             // Agents may file internal notes; the controller enforces that
             // non-staff callers cannot set this flag.
             'is_internal' => ['nullable', 'boolean'],
+            'attachments' => 'nullable|array|max:5',
+            'attachments.*' => 'nullable|string|max:500',
         ];
     }
 }

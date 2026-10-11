@@ -1,9 +1,18 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link } from '@inertiajs/react';
-import { api } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
 import { formatDateTime } from '@/lib/utils';
-import { Briefcase, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Briefcase, Clock, CheckCircle, XCircle, RefreshCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
+
+interface ApplicationRow {
+    id: string;
+    job_id?: string;
+    status: string;
+    created_at: string;
+    updated_at: string;
+    job_post?: { id?: string; title?: string; company?: string };
+}
 
 interface Application {
     id: string;
@@ -13,6 +22,18 @@ interface Application {
     status: string;
     applied_at: string;
     updated_at: string;
+}
+
+function mapApplication(row: ApplicationRow): Application {
+    return {
+        id: row.id,
+        job_id: row.job_id ?? row.job_post?.id ?? '',
+        job_title: row.job_post?.title ?? 'Job application',
+        company: row.job_post?.company,
+        status: row.status,
+        applied_at: row.created_at,
+        updated_at: row.updated_at,
+    };
 }
 
 const statusIcons: Record<string, typeof Clock> = {
@@ -26,13 +47,21 @@ const statusIcons: Record<string, typeof Clock> = {
 export default function JobApplications() {
     const [applications, setApplications] = useState<Application[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        api.get<{ data: Application[] }>('/api/job-applications/mine')
-            .then((res) => setApplications(res.data))
-            .catch(() => setApplications([]))
+    const load = () => {
+        setLoading(true);
+        setError(null);
+        api.get<{ data: ApplicationRow[] }>('/api/jobs/my-applications')
+            .then((res) => setApplications((res.data ?? []).map(mapApplication)))
+            .catch((e) => {
+                setError(errorMessage(e, 'Failed to load applications'));
+                setApplications([]);
+            })
             .finally(() => setLoading(false));
-    }, []);
+    };
+
+    useEffect(load, []);
 
     return (
         <AppLayout title="My Applications">
@@ -46,6 +75,13 @@ export default function JobApplications() {
 
                 {loading ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800"><p className="text-gray-500">Loading...</p></div>
+                ) : error ? (
+                    <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
+                        <p className="text-red-600 font-medium">{error}</p>
+                        <button onClick={load} className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-500">
+                            <RefreshCcw className="h-4 w-4" /> Retry
+                        </button>
+                    </div>
                 ) : applications.length === 0 ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
                         <Briefcase className="mx-auto h-12 w-12 text-gray-400" />

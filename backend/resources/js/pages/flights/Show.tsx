@@ -2,8 +2,8 @@ import { useMemo, useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/AppLayout';
 import { type Flight } from '@/types';
-import { api, ApiError } from '@/lib/api';
-import { formatCurrency } from '@/lib/utils';
+import { api, errorMessage } from '@/lib/api';
+import { formatPrice } from '@/lib/currency';
 import { toast } from 'sonner';
 import {
     ArrowLeft, Plane, ArrowRight, Clock, Users, ShieldCheck, Plus, Trash2,
@@ -54,7 +54,7 @@ export default function FlightShow({ flight }: Props) {
             toast.success('Flight booked', { description: `Reference ${res.data.reference}` });
             router.visit(`/flights/confirmation/${res.data.booking_id}`);
         } catch (err) {
-            toast.error(err instanceof ApiError ? err.message : 'Booking failed');
+            toast.error(errorMessage(err, 'Booking failed'));
         } finally {
             setSubmitting(false);
         }
@@ -106,7 +106,7 @@ export default function FlightShow({ flight }: Props) {
 
                     <div className="mt-4 flex items-baseline justify-between">
                         <span className="text-sm text-gray-500">Fare per passenger</span>
-                        <span className="text-2xl font-bold text-sky-600">{formatCurrency(Number(flight.price))}</span>
+                        <span className="text-2xl font-bold text-sky-600">{formatPrice(Number(flight.price))}</span>
                     </div>
                 </div>
 
@@ -175,10 +175,10 @@ export default function FlightShow({ flight }: Props) {
                     {/* Review + confirm */}
                     <div className="border-t border-gray-200 pt-4 dark:border-gray-700">
                         <div className="mb-3 space-y-1.5 text-sm">
-                            <Row label={`${formatCurrency(Number(flight.price))} × ${seatCount} passenger${seatCount > 1 ? 's' : ''}`} value={formatCurrency(Number(total))} />
+                            <Row label={`${formatPrice(Number(flight.price))} × ${seatCount} passenger${seatCount > 1 ? 's' : ''}`} value={formatPrice(Number(total))} />
                             <Row label="Taxes & fees" value="Included" muted />
                             <div className="flex justify-between border-t border-gray-200 pt-2 text-base font-bold text-gray-900 dark:border-gray-700 dark:text-white">
-                                <span>Total</span><span>{formatCurrency(Number(total))}</span>
+                                <span>Total</span><span>{formatPrice(Number(total))}</span>
                             </div>
                         </div>
                         <p className="mb-4 flex items-center gap-1.5 text-xs text-gray-500"><ShieldCheck className="h-4 w-4 text-green-500" /> Free cancellation — seats are released back to inventory.</p>

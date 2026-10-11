@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/AppLayout';
 import { type WorkerProfile } from '@/types';
-import { formatCurrency, getInitials } from '@/lib/utils';
+import { getInitials } from '@/lib/utils';
+import { formatPrice } from '@/lib/currency';
 import {
     Search, MapPin, Star, BadgeCheck, Clock, Briefcase,
     SlidersHorizontal, ChevronLeft, ChevronRight,
@@ -31,7 +32,6 @@ export default function JobSeekersIndex({ workers, categories, filters }: Props)
 
     const applyFilter = (patch: Record<string, string | undefined>) => {
         const next = new URLSearchParams();
-        const merged = { ...filters, ...patch, q: patch.q !== undefined ? patch.q : undefined };
         Object.entries({ ...filters, ...patch }).forEach(([k, v]) => {
             if (v) next.set(k, v);
         });
@@ -182,7 +182,7 @@ export default function JobSeekersIndex({ workers, categories, filters }: Props)
 
                                 <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3 dark:border-gray-700">
                                     <span className="text-sm font-bold text-indigo-600">
-                                        {worker.hourly_rate ? `${formatCurrency(worker.hourly_rate)}/hr` : 'Rate on request'}
+                                        {worker.hourly_rate ? `${formatPrice(worker.hourly_rate)}/hr` : 'Rate on request'}
                                     </span>
                                     <span className="flex items-center gap-1 text-xs text-gray-500">
                                         <Clock className="h-3.5 w-3.5" /> {worker.completed_jobs} jobs done
@@ -194,35 +194,52 @@ export default function JobSeekersIndex({ workers, categories, filters }: Props)
                 )}
 
                 {/* Pagination */}
-                {workers.last_page > 1 && (
-                    <div className="mt-8 flex items-center justify-center gap-2">
-                        {Array.from({ length: workers.last_page }, (_, i) => i + 1).map((pageNo) => (
-                            <button
-                                key={pageNo}
-                                onClick={() => applyFilter({})}
-                                disabled
-                                className="hidden"
-                            />
-                        ))}
-                        <Link
-                            href={workers.current_page > 1 ? `/job-seekers?page=${workers.current_page - 1}` : '#'}
-                            preserveState
-                            className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 dark:border-gray-600 dark:text-white"
-                        >
-                            <ChevronLeft className="h-4 w-4" />
-                        </Link>
-                        <span className="px-3 text-sm text-gray-600 dark:text-gray-300">
-                            Page {workers.current_page} of {workers.last_page}
-                        </span>
-                        <Link
-                            href={workers.current_page < workers.last_page ? `/job-seekers?page=${workers.current_page + 1}` : '#'}
-                            preserveState
-                            className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 dark:border-gray-600 dark:text-white"
-                        >
-                            <ChevronRight className="h-4 w-4" />
-                        </Link>
-                    </div>
-                )}
+                {workers.last_page > 1 && (() => {
+                    const total = workers.last_page;
+                    const cur = workers.current_page;
+                    let start = total <= 9 ? 1 : Math.max(1, cur - 3);
+                    const end = Math.min(total, start + 8);
+                    start = Math.max(1, end - 8);
+                    const pageNos = Array.from({ length: end - start + 1 }, (_, i) => start + i);
+                    const navCls = 'flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800';
+                    const disabledCls = 'flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-300 dark:border-gray-700 dark:text-gray-600';
+                    return (
+                        <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
+                            {cur > 1 ? (
+                                <button type="button" onClick={() => applyFilter({ page: String(cur - 1) })} aria-label="Previous page" className={navCls}>
+                                    <ChevronLeft className="h-4 w-4" />
+                                </button>
+                            ) : (
+                                <span aria-hidden className={disabledCls}><ChevronLeft className="h-4 w-4" /></span>
+                            )}
+                            {pageNos.map((pageNo) => (
+                                <button
+                                    key={pageNo}
+                                    type="button"
+                                    onClick={() => applyFilter({ page: String(pageNo) })}
+                                    aria-current={pageNo === cur ? 'page' : undefined}
+                                    className={
+                                        pageNo === cur
+                                            ? 'flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-sm font-semibold text-white'
+                                            : 'flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 text-sm text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800'
+                                    }
+                                >
+                                    {pageNo}
+                                </button>
+                            ))}
+                            {cur < total ? (
+                                <button type="button" onClick={() => applyFilter({ page: String(cur + 1) })} aria-label="Next page" className={navCls}>
+                                    <ChevronRight className="h-4 w-4" />
+                                </button>
+                            ) : (
+                                <span aria-hidden className={disabledCls}><ChevronRight className="h-4 w-4" /></span>
+                            )}
+                            <span className="px-2 text-sm text-gray-600 dark:text-gray-300">
+                                Page {cur} of {total}
+                            </span>
+                        </div>
+                    );
+                })()}
             </div>
         </AppLayout>
     );

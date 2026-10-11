@@ -115,6 +115,16 @@ class TicketController extends Controller
 
     public function close(Request $request, string $id): JsonResponse
     {
+        $ticket = \Modules\Messaging\Entities\Ticket::find($id);
+
+        if (!$ticket) {
+            return response()->json(['message' => 'Ticket not found'], 404);
+        }
+
+        if (!$this->canAccess($request, $ticket)) {
+            return response()->json(['message' => 'You do not have access to this ticket'], 403);
+        }
+
         $this->messagingService->closeTicket($id);
         $this->messagingService->recordEvent($id, (string) $request->user()->id, 'closed');
 
@@ -137,7 +147,8 @@ class TicketController extends Controller
 
         $user = $request->user();
         $isStaff = $user->hasRole('super_admin') || $user->hasRole('administrator')
-            || $user->hasRole('support_staff') || $user->hasRole('customer_service');
+            || $user->hasRole('support_agent') || $user->hasRole('support_admin')
+            || $user->hasRole('customer_service');
 
         if (!$isStaff) {
             return response()->json(['message' => 'Only support staff can transfer tickets'], 403);
@@ -174,7 +185,8 @@ class TicketController extends Controller
 
         $user = $request->user();
         $isStaff = $user->hasRole('super_admin') || $user->hasRole('administrator')
-            || $user->hasRole('support_staff') || $user->hasRole('customer_service');
+            || $user->hasRole('support_agent') || $user->hasRole('support_admin')
+            || $user->hasRole('customer_service');
 
         if ((string) $ticket->user_id !== (string) $user->id && !$isStaff) {
             return response()->json(['message' => 'You do not have access to this ticket'], 403);
@@ -212,6 +224,16 @@ class TicketController extends Controller
             'reason' => ['nullable', 'string', 'max:1000'],
         ]);
 
+        $ticket = \Modules\Messaging\Entities\Ticket::find($id);
+
+        if (!$ticket) {
+            return response()->json(['message' => 'Ticket not found'], 404);
+        }
+
+        if (!$this->canAccess($request, $ticket) || !$this->isStaff($request)) {
+            return response()->json(['message' => 'Only support staff can escalate tickets'], 403);
+        }
+
         try {
             $ticket = $this->messagingService->escalate(
                 $id,
@@ -245,6 +267,16 @@ class TicketController extends Controller
             'comment' => ['nullable', 'string', 'max:1000'],
         ]);
 
+        $ticket = \Modules\Messaging\Entities\Ticket::find($id);
+
+        if (!$ticket) {
+            return response()->json(['message' => 'Ticket not found'], 404);
+        }
+
+        if ((string) $ticket->user_id !== (string) $request->user()->id) {
+            return response()->json(['message' => 'Only the ticket owner can rate it'], 403);
+        }
+
         try {
             $ticket = $this->messagingService->rateSatisfaction(
                 $id,
@@ -256,6 +288,8 @@ class TicketController extends Controller
             return response()->json(['message' => 'Ticket not found'], 404);
         } catch (\Core\Exceptions\ValidationException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
+        } catch (\Core\Exceptions\ConflictException $e) {
+            return response()->json(['message' => $e->getMessage()], 409);
         }
 
         return response()->json([
@@ -296,7 +330,8 @@ class TicketController extends Controller
 
         return $roles?->contains('super_admin')
             || $roles?->contains('administrator')
-            || $roles?->contains('support_staff')
+            || $roles?->contains('support_agent')
+            || $roles?->contains('support_admin')
             || $roles?->contains('customer_service');
     }
 

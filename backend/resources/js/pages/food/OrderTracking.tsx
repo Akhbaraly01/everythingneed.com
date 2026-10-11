@@ -1,7 +1,7 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link } from '@inertiajs/react';
 import { api } from '@/lib/api';
-import { formatCurrency, formatDateTime } from '@/lib/utils';
+import { formatPrice } from '@/lib/currency';
 import { UtensilsCrossed, ArrowLeft, MapPin } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -30,7 +30,7 @@ export default function FoodOrderTracking() {
     useEffect(() => {
         const path = window.location.pathname;
         const id = path.split('/').pop();
-        api.get<FoodOrder>(`/api/restaurants/orders/${id}`)
+        api.get<{ data: FoodOrder }>(`/api/food/orders/${id}`)
             .then((res) => setOrder(res.data))
             .catch(() => setOrder(null))
             .finally(() => setLoading(false));
@@ -59,7 +59,7 @@ export default function FoodOrderTracking() {
                         <div className="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
                             <p className="text-sm text-gray-500">Order #{order.reference}</p>
                             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{order.restaurant_name}</h1>
-                            <p className="text-lg font-semibold text-indigo-600">{formatCurrency(order.total)}</p>
+                            <p className="text-lg font-semibold text-indigo-600">{formatPrice(order.total)}</p>
                         </div>
 
                         <div className="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
@@ -81,7 +81,7 @@ export default function FoodOrderTracking() {
                             {order.items.map((item, idx) => (
                                 <div key={idx} className="flex justify-between text-sm py-1">
                                     <span>{item.quantity}x {item.name}</span>
-                                    <span>{formatCurrency(item.unit_price * item.quantity)}</span>
+                                    <span>{formatPrice(item.unit_price * item.quantity)}</span>
                                 </div>
                             ))}
                         </div>

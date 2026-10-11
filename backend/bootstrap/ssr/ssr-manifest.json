@@ -1,0 +1,610 @@
+{
+  "node_modules/laravel-vite-plugin/inertia-helpers/index.js": [],
+  "resources/css/app.css": [],
+  "resources/js/app.tsx": [],
+  "resources/js/components/Marketplace/BannerSlider.tsx": [
+    "/build/assets/Index-C-8qjuCE.js"
+  ],
+  "resources/js/components/Marketplace/BottomNav.tsx": [
+    "/build/assets/MarketplaceLayout-BjqzrNjx.js"
+  ],
+  "resources/js/components/Marketplace/CategoryGrid.tsx": [
+    "/build/assets/Index-C-8qjuCE.js"
+  ],
+  "resources/js/components/Marketplace/DealLanding.tsx": [
+    "/build/assets/Landing-Dof3R1F6.js"
+  ],
+  "resources/js/components/Marketplace/FloatingButtons.tsx": [
+    "/build/assets/MarketplaceLayout-BjqzrNjx.js"
+  ],
+  "resources/js/components/Marketplace/Footer.tsx": [
+    "/build/assets/PushNotificationPrompt-DvDsnr4H.js"
+  ],
+  "resources/js/components/Marketplace/Header.tsx": [
+    "/build/assets/MarketplaceLayout-BjqzrNjx.js"
+  ],
+  "resources/js/components/Marketplace/NeedCarousel.tsx": [
+    "/build/assets/Index-C-8qjuCE.js"
+  ],
+  "resources/js/components/Marketplace/ProductCard.tsx": [
+    "/build/assets/Index-C-8qjuCE.js"
+  ],
+  "resources/js/components/Marketplace/SearchTabs.tsx": [
+    "/build/assets/Index-C-8qjuCE.js"
+  ],
+  "resources/js/components/Marketplace/TripleBanner.tsx": [
+    "/build/assets/Index-C-8qjuCE.js"
+  ],
+  "resources/js/components/ThemeProvider.tsx": [],
+  "resources/js/components/account/TwoFactorCard.tsx": [
+    "/build/assets/Index-DZqrASIl.js"
+  ],
+  "resources/js/components/cart/CartDrawerContext.tsx": [
+    "/build/assets/PushNotificationPrompt-DvDsnr4H.js"
+  ],
+  "resources/js/components/cart/GlobalCartDrawer.tsx": [
+    "/build/assets/PushNotificationPrompt-DvDsnr4H.js"
+  ],
+  "resources/js/components/compare/CompareDrawer.tsx": [
+    "/build/assets/PushNotificationPrompt-DvDsnr4H.js"
+  ],
+  "resources/js/components/experts/ExpertsShowcase.tsx": [
+    "/build/assets/Index-C-8qjuCE.js"
+  ],
+  "resources/js/components/home/RecentlyViewedSection.tsx": [
+    "/build/assets/Index-C-8qjuCE.js"
+  ],
+  "resources/js/components/notifications/NotificationBell.tsx": [
+    "/build/assets/PushNotificationPrompt-DvDsnr4H.js"
+  ],
+  "resources/js/components/notifications/PushNotificationPrompt.tsx": [
+    "/build/assets/PushNotificationPrompt-DvDsnr4H.js"
+  ],
+  "resources/js/components/shared/Breadcrumb.tsx": [
+    "/build/assets/Users-qjgSLOSW.js"
+  ],
+  "resources/js/components/shared/DataTable.tsx": [
+    "/build/assets/Users-qjgSLOSW.js"
+  ],
+  "resources/js/components/shared/GlobalSearch.tsx": [
+    "/build/assets/AppLayout-cqhHu9rN.js"
+  ],
+  "resources/js/components/shared/Pagination.tsx": [
+    "/build/assets/Orders-DxNv-eV-.js"
+  ],
+  "resources/js/components/shared/SearchInput.tsx": [
+    "/build/assets/Users-qjgSLOSW.js"
+  ],
+  "resources/js/components/shared/Ui.tsx": [
+    "/build/assets/Ui-Skq5Ja_G.js"
+  ],
+  "resources/js/components/ui/sonner.tsx": [],
+  "resources/js/hooks/usePushNotifications.ts": [
+    "/build/assets/PushNotificationPrompt-DvDsnr4H.js"
+  ],
+  "resources/js/hooks/useRecentlyViewed.ts": [
+    "/build/assets/useRecentlyViewed-CNoHSyHD.js"
+  ],
+  "resources/js/layouts/AppLayout.tsx": [
+    "/build/assets/AppLayout-cqhHu9rN.js"
+  ],
+  "resources/js/layouts/AuthLayout.tsx": [
+    "/build/assets/AuthLayout-DeaGJlL3.js"
+  ],
+  "resources/js/layouts/MarketplaceLayout.tsx": [
+    "/build/assets/MarketplaceLayout-BjqzrNjx.js"
+  ],
+  "resources/js/lib/api.ts": [
+    "/build/assets/api-Dp2ndEHF.js"
+  ],
+  "resources/js/lib/utils.ts": [
+    "/build/assets/PushNotificationPrompt-DvDsnr4H.js"
+  ],
+  "resources/js/pages/Dashboard.tsx": [
+    "/build/assets/Dashboard-D-oaGmnM.js"
+  ],
+  "resources/js/pages/Home/Index.tsx": [
+    "/build/assets/Index-C-8qjuCE.js"
+  ],
+  "resources/js/pages/Wishlist.tsx": [
+    "/build/assets/Wishlist-DO1mE728.js"
+  ],
+  "resources/js/pages/account/Addresses.tsx": [
+    "/build/assets/Addresses-RyiKMhvU.js"
+  ],
+  "resources/js/pages/account/Applications.tsx": [
+    "/build/assets/Applications-B_n4_gp_.js"
+  ],
+  "resources/js/pages/account/Bookings.tsx": [
+    "/build/assets/Bookings-D0kGxl5Y.js"
+  ],
+  "resources/js/pages/account/ChangePassword.tsx": [
+    "/build/assets/ChangePassword-C-oFBUHH.js"
+  ],
+  "resources/js/pages/account/Dashboard.tsx": [
+    "/build/assets/Dashboard-Dwh0pM5D.js"
+  ],
+  "resources/js/pages/account/HealthcareHistory.tsx": [
+    "/build/assets/HealthcareHistory-SvozBSMQ.js"
+  ],
+  "resources/js/pages/account/Index.tsx": [
+    "/build/assets/Index-xp4AoZys.js"
+  ],
+  "resources/js/pages/account/Profile.tsx": [
+    "/build/assets/Profile-zbJC1qA0.js"
+  ],
+  "resources/js/pages/account/Reviews.tsx": [
+    "/build/assets/Reviews-DofuoUNN.js"
+  ],
+  "resources/js/pages/admin/AdminSettings.tsx": [
+    "/build/assets/AdminSettings-CYeEidBR.js"
+  ],
+  "resources/js/pages/admin/Analytics.tsx": [
+    "/build/assets/Analytics-B6L71-kG.js"
+  ],
+  "resources/js/pages/admin/Approvals.tsx": [
+    "/build/assets/Approvals-BEPPucbo.js"
+  ],
+  "resources/js/pages/admin/AuditLogs.tsx": [
+    "/build/assets/AuditLogs-B2dCwNme.js"
+  ],
+  "resources/js/pages/admin/Categories.tsx": [
+    "/build/assets/Categories-C7UozBGz.js"
+  ],
+  "resources/js/pages/admin/Cms.tsx": [
+    "/build/assets/Cms-CeU1r1z8.js"
+  ],
+  "resources/js/pages/admin/Dashboard.tsx": [
+    "/build/assets/Dashboard-BT-SuOcQ.js"
+  ],
+  "resources/js/pages/admin/Departments.tsx": [
+    "/build/assets/Departments-CctoMMdu.js"
+  ],
+  "resources/js/pages/admin/Finance.tsx": [
+    "/build/assets/Finance-BB1xxBw7.js"
+  ],
+  "resources/js/pages/admin/Food.tsx": [
+    "/build/assets/Food-BhO-lhLK.js"
+  ],
+  "resources/js/pages/admin/Healthcare.tsx": [
+    "/build/assets/Healthcare-D3Pakqsp.js"
+  ],
+  "resources/js/pages/admin/Hotels.tsx": [
+    "/build/assets/Hotels-DsTQSTFy.js"
+  ],
+  "resources/js/pages/admin/Jobs.tsx": [
+    "/build/assets/Jobs-DlKhXBy4.js"
+  ],
+  "resources/js/pages/admin/Learning.tsx": [
+    "/build/assets/Learning-BSecuoTU.js"
+  ],
+  "resources/js/pages/admin/Orders.tsx": [
+    "/build/assets/Orders-DiP6hjbT.js"
+  ],
+  "resources/js/pages/admin/Payouts.tsx": [
+    "/build/assets/Payouts-Due8Y8v7.js"
+  ],
+  "resources/js/pages/admin/Products.tsx": [
+    "/build/assets/Products-Cld5WEue.js"
+  ],
+  "resources/js/pages/admin/Rbac.tsx": [
+    "/build/assets/Rbac-B7ws9pFd.js"
+  ],
+  "resources/js/pages/admin/Support.tsx": [
+    "/build/assets/Support-C8FWBXhD.js"
+  ],
+  "resources/js/pages/admin/System.tsx": [
+    "/build/assets/System-BLERIlLR.js"
+  ],
+  "resources/js/pages/admin/Transport.tsx": [
+    "/build/assets/Transport-D0QCqs7R.js"
+  ],
+  "resources/js/pages/admin/Users.tsx": [
+    "/build/assets/Users-qjgSLOSW.js"
+  ],
+  "resources/js/pages/admin/Vendors.tsx": [
+    "/build/assets/Vendors-l_V29Gbh.js"
+  ],
+  "resources/js/pages/agriculture/Index.tsx": [
+    "/build/assets/Index-5eU5Fqbb.js"
+  ],
+  "resources/js/pages/agriculture/Products.tsx": [
+    "/build/assets/Products-DwmVG3hm.js"
+  ],
+  "resources/js/pages/agriculture/Workers.tsx": [
+    "/build/assets/Workers-BgTRm7oM.js"
+  ],
+  "resources/js/pages/analytics/Index.tsx": [
+    "/build/assets/Index-BLp5fMLF.js"
+  ],
+  "resources/js/pages/auth/ForgotPassword.tsx": [
+    "/build/assets/ForgotPassword-LSdB9usE.js"
+  ],
+  "resources/js/pages/auth/Login.tsx": [
+    "/build/assets/Login-BJr7y9Lu.js"
+  ],
+  "resources/js/pages/auth/Register.tsx": [
+    "/build/assets/Register-CTfrQPgi.js"
+  ],
+  "resources/js/pages/auth/ResetPassword.tsx": [
+    "/build/assets/ResetPassword-ZlwMTABu.js"
+  ],
+  "resources/js/pages/auth/VerifyEmail.tsx": [
+    "/build/assets/VerifyEmail-Dsm6L4lE.js"
+  ],
+  "resources/js/pages/building-services/Booking.tsx": [
+    "/build/assets/Booking-DDzjhTXX.js"
+  ],
+  "resources/js/pages/building-services/BookingDetails.tsx": [
+    "/build/assets/BookingDetails-DW5vRFUn.js"
+  ],
+  "resources/js/pages/building-services/Bookings.tsx": [
+    "/build/assets/Bookings-CfJlxrHo.js"
+  ],
+  "resources/js/pages/building-services/Index.tsx": [
+    "/build/assets/Index-Dd6jDo8N.js"
+  ],
+  "resources/js/pages/building-services/WorkerProfile.tsx": [
+    "/build/assets/WorkerProfile-DCgkxy3Z.js"
+  ],
+  "resources/js/pages/cart/Index.tsx": [
+    "/build/assets/Index-crnTVNZ7.js"
+  ],
+  "resources/js/pages/categories/Index.tsx": [
+    "/build/assets/Index-BUKHL2qr.js"
+  ],
+  "resources/js/pages/categories/Show.tsx": [
+    "/build/assets/Show-BFxngW92.js"
+  ],
+  "resources/js/pages/deals/Index.tsx": [
+    "/build/assets/Index-CR8TZWc6.js"
+  ],
+  "resources/js/pages/deals/Landing.tsx": [
+    "/build/assets/Landing-Dof3R1F6.js"
+  ],
+  "resources/js/pages/deals/Show.tsx": [
+    "/build/assets/Show-hsR78MC0.js"
+  ],
+  "resources/js/pages/deliveries/Index.tsx": [
+    "/build/assets/Index-e-KI5RxR.js"
+  ],
+  "resources/js/pages/errors/404.tsx": [
+    "/build/assets/404-BfGN6CET.js"
+  ],
+  "resources/js/pages/experts/Index.tsx": [
+    "/build/assets/Index-TP-BjOcW.js"
+  ],
+  "resources/js/pages/experts/Show.tsx": [
+    "/build/assets/Show-CygMNPFR.js"
+  ],
+  "resources/js/pages/flights/Confirmation.tsx": [
+    "/build/assets/Confirmation-D4_O8dEg.js"
+  ],
+  "resources/js/pages/flights/MyBookings.tsx": [
+    "/build/assets/MyBookings-YVxfLCr-.js"
+  ],
+  "resources/js/pages/flights/Search.tsx": [
+    "/build/assets/Search-CYk-SpFU.js"
+  ],
+  "resources/js/pages/flights/Show.tsx": [
+    "/build/assets/Show-yCL6km48.js"
+  ],
+  "resources/js/pages/food/Cart.tsx": [
+    "/build/assets/Cart-C88kp8-p.js"
+  ],
+  "resources/js/pages/food/Checkout.tsx": [
+    "/build/assets/Checkout-CdaBloT-.js"
+  ],
+  "resources/js/pages/food/Index.tsx": [
+    "/build/assets/Index-vdvpawUv.js"
+  ],
+  "resources/js/pages/food/OrderHistory.tsx": [
+    "/build/assets/OrderHistory-Cg1C7REW.js"
+  ],
+  "resources/js/pages/food/OrderTracking.tsx": [
+    "/build/assets/OrderTracking-vcFgbX48.js"
+  ],
+  "resources/js/pages/food/Show.tsx": [
+    "/build/assets/Show-ClXlYc4q.js"
+  ],
+  "resources/js/pages/healthcare/AppointmentShow.tsx": [
+    "/build/assets/AppointmentShow-CkVEwUiJ.js"
+  ],
+  "resources/js/pages/healthcare/Appointments.tsx": [
+    "/build/assets/Appointments-_6B_v5Y6.js"
+  ],
+  "resources/js/pages/healthcare/Book.tsx": [
+    "/build/assets/Book-DGvzuWVt.js"
+  ],
+  "resources/js/pages/healthcare/BookingConfirmation.tsx": [
+    "/build/assets/BookingConfirmation-f6hWzikB.js"
+  ],
+  "resources/js/pages/healthcare/Content.tsx": [
+    "/build/assets/Content-WgU7LCJg.js"
+  ],
+  "resources/js/pages/healthcare/DoctorProfile.tsx": [
+    "/build/assets/DoctorProfile-BY9MyHQy.js"
+  ],
+  "resources/js/pages/healthcare/Doctors.tsx": [
+    "/build/assets/Doctors-FfCjby3u.js"
+  ],
+  "resources/js/pages/healthcare/Index.tsx": [
+    "/build/assets/Index-DOjY8cvF.js"
+  ],
+  "resources/js/pages/healthcare/LabBooking.tsx": [
+    "/build/assets/LabBooking-CKOFP0le.js"
+  ],
+  "resources/js/pages/healthcare/Labs.tsx": [
+    "/build/assets/Labs-Cgx_Ol9w.js"
+  ],
+  "resources/js/pages/healthcare/MyHealthTickets.tsx": [
+    "/build/assets/MyHealthTickets-DnxrdwiO.js"
+  ],
+  "resources/js/pages/healthcare/Prescriptions.tsx": [
+    "/build/assets/Prescriptions-BjxTD-JO.js"
+  ],
+  "resources/js/pages/healthcare/Specialty.tsx": [
+    "/build/assets/Specialty-CBNHaJzM.js"
+  ],
+  "resources/js/pages/healthcare/VirtualConsultation.tsx": [
+    "/build/assets/VirtualConsultation-ygtZ0tDR.js"
+  ],
+  "resources/js/pages/hotels/Booking.tsx": [
+    "/build/assets/Booking-DAJvg-_Q.js"
+  ],
+  "resources/js/pages/hotels/Index.tsx": [
+    "/build/assets/Index-Mon2hu2k.js"
+  ],
+  "resources/js/pages/hotels/Reservations.tsx": [
+    "/build/assets/Reservations-CohdbmQX.js"
+  ],
+  "resources/js/pages/hotels/RoomDetails.tsx": [
+    "/build/assets/RoomDetails-iasnf7DA.js"
+  ],
+  "resources/js/pages/hotels/Show.tsx": [
+    "/build/assets/Show-ClWUQ5LP.js"
+  ],
+  "resources/js/pages/inventory/Index.tsx": [
+    "/build/assets/Index-wUKos43z.js"
+  ],
+  "resources/js/pages/job-seekers/CreateRequest.tsx": [
+    "/build/assets/CreateRequest-BtiN-GEE.js"
+  ],
+  "resources/js/pages/job-seekers/Index.tsx": [
+    "/build/assets/Index-tXXxoQC5.js"
+  ],
+  "resources/js/pages/job-seekers/MyRequests.tsx": [
+    "/build/assets/MyRequests-EMOGNgoe.js"
+  ],
+  "resources/js/pages/job-seekers/Show.tsx": [
+    "/build/assets/Show-B_oR821L.js"
+  ],
+  "resources/js/pages/jobs/Applications.tsx": [
+    "/build/assets/Applications-BI_Y9FwK.js"
+  ],
+  "resources/js/pages/jobs/Apply.tsx": [
+    "/build/assets/Apply-B2-r-Nqu.js"
+  ],
+  "resources/js/pages/jobs/Index.tsx": [
+    "/build/assets/Index-D_TlXLox.js"
+  ],
+  "resources/js/pages/jobs/Show.tsx": [
+    "/build/assets/Show-C5JMpr_c.js"
+  ],
+  "resources/js/pages/learn/Catalog.tsx": [
+    "/build/assets/Catalog-BWXkHtKe.js"
+  ],
+  "resources/js/pages/learn/Certificates.tsx": [
+    "/build/assets/Certificates-D6LPUWls.js"
+  ],
+  "resources/js/pages/learn/Index.tsx": [
+    "/build/assets/Index-BMJYKKRK.js"
+  ],
+  "resources/js/pages/learn/InstructorProfile.tsx": [
+    "/build/assets/InstructorProfile-DlsvA4DX.js"
+  ],
+  "resources/js/pages/learn/Lesson.tsx": [
+    "/build/assets/Lesson-DoiD_vp_.js"
+  ],
+  "resources/js/pages/learn/MyLearning.tsx": [
+    "/build/assets/MyLearning-i9mVYRZ0.js"
+  ],
+  "resources/js/pages/learn/Quiz.tsx": [
+    "/build/assets/Quiz-Bvk3Bujt.js"
+  ],
+  "resources/js/pages/learn/QuizResults.tsx": [
+    "/build/assets/QuizResults-CgOQdgjC.js"
+  ],
+  "resources/js/pages/learn/Show.tsx": [
+    "/build/assets/Show-B7AEXYNq.js"
+  ],
+  "resources/js/pages/messages/Index.tsx": [
+    "/build/assets/Index-ZWfKtNyV.js"
+  ],
+  "resources/js/pages/messages/Show.tsx": [
+    "/build/assets/Show-BXmaXBD2.js"
+  ],
+  "resources/js/pages/needs/Category.tsx": [
+    "/build/assets/Category-8pFLRBWW.js"
+  ],
+  "resources/js/pages/needs/History.tsx": [
+    "/build/assets/History-BpCb-ExN.js"
+  ],
+  "resources/js/pages/needs/Index.tsx": [
+    "/build/assets/Index-COFZAorH.js"
+  ],
+  "resources/js/pages/needs/Request.tsx": [
+    "/build/assets/Request-CCpzuvFJ.js"
+  ],
+  "resources/js/pages/needs/Show.tsx": [
+    "/build/assets/Show-qXYxB87p.js"
+  ],
+  "resources/js/pages/notifications/Index.tsx": [
+    "/build/assets/Index-Br1_wvTj.js"
+  ],
+  "resources/js/pages/orders/Checkout.tsx": [
+    "/build/assets/Checkout-C6lWHp4H.js"
+  ],
+  "resources/js/pages/orders/Disputes.tsx": [
+    "/build/assets/Disputes-DlkmCY3U.js"
+  ],
+  "resources/js/pages/orders/Index.tsx": [
+    "/build/assets/Index-CvBeQjSP.js"
+  ],
+  "resources/js/pages/orders/Returns.tsx": [
+    "/build/assets/Returns-BUe0U3r3.js"
+  ],
+  "resources/js/pages/orders/Show.tsx": [
+    "/build/assets/Show-DnkflAsx.js"
+  ],
+  "resources/js/pages/orders/Tracking.tsx": [
+    "/build/assets/Tracking-M6nCuGzK.js"
+  ],
+  "resources/js/pages/payments/Index.tsx": [
+    "/build/assets/Index-fKgDc9bg.js"
+  ],
+  "resources/js/pages/permissions/Index.tsx": [
+    "/build/assets/Index-CPbo42YA.js"
+  ],
+  "resources/js/pages/pharmacy/Cart.tsx": [
+    "/build/assets/Cart-CrfKwOKD.js"
+  ],
+  "resources/js/pages/pharmacy/Checkout.tsx": [
+    "/build/assets/Checkout-DgkmWdLo.js"
+  ],
+  "resources/js/pages/pharmacy/Index.tsx": [
+    "/build/assets/Index-9aGvUGO2.js"
+  ],
+  "resources/js/pages/pharmacy/OrderConfirmation.tsx": [
+    "/build/assets/OrderConfirmation-BsYbtzeH.js"
+  ],
+  "resources/js/pages/pharmacy/OrderTracking.tsx": [
+    "/build/assets/OrderTracking-CPY1vb5w.js"
+  ],
+  "resources/js/pages/pharmacy/PrescriptionUpload.tsx": [
+    "/build/assets/PrescriptionUpload-APDcahHr.js"
+  ],
+  "resources/js/pages/products/Compare.tsx": [
+    "/build/assets/Compare-PhRkgNhG.js"
+  ],
+  "resources/js/pages/products/Index.tsx": [
+    "/build/assets/Index-BJYW8BkP.js"
+  ],
+  "resources/js/pages/products/Show.tsx": [
+    "/build/assets/Show-D-6tH2iU.js"
+  ],
+  "resources/js/pages/properties/Create.tsx": [
+    "/build/assets/Create-C802M3aG.js"
+  ],
+  "resources/js/pages/properties/Index.tsx": [
+    "/build/assets/Index-Betk6UKJ.js"
+  ],
+  "resources/js/pages/properties/Inquiry.tsx": [
+    "/build/assets/Inquiry-e4c5ZTMH.js"
+  ],
+  "resources/js/pages/properties/Show.tsx": [
+    "/build/assets/Show-mg13wr5O.js"
+  ],
+  "resources/js/pages/requests/Index.tsx": [
+    "/build/assets/Index-DojTnMeo.js"
+  ],
+  "resources/js/pages/reviews/Create.tsx": [
+    "/build/assets/Create-DGingeWX.js"
+  ],
+  "resources/js/pages/reviews/Index.tsx": [
+    "/build/assets/Index-vg002g4_.js"
+  ],
+  "resources/js/pages/search/Results.tsx": [
+    "/build/assets/Results-cgvOvE8C.js"
+  ],
+  "resources/js/pages/settings/Index.tsx": [
+    "/build/assets/Index-DZqrASIl.js"
+  ],
+  "resources/js/pages/settings/Notifications.tsx": [
+    "/build/assets/Notifications-MpUEQ1W5.js"
+  ],
+  "resources/js/pages/settings/Security.tsx": [
+    "/build/assets/Security-ClEilwEm.js"
+  ],
+  "resources/js/pages/stores/Index.tsx": [
+    "/build/assets/Index-BL0DO42a.js"
+  ],
+  "resources/js/pages/stores/Show.tsx": [
+    "/build/assets/Show-Devo2c60.js"
+  ],
+  "resources/js/pages/subscriptions/Index.tsx": [
+    "/build/assets/Index-fANjNOi_.js"
+  ],
+  "resources/js/pages/tasks/Create.tsx": [
+    "/build/assets/Create-y5gA8WdG.js"
+  ],
+  "resources/js/pages/tasks/Index.tsx": [
+    "/build/assets/Index-D1X5lToT.js"
+  ],
+  "resources/js/pages/tasks/MyApplications.tsx": [
+    "/build/assets/MyApplications-UDge75gz.js"
+  ],
+  "resources/js/pages/tasks/Show.tsx": [
+    "/build/assets/Show-Cf79Jr7L.js"
+  ],
+  "resources/js/pages/tasks/Submission.tsx": [
+    "/build/assets/Submission-DRwmg_Zz.js"
+  ],
+  "resources/js/pages/tickets/Create.tsx": [
+    "/build/assets/Create-Bh5_Ofu8.js"
+  ],
+  "resources/js/pages/tickets/Index.tsx": [
+    "/build/assets/Index-ELT472qe.js"
+  ],
+  "resources/js/pages/tickets/Show.tsx": [
+    "/build/assets/Show-Jy7OsfVB.js"
+  ],
+  "resources/js/pages/transportation/CustomRequest.tsx": [
+    "/build/assets/CustomRequest-BBpzxHZ1.js"
+  ],
+  "resources/js/pages/transportation/Index.tsx": [
+    "/build/assets/Index-S3NxzZwM.js"
+  ],
+  "resources/js/pages/transportation/RideBooking.tsx": [
+    "/build/assets/RideBooking-BQxShx3j.js"
+  ],
+  "resources/js/pages/transportation/RideTracking.tsx": [
+    "/build/assets/RideTracking-BmbceOey.js"
+  ],
+  "resources/js/pages/vendor/Analytics.tsx": [
+    "/build/assets/Analytics-IET2crxS.js"
+  ],
+  "resources/js/pages/vendor/Dashboard.tsx": [
+    "/build/assets/Dashboard-C4-xWDJN.js"
+  ],
+  "resources/js/pages/vendor/OrderDetails.tsx": [
+    "/build/assets/OrderDetails-3TPVjsMf.js"
+  ],
+  "resources/js/pages/vendor/Orders.tsx": [
+    "/build/assets/Orders-DxNv-eV-.js"
+  ],
+  "resources/js/pages/vendor/Payouts.tsx": [
+    "/build/assets/Payouts-BEPUN8GL.js"
+  ],
+  "resources/js/pages/vendor/ProductCreate.tsx": [
+    "/build/assets/ProductCreate-CY-Xx-W3.js"
+  ],
+  "resources/js/pages/vendor/ProductEdit.tsx": [
+    "/build/assets/ProductEdit-D0PzuZrh.js"
+  ],
+  "resources/js/pages/vendor/Products.tsx": [
+    "/build/assets/Products-uNpAOJxj.js"
+  ],
+  "resources/js/pages/vendors/Index.tsx": [
+    "/build/assets/Index-BMDhFzNh.js"
+  ],
+  "resources/js/pages/vendors/Register.tsx": [
+    "/build/assets/Register-rFTsg3v0.js"
+  ],
+  "resources/js/pages/vendors/Show.tsx": [
+    "/build/assets/Show-BUbBt9vW.js"
+  ],
+  "resources/js/pages/wallet/Index.tsx": [
+    "/build/assets/Index-B5x4RHmf.js"
+  ]
+}

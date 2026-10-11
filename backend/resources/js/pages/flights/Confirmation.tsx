@@ -1,6 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
 import AppLayout from '@/layouts/AppLayout';
-import { formatCurrency } from '@/lib/utils';
+import { formatPrice } from '@/lib/currency';
 import { CheckCircle2, Printer, Plane, MapPin, CalendarDays, Users } from 'lucide-react';
 
 interface BookingDetails {
@@ -66,7 +66,7 @@ export default function FlightConfirmation({ booking }: Props) {
                             <Info label="Airline / Flight">{d.airline} · {d.flight_number}</Info>
                             <Info label="Travel date"><span className="inline-flex items-center gap-1"><CalendarDays className="h-3.5 w-3.5" />{d.travel_date}</span></Info>
                             <Info label="Passengers"><span className="inline-flex items-center gap-1"><Users className="h-3.5 w-3.5" />{d.seat_count}</span></Info>
-                            <Info label="Total paid">{formatCurrency(Number(d.total_price))}</Info>
+                            <Info label="Total paid">{formatPrice(Number(d.total_price))}</Info>
                             <Info label="Status">
                                 <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium capitalize text-green-800">{booking.status}</span>
                             </Info>

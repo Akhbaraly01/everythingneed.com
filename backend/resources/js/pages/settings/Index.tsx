@@ -1,7 +1,13 @@
 import AppLayout from '@/layouts/AppLayout';
-import { Head, router, useForm } from '@inertiajs/react';
+import {Head, useForm} from '@inertiajs/react';
 import { useState } from 'react';
 import { api } from '@/lib/api';
+import { toast } from 'sonner';
+import { useLanguage } from '@/lib/use-language';
+import { type Language } from '@/lib/i18n-dict';
+import { useTheme } from '@/components/ThemeProvider';
+import { persistCurrency, isDisplayCurrency } from '@/lib/currency';
+import TwoFactorCard from '@/components/account/TwoFactorCard';
 
 interface SettingsProps {
     user: { id: string; name: string; email: string; phone?: string };
@@ -15,8 +21,12 @@ interface SettingsProps {
 }
 
 export default function Settings({ user, settings }: SettingsProps) {
-    const [activeTab, setActiveTab] = useState<'general' | 'notifications' | 'security'>('general');
-    const { data, setData, post, processing } = useForm({
+    const [activeTab, setActiveTab] = useState<'general' | 'notifications' | 'security' | 'appearance'>('general');
+    const [processing, setProcessing] = useState(false);
+    const [saved, setSaved] = useState(false);
+    const { setLanguage } = useLanguage();
+    const { theme, setTheme } = useTheme();
+    const { data, setData } = useForm({
         name: user.name,
         email: user.email,
         phone: user.phone ?? '',
@@ -27,12 +37,48 @@ export default function Settings({ user, settings }: SettingsProps) {
         marketing_emails: settings.marketing_emails,
     });
 
-    const handleSaveGeneral = () => {
-        post('/settings', { preserveScroll: true });
+    const saveSettings = async (entries: Array<{ key: string; value: string }>) => {
+        await api.put(`/api/users/${user.id}/settings`, { settings: entries });
     };
 
-    const handleSaveNotifications = () => {
-        post('/settings', { preserveScroll: true });
+    const handleSaveGeneral = async () => {
+        setProcessing(true);
+        setSaved(false);
+        try {
+            await api.put('/api/profile', { full_name: data.name, phone: data.phone });
+            await saveSettings([
+                { key: 'general.language', value: data.language },
+                { key: 'general.currency', value: data.currency },
+            ]);
+            // Apply immediately: provider + guest fallback stay in sync
+            // with what was just persisted server-side.
+            setLanguage(data.language as Language);
+            if (isDisplayCurrency(data.currency)) {
+                persistCurrency(data.currency);
+            }
+            setSaved(true);
+        } catch {
+            toast.error('Failed to save settings');
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    const handleSaveNotifications = async () => {
+        setProcessing(true);
+        setSaved(false);
+        try {
+            await saveSettings([
+                { key: 'notifications.email_notifications', value: data.email_notifications ? '1' : '0' },
+                { key: 'notifications.push_notifications', value: data.push_notifications ? '1' : '0' },
+                { key: 'notifications.marketing_emails', value: data.marketing_emails ? '1' : '0' },
+            ]);
+            setSaved(true);
+        } catch {
+            toast.error('Failed to save preferences');
+        } finally {
+            setProcessing(false);
+        }
     };
 
     return (
@@ -43,7 +89,7 @@ export default function Settings({ user, settings }: SettingsProps) {
                 <div className="rounded-lg bg-white shadow dark:bg-gray-800">
                     <div className="border-b border-gray-200 dark:border-gray-700">
                         <nav className="flex gap-6 px-6">
-                            {(['general', 'notifications', 'security'] as const).map((tab) => (
+                            {(['general', 'notifications', 'security', 'appearance'] as const).map((tab) => (
                                 <button
                                     key={tab}
                                     onClick={() => setActiveTab(tab)}
@@ -114,9 +160,15 @@ export default function Settings({ user, settings }: SettingsProps) {
                                                 onChange={(e) => setData('currency', e.target.value)}
                                                 className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                             >
-                                                <option value="USD">USD</option>
-                                                <option value="EUR">EUR</option>
-                                                <option value="GBP">GBP</option>
+                                                <option value="USD">USD — US Dollar</option>
+                                                <option value="EUR">EUR — Euro</option>
+                                                <option value="GBP">GBP — British Pound</option>
+                                                <option value="GHS">GHS — Ghanaian Cedi</option>
+                                                <option value="KES">KES — Kenyan Shilling</option>
+                                                <option value="NGN">NGN — Nigerian Naira</option>
+                                                <option value="ZAR">ZAR — South African Rand</option>
+                                                <option value="INR">INR — Indian Rupee</option>
+                                                <option value="AED">AED — UAE Dirham</option>
                                             </select>
                                         </div>
                                     </div>
@@ -126,7 +178,7 @@ export default function Settings({ user, settings }: SettingsProps) {
                                     disabled={processing}
                                     className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
                                 >
-                                    {processing ? 'Saving...' : 'Save Changes'}
+                                    {processing ? 'Saving...' : 'Save Changes'}{saved && activeTab === 'general' ? ' ?' : ''}
                                 </button>
                             </div>
                         )}
@@ -165,7 +217,7 @@ export default function Settings({ user, settings }: SettingsProps) {
                                     disabled={processing}
                                     className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
                                 >
-                                    {processing ? 'Saving...' : 'Save Preferences'}
+                                    {processing ? 'Saving...' : 'Save Preferences'}{saved && activeTab === 'notifications' ? ' ?' : ''}
                                 </button>
                             </div>
                         )}
@@ -191,6 +243,40 @@ export default function Settings({ user, settings }: SettingsProps) {
                                             </a>
                                         </div>
                                     </div>
+                                    <TwoFactorCard />
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'appearance' && (
+                            <div className="space-y-6">
+                                <div>
+                                    <h3 className="text-lg font-medium text-gray-900 dark:text-white">Appearance</h3>
+                                    <p className="mt-1 text-sm text-gray-500">Choose how EverythingNeed looks on this device.</p>
+                                </div>
+                                <div className="space-y-2">
+                                    {([
+                                        { value: 'light', name: 'Light', description: 'Bright theme' },
+                                        { value: 'dark', name: 'Dark', description: 'Dimmed Binance-style theme' },
+                                        { value: 'system', name: 'System', description: 'Follow your device setting' },
+                                    ] as const).map((option) => (
+                                        <label
+                                            key={option.value}
+                                            className="flex cursor-pointer items-center justify-between rounded-lg border border-gray-200 p-4 dark:border-gray-700"
+                                        >
+                                            <div>
+                                                <p className="text-sm font-medium text-gray-900 dark:text-white">{option.name}</p>
+                                                <p className="text-sm text-gray-500">{option.description}</p>
+                                            </div>
+                                            <input
+                                                type="radio"
+                                                name="theme"
+                                                checked={theme === option.value}
+                                                onChange={() => setTheme(option.value)}
+                                                className="h-4 w-4 text-indigo-600"
+                                            />
+                                        </label>
+                                    ))}
                                 </div>
                             </div>
                         )}

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@inertiajs/react";
 import { api } from "@/lib/api";
-import { formatCurrency } from "@/lib/utils";
+import { formatPrice } from "@/lib/currency";
 import { Search, Loader2, ShoppingBag, GraduationCap, BedDouble, Briefcase, UtensilsCrossed, Wrench } from "lucide-react";
 
 interface SearchResults {
@@ -14,12 +14,12 @@ interface SearchResults {
 }
 
 const GROUPS = [
-    { key: "products", label: "Products", icon: ShoppingBag, href: (id: string) => `/products` },
-    { key: "services", label: "Services", icon: Wrench, href: () => `/requests` },
-    { key: "courses", label: "Courses", icon: GraduationCap, href: () => `/learn/courses` },
-    { key: "hotels", label: "Hotels", icon: BedDouble, href: () => `/flights` },
-    { key: "jobs", label: "Jobs", icon: Briefcase, href: () => `/tasks` },
-    { key: "restaurants", label: "Food", icon: UtensilsCrossed, href: () => `/agriculture` },
+    { key: "products", label: "Products", icon: ShoppingBag, href: (id: string) => `/products/${id}` },
+    { key: "services", label: "Services", icon: Wrench, href: (id: string) => `/needs/requests/${id}` },
+    { key: "courses", label: "Courses", icon: GraduationCap, href: (id: string) => `/learn/${id}` },
+    { key: "hotels", label: "Hotels", icon: BedDouble, href: (id: string) => `/hotels/${id}` },
+    { key: "jobs", label: "Jobs", icon: Briefcase, href: (id: string) => `/jobs/${id}` },
+    { key: "restaurants", label: "Food", icon: UtensilsCrossed, href: (id: string) => `/food/${id}` },
 ] as const;
 
 export default function GlobalSearch() {
@@ -110,7 +110,7 @@ export default function GlobalSearch() {
                                                 <span className="truncate text-gray-800 dark:text-gray-200">{title}</span>
                                                 {price != null && (
                                                     <span className="ml-3 shrink-0 text-xs text-indigo-600">
-                                                        {formatCurrency(Number(price))}
+                                                        {formatPrice(Number(price))}
                                                     </span>
                                                 )}
                                             </Link>

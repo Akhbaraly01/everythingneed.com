@@ -1,7 +1,7 @@
 import AppLayout from '@/layouts/AppLayout';
-import { Head } from '@inertiajs/react';
-import { api } from '@/lib/api';
-import { Bell } from 'lucide-react';
+import { Head, usePage } from '@inertiajs/react';
+import {  api, errorMessage } from '@/lib/api';
+import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
 
 interface NotifPrefs {
@@ -18,19 +18,40 @@ export default function SettingsNotifications() {
     });
     const [saving, setSaving] = useState(false);
 
+    const { props } = usePage();
+    const authUser = (props.auth as { user?: { id: string } } | null)?.user;
+
     useEffect(() => {
-        api.get<NotifPrefs>('/api/user/notification-preferences')
-            .then((res) => { if (res.data) setPrefs(res.data); })
+        if (!authUser?.id) return;
+        api.get<{ data: Record<string, string> }>(`/api/users/${authUser.id}/settings`)
+            .then((res) => {
+                const stored = res.data ?? {};
+                setPrefs((prev) => {
+                    const next = { ...prev };
+                    (Object.keys(next) as Array<keyof NotifPrefs>).forEach((k) => {
+                        const key = `notifications.${k}`;
+                        if (stored[key] === '1') next[k] = true;
+                        if (stored[key] === '0') next[k] = false;
+                    });
+                    return next;
+                });
+            })
             .catch(() => {});
-    }, []);
+    }, [authUser?.id]);
 
     const handleSave = async () => {
+        if (!authUser?.id) return;
         setSaving(true);
         try {
-            await api.put('/api/user/notification-preferences', prefs);
-            alert('Preferences saved');
-        } catch (e: any) {
-            alert(e.message ?? 'Failed');
+            await api.put(`/api/users/${authUser.id}/settings`, {
+                settings: (Object.keys(prefs) as Array<keyof NotifPrefs>).map((k) => ({
+                    key: `notifications.${k}`,
+                    value: prefs[k] ? '1' : '0',
+                })),
+            });
+            toast.success('Preferences saved');
+        } catch (e) {
+            toast.error(errorMessage(e, 'Failed'));
         }
         setSaving(false);
     };

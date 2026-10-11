@@ -5,8 +5,8 @@ import { Plane, Car, Truck, Bike, Package, MapPin } from 'lucide-react';
 const SERVICES = [
     { name: 'Flights', href: '/flights', icon: Plane, desc: 'Search and book flights', color: 'bg-blue-500' },
     { name: 'Ride Booking', href: '/transportation/ride-booking', icon: Car, desc: 'Book a car ride', color: 'bg-green-500' },
-    { name: 'Trucks & Lorries', href: '/transportation/vehicles?type=truck', icon: Truck, desc: 'Heavy transport', color: 'bg-orange-500' },
-    { name: 'Motorcycles', href: '/transportation/vehicles?type=motorcycle', icon: Bike, desc: 'Quick delivery', color: 'bg-purple-500' },
+    { name: 'Trucks & Lorries', href: '/transportation/custom-request?vehicle=truck', icon: Truck, desc: 'Heavy transport', color: 'bg-orange-500' },
+    { name: 'Motorcycles', href: '/transportation/custom-request?vehicle=motorcycle', icon: Bike, desc: 'Quick delivery', color: 'bg-purple-500' },
     { name: 'Logistics', href: '/deliveries', icon: Package, desc: 'Track deliveries', color: 'bg-indigo-500' },
     { name: 'Custom Request', href: '/transportation/custom-request', icon: MapPin, desc: 'Request custom transport', color: 'bg-pink-500' },
 ];

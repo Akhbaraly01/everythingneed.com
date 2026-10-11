@@ -1,10 +1,14 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, router } from '@inertiajs/react';
-import { api } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
 import { useState } from 'react';
-import { HardHat, Calendar, MapPin, DollarSign, ArrowRight } from 'lucide-react';
+import {HardHat, ArrowRight} from 'lucide-react';
 
 export default function BuildingServiceBooking({ worker_id }: { worker_id?: string }) {
+    // WorkerProfile links here as /building-services/book?worker=<uuid>;
+    // the page route passes no props, so fall back to the query string.
+    const selectedWorker =
+        worker_id ?? new URLSearchParams(window.location.search).get('worker') ?? undefined;
     const [form, setForm] = useState({
         worker_type: 'plumber',
         service_category: '',
@@ -23,10 +27,10 @@ export default function BuildingServiceBooking({ worker_id }: { worker_id?: stri
         setSubmitting(true);
         setError('');
         try {
-            const res = await api.post<{ data: { id: string } }>('/api/building-services/bookings', { ...form, worker_id });
+            const res = await api.post<{ data: { id: string } }>('/api/building-services/bookings', { ...form, worker_id: selectedWorker });
             router.visit(`/building-services/bookings/${res.data.id}`);
-        } catch (err: any) {
-            setError(err.response?.data?.message || 'Booking failed');
+        } catch (err) {
+            setError(errorMessage(err, 'Booking failed'));
             setSubmitting(false);
         }
     };

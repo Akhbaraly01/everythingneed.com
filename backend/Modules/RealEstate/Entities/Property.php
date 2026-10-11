@@ -10,6 +10,7 @@ class Property extends Model
         'user_id',
         'title',
         'description',
+        'listing_type',
         'property_type',
         'price',
         'currency',

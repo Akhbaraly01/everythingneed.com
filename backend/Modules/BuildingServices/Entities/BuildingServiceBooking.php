@@ -8,6 +8,7 @@ class BuildingServiceBooking extends Model
 {
     protected $fillable = [
         'user_id',
+        'worker_id',
         'worker_type',
         'service_category',
         'description',
@@ -15,6 +16,7 @@ class BuildingServiceBooking extends Model
         'scheduled_date',
         'scheduled_time',
         'estimated_cost',
+        'quoted_price',
         'notes',
         'status',
     ];

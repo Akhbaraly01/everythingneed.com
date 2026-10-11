@@ -2,7 +2,7 @@ import AppLayout from '@/layouts/AppLayout';
 import { Head, router } from '@inertiajs/react';
 import { api } from '@/lib/api';
 import { useEffect, useState } from 'react';
-import { Bed, Bath, Maximize, Wifi, Car, Coffee, DollarSign, ArrowRight } from 'lucide-react';
+import {Bed, Maximize, DollarSign, ArrowRight} from 'lucide-react';
 
 interface Room {
     id: string;

@@ -97,4 +97,26 @@ class ChatTest extends TestCase
             ->getJson("/api/chat/{$conversationId}/messages")
             ->assertStatus(200);
     }
+
+    public function test_conversation_payloads_do_not_leak_email_or_phone(): void
+    {
+        $alice = User::factory()->create(['email' => 'alice-private@example.com', 'phone' => '+15550001111']);
+        $bob = User::factory()->create(['email' => 'bob-private@example.com', 'phone' => '+15550002222']);
+
+        $created = $this->actingAs($alice)
+            ->postJson('/api/chat/conversations', ['recipient_id' => $bob->id]);
+        $created->assertStatus(201);
+        $this->assertStringNotContainsString('alice-private@example.com', $created->getContent());
+        $this->assertStringNotContainsString('bob-private@example.com', $created->getContent());
+        $this->assertStringNotContainsString('+15550001111', $created->getContent());
+
+        $list = $this->actingAs($alice)->getJson('/api/chat/conversations');
+        $list->assertStatus(200);
+        $this->assertStringNotContainsString('alice-private@example.com', $list->getContent());
+        $this->assertStringNotContainsString('bob-private@example.com', $list->getContent());
+        $this->assertStringNotContainsString('+1555', $list->getContent());
+
+        // Names still visible for UX
+        $this->assertStringContainsString($bob->name, $list->getContent());
+    }
 }

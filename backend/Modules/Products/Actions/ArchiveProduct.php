@@ -15,7 +15,7 @@ class ArchiveProduct
             throw new NotFoundException('Product', $productId);
         }
 
-        $product->update(['is_active' => false]);
+        $product->update(['is_active' => false, 'publication_state' => 'archived']);
 
         return $product->fresh();
     }

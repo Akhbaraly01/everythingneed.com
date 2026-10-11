@@ -1,8 +1,9 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link } from '@inertiajs/react';
 import type { Vendor, Product } from '@/types';
-import { formatCurrency } from '@/lib/utils';
-import { Store, Star, CheckCircle, MapPin } from 'lucide-react';
+import { formatPrice } from '@/lib/currency';
+import {Store, Star, CheckCircle} from 'lucide-react';
+import Image from '@/components/shared/Image';
 
 interface VendorShowProps {
     vendor: Vendor & { products?: Product[] };
@@ -36,6 +37,17 @@ export default function VendorShow({ vendor }: VendorShowProps) {
                     {vendor.description && (
                         <p className="mt-4 text-gray-600 dark:text-gray-400">{vendor.description}</p>
                     )}
+                    <div className="mt-4 flex flex-wrap gap-2 text-sm">
+                        <Link href={`/vendors/${vendor.slug ?? vendor.id}/products`} className="rounded-lg border border-gray-300 px-3 py-1.5 font-medium hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700">
+                            All products
+                        </Link>
+                        <Link href={`/vendors/${vendor.slug ?? vendor.id}/services`} className="rounded-lg border border-gray-300 px-3 py-1.5 font-medium hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700">
+                            Services
+                        </Link>
+                        <Link href={`/vendors/${vendor.slug ?? vendor.id}/reviews`} className="rounded-lg border border-gray-300 px-3 py-1.5 font-medium hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700">
+                            Reviews
+                        </Link>
+                    </div>
                 </div>
 
                 {/* Products */}
@@ -50,18 +62,18 @@ export default function VendorShow({ vendor }: VendorShowProps) {
                             vendor.products.filter((p) => p.is_active).map((product) => (
                                 <Link
                                     key={product.id}
-                                    href={`/products/${product.id}`}
+                                    href={`/products/${product.slug ?? product.id}`}
                                     className="group rounded-lg border border-gray-200 p-4 transition hover:shadow-md dark:border-gray-700"
                                 >
                                     <div className="aspect-square overflow-hidden rounded-lg bg-gray-100">
                                         {product.image_url ? (
-                                            <img src={product.image_url} alt={product.name} className="h-full w-full object-cover" />
+                                            <Image src={product.image_url} alt={product.name} className="h-full w-full object-cover" />
                                         ) : (
                                             <div className="flex h-full items-center justify-center text-gray-400">No image</div>
                                         )}
                                     </div>
                                     <h3 className="mt-3 font-medium text-gray-900 group-hover:text-indigo-600 dark:text-white">{product.name}</h3>
-                                    <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white">{formatCurrency(product.price)}</p>
+                                    <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white">{formatPrice(product.price)}</p>
                                     {product.rating != null && (
                                         <div className="mt-1 flex items-center gap-1 text-sm text-gray-500">
                                             <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />

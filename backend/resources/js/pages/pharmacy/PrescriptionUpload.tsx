@@ -1,6 +1,6 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, router } from '@inertiajs/react';
-import { api } from '@/lib/api';
+import {  api, errorMessage } from '@/lib/api';
 import { useState } from 'react';
 import { FileUp, Pill, ArrowRight } from 'lucide-react';
 
@@ -18,9 +18,9 @@ export default function PrescriptionUpload() {
             const fd = new FormData();
             fd.append('prescription', file);
             fd.append('notes', notes);
-            const res = await api.post<{ data: { id: string } }>('/api/pharmacy/prescriptions', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+            const res = await api.post<{ data: { id: string } }>('/api/pharmacy/prescriptions', fd);
             router.visit(`/pharmacy/orders/${res.data.id}`);
-        } catch (err: any) { setError(err.response?.data?.message || 'Upload failed'); setSubmitting(false); }
+        } catch (err: unknown) { setError(errorMessage(err, 'Upload failed')); setSubmitting(false); }
     };
 
     return (

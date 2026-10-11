@@ -1,109 +1,324 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { useState } from 'react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import AuthLayout from '@/layouts/AuthLayout';
+import { api } from '@/lib/api';
+import { Mail, Lock, User, Shield, Loader2, ArrowLeft } from 'lucide-react';
+
+type Tab = 'login' | 'signup' | 'otp';
 
 export default function Login() {
-    const { data, setData, post, processing, errors } = useForm({
-        email: '',
-        password: '',
-        remember: false,
-    });
+    const { uiTexts } = usePage().props as {
+        uiTexts?: { ui?: Record<string, { label?: string; value?: string }> };
+    };
+    const loginTitle = uiTexts?.ui?.login_title?.value || 'everythingneed.com';
+    const loginSubtitle =
+        uiTexts?.ui?.login_subtitle?.value || 'Your one-stop platform for all human needs';
 
-    const submit = (e: React.FormEvent) => {
-        e.preventDefault();
-        post('/login');
+    const [activeTab, setActiveTab] = useState<Tab>('login');
+    const [otpChannel, setOtpChannel] = useState<'phone' | 'email'>('phone');
+    const [otpSent, setOtpSent] = useState(false);
+    const [otp, setOtp] = useState<string[]>(['', '', '', '', '', '']);
+    const [otpTarget, setOtpTarget] = useState('');
+    const [otpInput, setOtpInput] = useState('');
+    const [otpLoading, setOtpLoading] = useState(false);
+    const [otpError, setOtpError] = useState('');
+
+    const loginForm = useForm({ email: '', password: '', remember: false });
+    const signupForm = useForm({ name: '', email: '', password: '', password_confirmation: '' });
+
+    const requestOtp = async (target: string) => {
+        const trimmed = target.trim();
+        if (otpChannel === 'email' ? !trimmed.includes('@') : trimmed.length < 7) {
+            setOtpError(otpChannel === 'email' ? 'Enter a valid email first' : 'Enter a valid phone number first');
+            return;
+        }
+        setOtpLoading(true);
+        setOtpError('');
+        try {
+            // No mail or SMS is sent — the code is issued locally (see OtpSender).
+            const path =
+                otpChannel === 'email' ? '/api/auth/otp/email/request' : '/api/auth/otp/request';
+            const body = otpChannel === 'email' ? { email: trimmed } : { phone: trimmed };
+            await api.post(path, body);
+            setOtpTarget(trimmed);
+            setOtpSent(true);
+        } catch {
+            setOtpError('Could not send OTP. Try again.');
+        } finally {
+            setOtpLoading(false);
+        }
+    };
+
+    const verifyOtp = async () => {
+        const code = otp.join('');
+        if (code.length !== 6) {
+            setOtpError('Enter all 6 digits');
+            return;
+        }
+        setOtpLoading(true);
+        setOtpError('');
+        try {
+            const path =
+                otpChannel === 'email' ? '/api/auth/otp/email/verify' : '/api/auth/otp/verify';
+            const body =
+                otpChannel === 'email' ? { email: otpTarget, code } : { phone: otpTarget, code };
+            await api.post(path, body);
+            // Role-aware landing handled by the server's `/` route.
+            window.location.href = '/';
+        } catch {
+            setOtpError('Invalid or expired code');
+        } finally {
+            setOtpLoading(false);
+        }
+    };
+
+    const setDigit = (index: number, value: string) => {
+        const digit = value.replace(/\D/g, '').slice(-1);
+        setOtp((prev) => {
+            const next = [...prev];
+            next[index] = digit;
+            return next;
+        });
+        if (digit && index < 5) {
+            document.getElementById(`otp-${index + 1}`)?.focus();
+        }
     };
 
     return (
-        <AuthLayout title="Log in to your account">
+        <AuthLayout title={loginTitle} description={loginSubtitle}>
             <Head title="Log in" />
+            <Link href="/" className="mb-4 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <ArrowLeft className="h-4 w-4" />
+                Back to Home
+            </Link>
 
-            <form onSubmit={submit} className="space-y-6">
-                <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Email address
-                    </label>
-                    <input
-                        id="email"
-                        type="email"
-                        value={data.email}
-                        onChange={(e) => setData('email', e.target.value)}
-                        className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                        required
-                    />
-                    {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
-                </div>
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                <Shield className="h-6 w-6 text-primary" />
+            </div>
 
-                <div>
-                    <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Password
-                    </label>
-                    <input
-                        id="password"
-                        type="password"
-                        value={data.password}
-                        onChange={(e) => setData('password', e.target.value)}
-                        className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                        required
-                    />
-                    {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password}</p>}
-                </div>
+            <div className="mb-6 grid w-full grid-cols-3 rounded-lg bg-muted p-1">
+                {(['login', 'signup', 'otp'] as Tab[]).map((t) => (
+                    <button
+                        key={t}
+                        type="button"
+                        onClick={() => setActiveTab(t)}
+                        className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                            activeTab === t ? 'bg-card text-foreground shadow' : 'text-muted-foreground'
+                        }`}
+                    >
+                        {t === 'login' ? 'Sign In' : t === 'signup' ? 'Sign Up' : 'OTP'}
+                    </button>
+                ))}
+            </div>
 
-                <div className="flex items-center justify-between">
-                    <label className="flex items-center">
-                        <input
-                            type="checkbox"
-                            checked={data.remember}
-                            onChange={(e) => setData('remember', e.target.checked)}
-                            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                        />
-                        <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">Remember me</span>
-                    </label>
-                    <Link href="/forgot-password" className="text-sm text-indigo-600 hover:text-indigo-500">
-                        Forgot password?
-                    </Link>
-                </div>
-
-                <button
-                    type="submit"
-                    disabled={processing}
-                    className="flex w-full justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50"
+            {activeTab === 'login' && (
+                <form
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        loginForm.post('/login');
+                    }}
+                    className="space-y-4"
                 >
-                    {processing ? 'Signing in...' : 'Sign in'}
-                </button>
-
-                <div className="mt-6">
-                    <div className="relative">
-                        <div className="absolute inset-0 flex items-center">
-                            <div className="w-full border-t border-gray-300 dark:border-gray-600" />
+                    <div className="space-y-2">
+                        <label htmlFor="login-email" className="text-sm font-medium">Email</label>
+                        <div className="relative">
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <input
+                                id="login-email"
+                                type="email"
+                                placeholder="Enter your email"
+                                value={loginForm.data.email}
+                                onChange={(e) => loginForm.setData('email', e.target.value)}
+                                className="h-10 w-full rounded-md border border-input bg-background pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                            />
                         </div>
-                        <div className="relative flex justify-center text-sm">
-                            <span className="bg-white px-2 text-gray-500 dark:bg-gray-800">Or continue with</span>
+                        {loginForm.errors.email && <p className="text-sm text-destructive">{loginForm.errors.email}</p>}
+                    </div>
+                    <div className="space-y-2">
+                        <label htmlFor="login-password" className="text-sm font-medium">Password</label>
+                        <div className="relative">
+                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <input
+                                id="login-password"
+                                type="password"
+                                placeholder="Enter your password"
+                                value={loginForm.data.password}
+                                onChange={(e) => loginForm.setData('password', e.target.value)}
+                                className="h-10 w-full rounded-md border border-input bg-background pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                            />
+                        </div>
+                        {loginForm.errors.password && <p className="text-sm text-destructive">{loginForm.errors.password}</p>}
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                        <label className="flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                checked={loginForm.data.remember}
+                                onChange={(e) => loginForm.setData('remember', e.target.checked)}
+                                className="rounded border-input"
+                            />
+                            Remember me
+                        </label>
+                        <Link href="/forgot-password" className="text-primary hover:underline">Forgot password?</Link>
+                    </div>
+                    <button
+                        type="submit"
+                        disabled={loginForm.processing}
+                        className="flex h-10 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                    >
+                        {loginForm.processing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        Sign In
+                    </button>
+                </form>
+            )}
+
+            {activeTab === 'signup' && (
+                <form
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        signupForm.post('/register');
+                    }}
+                    className="space-y-4"
+                >
+                    <div className="space-y-2">
+                        <label htmlFor="signup-name" className="text-sm font-medium">Full Name</label>
+                        <div className="relative">
+                            <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <input
+                                id="signup-name"
+                                type="text"
+                                placeholder="Enter your full name"
+                                value={signupForm.data.name}
+                                onChange={(e) => signupForm.setData('name', e.target.value)}
+                                className="h-10 w-full rounded-md border border-input bg-background pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                            />
                         </div>
                     </div>
-
-                    <div className="mt-6 grid grid-cols-2 gap-3">
-                        <button
-                            type="button"
-                            className="flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-                        >
-                            OTP
-                        </button>
-                        <button
-                            type="button"
-                            className="flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-                        >
-                            Phone
-                        </button>
+                    <div className="space-y-2">
+                        <label htmlFor="signup-email" className="text-sm font-medium">Email</label>
+                        <div className="relative">
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <input
+                                id="signup-email"
+                                type="email"
+                                placeholder="Enter your email"
+                                value={signupForm.data.email}
+                                onChange={(e) => signupForm.setData('email', e.target.value)}
+                                className="h-10 w-full rounded-md border border-input bg-background pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                            />
+                        </div>
                     </div>
+                    <div className="space-y-2">
+                        <label htmlFor="signup-password" className="text-sm font-medium">Password</label>
+                        <div className="relative">
+                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <input
+                                id="signup-password"
+                                type="password"
+                                placeholder="Create a password"
+                                value={signupForm.data.password}
+                                onChange={(e) => signupForm.setData('password', e.target.value)}
+                                className="h-10 w-full rounded-md border border-input bg-background pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                            />
+                        </div>
+                    </div>
+                    <button
+                        type="submit"
+                        disabled={signupForm.processing}
+                        className="flex h-10 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                    >
+                        Sign Up
+                    </button>
+                </form>
+            )}
+
+            {activeTab === 'otp' && (
+                <div className="space-y-4">
+                    {!otpSent ? (
+                        <>
+                            <div className="grid w-full grid-cols-2 rounded-lg bg-muted p-1">
+                                {(['phone', 'email'] as const).map((c) => (
+                                    <button
+                                        key={c}
+                                        type="button"
+                                        onClick={() => {
+                                            setOtpChannel(c);
+                                            setOtpError('');
+                                        }}
+                                        className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                                            otpChannel === c ? 'bg-card text-foreground shadow' : 'text-muted-foreground'
+                                        }`}
+                                    >
+                                        {c === 'phone' ? 'Phone' : 'Email'}
+                                    </button>
+                                ))}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                No SMS or mail is sent — your code is issued instantly for testing.
+                            </p>
+                            <div className="space-y-2">
+                                <label htmlFor="otp-target" className="text-sm font-medium">
+                                    {otpChannel === 'email' ? 'Email' : 'Phone'}
+                                </label>
+                                <div className="relative">
+                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <input
+                                        id="otp-target"
+                                        type={otpChannel === 'email' ? 'email' : 'tel'}
+                                        placeholder={otpChannel === 'email' ? 'Enter your email' : 'Enter your phone (e.g. +15551234567)'}
+                                        value={otpInput}
+                                        onChange={(e) => setOtpInput(e.target.value)}
+                                        className="h-10 w-full rounded-md border border-input bg-background pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                                    />
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                disabled={otpLoading}
+                                onClick={() => void requestOtp(otpInput)}
+                                className="flex h-10 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                            >
+                                {otpLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                Send OTP
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <p className="text-sm text-muted-foreground">Verify Your Login — OTP sent to {otpTarget}</p>
+                            <div className="flex justify-center gap-2">
+                                {otp.map((digit, index) => (
+                                    <input
+                                        key={index}
+                                        id={`otp-${index}`}
+                                        value={digit}
+                                        onChange={(e) => setDigit(index, e.target.value)}
+                                        maxLength={1}
+                                        inputMode="numeric"
+                                        className="h-12 w-11 text-center text-lg font-semibold rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                                    />
+                                ))}
+                            </div>
+                            <button
+                                type="button"
+                                disabled={otpLoading}
+                                onClick={() => void verifyOtp()}
+                                className="flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                            >
+                                <Shield className="h-4 w-4" />
+                                Verify OTP
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setOtpSent(false)}
+                                className="w-full text-center text-xs text-muted-foreground hover:text-foreground"
+                            >
+                                Resend code (60s)
+                            </button>
+                        </>
+                    )}
+                    {otpError && <p className="text-sm text-destructive">{otpError}</p>}
                 </div>
-            </form>
-
-            <p className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
-                Don't have an account?{' '}
-                <Link href="/register" className="font-medium text-indigo-600 hover:text-indigo-500">
-                    Sign up
-                </Link>
-            </p>
+            )}
         </AuthLayout>
     );
 }

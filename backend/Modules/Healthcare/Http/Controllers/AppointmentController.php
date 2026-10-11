@@ -8,11 +8,13 @@ use Modules\Healthcare\Http\Requests\BookAppointmentRequest;
 use Modules\Healthcare\Http\Resources\AppointmentResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Modules\Payments\Services\PaymentService;
 
 class AppointmentController extends Controller
 {
     public function __construct(
-        private HealthcareService $healthcareService
+        private HealthcareService $healthcareService,
+        private PaymentService $payments
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -31,6 +33,54 @@ class AppointmentController extends Controller
                 'per_page' => $tickets->perPage(),
                 'total' => $tickets->total(),
             ],
+        ]);
+    }
+
+    /**
+     * Admin view: every health ticket with requester + doctor (console).
+     */
+    public function adminTickets(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'status' => ['nullable', 'string', 'in:all,pending,assigned,in_consultation,completed,cancelled'],
+            'search' => ['nullable', 'string', 'max:120'],
+            'page'   => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        $query = \Illuminate\Support\Facades\DB::table('health_tickets as ht')
+            ->leftJoin('users as u', 'u.id', '=', 'ht.patient_id')
+            ->leftJoin('doctors as d', 'd.id', '=', 'ht.doctor_id')
+            ->select([
+                'ht.id', 'ht.ticket_number', 'ht.symptoms', 'ht.consultation_type',
+                'ht.consultation_fee', 'ht.appointment_date', 'ht.appointment_time', 'ht.status', 'ht.created_at',
+                'u.name as patient_name', 'u.email as patient_email',
+                'd.full_name as doctor_name',
+            ])
+            ->whereNull('ht.deleted_at')
+            ->orderByDesc('ht.created_at');
+
+        if (is_string($validated['search'] ?? null) && $validated['search'] !== '') {
+            $search = $validated['search'];
+            $query->where(function ($q) use ($search) {
+                $q->where('ht.ticket_number', 'ilike', "%{$search}%")
+                    ->orWhere('u.name', 'ilike', "%{$search}%")
+                    ->orWhere('d.full_name', 'ilike', "%{$search}%");
+            });
+        }
+
+        $status = $validated['status'] ?? 'all';
+        if ($status !== '' && $status !== 'all') {
+            $query->where('ht.status', $status);
+        }
+
+        $total = (clone $query)->count();
+        $page = (int) ($validated['page'] ?? 1);
+        $rows = $query->offset(($page - 1) * 15)->limit(15)->get();
+
+        return response()->json([
+            'data'  => $rows,
+            'total' => $total,
+            'meta'  => ['page' => $page, 'per_page' => 15, 'total' => $total],
         ]);
     }
 
@@ -63,6 +113,25 @@ class AppointmentController extends Controller
         ], 201);
     }
 
+    public function start(Request $request, string $id): JsonResponse
+    {
+        $ticket = $this->healthcareService->getTicket($id);
+
+        if (!$ticket) {
+            return response()->json(['message' => 'Appointment not found'], 404);
+        }
+
+        if (!$this->canAccess($request, $ticket)) {
+            return response()->json(['message' => 'You do not have access to this appointment'], 403);
+        }
+
+        $this->healthcareService->startConsultation($id);
+
+        return response()->json([
+            'message' => 'Consultation started',
+        ]);
+    }
+
     public function cancel(Request $request, string $id): JsonResponse
     {
         $ticket = $this->healthcareService->getTicket($id);
@@ -75,10 +144,95 @@ class AppointmentController extends Controller
             return response()->json(['message' => 'You do not have access to this appointment'], 403);
         }
 
+        $wasPaid = $ticket->payment_status === 'paid';
+
         $this->healthcareService->cancelAppointment($id, $request->get('reason'));
+
+        // Paid consultations are refunded in full when the patient cancels.
+        if ($wasPaid && $ticket->payment_id) {
+            try {
+                $this->payments->refund((string) $ticket->payment_id);
+                $ticket->update(['payment_status' => 'refunded']);
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
 
         return response()->json([
             'message' => 'Appointment cancelled successfully',
+        ]);
+    }
+
+    /**
+     * Pay the consultation fee for the patient's own appointment
+     * (spec 97 workflow: Book -> Pay -> Appointment). The fee is
+     * derived server-side; the client only picks the payment method.
+     */
+    public function pay(Request $request, string $id): JsonResponse
+    {
+        $ticket = $this->healthcareService->getTicket($id);
+
+        if (!$ticket) {
+            return response()->json(['message' => 'Appointment not found'], 404);
+        }
+
+        if ((string) $ticket->patient_id !== (string) $request->user()->id) {
+            return response()->json(['message' => 'You do not have access to this appointment'], 403);
+        }
+
+        if ($ticket->status === 'cancelled') {
+            return response()->json(['message' => 'Cannot pay a cancelled appointment'], 422);
+        }
+
+        if ($ticket->payment_status === 'paid') {
+            return response()->json([
+                'message' => 'Appointment already paid',
+                'data' => new AppointmentResource($ticket),
+            ]);
+        }
+
+        $request->validate(['method' => 'required|string|max:30']);
+
+        $fee = (float) $ticket->consultation_fee;
+
+        if ($fee <= 0) {
+            $ticket->update(['payment_status' => 'paid', 'paid_at' => now()]);
+
+            return response()->json([
+                'message' => 'Appointment paid',
+                'data' => new AppointmentResource($ticket->fresh()),
+            ]);
+        }
+
+        $payment = $this->payments->charge([
+            'user_id' => (string) $request->user()->id,
+            'amount' => $fee,
+            'currency' => \Core\Support\Currencies::default(),
+            'method' => $request->input('method'),
+            'idempotency_key' => 'appt-'.$ticket->id,
+            'purpose' => 'appointment_payment',
+            'metadata' => [
+                'appointment_id' => $ticket->id,
+                'ticket_number' => $ticket->ticket_number,
+            ],
+        ]);
+
+        if ($payment->status !== 'succeeded') {
+            return response()->json([
+                'message' => 'Payment is processing',
+                'data' => ['payment_status' => 'processing'],
+            ], 202);
+        }
+
+        $ticket->update([
+            'payment_status' => 'paid',
+            'payment_id' => $payment->id,
+            'paid_at' => now(),
+        ]);
+
+        return response()->json([
+            'message' => 'Appointment paid',
+            'data' => new AppointmentResource($ticket->fresh()),
         ]);
     }
 
@@ -114,13 +268,12 @@ class AppointmentController extends Controller
             return response()->json(['message' => 'Appointment not found'], 404);
         }
 
-        // Only the assigned doctor, the patient, or an admin may close a consultation.
+        // Only the assigned doctor or an admin may close a consultation.
         $user = $request->user();
         $isDoctor = $ticket->doctor && $user->doctor && $ticket->doctor->id === $user->doctor->id;
-        $isPatient = $ticket->patient_id === $user->id;
         $isAdmin = $user->hasRole('super_admin') || $user->hasRole('administrator') || $user->hasRole('healthcare_admin');
 
-        if (!$isDoctor && !$isPatient && !$isAdmin) {
+        if (!$isDoctor && !$isAdmin) {
             return response()->json(['message' => 'You do not have access to this appointment'], 403);
         }
 

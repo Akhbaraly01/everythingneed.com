@@ -24,6 +24,9 @@ class TaskController extends Controller
         $query = TaskPost::withCount('applications');
 
         if ($request->boolean('mine')) {
+            if (!$request->user()) {
+                return response()->json(['message' => 'Unauthenticated.'], 401);
+            }
             $query->where('created_by', $request->user()->id);
         } else {
             $query->where('status', TaskPost::STATUS_OPEN);
@@ -270,15 +273,16 @@ class TaskController extends Controller
                 }
 
                 DB::transaction(function () use ($application, $task, $user) {
-                    // Routed through the payment abstraction (§25). The payout
+                    // Routed through the payment abstraction (ï¿½25). The payout
                     // recipient is the worker; driver behaviour is config-driven.
                     $result = app(\Core\Services\Contracts\PaymentGatewayInterface::class)->charge([
                         'order_id' => $task->id,
                         'user_id' => $application->user_id,
                         'amount' => $task->budget,
-                        'currency' => 'USD',
+                        'currency' => \Core\Support\Currencies::default(),
                         'method' => 'platform_escrow',
                         'reference' => 'TKPAY-'.strtoupper(uniqid()),
+                        'purpose' => 'task_payout',
                     ]);
 
                     if (!($result['success'] ?? false)) {

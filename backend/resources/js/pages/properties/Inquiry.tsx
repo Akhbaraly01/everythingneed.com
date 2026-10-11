@@ -1,6 +1,6 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, router } from '@inertiajs/react';
-import { api } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
 import { useState } from 'react';
 import { Home, ArrowRight } from 'lucide-react';
 
@@ -16,7 +16,7 @@ export default function PropertyInquiry({ property_id }: { property_id?: string 
         try {
             await api.post(`/api/properties/${id}/inquiries`, form);
             router.visit(`/properties/${id}`);
-        } catch (err: any) { setError(err.response?.data?.message || 'Failed to send inquiry'); setSubmitting(false); }
+        } catch (err) { setError(errorMessage(err, 'Failed to send inquiry')); setSubmitting(false); }
     };
 
     return (

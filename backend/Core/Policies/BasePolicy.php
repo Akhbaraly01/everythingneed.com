@@ -13,22 +13,22 @@ abstract class BasePolicy
 
     public function viewAny(User $user): bool
     {
-        return $this->hasRole($user, ['super_admin', 'category_admin']);
+        return $this->hasRole($user, ['super_admin', 'marketplace_admin']);
     }
 
     public function view(User $user, $model): bool
     {
-        return $this->hasRole($user, ['super_admin', 'category_admin']);
+        return $this->hasRole($user, ['super_admin', 'marketplace_admin']);
     }
 
     public function create(User $user): bool
     {
-        return $this->hasRole($user, ['super_admin', 'category_admin']);
+        return $this->hasRole($user, ['super_admin', 'marketplace_admin']);
     }
 
     public function update(User $user, $model): bool
     {
-        return $this->hasRole($user, ['super_admin', 'category_admin']);
+        return $this->hasRole($user, ['super_admin', 'marketplace_admin']);
     }
 
     public function delete(User $user, $model): bool

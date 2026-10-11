@@ -43,6 +43,14 @@ class AuthWebFlowTest extends TestCase
         $dashboard = $this->actingAs($user, 'web')->get('/dashboard');
         $dashboard->assertStatus(200);
         $dashboard->assertInertia(fn ($page) => $page->component('Dashboard'));
+
+        // Shared auth must expose both flat fields and the user alias that
+        // pages read (auth.user.*) — previously missing, so logged-in users
+        // were treated as guests by client-side guards.
+        $dashboard->assertInertia(fn ($page) => $page
+            ->where('auth.id', $user->id)
+            ->where('auth.user.id', $user->id)
+            ->where('auth.user.email', $user->email));
     }
 
     public function test_login_rejects_invalid_credentials(): void

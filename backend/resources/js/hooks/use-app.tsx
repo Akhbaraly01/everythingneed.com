@@ -1,7 +1,8 @@
-import { router, usePage } from '@inertiajs/react';
+import {usePage} from '@inertiajs/react';
 import { type ReactNode, createContext, useContext } from 'react';
 
-interface SharedData {
+export interface SharedData {
+    [key: string]: unknown;
     auth: {
         id: string;
         name: string;
@@ -36,8 +37,9 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-    const page = usePage<PageProps & { props: SharedData }>();
-    const { auth, flash } = page.props;
+    const page = usePage<SharedData & PageProps>();
+    const auth = page.props?.auth ?? null;
+    const flash = page.props?.flash ?? { success: null, error: null };
 
     const hasRole = (role: string): boolean => {
         return auth?.roles?.includes(role) ?? false;
@@ -66,4 +68,4 @@ export function useApp(): AppContextType {
     return context;
 }
 
-export { type SharedData, type PageProps };
+export { type PageProps };

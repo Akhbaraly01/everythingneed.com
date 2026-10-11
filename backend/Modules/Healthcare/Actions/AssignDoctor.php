@@ -20,9 +20,19 @@ class AssignDoctor
             throw new ValidationException('Can only assign doctor to pending tickets');
         }
 
+        $doctor = \Modules\Healthcare\Entities\Doctor::find($doctorId);
+        if (!$doctor) {
+            throw new NotFoundException('Doctor', $doctorId);
+        }
+        if (!$doctor->is_available) {
+            throw new ValidationException('Doctor is not available');
+        }
+
         $ticket->update([
             'doctor_id' => $doctorId,
             'status' => 'assigned',
         ]);
+
+        event(new \Modules\Healthcare\Events\DoctorAssigned($ticket->fresh('doctor')));
     }
 }

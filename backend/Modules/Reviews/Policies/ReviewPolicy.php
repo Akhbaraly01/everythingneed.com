@@ -39,6 +39,6 @@ class ReviewPolicy
 
     public function moderate(User $user, Review $review): bool
     {
-        return $user->hasRole('super_admin') || $user->hasRole('category_admin');
+        return $user->hasRole('super_admin') || $user->hasRole('marketplace_admin');
     }
 }

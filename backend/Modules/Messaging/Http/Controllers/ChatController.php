@@ -17,7 +17,7 @@ class ChatController extends Controller
 
         $conversations = ChatConversation::where('customer_id', $user->id)
             ->orWhere('worker_id', $user->id)
-            ->with(['customer', 'worker'])
+            ->with(['customer:id,name', 'worker:id,name'])
             ->orderByDesc('updated_at')
             ->get()
             ->each(fn ($c) => $c->setAppends([]));
@@ -30,15 +30,12 @@ class ChatController extends Controller
         $q = trim((string) $request->query('q', ''));
 
         $query = \App\Models\User::query()
-            ->select('id', 'name', 'email')
+            ->select('id', 'name')
             ->where('id', '!=', $request->user()->id)
             ->limit(10);
 
         if ($q !== '') {
-            $query->where(function ($sub) use ($q) {
-                $sub->where('name', 'ilike', "%{$q}%")
-                    ->orWhere('email', 'ilike', "%{$q}%");
-            });
+            $query->where('name', 'ilike', "%{$q}%");
         }
 
         return response()->json(['data' => $query->get()]);
@@ -57,6 +54,10 @@ class ChatController extends Controller
 
         if (!$recipientId && !$bookingId) {
             return response()->json(['message' => 'recipient_id or booking_id is required'], 422);
+        }
+
+        if ($recipientId && (string) $recipientId === (string) $user->id) {
+            return response()->json(['message' => 'You cannot start a conversation with yourself'], 422);
         }
 
         $query = ChatConversation::where(function ($q) use ($user, $recipientId, $bookingId) {
@@ -97,7 +98,7 @@ class ChatController extends Controller
         }
 
         return response()->json([
-            'data' => $conversation->load(['customer', 'worker']),
+            'data' => $conversation->load(['customer:id,name', 'worker:id,name']),
         ], 201);
     }
 

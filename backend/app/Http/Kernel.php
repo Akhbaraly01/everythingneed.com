@@ -37,8 +37,6 @@ class Kernel extends HttpKernel
             \Illuminate\Routing\Middleware\ThrottleRequests::class . ':api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\ApiRateLimiter::class,
-            \App\Http\Middleware\PreventSqlInjection::class,
-            \App\Http\Middleware\XssSanitizer::class,
             \App\Http\Middleware\TransformJsonStrings::class,
         ],
     ];

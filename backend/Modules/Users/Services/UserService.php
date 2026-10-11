@@ -25,9 +25,9 @@ class UserService
         return $this->addAddress->execute($userId, $data);
     }
 
-    public function deleteAccount(string $userId): bool
+    public function deleteAccount(string $userId, string $password): bool
     {
-        return $this->deleteAccount->execute($userId);
+        return $this->deleteAccount->execute($userId, $password);
     }
 
     public function getUser(string $userId): ?User

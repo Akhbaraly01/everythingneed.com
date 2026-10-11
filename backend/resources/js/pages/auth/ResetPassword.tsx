@@ -1,5 +1,6 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, usePage, useForm } from '@inertiajs/react';
 import AuthLayout from '@/layouts/AuthLayout';
+import type { SharedData } from '@/hooks/use-app';
 
 interface Props {
     email: string;
@@ -7,12 +8,13 @@ interface Props {
 }
 
 export default function ResetPassword({ email, token }: Props) {
-    const { data, setData, post, processing, errors, status } = useForm({
+    const { data, setData, post, processing, errors } = useForm({
         email,
         token,
         password: '',
         password_confirmation: '',
     });
+    const status = (usePage<SharedData>().props.flash as { status?: string } | undefined)?.status;
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();

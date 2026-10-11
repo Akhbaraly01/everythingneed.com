@@ -1,8 +1,9 @@
 import AppLayout from '@/layouts/AppLayout';
-import { Head, Link, router } from '@inertiajs/react';
+import { toast } from 'sonner';
+import {Head, router} from '@inertiajs/react';
 import type { JobPost } from '@/types';
 import { MapPin, Briefcase, DollarSign, Clock, Building2, CheckCircle } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils';
+import { formatPrice } from '@/lib/currency';
 import { usePage } from '@inertiajs/react';
 
 interface JobShowProps {
@@ -14,9 +15,17 @@ export default function JobShow({ job }: JobShowProps) {
     const isOwner = auth?.user?.id === job.user_id;
 
     const handleApply = () => {
+        if (!auth?.user) {
+            router.visit('/login');
+            return;
+        }
         router.post(`/api/jobs/${job.id}/apply`, {}, {
             preserveScroll: true,
             onSuccess: () => router.reload(),
+            onError: (errors) => {
+                const msg = Object.values(errors)[0];
+                if (typeof msg === 'string') toast.error(msg);
+            },
         });
     };
 
@@ -40,7 +49,7 @@ export default function JobShow({ job }: JobShowProps) {
                                 {job.salary_min && (
                                     <span className="flex items-center gap-1">
                                         <DollarSign className="h-4 w-4" />
-                                        {formatCurrency(job.salary_min)} - {formatCurrency(job.salary_max ?? job.salary_min)}
+                                        {formatPrice(job.salary_min)} - {formatPrice(job.salary_max ?? job.salary_min)}
                                     </span>
                                 )}
                                 <span className="flex items-center gap-1"><Clock className="h-4 w-4" />Posted {new Date(job.created_at).toLocaleDateString()}</span>

@@ -4,12 +4,14 @@ namespace Modules\Vendors\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Route;
+use Core\Services\Contracts\VendorQueryInterface;
+use Modules\Vendors\Services\VendorQueryService;
 
 class VendorsServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        $this->app->bind(VendorQueryInterface::class, VendorQueryService::class);
     }
 
     public function boot(): void
@@ -21,7 +23,9 @@ class VendorsServiceProvider extends ServiceProvider
     protected function registerRoutes(): void
     {
         if (file_exists(__DIR__ . '/../Routes/api.php')) {
-            Route::group([], __DIR__ . '/../Routes/api.php');
+            // Same-origin cookie auth requires Sanctum's stateful middleware to start a
+    // session; without it every browser /api/* call 401s on these routes.
+    Route::group(['middleware' => [\Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class]], __DIR__ . '/../Routes/api.php');
         }
     }
 

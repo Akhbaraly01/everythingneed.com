@@ -19,20 +19,28 @@ class Payment extends Model
         'status',
         'method',
         'reference',
+        'purpose',
         'gateway_response',
+        'idempotency_key',
+        'metadata',
+        'provider',
+        'provider_payment_id',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
         'gateway_response' => 'array',
+        'metadata' => 'array',
     ];
 
     const STATUS_PENDING = 'pending';
     const STATUS_PROCESSING = 'processing';
     const STATUS_SUCCEEDED = 'succeeded';
     const STATUS_FAILED = 'failed';
+    const STATUS_CANCELLED = 'cancelled';
     const STATUS_REFUNDED = 'refunded';
     const STATUS_PARTIALLY_REFUNDED = 'partially_refunded';
+    const STATUS_COMPLETED = 'completed';
 
     public function user()
     {

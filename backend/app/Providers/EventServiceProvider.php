@@ -24,9 +24,6 @@ class EventServiceProvider extends ServiceProvider
         ],
 
         // Products Events
-        \Modules\Products\Events\ProductCreated::class => [
-            \Modules\Products\Listeners\IndexProductForSearch::class,
-        ],
         \Modules\Products\Events\ProductStockLow::class => [
             \Modules\Products\Listeners\NotifyVendorLowStock::class,
         ],

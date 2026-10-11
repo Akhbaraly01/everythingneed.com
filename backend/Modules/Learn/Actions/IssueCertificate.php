@@ -45,6 +45,18 @@ class IssueCertificate
             'issued_at' => Carbon::now(),
         ]);
 
+        // Spec 50: learners learn about the credential without polling.
+        try {
+            app(\Core\Services\Contracts\NotificationServiceInterface::class)->notify(
+                $userId,
+                'Certificate issued',
+                "Your certificate for {$course->title} is ready.",
+                'certificate',
+                $certificate->id
+            );
+        } catch (\Throwable) {
+        }
+
         return $certificate->fresh();
     }
 }

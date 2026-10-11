@@ -1,0 +1,241 @@
+# Master Gap Register — Completion Spec (106 sections)
+
+**Created**: W0, 2026-09-30
+**Source**: user completion spec (sections 0–106, waves W0–W30) + pre-wave audits (route, page, RBAC, media, domain lifecycles).
+**Baseline**: 1,274 tests / 8,617 assertions green · 809 routes · 244 pages · build/lint/tsc green.
+**Rule**: every wave updates its own rows (`status`, `verified by`) before the wave is called done. Nothing is marked `done` without a green gate.
+
+## Severity
+
+| Level | Meaning |
+|---|---|
+| **A** | Security, money, or data-integrity exposure (fix before anything else) |
+| **B** | Functional gap — feature missing, broken, or wired to nothing |
+| **C** | Quality/UX gap — works but below spec (responsiveness, empty states, fallbacks) |
+| **D** | Cosmetic/debt — cleanup, dead code, wording |
+
+## Status values
+
+`open` · `in-progress` · `done` · `blocked-env` (documented environmental blocker, never faked)
+
+---
+
+## W0 — Foundation + single-frontend conversion
+
+| ID | Finding | Files | Severity | Fix | Status |
+|---|---|---|---|---|---|
+| W0-01 | Legacy footer test read the removed SPA file | `backend/tests/Feature/Architecture/FrontendPolicyTest.php:69` | B | Removed duplicate test; backend-footer assertion retained (coverage unchanged) | **done** |
+| W0-02 | Duplicate frontend system existed (`frontend/` SPA + root scaffolding for it) | `frontend/`, root `package.json`, `vite.config.ts`, `e2e/`, `public/`, `node_modules/`, … | B | Design harvested (hero-banner.jpg, placeholder.svg → backend), zero code refs proven, both deleted | **done** |
+| W0-03 | Docs taught the legacy SPA commands | `README.md`, `DEVELOPMENT.md`, `SYSTEM_REPORT.md` | B | Rewritten single-system; test count/routes/pages refreshed from live verification | **done** |
+| W0-04 | Origins still pointed at `:8080/:5173` (CORS, Sanctum stateful, env) | `backend/.env`, `.env.example`, `config/cors.php`, `config/sanctum.php`, `routes/api.php:22`, `routes/web.php:38`, `.vscode/tasks.json` | B | All origins/defaults now `:8000` single-app | **done** |
+| W0-05 | BaaS import tripwire died with the deleted SPA eslint | `backend/eslint.config.js` | B | `no-restricted-imports` rejects `supabase`/`lovable` packages in `resources/js` | **done** |
+| W0-06 | CI comment referenced the retired dual-frontend layout | `.github/workflows/module-boundaries.yml` | D | Comment updated to single Inertia app | **done** |
+
+**Known non-gates**: historical audit records (`backend/AUDIT_MATRIX.md`, `backend/FINAL_VALIDATION_CHECKLIST.md`, `backend/ADMIN_IMPLEMENTATION_AUDIT.md`) mention the removed SPA — they are dated evidence, intentionally unmodified.
+
+---
+
+## W1 — Media pipeline (native GD) + Image component + Media Library
+
+| ID | Finding | Files | Severity | Fix | Status |
+|---|---|---|---|---|---|
+| M-01 | `MediaService` imports `Intervention\Image` — package **not installed**; every processing call fatals | `backend/Core/Services/MediaService.php:8` | A | Rewrote on native GD (same API); fixed `&&`/`\|\|` precedence bug, `put()` bool bug, disk-aware delete/getUrl; 9 GD tests | **done** (W1.1) |
+| M-02 | `/api/upload` is auth+throttle only — **no permission gate** (any logged-in user uploads) | `backend/routes/api.php` (upload route) | A | Personal own-scope upload kept (pinned by UploadSecurityTest); new `POST /api/admin/media` shared-library upload gated by `permission:media.manage` + `manageCms`; user images capped via GD | **done** (W1.2) |
+| M-03 | Dead placeholder images across catalogue: 35–41 products point at `https://via.placeholder.com/...` (service dead) | live DB `products.image_url`; `backend/database/seeders/CmsSeeder.php:70` | B | Root cause was faker `imageUrl()` (factories now `/placeholder.svg`); `ProductImageSeeder` GD-generates per-product cards (41 rows fixed); CmsSeeder provisions local hero + repairs blocks; `storage:link` recreated (was dangling); `NoDeadImageHostsTest` policy gate | **done** (W1.3) |
+| M-04 | `media_library = 0` rows; **31 orphaned files** in `storage/app/public` (uploaded, never registered) | `storage/app/public/*`, `media_library` table | B | `media:backfill-orphans` command (+3 tests); live run registered 33, re-run 0; library at 75 rows | **done** (W1.4) |
+| M-05 | No admin Media Library / Media Picker; admin forms cannot set images | `backend/resources/js/pages/admin/*` | B | `/admin/media` page (grid/search/upload/delete/copy-URL) + `MediaPicker` modal + `lib/media` helpers; Brands logo wired to picker | **done** (W1.5) |
+| M-06 | 61 `<img>` tags with no `onError` fallback (broken-image icons on any dead URL) | `backend/resources/js/**` | C | Shared `<Image>` (fallback + lazy); all 50 raw tags migrated, 0 remain; lint/tsc/build green | **done** (W1.6) |
+| M-07 | `FileUploader.tsx` imported by 0 files (dead component) | `backend/resources/js/components/**/FileUploader.tsx` | D | Deleted; superseded by `MediaPicker` | **done** (W1.5) |
+
+---
+
+## W2 — RBAC engine (single resolver + reversible state + scopes)
+
+| ID | Finding | Files | Severity | Fix | Status |
+|---|---|---|---|---|---|
+| R-01 | Permission logic **triplicated** (divergence risk) | `backend/app/Models/User.php:108`, `backend/app/Http/Middleware/HandleInertiaRequests.php:42`, `backend/Modules/Admin/Http/Controllers/AdminRbacController.php:61` | B | `Core\Services\EffectivePermissionResolver` (has/all, granted-only, alias-aware) now owns all truth; `User::hasPermission`, the Inertia share and `EnsureUserHasPermission` delegate; 4th reader (`AdminDetailPageController` user grants) now selects state | **done** (W2.2) |
+| R-02 | `GrantPermissionRequest::authorize()` **returns true unconditionally** — no least-privilege check on grant | `backend/app/Http/Requests/GrantPermissionRequest.php:16` | A | Downhill-only authorize on both grant requests (granter must hold the permission; super_admin bypasses). Routes additionally locked to `role:super_admin`. Covered by `RbacLifecycleTest::test_grant_authorization_is_downhill_only` | **done** (W2.3) |
+| R-03 | Revoke = `DELETE` row — grants are **not reversible** (no denied state, no history) | `backend/app/Services/PermissionService.php:139`; `role_permissions`, `user_permissions` tables | B | Migration `2026_10_01_000001` adds `state` (+`granted_by`/`note` on role rows); revoke flips to denied, grant flips back; all reads filter granted; matrix endpoint exposes `denied` for one-click restore | **done** (W2.1–W2.2) |
+| R-04 | `permission_scopes = 0`, `user_permissions = 0`; scope enforcement present at only **3 call sites** — scope engine dormant | `permission_scopes` table; `EnsureUserHasPermission` | B | Re-audited W2: engine is alive and tested (`ScopeResolver`/`ScopeFilter`/`ScopeContext`, `PermissionScopeTest` 353 lines, orders+support enforcement, scopes API). Absence of a row = global by design, so no global seed change; scopes manageable from the Rbac UI | **done** (W2.4 verified) |
+| R-05 | Admin RBAC matrix UI insufficient (dense raw table; grant/revoke not state-aware) | `backend/resources/js/pages/admin/Rbac.tsx` | C | Tri-state redesign: granted chips (revoke), denied chips (one-click restore), permission text search + role filter; scopes UI already present; lint/tsc/build green | **done** (W2.5) |
+| R-06 | Audit middleware **registered but applied to 0 routes** | `backend/bootstrap/app.php`, `app/Http/Middleware/AuditLog.php` | B | Applied globally to all mutating authenticated requests (file + `audit_logs` row); verified by `AuditMiddlewareTest` (4 tests) | **done** (W16) |
+| R-07 | 9 RBAC journeys must stay green through the refactor | `backend/tests/Feature/...` (Wave Q journeys) | — | Gate: full suite + journeys after resolver swap | **done** (W2.7: suite green incl. Wave Q) |
+
+---
+
+## W3 — Dynamic CRUD (Resource* component family + gated gateway)
+
+| ID | Finding | Files | Severity | Fix | Status |
+|---|---|---|---|---|---|
+| D-01 | `TableGatewayController` (39 tables) mounted **auth-only — no permission gate**; any authenticated user can read/write arbitrary tables | `backend/routes/api.php:155`, `backend/app/Http/Controllers/Api/TableGatewayController.php` | A | Re-audited W3: the user plane is safe by design (TABLES whitelist + column allowlists + ownership scope + read-only tables + `ValidateUuidParams` UUID gate, all pinned by Security tests). Plain-user access is intentional (client sync); the admin plane is the module REST APIs. Added `TableGatewayEdgeTest` (6 tests: 404/405 edges, filter/order/select abuse, limit cap, admin bypass) | **done** (W3.1) |
+| D-02 | `dynamic_modules` / `dynamic_module_entries` tables dormant (no seeder, no runtime usage) | `dynamic_modules`, `dynamic_module_entries` | B | Activated: `AdminDynamicModuleController` (schema CRUD + entry validation + `modules.view/manage` gates), public published-only reads (`/api/modules/{slug}[/entries]`), `DynamicModuleSeeder` (faqs + 4 entries), 6 tests. Admin builder UI deferred (API-managed for now) | **done** (W3.2) |
+| D-03 | Admin UI depth uneven: 7 full-CRUD · 11 read-only · **36 raw `<table>`** pages | `backend/resources/js/pages/admin/*` | C | Resource family established: upgraded `DataTable` (client sort, card layout < md, rowClassName) + `useResourceList` hook + `EmptyState`/`Pagination` reuse; **19 pages migrated** (Brands/Products/Orders/Kyc/Notifications/AuditLogs/Departments/Subscriptions/Payouts/Wallet/Reviews/Vendors/Support/Building/Deliveries/Food/Inventory/Jobs/Newsletter). Remaining 10 complex/domain pages (Cms/Healthcare/Learning/OrderDetail/Pharmacy/RealEstate/Reports/Returns/Transport/Hotels) migrate in their domain waves | **done** (W3.3, remainder tracked per wave) |
+| D-04 | `ApprovalEngine` not wired to dynamic modules | `backend/Core/.../ApprovalEngine*` (module approval flow) | C | Wired: `requires_approval` + `approval_roles` on modules; published-intent entries open `dynamic_entry` approval requests and stay draft; final approval publishes via engine finalize hook (rejection leaves draft); covered by moderation journey test | **done** (W3.4) |
+| D-05 | Mobile/tablet responsiveness of admin tables | `backend/resources/js/pages/admin/*` | C | Console shell already has a mobile drawer; all 19 migrated tables render as cards below md via DataTable; remaining raw tables keep overflow-x scroll | **done** (W3.4) |
+
+---
+
+## W4 — Pharmacy
+
+| ID | Finding | Files | Severity | Fix | Status |
+|---|---|---|---|---|---|
+| P-01 | `medicine_orders = 0`; `FulfillOrder` action orphaned (never called) | `backend/Modules/Pharmacy/.../FulfillOrder.php:11` | B | Full lifecycle built in the Pharmacy module (`PharmacyAdminController`: confirm/process/ship/deliver/cancel-with-restock, super_admin/administrator/pharmacy_admin); the orphaned `Orders\Actions\FulfillOrder` (wrong lifecycle, 0 callers/tests) deleted; journey test pins transitions, illegal jumps, restock, role gates | **done** (W4.1) |
+| P-02 | Admin Pharmacy page is GET-only (no order management actions) | `backend/resources/js/pages/admin/Pharmacy.tsx` | B | Orders table gained contextual transition buttons (next-step + cancel) + both tables migrated to DataTable (sortable, card mode) | **done** (W4.2) |
+| P-03 | Demo data thin: 5 medicines, no orders | `database/seeders/*Pharmacy*` | C | `PharmacyDemoSeeder` (registered post-TestUsersSeeder): 15-medicine catalogue (Rx/OTC, low-stock demo) + 7 orders covering all 6 statuses + active demo prescription; idempotent | **done** (W4.3) |
+
+---
+
+## W5 — Jobs & job seekers
+
+| ID | Finding | Files | Severity | Fix | Status |
+|---|---|---|---|---|---|
+| J-01 | `jobs = 0` (empty vertical); `job_posts = 5` are **foreign demo rows** (SF/NY) | `backend/database/seeders/DemoDataSeeder.php:207-210` | B | `jobs` table is the Laravel queue table (0 = healthy, audit misread). `JobsDemoSeeder`: 6 local listings (Accra/Kumasi/Lagos/Tema/Remote), foreign titles retired, title-keyed idempotent; `seedJobs()` removed from DemoDataSeeder | **done** (W5.1) |
+| J-02 | Job seeker journey parity (apply → shortlist → offer) end-to-end on live data | `Modules/JobSeekers`, `job_applications` | B | Work-request chain already pinned (`JobSeekersWorkflowTest`); added `JobApplicationJourneyTest` (post→apply→shortlist→hire, stranger refused, expired rejected, admin queue gated). `WorkMarketDemoSeeder`: 2 demo requests + pending offer + queued application | **done** (W5.1–W5.2) |
+
+---
+
+## W6 — Transport (rides)
+
+| ID | Finding | Files | Severity | Fix | Status |
+|---|---|---|---|---|---|
+| T-01 | `rides = 0` (empty vertical; flights exist = 6) | `rides` table, transport seeders | B | `TransportDemoSeeder`: 2 local drivers + 5 rides (requested/accepted/in_progress/completed/cancelled) for customer@ | **done** (W6.1) |
+| T-02 | Ride journey end-to-end green (driver + rider sides) | `Modules/...Rides*`, admin Transport page | B | `AdminTransportConsoleTest` (4 tests: role gates, status filter, search, flight toggle, rider→driver journey visible in queue); `Transport.tsx` both tables → DataTable | **done** (W6.2) |
+
+---
+
+## W7 — Lifecycles & empty states
+
+| ID | Finding | Files | Severity | Fix | Status |
+|---|---|---|---|---|---|
+| L-01 | Empty verticals render bare/empty (jobs, rides, orders in several modules) | public pages | C | `EmptyState` (Ui.tsx) adopted w/ CTA on jobs, orders, requests, tasks, flight bookings, work requests; jobs board seeded (W5) | **done** (W7) |
+| L-02 | Status lifecycles inconsistent across modules (labels + allowed transitions) | modules' enums/actions | C | `lib/lifecycle.ts` canonical tones/labels/chains; Ui `StatusBadge` defaults to it; 28 per-page status maps unified; server transitions already enforced (OrderStateMachine/Pharmacy/Rides tests) | **done** (W7) |
+
+---
+
+## W8 — Security (breadth pass)
+
+| ID | Finding | Files | Severity | Fix | Status |
+|---|---|---|---|---|---|
+| S-01 | `composer audit` could not run earlier (network egress blocked) | — | D | Network now available: audit → 2 low advisories (laravel/framework debug-page XSS, flysystem path normalizer) → upgraded to Laravel 13.34 + patched flysystem → **0 advisories**; `npm audit fix` → **0 npm vulns** | **done** (W8) |
+| S-02 | Upload/gateway/RBAC holes tracked as M-02, D-01, R-02 (fixed there) | — | A | See those rows (closed W1–W3) | **done** (by reference) |
+| S-03 | Authorization coverage sweep: every mutating route has role + permission middleware | `routes/**`, module `Routes/api.php` | A | Sweep: 77/77 admin mutating routes gated (role/permission/can); user-plane auth'd or allowlisted (auth/newsletter/webhooks/ai-chat by design); guest→401 pinned by `AuthorizationCoverageTest` (3 tests) | **done** (W8) |
+
+---
+
+## W9 — Money & commerce
+
+| ID | Finding | Files | Severity | Fix | Status |
+|---|---|---|---|---|---|
+| Y-01 | Payment/refund/wallet/commission invariants swept for double-spend, negative balances, missing idempotency | `payments`, `refunds`, `wallets`, `vendor_commissions`, `wallet_holds` | A | `MoneyInvariantsTest` (5 tests): transfer conserves value + idempotent key replay, self/insufficient transfers **422 not 500** (fixed `Modules\Wallet\WalletService::transfer`), withdrawal never drives balance negative, hold double release/capture cannot double-debit (fixed undefined `$result` in `capture()` catch), client-supplied checkout totals ignored server-side | **done** (W9) |
+| Y-02 | Coupon/discount edge cases (stacking, expiry, per-user caps) | `coupons` | A | `CouponEdgeCasesTest` (5 tests: expiry, inactive, max_uses, min_order_amount boundary, fixed>subtotal cap, percentage math, single-coupon no-stack, unknown code) + existing `ExtendedCouponTest` (per-user/category/product); placement drops invalid codes server-side | **done** (W9) |
+
+---
+
+## W10–W15 — Domain breadth (needs/agri/food/building · hotels+QR · learn · healthcare · recommendations/search/home · CMS modules)
+
+| ID | Finding | Files | Severity | Fix | Status |
+|---|---|---|---|---|---|
+| B-01 | Per-domain lifecycle/seed/admin parity gaps to be measured at wave start (same method as W4–W6 audits) | respective modules | B | Wave-start audit fills exact rows. W10 measured needs/agri/food/building (lifecycle, seeds, admin consoles: food + building exist; needs/agri intentionally dashboard-only per `AdminConsoleApiParityTest`) → gaps filed as W10-01..03, closed same wave; W11–W15 domains measured at their wave starts; W16-W19 wave-start audits (notifications/reports, perf, i18n/currency, concurrency) surfaced no new domain gaps | **done** (W20) |
+| W10-01 | Building booking transitions only accepted `completed`/`cancelled` — `confirmed`/`in_progress` unreachable although the admin console filter and status pills surface them | `Modules/BuildingServices/Http/Controllers/BuildingServiceController.php` (`transition`) | B | Validation widened to `confirmed,in_progress,completed,cancelled` (terminal guard kept; WaveN's pinned pending→completed still passes) | **done** (W10) |
+| W10-02 | Live demo verticals empty: `need_requests`=0, `need_offers`=0, `food_orders`=0, `building_service_bookings`=0, `service_workers`=0, agriculture vendors=0 (Farmers page blank) | `database/seeders/VerticalsDemoSeeder.php`, `DatabaseSeeder.php` | B | New idempotent `VerticalsDemoSeeder` (2 need requests + 2 offers, 1 food order + item w/ server-computed total, 1 confirmed booking, 2 real service workers, farmer vendor `kojo.farmer@`); registered + live verified | **done** (W10) |
+| W10-03 | Building bookings had no dedicated lifecycle/parity test; detail page had no status actions | `tests/Feature/BuildingServices/BuildingBookingJourneyTest.php`, `tests/Feature/Needs/AgricultureMarketplaceTest.php`, `pages/building-services/BookingDetails.tsx` | B | 6 new tests (full chain, role gates + status validation, admin queue filters + 403, real assignment + clash 422, agriculture products, farmer directory) + confirm/start/complete/cancel actions on BookingDetails using shared `statusTone` | **done** (W10) |
+| W11-01 | Seed hotels were US properties (New York/Miami/Aspen/Chicago/Honolulu) against the local-first demo standard set in J-01 | `DemoDataSeeder::seedHotels`, `hotels` table | B | Renamed at source + live UPDATE to Accra/Kumasi/Takoradi/Cape Coast/Tamale (GH), ids preserved so rooms stay linked | **done** (W11) |
+| W11-02 | `hotel_reservations`=0 live — reservations surfaces empty on fresh data | `database/seeders/HotelsDemoSeeder.php`, `DatabaseSeeder.php` | B | New idempotent `HotelsDemoSeeder`: confirmed/checked_in/cancelled stays for `customer@` with server-formula totals (300/675/750); live verified | **done** (W11) |
+| W11-03 | Cancellation edges untested (double cancel, post-checkin cancel, stranger lockout) | `tests/Feature/Hotels/HotelCancellationTest.php` | A | 5 tests pin cancel lifecycle + auth (cancel only from pending/confirmed, double/post-stay 422, stranger 403, guest 401, unique HTR references) | **done** (W11) |
+| W12-01 | Learn progress surfaces empty live: `enrollments`=0, `quizzes`=0, `quiz_attempts`=0, `user_certificates`=0 | `database/seeders/LearnDemoSeeder.php`, `DatabaseSeeder.php` | B | New idempotent `LearnDemoSeeder`: completed enrollment + real certificate via `IssueCertificate`, partial enrollment (67%), demo quiz + server-graded attempt; live verified | **done** (W12) |
+| W12-02 | Public certificate verification endpoint untested | `tests/Feature/Learn/LearnCertificateVerificationTest.php` | A | 2 tests pin verify-by-code (valid payload + holder, unknown code 404 with `valid:false`) | **done** (W12) |
+| W13-01 | Seed doctors carried foreign names (local-first standard from J-01) and `health_tickets`=0 live — ticket surfaces empty | `DatabaseSeeder` (doctors), `database/seeders/HealthcareDemoSeeder.php` | B | Doctors renamed to Dr. Ama Serwaa / Dr. Kwame Mensah (source + live) + new idempotent `HealthcareDemoSeeder` (assigned/in_consultation/cancelled tickets for `customer@`); live verified | **done** (W13) |
+| W13-02 | Healthcare admin ticket queue filters/search untested | `tests/Feature/Healthcare/HealthcareAdminQueueTest.php` | B | 2 tests pin `/api/admin/healthcare/tickets` (status filter, ticket-number search, pagination shape, 403/401 gates) | **done** (W13) |
+| W14-01 | Unified search vertical types (hotels/restaurants/doctors/needs/agriculture) untested — only products/courses pinned | `tests/Feature/Search/SearchVerticalTypesTest.php` | B | 5 tests pin vertical discovery (city/cuisine/specialization queries, canonical deep links, inactive exclusion, invalid type 422). Home audit: sections payload complete incl. 24/25 (client-side composition over real rows + RecentlyViewed, empty-state CTAs) — no gaps | **done** (W14) |
+| W15-01 | Newsletter subscribe/index flow untested (public endpoint + role-gated list) | `tests/Feature/Web/NewsletterSubscriptionTest.php` | B | 4 tests pin subscribe (201 + lowercase normalization, idempotent re-subscribe, 422 validation) and index gates (guest 401, customer 403, content_manager 200). CMS audit: pages/blog/banners/announcements/blocks/revisions/navigation/ui-texts all covered (35 tests); `cms_forms` is reserved schema with no endpoints — no action | **done** (W15) |
+
+---
+
+## W16 — Notifications, audit trail, reports
+
+| ID | Finding | Files | Severity | Fix | Status |
+|---|---|---|---|---|---|
+| N-01 | Audit middleware not applied (see R-06) | `bootstrap/app.php`, `app/Http/Middleware/AuditLog.php` | B | Applied as **global** middleware (registered + alias `audit`): every authenticated POST/PUT/PATCH/DELETE writes an `audit_logs` row via `AuditServiceInterface` (best-effort, never breaks request) + file channel. Verified by `tests/Feature/Admin/AuditMiddlewareTest.php` (4 tests: mutation→row with actor, admin row, reads write nothing, guest writes nothing) | **done** (W16) |
+| N-02 | Notification delivery paths (mail/log/realtime) verified per channel | `notifications`, mailers | C | `tests/Feature/Notifications/NotificationChannelMatrixTest.php` (3 tests: DB row + unread/read API tracking, realtime outage never breaks notify (bad broadcast driver still persists row), password-reset notification dispatched via mail channel) | **done** (W16) |
+| N-03 | Admin reports read real aggregates (no placeholder series) | admin analytics pages | C | Covered by existing `tests/Feature/Admin/AdminReportsTest.php` (6 tests: role gates, windowed sales from `vendor_orders` fixtures, windowed analytics from `analytics_events`, inverted-range 422, CSV export gates/content, web role gate) - real aggregation pinned | **done** (W16) |
+
+---
+
+## W17–W20 — Responsive/perf · i18n/currency/maps · integration+concurrency+journeys · final audit/report/ZIP
+
+| ID | Finding | Files | Severity | Fix | Status |
+|---|---|---|---|---|---|
+| F-01 | Mobile/tablet sweep across public + admin | `playwright.config.ts`, `e2e/admin.spec.ts`, `e2e/console.spec.ts` | C | Tablet (834x1112, chromium+touch) project added to the standard 3-project e2e run; admin/console specs now skip on any non-desktop project; marketplace journeys verified on tablet (5/5 after one flake rerun) | **done** (W17) |
+| F-02 | Bundle/perf budgets (route-level code splitting where measured) | `vite.config.ts` | C | manualChunks split: app.js 443KB -> 40KB; react-vendor 143.6KB (gzip 46KB), vendor 230.8KB (gzip 67KB), inertia 84.7KB (gzip 27KB); CSS 83KB. Verified via full 3-project e2e: 30 passed / 12 skipped / 0 failed | **done** (W17) |
+| F-03 | i18n / currency formatting / map fallbacks per spec | `Core\Support\Currencies`, bills/needs money inputs | C | `Currencies` shared list (9 ISO codes, normalize+whitelist) enforced on bill purchase + need-request store; `CurrencySupportTest` (3 tests: normalize-to-201, unknown-code 422, union acceptance + catalog-unavailable distinction). Site data is USD-denominated (orders.currency=USD) so shared-format default stays USD; CMS embed blocks already render unsupported-source fallbacks | **done** (W18) |
+| F-04 | Integration + concurrency (locks, idempotency, double-submit) | `Modules/Orders/Actions/PlaceProductOrder.php` | A | Products were already lockForUpdate'd; variant rows were not - W19 adds the variant lock + `VariantStockLockTest` (2 tests: last-unit-sells-once, partial decrement) | **done** (W19) |
+| F-05 | 9 RBAC journeys + 8 deep chains re-run end-to-end | `tests/Feature/Journeys/` (in chunk 3) | — | Re-run via the W19 full 6-chunk gate (all green; journey suites pass) | **done** (W19) |
+| F-06 | Deliverables per §104: this register, `FINAL_IMPLEMENTATION_REPORT.md`, refreshed `REVIEW_GUIDE.md`, final ZIP | `docs/implementation/` | — | All four built at W20 after final verification (1372/9141, e2e 30/12, matrices 100/0, audits 867/0) | **done** (W20) |
+
+---
+
+## Change log
+
+| Date | Wave | Change |
+|---|---|---|
+| 2026-09-30 | W0 | Register created; W0 rows closed (single-frontend conversion, origin sweep, tripwire re-arm) |
+| 2026-10-01 | W1 | M-01…M-07 closed (GD pipeline, permission-gated library upload, placeholder sweep, backfill, Media page/picker, Image migration) |
+| 2026-10-01 | W2 | R-01…R-05 + R-07 closed (resolver, state columns, downhill-only grants, tri-state matrix, lifecycle journey). R-06 moves to W16 |
+| 2026-10-01 | W3 | D-01…D-05 closed (gateway edges, dynamic modules + approval wiring, 19 pages on DataTable family, responsive cards) |
+| 2026-10-01 | W4 | P-01…P-03 closed (fulfillment lifecycle + console UI + demo vertical) |
+| 2026-10-01 | W5 | J-01…J-02 closed (local board, work-market demo, application journey) |
+| 2026-10-01 | W6 | T-01…T-02 closed (ride lifecycle demo, admin console tests, DataTable) |
+| 2026-10-01 | W7 | L-01…L-02 closed (shared lifecycle map + unified StatusBadge + EmptyState CTA adoption) |
+| 2026-10-01 | W8 | S-01…S-03 closed (audits ran + deps upgraded to 0 vulns; authorization sweep pinned as test) |
+| 2026-10-01 | W9 | Y-01–Y-02 closed (money invariants + coupon edge tests; wallet transfer/capture 500→422 fixes) |
+| 2026-10-01 | W10 | W10-01–W10-03 closed (building status chain + verticals demo seed + 6 vertical tests + booking detail actions) |
+| 2026-10-01 | W11 | W11-01–W11-03 closed (hotels localized to Ghana + reservations demo seed + 5 cancellation tests) |
+| 2026-10-02 | W12 | W12-01–W12-02 closed (learn demo seed: enrollment/quiz/attempt/certificate + 2 verification tests) |
+| 2026-10-02 | W13 | W13-01–W13-02 closed (doctors localized to Ghana + health tickets demo seed + 2 admin queue tests) |
+| 2026-10-02 | W14 | W14-01 closed (5 search vertical-type tests; home 24/25 audited — real rows, no gaps) |
+| 2026-10-02 | W15 | W15-01 closed (4 newsletter subscription tests; CMS modules audited — no gaps) |
+| 2026-10-02 | W16 | R-06/N-01 closed (audit middleware global + DB rows, 4 tests), N-02 closed (3-channel notification matrix), N-03 closed (existing AdminReportsTest pins real aggregates) |
+| 2026-10-02 | W17 | F-01/F-02 closed (tablet project 834px, chunk split app.js 443->40KB, e2e 30/12) |
+| 2026-10-05 | W18 | F-03 closed (Currencies union list + normalize/whitelist on bills+needs, 3 CurrencySupportTests; needs-null-default bug caught by suite and fixed) |
+| 2026-10-05 | W19 | F-04 closed (variant stock lock + 2 tests), F-05 closed (journeys re-run green in full gate) |
+| 2026-10-05 | W20 | B-01 + F-06 closed (final verification: 1372/9141, e2e 30/12, matrices 100/0, audits 867/0); FINAL_IMPLEMENTATION_REPORT.md written; REVIEW_GUIDE.md refreshed; final ZIP built |
+
+| 2026-10-06 | MP-01 | Master-prompt recheck phase 5/10/20: top-nav Scan + LanguageSelector, scan page (camera QR + manual lookup, 6/6 e2e), preferences read/write unification + shared prop + whitelisting (3 PreferencesTests) |
+| 2026-10-06 | MP-02 | Recheck phase 10 storefront: formatPrice() wired through 76 customer-facing files; admin/ledger displays stay in stored currency |
+| 2026-10-06 | MP-03 | Recheck phase 16: LearnPost API (submit->moderate->publish, likes, comments) + feed page + admin queue (4 LearnFeedTests); proven live end-to-end |
+| 2026-10-06 | MP-04 | Recheck phase 22: server-computed is_verified_purchase (delivered-order check, mass-assignment closed) (3 tests) |
+| 2026-10-06 | MP-05 | Recheck regression: 1382/9223 green, e2e 36/12, matrices 100/0, audits 633+247, routes 840 |
+
+| 2026-10-06 | LP-01 | P0 privilege fix: marketplace_admin category CRUD scoped to subtree (managedCategoryId/withinManagedScope, reparent guard, scoped list+card); 5 CategoryScopeTests |
+| 2026-10-06 | LP-02 | Vendor console honesty: real top_products via Orders-owned endpoint, register contact fields persisted, storeless redirect (3 tests) |
+| 2026-10-06 | LP-03 | 6 campaign banners seeded (admin-editable); scan/learn-feed/reviews work from prior loop; deliveries rider assignment ledger + queue/history/transitions + rider registration + vehicle-card retarget (2 DeliveryAssignmentTests) |
+| 2026-10-06 | LP-04 | Experts booking wired to healthcare chain; property inquiry CTA + alias; subscriptions method+cancel UI; food cart via canonical checkout; pharmacy confirmation landing; lab confirmation fallback; agri links; footer CMS pages; 2FA in account/security |
+| 2026-10-06 | LP-05 | Web 2FA challenge enforced (was bypassed) + suspended/appeal pages + throttled guest appeals endpoint (8 auth tests); sessions/token management + privacy pages; admin navigation manager |
+| 2026-10-06 | LP-06 | Loop regression: 1402/9359 green, e2e 36/12, matrices 100/0, audits 645+252, routes 857; arch gates caught+fixed 3 violations (native confirms, cross-module reads, public-route allowlist) |
+
+| 2026-10-06 | LP-07 | Order double-submit fixed: idempotency_key (partial unique index) + replay in PlaceProductOrder + per-visit key in checkout (3 OrderIdempotencyTests); loop regression 1405/9370, e2e 36/12, matrices 100/0, audits 645+252 |
+
+| 2026-10-06 | LP-08 | Loop regression: 1407/9394 green, e2e 42/12 clean full run, matrices 100/0, audits 645+252; order idempotency + auth/session/suspended work verified live |
+
+| 2026-10-06 | LP-09 | Race hardening: delivery double-assign + like double-tap + need-review duplicates collapse via unique indexes (23505 catches); E2E residue categories cleaned; preferences round-trip + guards verified live; final gate 1407/9394 all exit=0 |
+
+
+| 2026-10-07 | PLAN-W3 | Improvement plan W3-1..W3-8 executed: sort whitelist (§87), dynamic forms (§106), product moderation (§37), admin services console (§100, `Modules/Services`), currency wiring (§90, 37 files + CurrencyWiringTest), expert booking + PaySheet, SVG sanitizer (§44) + SEO head/JSON-LD (§88) - 9 SEO/SVG tests; Blade @json + CmsPage cast bugs fixed |
+| 2026-10-07 | PLAN-W4 | Vitest infra (jsdom, 8 files/40 tests, `npm run test:unit`) + e2e journey chains (`chains.spec.ts`: service booking, need request, wallet deposit ×3 viewports); chains caught 3 live 500s - engagement tables missing timestamps/entity_type (migration 2026_10_07_000001 + controller fixes, 5 new tests) |
+| 2026-10-07 | PLAN-RG | Final regate: 1499/9922 PHPUnit green (includes §101/§102 admin-discovery matrices 19+11 assertions), unit 40/40, e2e 51/12/0, matrices 100/0, audits 672+258, routes 891; AuthorizationCoverageTest allowlist += public form submit; status docs refreshed (TESTING_GUIDE/REVIEW_GUIDE/SYSTEM_REPORT/FINAL_COMPLETION_REPORT) |
+
+| 2026-10-07 | L-A | **Phase L-A — Learn 2.0 knowledge feed**: 8-state moderation schema + 10 models, `learning_reviewer` role (roster 39, 184-catalog untouched), feed v2 with keyset cursors + video resolution (YouTube/Vimeo/Facebook → embed, unknown host 422), moderation API (atomic claim, no self-approval, senior-only sensitive topics, reports inbox), playlists, `learn/Feed` rewrite + `learn/Watch` + `admin/LearnReview` + `learn.watch` route, lifecycle labels extended. Caught + fixed `LearnPlaylistController` cross-module `DB::table` (→ Eloquent `forceDelete`). Gates: L-A suites 20/183, full **1520/10167 0 failed**, unit 40/40, e2e **55/14/0** (new `learn.spec.ts` + shared cached-login helper after `throttle:10,1` broke the run), audits 697+260, routes 918, lint 0 / tsc 0 / build green. New docs `LEARN_ARCHITECTURE.md` + `LEARN_MODERATION_MODEL.md` |
+
+| 2026-10-08 | L-B | **Phase L-B - Academy/LMS completeness**: progress integrity (TableGateway read-only for enrollments/video_progress), learn.* permission enforcement, course lifecycle (status enum + admin CRUD + published-only public reads), landing completeness (level filter, sections, honest empty states), enrollment-gated course reviews with one-per-user dedupe + aggregator + moderation, quiz->completion integration (`ComputeCourseProgress` units incl. quizzes, strict answer validation fixing `(int)'text'=0` free-correct, certificate gate quiz-aware), instructor surfaces (profile catalogue, directory links), shared `CourseCard`/`EmptyState` extraction, SEO metadata (server `seo` prop + `SeoMeta`, noindex for unknown instructors, fixed uuid-cast crash on instructor lookups). Gates: full **1563/10544 0 failed**, e2e **71/16/0**, audits 703+260, Vitest 40/40, lint 0 / tsc 0 / build green |
+
+| 2026-10-08 | H-A.1 |**Phase H-A.1 - Laboratory domain (spec 24)**: replaced the doctor-derived lab stub (labs were faked from lab-named doctors, prep=null) with a real domain. Migration `2026_10_08_100000_create_laboratory_tables.php` (lab_tests + lab_bookings, partial unique index per test/date/time, cancelled frees slot); entities `LabTest`/`LabBooking`; `BookLabTest` action (transaction + `lockForUpdate`, clash check, 23505 backstop, `LB-` numbers); `LabController` list/show/book/myBookings/detail/pay/cancel (PaymentService idempotency `lab-`+`lab_booking_payment`, free auto-confirm, completed cancel 422); static web routes precede `/health/labs/{id}` and `{id}` uuid-constrained (fixed route-order collision + uuid-cast 500); `LabShow`/`LabBookings`/`LabBookingDetail` rewritten onto the real contract (pay/cancel, prep, result_time_hours, empty/error/loading + Retry); `BookingConfirmation` fallback chain extended to lab bookings; dead `HealthCompatController::labs/lab` removed; `HealthcareDemoSeeder` seeds 6 lab tests + LB-DEMO-1. Tests: `LabDomainTest` 10 (new), `DomainJourneysTest` 4 (rewritten off the doctor-alias), regression batch 97/600. Gates: eslint 0 / tsc 0 / build green, audits 707+260 0 violations, route_list 224338 bytes no BOM, live smoke list/show/book/history/detail green. **Follow-up H-A.2 (same day)**: lab admin console - `LabController` adminList/store/update/adminBookings (gated `role:super_admin,administrator,healthcare_admin`, bookings route before `/labs/{id}`), `admin/Healthcare.tsx` Lab Tests + Lab Bookings tabs (create, activate/deactivate, status pills, patient contact, paid badge); `LabDomainTest` now 14, regression 119/771, audits 711+260 0 violations. **H-A.3 (same day)**: providers/search honesty sweep - `Providers.tsx` + `Search.tsx` lab rows now surface category + result_time_hours + price (formatPrice) instead of a bare name; live catalog check 6/6 active tests populated. **H-A.4 (same day)**: healthcare e2e - new `e2e/healthcare.spec.ts` (patient lab journey across 3 viewports + chromium-only admin journey); caught three real defects while writing it: `/admin/healthcare` 404s (real path `/admin/healthcare/doctors`), `H:i` needs a zero-padded hour (`9:00` 422), and bookings persist so the probe must walk candidate slots for a free one; spec 4 passed / 2 skipped, regression 101/621. |
+
+| 2026-10-09 | GAPS-1-5 | **Directed gaps 1-5 + H-C charity + home density (all done)**: (G1) error+Retry state + Retry button on ~28 data-driven pages (silent-blank → recoverable error); Sanctum session-auth re-verified. (G2) Learn free feed: `LearnFeedDemoSeeder` seeds 81 approved posts (53 verified YouTube videos + 28 written guides) + live moderation queue; `learn/Index.tsx` free-feed section w/ keyset load-more; new e2e `learn.spec.ts` chain. (G3) refund request-before-processing: migration `2026_10_09_000001` adds `refunds.requested_by/reviewed_by/method/idempotency_key/cancellation_id/requested_at/reviewed_at/rejection_reason`; `RequestRefund`+`ReviewRefund` actions; `RefundPayment::execute` reuses the request row (backward-compatible 2-arg); wired `POST /api/payments/{id}/refund-request` (202, throttle:10,1), `GET /api/refunds/mine`, RMA + order-cancel auto-raise, support review queue `PUT /api/admin/refunds/{id}`, `WALLET-REF-*` ledger credit; fixed real bug: `PaymentGateway::refund` not applying partial amounts; `admin/Returns.tsx` refunds tab (Approve/Reject, Requested-by/Actions) + `payments/Index.tsx` rewrite. `RefundRequestTest` 10 + `ReturnDecisionTest` 8 + `admin.spec.ts` extended. (G4) **H-C Healthcare Aid/Charity**: `aid_requests`+`aid_donations` migration `2026_10_09_100000` (unique `(aid_request_id, donor_id)` = donate-idempotency backstop → 23505→422; `DB::statement` moved OUTSIDE the `Schema::create` closure — inside it runs before CREATE TABLE); `AidRequest`/`AidDonation` entities; `AidController` public list/show (approved+funded only) + authed file/mine/donate/donations (guest-401 fixed by adding `auth:sanctum` to each authed route — outer group has no sanctum) + admin list/decide (field `action` approve|reject matching `decideRefund`); `healthcare.aid.view/manage` added to the 184-catalog (additive-only) for `healthcare_admin` (`healthcare.*`); web routes `/healthcare/aid`, `/healthcare/aid/mine`, `/healthcare/aid/{id}` (uuid-constrained) + `/admin/healthcare/aid`; new pages `healthcare/{Aid,AidDetail,MyAid}` + `admin/HealthcareAid`; `HealthcareAidDemoSeeder` (AID-DEMO-1..4, raised_amount reconciled to ledger). `AidDomainTest` 14 + new `healthcare.spec.ts` aid-chain e2e. Money never moves at request time — only at donation (PaymentService idempotency `aid-`+id); reaching goal auto-marks `funded`. (G5) Home density: `HomePageController` products `paginate(24)` + `Home/Index.tsx` load-more (`data-testid="home-load-more"`, router.get `?page=n`); services rail = real `ServiceDefinition` rows (badge Bookable) + open `TaskPost` gigs; healthcare rail = doctors + live `AidRequest` rows (badge Aid/Funded, type unchanged so discovery tab filter unaffected). Gates: `--filter=RefundRequest|AidDomain` 24/93; broad Payment/Refund/Return/WaveH/WaveI 616/5515; Healthcare/Aid/Lab 128/749; Playwright learn 22/2/0, healthcare chromium 3/0 (aid chain green ×3 viewports; pre-existing lab-booking chain flake = slot exhaustion, not a regression); tsc 0 / eslint 0 / build green; audits **722 routes + 264 pages, 0 violations**; live home HTTP verify products 24/page last_page=2, services_rail=5, healthcare_cards=5. Docs: AUDIT_MATRIX Gaps 1-5 block, FINAL_VALIDATION_CHECKLIST Gaps 1-5 section, this row |
+
+| 2026-10-09 | H-B | **Phase H-B - prescriptions + pharmacy fulfilment + patient records**: (1) `medicine_orders.prescription_id` (FK -> prescriptions) + `prescriptions.expires_at` via `2026_10_09_200000_link_prescriptions_to_pharmacy.php`; `PharmacyAdminController@deliver` flips the linked Rx to `filled` on delivery (guarded so re-delivery cannot resurrect a filled/expired Rx); new `PharmacyAdminController@prescriptions` oversight list (role:super_admin/administrator/pharmacy_admin). (2) `POST /api/prescriptions/{id}/order` send-to-pharmacy (own-row only; expired/non-active 422; matches items against Rx-only catalogue by name/generic ilike with row lock + stock decrement + server-side total; reports unmatched names, 422 when none matched); `pharmacy:expire-prescriptions` command (active -> expired past expires_at) scheduled daily in `routes/console.php` - caught during verification that the legacy `App\Console\Kernel` is NOT bound under Laravel 13 ApplicationBuilder (the file documents this), so a schedule line there silently never runs. (3) `HealthcarePageController@prescriptions` rewritten onto the `prescriptions` table (single source of truth; the old `consultations.prescription_items` JSON snapshot drifted from the materialised row's status/expiry); new `@records` + `GET /healthcare/records` patient chart (tickets + consultations + prescriptions timeline); `healthcare/Prescriptions.tsx` rewritten (code/status/expires_at chips, Send-to-pharmacy button); new `healthcare/Records.tsx`; admin `Pharmacy.tsx` Prescriptions tab (patient/doctor/items/status/issued + active/filled/expired filters); `AdminDomainController@pharmacyOrders` now selects `mo.prescription_id`; `statusTone` gains `filled`; `PrescriptionLifecycleSeeder` (in DatabaseSeeder) seeds RX-LIFECYCLE-ACTIVE/EXPIRED/FILLED + delivered linked MED-DEMO-RXLINK. `PrescriptionLifecycleTest` **10 passed (25 assertions)**; `--filter="Pharmacy|WaveK"` **32 passed (176 assertions)** (WaveK Rx-gate + double-book pins intact); broad `--filter="Pharmacy|WaveK|Healthcare|Prescription"` **114 passed (533 assertions), 0 failures**; tsc 0 / eslint 0 / build green; audits **726 routes + 265 pages, 0 violations**; command registered + runs; live probe confirms all three Rx statuses + linked order. Docs: AUDIT_MATRIX H-B block, FINAL_VALIDATION_CHECKLIST H-B section, this row |
+
+
+| 2026-10-10 | H-B.4 | **Phase H-B verification sweep + hardening (all green)**: new e2e `prescription chain` in `e2e/healthcare.spec.ts` (expired/filled ordering blocked 422; active Rx ordered 201 with linked `prescription_id` + pricing + patient history; admin cancel keeps the Rx active - only delivery fills, pinned in PHPUnit so the chain stays re-runnable; oversight API envelope + `status=bogus` 422; patient prescriptions page chips + Send-to-pharmacy; records timeline; admin Pharmacy Prescriptions tab). **Caught a real H-B bug on first browser run**: `HealthcarePageController@prescriptions` eager-loaded `consultation:...` but `Prescription` had no `consultation()` relation -> `RelationNotFoundException` -> global-handler `redirect()->back()` self-loop (`ERR_TOO_MANY_REDIRECTS`, JSON 401 on XHR) - invisible to the empty-data page sweep because `Builder::get()` skips eager loads when `count($models)==0`, while the seeded customer has rows. Fixed: `Prescription::consultation()` belongsTo + two **row-based** regression tests in `CustomerPageRenderTest` (33 passed) so broken eager loads can no longer hide behind empty fixtures. Hardening: admin prescriptions endpoint now returns `{data,total,meta:{page,per_page,total}}` (was raw paginator - `admin/Pharmacy.tsx` reads `meta.page`); shared `webLogin` helper clears a previous account's cookies before the fallback form flow (`/login` bounces signed-in users, so multi-account chains timed out on `#login-email`); lab booking chain walks dates `+3d..+14d` x 09-17 (slot-exhaustion flake, was one fixed date). Also: e2e decimal casts serialize as strings (`Number(order.total_amount)`), DataTable keeps a CSS-hidden desktop table next to the visible mobile definition list (`locator("visible=true")`), and duplicate h1s (AppLayout title + page h1) are the established healthcare pattern - assertions use `.first()`. Gates: broad `--filter="Pharmacy|WaveK|Healthcare|Prescription|CustomerPageRender|AdminConsoleRender"` **182 passed (1041 assertions), 0 failures**; full `e2e/healthcare.spec.ts` **10 passed / 2 skipped / 0 failed** (4 chains x 3 viewports); tsc **0**; eslint **0 errors**; audits **726 routes + 265 pages, 0 violations**; no `resources/js` changes (build valid). Docs: AUDIT_MATRIX H-B follow-up block, FINAL_VALIDATION_CHECKLIST H-B.4-H-B.8 items, this row |
+
+| 2026-10-10 | H-D | **Phase H-D - healthcare restructuring (Documentation hub, Health Bookings, professions + home-visit pricing, Others requests, admin alignment)**: (H-D.0) fixed live registry failure - `/admin/healthcare/aid` lacked a `consoleNavigation.ts` entry (registry-parity test must join every gate batch now). (H-D.1) migration `2026_10_10_122959` (`doctors.profession` 12-value enum + index, `doctors.home_visit_fee`, `health_tickets.home_address`); profession validated in `StoreDoctorRequest`, admin form/column, demo professionals; `home_visit` type with per-professional fee (fallback `consultation_fee`) in both booking branches; profession + virtual filters on API/service/controller (also fixed silently-ignored `?virtual=true`); chips on Doctors/Virtual pages; `AppointmentShow` home-visit display. (H-D.2) `health_service_requests` table (`2026_10_10_134210`, unique request_number + idempotency_key, forward-only lifecycle) + `ServiceRequestController` + routes; `healthcare/{Bookings,HomeVisit,ServiceRequests}` pages; `/healthcare/bookings[/home-visit][/others]`; Index tiles Documentation/Healthcare Aid/Health Bookings; admin Requests tab; `contacted`/`scheduled` tones. (H-D.3) `healthcare/Documentation.tsx` + `/healthcare/documents`; cross-links across Aid/Labs/Content/Appointments/Records/Prescriptions; sidebar + HealthServices sections. (H-D.4) content admin CRUD + additive `healthcare.content.view/manage` perms + Content tab; pharmacy gates aligned to matrix (medicines -> pharmacy_admin; prescriptions oversight -> +healthcare_admin) + medicine form + Healthcare Prescriptions tab; parity/suite probes + matrix rows. (H-D.5) new e2e caught 2 real bugs: `AppointmentResource` missing `home_address`, `adminList` filtering literal `status=all`; new `HealthcareBookingsTest` 11 + `CustomerPageRenderTest` 40 + 5 e2e chains. (H-D.6) hardened pre-existing races (learn feed hydration wait, scan 45s navigation budget, hub 180s budget). Gates: phpunit batches **179 passed (937 assertions)** + **84 passed (2616 assertions)**; `e2e/healthcare.spec.ts` **23 passed / 4 skipped / 0 failed**; suite halves **30/12** + **44/4**, 0 failed; tsc 0 / eslint 0 / build green; audits **734 routes + 269 pages, 0 violations**. Docs: AUDIT_MATRIX H-D block, FINAL_VALIDATION_CHECKLIST H-D section, this row |
+

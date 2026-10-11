@@ -16,7 +16,7 @@ export default function Vendors({ vendors }: VendorsProps) {
             <Head title="Vendors" />
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {vendors.data.map((vendor) => (
-                    <Link key={vendor.id} href={`/vendors/${vendor.id}`} className="block rounded-lg bg-white p-6 shadow hover:shadow-md dark:bg-gray-800">
+                    <Link key={vendor.id} href={`/vendors/${vendor.slug ?? vendor.id}`} className="block rounded-lg bg-white p-6 shadow hover:shadow-md dark:bg-gray-800">
                         <div className="flex items-center gap-3">
                             <div className="rounded-full bg-indigo-100 p-3"><Store className="h-6 w-6 text-indigo-600" /></div>
                             <div>

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Modules\Healthcare\Entities\HealthContent;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class HealthContentController extends Controller
 {
@@ -67,5 +68,79 @@ class HealthContentController extends Controller
         }
 
         return response()->json(['data' => $content]);
+    }
+
+    /** GET /api/admin/healthcare/content - full library incl. inactive (Documentation hub management). */
+    public function adminList(Request $request): JsonResponse
+    {
+        $query = HealthContent::orderByDesc('created_at');
+
+        if ($type = $request->query('type')) {
+            $query->where('type', $type);
+        }
+        if ($search = $request->query('search')) {
+            $query->where(fn ($q) => $q
+                ->where('title', 'ilike', "%{$search}%")
+                ->orWhere('summary', 'ilike', "%{$search}%"));
+        }
+
+        return response()->json($query->paginate(20)->withQueryString());
+    }
+
+    /** POST /api/admin/healthcare/content - publish a library item. */
+    public function adminStore(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'type' => 'required|string|in:video,document,category,prevention_guide',
+            'title' => 'required|string|max:255',
+            'slug' => 'nullable|string|max:255',
+            'summary' => 'nullable|string|max:2000',
+            'body' => 'nullable|string|max:20000',
+            'url' => 'nullable|url|max:2000',
+            'thumbnail_url' => 'nullable|url|max:2000',
+            'specialty' => 'nullable|string|max:100',
+            'duration_minutes' => 'nullable|integer|min:0|max:10000',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        $content = HealthContent::create([
+            ...$data,
+            'slug' => $data['slug'] ?? Str::slug($data['title']).'-'.Str::lower(Str::random(6)),
+            'is_active' => $data['is_active'] ?? true,
+        ]);
+
+        return response()->json([
+            'message' => 'Health content published',
+            'data' => $content,
+        ], 201);
+    }
+
+    /** PUT /api/admin/healthcare/content/{id} - edit or publish/unpublish. */
+    public function adminUpdate(Request $request, string $id): JsonResponse
+    {
+        $content = HealthContent::find($id);
+        if (!$content) {
+            return response()->json(['message' => 'Content not found'], 404);
+        }
+
+        $data = $request->validate([
+            'type' => 'sometimes|string|in:video,document,category,prevention_guide',
+            'title' => 'sometimes|string|max:255',
+            'slug' => 'nullable|string|max:255',
+            'summary' => 'nullable|string|max:2000',
+            'body' => 'nullable|string|max:20000',
+            'url' => 'nullable|url|max:2000',
+            'thumbnail_url' => 'nullable|url|max:2000',
+            'specialty' => 'nullable|string|max:100',
+            'duration_minutes' => 'nullable|integer|min:0|max:10000',
+            'is_active' => 'sometimes|boolean',
+        ]);
+
+        $content->update($data);
+
+        return response()->json([
+            'message' => 'Health content updated',
+            'data' => $content->fresh(),
+        ]);
     }
 }

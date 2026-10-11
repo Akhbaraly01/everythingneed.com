@@ -11,6 +11,7 @@ class MedicineOrder extends Model
         'order_number',
         'delivery_address',
         'prescription_url',
+        'prescription_id',
         'total_amount',
         'status',
     ];
@@ -34,5 +35,10 @@ class MedicineOrder extends Model
     public function items()
     {
         return $this->hasMany(MedicineOrderItem::class, 'order_id');
+    }
+
+    public function prescription()
+    {
+        return $this->belongsTo(\Modules\Pharmacy\Entities\Prescription::class);
     }
 }

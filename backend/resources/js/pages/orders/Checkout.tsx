@@ -1,9 +1,11 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { api } from '@/lib/api';
-import { formatCurrency } from '@/lib/utils';
-import { CheckCircle, CreditCard, ArrowRight, ArrowLeft, ShoppingCart } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import {  api, errorMessage } from '@/lib/api';
+import { toast } from 'sonner';
+import { formatPrice } from '@/lib/currency';
+import { CheckCircle, XCircle, CreditCard, ArrowRight, ArrowLeft, ShoppingCart, RefreshCcw } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import Image from '@/components/shared/Image';
 
 interface CartItem {
     id: string;
@@ -17,6 +19,7 @@ interface CartData {
     cart: { id: string; items: CartItem[]; coupon_code?: string; discount_amount?: number };
     subtotal: string;
     discount: string;
+    shipping?: string;
     total: string;
     item_count: number;
 }
@@ -28,13 +31,22 @@ interface PlacedOrder {
     status: string;
 }
 
-export default function CheckoutPage() {
+type PaymentState = 'idle' | 'paying' | 'paid' | 'failed';
+
+interface CheckoutProps {
+    paymentMode?: 'live' | 'sandbox';
+}
+
+export default function CheckoutPage({ paymentMode = 'sandbox' }: CheckoutProps) {
     const { auth } = usePage().props as { auth?: { user?: { id: string; name: string; email: string } } };
     const [step, setStep] = useState<'details' | 'payment' | 'done'>('details');
     const [cart, setCart] = useState<CartData | null>(null);
     const [loading, setLoading] = useState(true);
+    const [cartError, setCartError] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [order, setOrder] = useState<PlacedOrder | null>(null);
+    const [paymentState, setPaymentState] = useState<PaymentState>('idle');
+    const [paymentError, setPaymentError] = useState<string | null>(null);
 
     const [address, setAddress] = useState('');
     const [city, setCity] = useState('');
@@ -42,23 +54,53 @@ export default function CheckoutPage() {
     const [phone, setPhone] = useState('');
     const [notes, setNotes] = useState('');
     const [method, setMethod] = useState('card');
+    // One key per checkout visit: retries and double-clicks replay safely.
+    const orderKey = useRef(
+        typeof crypto !== 'undefined' && 'randomUUID' in crypto
+            ? crypto.randomUUID()
+            : `web-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    );
+    const [walletAvailable, setWalletAvailable] = useState<number | null>(null);
+
+    useEffect(() => {
+        // Server-owned payment methods (spec 31): wallet is offered only when
+        // the identity is verified and spendable funds exist — never faked.
+        api.get<{ data: { methods: { id: string; enabled: boolean; available?: number }[] } }>('/api/payments/methods')
+            .then((res) => {
+                const wallet = res.data.methods.find((m) => m.id === 'wallet');
+                if (wallet?.enabled) setWalletAvailable(wallet.available ?? 0);
+            })
+            .catch(() => setWalletAvailable(null));
+    }, []);
+
+    const loadCart = () => {
+        setLoading(true);
+        setCartError(null);
+        api.get<{ data: CartData }>('/api/cart')
+            .then((res) => setCart(res.data))
+            .catch((e) => {
+                setCartError(errorMessage(e, 'Failed to load your cart'));
+                setCart(null);
+            })
+            .finally(() => setLoading(false));
+    };
 
     useEffect(() => {
         if (!auth?.user) {
             router.visit('/login');
             return;
         }
-        api.get<CartData>('/api/cart')
-            .then((data) => setCart(data))
-            .catch(() => setCart(null))
-            .finally(() => setLoading(false));
-    }, []);
+        loadCart();
+    }, [auth?.user]);
 
     const placeOrder = async () => {
         if (!address.trim()) return;
         setSubmitting(true);
         try {
             const res = await api.post<{ data: PlacedOrder }>('/api/product-orders', {
+                // Stable per-checkout key: double-clicks and retries replay
+                // to the same order instead of duplicating it.
+                idempotency_key: orderKey.current,
                 items: cart!.cart.items.map((item) => ({
                     product_id: item.product_id,
                     quantity: item.quantity,
@@ -73,19 +115,40 @@ export default function CheckoutPage() {
             const placed = res.data;
             setOrder(placed);
 
+            // Clear the cart once the order exists so it cannot be re-submitted.
             try {
-                await api.post('/api/payments/charge', {
-                    order_id: placed.id,
-                    amount: parseFloat(cart!.total),
-                    method,
-                });
-            } catch {}
+                await api.del('/api/cart');
+            } catch { /* Best-effort: the order is already the source of record. */ }
 
+            await chargeForOrder(placed);
             setStep('done');
-        } catch (e: any) {
-            alert(e.message ?? 'Failed to place order');
+        } catch (e) {
+            toast.error(errorMessage(e, 'Failed to place order'));
         } finally {
             setSubmitting(false);
+        }
+    };
+
+    /**
+     * Charge is attempted once with a stable idempotency key so a retry after a
+     * provider failure can never double-charge (spec: idempotency + no false
+     * success). A failed charge is surfaced to the user, never swallowed.
+     */
+    const chargeForOrder = async (placed: PlacedOrder) => {
+        setPaymentState('paying');
+        setPaymentError(null);
+        try {
+            await api.post('/api/payments/charge', {
+                order_id: placed.id,
+                // Server-computed order total (includes shipping) is authoritative.
+                amount: placed.total_amount,
+                method,
+                idempotency_key: `checkout-${placed.id}`,
+            });
+            setPaymentState('paid');
+        } catch (e) {
+            setPaymentState('failed');
+            setPaymentError(errorMessage(e, 'Payment could not be completed'));
         }
     };
 
@@ -117,6 +180,16 @@ export default function CheckoutPage() {
                 {loading ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
                         <p className="text-gray-500">Loading cart...</p>
+                    </div>
+                ) : cartError ? (
+                    <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
+                        <p className="text-red-600 font-medium">{cartError}</p>
+                        <button
+                            onClick={loadCart}
+                            className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-500"
+                        >
+                            <RefreshCcw className="h-4 w-4" /> Retry
+                        </button>
                     </div>
                 ) : itemCount === 0 && step !== 'done' ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
@@ -180,6 +253,9 @@ export default function CheckoutPage() {
                                             { value: 'card', label: 'Credit/Debit Card' },
                                             { value: 'mobile_money', label: 'Mobile Money' },
                                             { value: 'bank_transfer', label: 'Bank Transfer' },
+                                            ...(walletAvailable !== null
+                                                ? [{ value: 'wallet', label: `Wallet (${walletAvailable.toFixed(2)} available)` }]
+                                                : []),
                                         ].map((opt) => (
                                             <label key={opt.value} className="flex items-center gap-3 rounded-lg border border-gray-200 p-3 cursor-pointer hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700">
                                                 <input type="radio" name="method" value={opt.value} checked={method === opt.value} onChange={(e) => setMethod(e.target.value)} className="text-indigo-600" />
@@ -187,8 +263,14 @@ export default function CheckoutPage() {
                                             </label>
                                         ))}
                                     </div>
-                                    <p className="mt-4 rounded-lg bg-yellow-50 p-3 text-xs text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300">
-                                        Test mode — no real payment will be charged.
+                                    <p className={`mt-4 rounded-lg p-3 text-xs dark:text-yellow-300 ${
+                                        paymentMode === 'live'
+                                            ? 'bg-blue-50 text-blue-800 dark:bg-blue-900/20'
+                                            : 'bg-yellow-50 text-yellow-800 dark:bg-yellow-900/20'
+                                    }`}>
+                                        {paymentMode === 'live'
+                                            ? 'Payments are processed securely by our payment provider. Your card details are never stored on EverythingNeed.'
+                                            : 'Sandbox mode — no real funds will be charged on this environment.'}
                                     </p>
                                     <div className="mt-6 flex gap-3">
                                         <button onClick={() => setStep('details')} className="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50 dark:border-gray-600">
@@ -200,7 +282,9 @@ export default function CheckoutPage() {
                                             className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-indigo-600 px-6 py-3 text-lg font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
                                         >
                                             <CreditCard className="h-5 w-5" />
-                                            {submitting ? 'Placing Order...' : `Pay ${cart ? formatCurrency(parseFloat(cart.total)) : ''}`}
+                                            {submitting
+                                                ? 'Placing Order...'
+                                                : `Pay ${cart ? formatPrice(parseFloat(cart.total)) : ''}`}
                                         </button>
                                     </div>
                                 </div>
@@ -208,13 +292,41 @@ export default function CheckoutPage() {
 
                             {step === 'done' && (
                                 <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
-                                    <CheckCircle className="mx-auto h-16 w-16 text-green-500" />
-                                    <h2 className="mt-4 text-2xl font-bold text-gray-900 dark:text-white">Order Placed!</h2>
-                                    <p className="mt-2 text-gray-500">Order #{order?.order_number}</p>
+                                    {paymentState === 'paid' ? (
+                                        <>
+                                            <CheckCircle className="mx-auto h-16 w-16 text-green-500" />
+                                            <h2 className="mt-4 text-2xl font-bold text-gray-900 dark:text-white">Order Placed &amp; Paid</h2>
+                                            <p className="mt-2 text-gray-500">Order #{order?.order_number}</p>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <XCircle className="mx-auto h-16 w-16 text-amber-500" />
+                                            <h2 className="mt-4 text-2xl font-bold text-gray-900 dark:text-white">
+                                                Order Placed — Payment {paymentState === 'paying' ? 'Pending' : 'Not Completed'}
+                                            </h2>
+                                            <p className="mt-2 text-gray-500">Order #{order?.order_number}</p>
+                                        </>
+                                    )}
                                     <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                                        Total: {order ? formatCurrency(order.total_amount) : ''}
+                                        Total: {order ? formatPrice(order.total_amount) : ''}
                                     </p>
-                                    <div className="mt-8 flex justify-center gap-4">
+                                    {paymentState === 'failed' && (
+                                        <div className="mx-auto mt-6 max-w-md rounded-lg border border-amber-300 bg-amber-50 p-4 text-left text-sm text-amber-900 dark:bg-amber-900/20 dark:text-amber-200">
+                                            <p className="font-semibold">Your order was created but payment was not completed.</p>
+                                            {paymentError && <p className="mt-1">{paymentError}</p>}
+                                            <p className="mt-2">
+                                                Your card has not been charged. Retry the payment, or contact support if the problem persists.
+                                            </p>
+                                            <button
+                                                type="button"
+                                                onClick={() => order && chargeForOrder(order)}
+                                                className="mt-3 rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                            >
+                                                Retry payment
+                                            </button>
+                                        </div>
+                                    )}
+                                    <div className="mt-8 flex flex-wrap justify-center gap-4">
                                         <Link href={`/orders/${order?.id}`} className="rounded-lg bg-indigo-600 px-6 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
                                             Track Order
                                         </Link>
@@ -239,7 +351,7 @@ export default function CheckoutPage() {
                                             <div key={item.id} className="flex items-center gap-3 py-3">
                                                 <div className="h-12 w-12 shrink-0 overflow-hidden rounded bg-gray-100">
                                                     {item.product?.image_url ? (
-                                                        <img src={item.product.image_url} alt="" className="h-full w-full object-cover" />
+                                                        <Image src={item.product.image_url} alt="" className="h-full w-full object-cover" />
                                                     ) : (
                                                         <div className="flex h-full items-center justify-center text-gray-400"><ShoppingCart className="h-4 w-4" /></div>
                                                     )}
@@ -248,24 +360,30 @@ export default function CheckoutPage() {
                                                     <p className="truncate text-sm font-medium text-gray-900 dark:text-white">{item.product?.name ?? 'Product'}</p>
                                                     <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
                                                 </div>
-                                                <p className="text-sm font-semibold text-gray-900 dark:text-white">{formatCurrency(item.unit_price * item.quantity)}</p>
+                                                <p className="text-sm font-semibold text-gray-900 dark:text-white">{formatPrice(item.unit_price * item.quantity)}</p>
                                             </div>
                                         ))}
                                     </div>
                                     <div className="mt-4 space-y-2 border-t border-gray-200 pt-4 dark:border-gray-700">
                                         <div className="flex justify-between text-sm">
                                             <span className="text-gray-500">Subtotal</span>
-                                            <span>{formatCurrency(parseFloat(cart.subtotal))}</span>
+                                            <span>{formatPrice(parseFloat(cart.subtotal))}</span>
                                         </div>
                                         {parseFloat(cart.discount) > 0 && (
                                             <div className="flex justify-between text-sm text-green-600">
                                                 <span>Discount</span>
-                                                <span>-{formatCurrency(parseFloat(cart.discount))}</span>
+                                                <span>-{formatPrice(parseFloat(cart.discount))}</span>
                                             </div>
                                         )}
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-500">Shipping</span>
+                                            <span className={parseFloat(cart.shipping ?? '0') === 0 ? 'text-green-600' : ''}>
+                                                {parseFloat(cart.shipping ?? '0') === 0 ? 'Free' : formatPrice(parseFloat(cart.shipping ?? '0'))}
+                                            </span>
+                                        </div>
                                         <div className="flex justify-between text-lg font-bold">
                                             <span>Total</span>
-                                            <span>{formatCurrency(parseFloat(cart.total))}</span>
+                                            <span>{formatPrice(parseFloat(cart.total))}</span>
                                         </div>
                                     </div>
                                 </div>

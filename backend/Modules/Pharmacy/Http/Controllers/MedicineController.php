@@ -50,18 +50,28 @@ class MedicineController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $medicine = Medicine::create($request->validate([
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:2000',
             'price' => 'required|numeric|min:0',
-            'stock' => 'required|integer|min:0',
+            'stock' => 'nullable|integer|min:0',
+            'stock_quantity' => 'nullable|integer|min:0',
             'category' => 'required|string|max:100',
             'dosage_form' => 'nullable|string|max:100',
             'strength' => 'nullable|string|max:100',
             'manufacturer' => 'nullable|string|max:255',
             'vendor_id' => 'nullable|uuid|exists:vendors,id',
             'image_url' => 'nullable|url|max:500',
-        ]));
+            'requires_prescription' => 'nullable|boolean',
+        ]);
+
+        // The legacy `stock` alias maps onto the real stock_quantity column.
+        if (!isset($validated['stock_quantity']) && isset($validated['stock'])) {
+            $validated['stock_quantity'] = $validated['stock'];
+        }
+        unset($validated['stock']);
+
+        $medicine = Medicine::create($validated);
 
         return response()->json([
             'message' => 'Medicine created successfully',
@@ -77,17 +87,25 @@ class MedicineController extends Controller
             return response()->json(['message' => 'Medicine not found'], 404);
         }
 
-        $medicine->update($request->validate([
+        $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
             'description' => 'nullable|string|max:2000',
             'price' => 'sometimes|numeric|min:0',
             'stock' => 'sometimes|integer|min:0',
+            'stock_quantity' => 'sometimes|integer|min:0',
             'category' => 'sometimes|string|max:100',
             'dosage_form' => 'nullable|string|max:100',
             'strength' => 'nullable|string|max:100',
             'manufacturer' => 'nullable|string|max:255',
             'image_url' => 'nullable|url|max:500',
-        ]));
+        ]);
+
+        if (!isset($validated['stock_quantity']) && isset($validated['stock'])) {
+            $validated['stock_quantity'] = $validated['stock'];
+        }
+        unset($validated['stock']);
+
+        $medicine->update($validated);
 
         return response()->json([
             'message' => 'Medicine updated successfully',

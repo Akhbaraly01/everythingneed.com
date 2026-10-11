@@ -1,8 +1,12 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { api } from '@/lib/api';
-import { formatCurrency } from '@/lib/utils';
-import { Search, Package, Briefcase, Hotel, UtensilsCrossed, Building2, Store } from 'lucide-react';
+import { formatPrice } from '@/lib/currency';
+import {
+    Search, Package, Briefcase, Hotel, UtensilsCrossed, Building2, Store,
+    Tag, ClipboardList, Stethoscope, Award, Sprout, Hammer,
+} from 'lucide-react';
+import Image from '@/components/shared/Image';
 import { useEffect, useState } from 'react';
 
 interface SearchResult {
@@ -15,6 +19,25 @@ interface SearchResult {
     url: string;
 }
 
+/** Spec §49 — unified search tabs (server validates the same type list). */
+const TABS: { key: string; label: string }[] = [
+    { key: 'all', label: 'All' },
+    { key: 'products', label: 'Products' },
+    { key: 'categories', label: 'Categories' },
+    { key: 'services', label: 'Services' },
+    { key: 'needs', label: 'Needs' },
+    { key: 'doctors', label: 'Doctors' },
+    { key: 'courses', label: 'Courses' },
+    { key: 'experts', label: 'Experts' },
+    { key: 'vendors', label: 'Vendors' },
+    { key: 'jobs', label: 'Jobs' },
+    { key: 'hotels', label: 'Hotels' },
+    { key: 'restaurants', label: 'Food' },
+    { key: 'properties', label: 'Real Estate' },
+    { key: 'agriculture', label: 'Agriculture' },
+    { key: 'building', label: 'Building Services' },
+];
+
 const typeIcons: Record<string, typeof Package> = {
     product: Package,
     job: Briefcase,
@@ -22,30 +45,72 @@ const typeIcons: Record<string, typeof Package> = {
     restaurant: UtensilsCrossed,
     property: Building2,
     vendor: Store,
+    category: Tag,
+    need: ClipboardList,
+    doctor: Stethoscope,
+    expert: Award,
+    agriculture: Sprout,
+    building: Hammer,
+    course: Award,
+    service: Hammer,
+};
+
+type GroupItem = Record<string, unknown>;
+
+/** Per-group display fields (server rows already carry type + url). */
+const GROUP_FIELDS: Record<string, (item: GroupItem) => {
+    title: string; description?: string; image?: string; price?: number;
+}> = {
+    products: (i) => ({ title: String(i.name ?? 'Untitled'), description: i.description != null ? String(i.description) : undefined, image: i.image != null ? String(i.image) : undefined, price: i.price != null ? Number(i.price) : undefined }),
+    categories: (i) => ({ title: String(i.name ?? 'Untitled'), description: i.description != null ? String(i.description) : undefined, image: i.image != null ? String(i.image) : undefined }),
+    services: (i) => ({ title: String(i.name ?? i.title ?? 'Untitled'), description: i.description != null ? String(i.description) : undefined, price: i.budget != null ? Number(i.budget) : i.price != null ? Number(i.price) : undefined }),
+    needs: (i) => ({ title: String(i.title ?? 'Untitled'), description: [i.description, i.location].filter(Boolean).map(String).join(' · ') || undefined }),
+    doctors: (i) => ({ title: String(i.name ?? 'Untitled'), description: i.specialization != null ? String(i.specialization) : undefined, image: i.image != null ? String(i.image) : undefined, price: i.price != null ? Number(i.price) : undefined }),
+    experts: (i) => ({ title: String(i.name ?? 'Untitled'), description: i.specialization != null ? String(i.specialization) : undefined, image: i.image != null ? String(i.image) : undefined }),
+    vendors: (i) => ({ title: String(i.name ?? 'Untitled'), description: i.description != null ? String(i.description) : undefined }),
+    courses: (i) => ({ title: String(i.title ?? 'Untitled'), description: i.instructor_name != null ? String(i.instructor_name) : undefined, image: i.thumbnail != null ? String(i.thumbnail) : undefined, price: i.price != null ? Number(i.price) : undefined }),
+    jobs: (i) => ({ title: String(i.title ?? 'Untitled'), description: [i.company, i.location].filter(Boolean).map(String).join(' · ') || undefined }),
+    hotels: (i) => ({ title: String(i.name ?? 'Untitled'), description: [i.city, i.country].filter(Boolean).map(String).join(', ') || undefined }),
+    restaurants: (i) => ({ title: String(i.name ?? 'Untitled'), description: i.cuisine_type != null ? String(i.cuisine_type) : undefined, image: i.image != null ? String(i.image) : undefined }),
+    properties: (i) => ({ title: String(i.title ?? 'Untitled'), description: [i.city, i.property_type].filter(Boolean).map(String).join(' · ') || undefined, price: i.price != null ? Number(i.price) : undefined }),
+    agriculture: (i) => ({ title: String(i.name ?? 'Untitled'), description: i.description != null ? String(i.description) : undefined, image: i.image != null ? String(i.image) : undefined, price: i.price != null ? Number(i.price) : undefined }),
+    building: (i) => ({ title: String(i.name ?? 'Untitled'), description: i.description != null ? String(i.description) : undefined, price: i.price != null ? Number(i.price) : undefined }),
 };
 
 export default function SearchResults() {
     const [query, setQuery] = useState('');
+    const [activeType, setActiveType] = useState('all');
     const [results, setResults] = useState<SearchResult[]>([]);
     const [loading, setLoading] = useState(false);
 
-    const doSearch = (q: string) => {
-        if (!q.trim()) {
+    const doSearch = (q: string, type: string = activeType) => {
+        if (!q.trim() || q.trim().length < 2) {
             setResults([]);
             return;
         }
         setLoading(true);
-        api.get<{ data: SearchResult[] }>(`/api/db/products?search=${encodeURIComponent(q)}&limit=20`)
+        const params = new URLSearchParams({ q: q.trim() });
+        if (type !== 'all') params.set('type', type);
+        api.get<{ data: Record<string, GroupItem[]> }>(`/api/search?${params.toString()}`)
             .then((res) => {
-                const mapped = (res.data ?? []).map((item: any) => ({
-                    type: 'product',
-                    id: item.id,
-                    title: item.name,
-                    description: item.description,
-                    image_url: item.image_url,
-                    price: item.price,
-                    url: `/products/${item.id}`,
-                }));
+                const groups = res.data ?? {};
+                const mapped: SearchResult[] = [];
+                for (const [group, items] of Object.entries(groups)) {
+                    const fieldsFor = GROUP_FIELDS[group];
+                    if (!fieldsFor || !Array.isArray(items)) continue;
+                    for (const item of items) {
+                        const f = fieldsFor(item);
+                        mapped.push({
+                            type: String(item.type ?? group),
+                            id: String(item.id ?? ''),
+                            title: f.title,
+                            description: f.description,
+                            image_url: f.image,
+                            price: f.price,
+                            url: String(item.url ?? '/search'),
+                        });
+                    }
+                }
                 setResults(mapped);
             })
             .catch(() => setResults([]))
@@ -55,14 +120,24 @@ export default function SearchResults() {
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const q = params.get('q') ?? '';
+        const type = params.get('type') ?? 'all';
         setQuery(q);
-        if (q) doSearch(q);
+        setActiveType(type);
+        if (q) doSearch(q, type);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
-        router.get('/search', { q: query }, { preserveState: true });
-        doSearch(query);
+        const type = activeType;
+        router.get('/search', { q: query, ...(type !== 'all' ? { type } : {}) }, { preserveState: true });
+        doSearch(query, type);
+    };
+
+    const selectTab = (type: string) => {
+        setActiveType(type);
+        router.get('/search', { q: query, ...(type !== 'all' ? { type } : {}) }, { preserveState: true });
+        doSearch(query, type);
     };
 
     return (
@@ -77,7 +152,7 @@ export default function SearchResults() {
                             type="text"
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
-                            placeholder="Search products, hotels, food, jobs..."
+                            placeholder="Search products, services, needs, doctors, courses..."
                             className="w-full rounded-lg border border-gray-300 py-2.5 pl-10 pr-4 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                             autoFocus
                         />
@@ -86,6 +161,25 @@ export default function SearchResults() {
                         Search
                     </button>
                 </form>
+
+                <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Search result types">
+                    {TABS.map((tab) => (
+                        <button
+                            key={tab.key}
+                            type="button"
+                            role="tab"
+                            aria-selected={activeType === tab.key}
+                            onClick={() => selectTab(tab.key)}
+                            className={
+                                activeType === tab.key
+                                    ? 'shrink-0 rounded-full bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white'
+                                    : 'shrink-0 rounded-full border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800'
+                            }
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
 
                 {loading ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800"><p className="text-gray-500">Searching...</p></div>
@@ -111,7 +205,7 @@ export default function SearchResults() {
                                 >
                                     <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-gray-100">
                                         {item.image_url ? (
-                                            <img src={item.image_url} alt="" className="h-full w-full object-cover" />
+                                            <Image src={item.image_url} alt="" className="h-full w-full object-cover" />
                                         ) : (
                                             <div className="flex h-full items-center justify-center text-gray-400"><Icon className="h-6 w-6" /></div>
                                         )}
@@ -126,7 +220,7 @@ export default function SearchResults() {
                                         {item.description && <p className="mt-0.5 truncate text-sm text-gray-500">{item.description}</p>}
                                     </div>
                                     {item.price != null && (
-                                        <p className="text-lg font-bold text-gray-900 dark:text-white">{formatCurrency(item.price)}</p>
+                                        <p className="text-lg font-bold text-gray-900 dark:text-white">{formatPrice(item.price)}</p>
                                     )}
                                 </Link>
                             );

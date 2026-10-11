@@ -3,12 +3,15 @@
 namespace Modules\Authentication\Actions;
 
 use App\Models\User;
+use Core\Services\OtpSender;
 use Modules\Authentication\Entities\OtpChallenge;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 class RequestOtp
 {
+    public function __construct(private OtpSender $sender) {}
+
     public function execute(string $phone): array
     {
         $code = str_pad((string) random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
@@ -21,8 +24,8 @@ class RequestOtp
             'verified' => false,
         ]);
 
-        // In production, send SMS here
-        // SMS::send($phone, "Your verification code is: {$code}");
+        // Delivery disabled by design — no SMS is sent (see OtpSender).
+        $this->sender->send('sms', $phone, $code);
 
         return [
             'challenge_id' => $challenge->id,

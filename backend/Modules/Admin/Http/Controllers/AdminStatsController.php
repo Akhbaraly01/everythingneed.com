@@ -3,6 +3,7 @@
 namespace Modules\Admin\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use Core\Services\Contracts\ReportingServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +18,8 @@ use Throwable;
  */
 class AdminStatsController extends Controller
 {
+    public function __construct(private ReportingServiceInterface $reporting) {}
+
     /**
      * Returns aggregate platform statistics.
      *
@@ -25,46 +28,7 @@ class AdminStatsController extends Controller
     public function index(): JsonResponse
     {
         try {
-            $stats = Cache::remember('admin_stats', 60, function () {
-                return [
-                    'users' => [
-                        'total'      => DB::table('users')->whereNull('deleted_at')->count(),
-                        'this_month' => DB::table('users')
-                            ->whereNull('deleted_at')
-                            ->whereMonth('created_at', now()->month)
-                            ->whereYear('created_at', now()->year)
-                            ->count(),
-                        'active'     => DB::table('users')
-                            ->whereNull('deleted_at')
-                            ->whereNull('suspended_at')
-                            ->count(),
-                    ],
-                    'vendors' => [
-                        'total'    => DB::table('vendors')->whereNull('deleted_at')->count(),
-                        'pending'  => DB::table('vendors')->whereNull('deleted_at')->where('is_verified', false)->count(),
-                        'verified' => DB::table('vendors')->whereNull('deleted_at')->where('is_verified', true)->count(),
-                    ],
-                    'orders' => [
-                        'total'     => DB::table('vendor_orders')->whereNull('deleted_at')->count(),
-                        'pending'   => DB::table('vendor_orders')->whereNull('deleted_at')->where('status', 'pending')->count(),
-                        'completed' => DB::table('vendor_orders')->whereNull('deleted_at')->where('status', 'completed')->count(),
-                        'cancelled' => DB::table('vendor_orders')->whereNull('deleted_at')->where('status', 'cancelled')->count(),
-                    ],
-                    'tickets' => [
-                        'open'     => DB::table('tickets')->where('status', 'open')->count(),
-                        'total'    => DB::table('tickets')->count(),
-                        'resolved' => DB::table('tickets')->where('status', 'resolved')->count(),
-                    ],
-                    'healthcare' => [
-                        'doctors'      => DB::table('doctors')->whereNull('deleted_at')->count(),
-                        'appointments' => DB::table('health_tickets')->whereNull('deleted_at')->count(),
-                    ],
-                    'learn' => [
-                        'courses' => DB::table('learn_posts')->whereNull('deleted_at')->count(),
-                        'pending' => DB::table('learn_posts')->whereNull('deleted_at')->where('status', 'pending')->count(),
-                    ],
-                ];
-            });
+            $stats = Cache::remember('admin_stats', 60, fn () => $this->reporting->adminDashboardStats());
 
             return response()->json(['data' => $stats]);
         } catch (Throwable $e) {

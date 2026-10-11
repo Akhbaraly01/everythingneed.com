@@ -24,6 +24,22 @@ class LoginUser
             );
         }
 
+        // Enforce 2FA when enabled — issue a short-lived pending token only.
+        $twoFactor = \Modules\Authentication\Entities\TwoFactorSecret::where('user_id', $user->id)
+            ->where('enabled', true)
+            ->first();
+
+        if ($twoFactor) {
+            $pendingToken = \Illuminate\Support\Str::random(60);
+            cache()->put("2fa_pending:{$pendingToken}", $user->id, 300);
+
+            return [
+                'requires_2fa' => true,
+                'pending_token' => $pendingToken,
+                'user' => $user,
+            ];
+        }
+
         $token = $user->createToken('auth-token')->plainTextToken;
 
         return [

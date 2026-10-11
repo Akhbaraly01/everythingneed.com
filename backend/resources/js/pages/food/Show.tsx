@@ -1,8 +1,9 @@
 import AppLayout from '@/layouts/AppLayout';
-import { Head, Link, router } from '@inertiajs/react';
+import {Head} from '@inertiajs/react';
 import type { Restaurant, MenuItem } from '@/types';
-import { MapPin, Star, Clock, Leaf, Flame } from 'lucide-react';
+import {MapPin, Star, Leaf, Flame} from 'lucide-react';
 import { useState } from 'react';
+import Image from '@/components/shared/Image';
 
 interface RestaurantShowProps {
     restaurant: Restaurant & { menu_items?: MenuItem[] };
@@ -11,7 +12,7 @@ interface RestaurantShowProps {
 export default function RestaurantShow({ restaurant }: RestaurantShowProps) {
     const [selectedCategory, setSelectedCategory] = useState<string>('All');
 
-    const menuCategories = ['All', ...new Set(restaurant.menu_items?.map((item) => item.category).filter(Boolean) ?? [])];
+    const menuCategories = ['All', ...Array.from(new Set(restaurant.menu_items?.map((item) => item.category).filter((c): c is string => Boolean(c)) ?? []))];
     const filteredMenu = selectedCategory === 'All'
         ? restaurant.menu_items ?? []
         : (restaurant.menu_items ?? []).filter((item) => item.category === selectedCategory);
@@ -26,7 +27,7 @@ export default function RestaurantShow({ restaurant }: RestaurantShowProps) {
                     <div className="flex flex-col gap-6 lg:flex-row">
                         <div className="aspect-video w-full overflow-hidden rounded-lg bg-gray-100 lg:w-1/3">
                             {restaurant.image_url ? (
-                                <img src={restaurant.image_url} alt={restaurant.name} className="h-full w-full object-cover" />
+                                <Image src={restaurant.image_url} alt={restaurant.name} className="h-full w-full object-cover" />
                             ) : (
                                 <div className="flex h-full items-center justify-center text-gray-400">No image</div>
                             )}

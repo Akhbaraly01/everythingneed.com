@@ -16,7 +16,10 @@ class ProductFactory extends Factory
             'description' => fake()->paragraph(),
             'price' => fake()->randomFloat(2, 9.99, 999.99),
             'compare_price' => null,
-            'image_url' => fake()->imageUrl(),
+            // W1: faker imageUrl() emits URLs on a dead external image
+            // service. Factory rows use the local placeholder until a real
+            // image is attached (ProductImageSeeder backfills demo data).
+            'image_url' => '/placeholder.svg',
             'stock_quantity' => fake()->numberBetween(0, 100),
             'category' => fake()->randomElement(['electronics', 'clothing', 'home', 'beauty']),
             'is_active' => true,

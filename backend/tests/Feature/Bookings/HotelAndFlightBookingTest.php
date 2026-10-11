@@ -48,9 +48,16 @@ class HotelAndFlightBookingTest extends TestCase
         ]);
 
         $res->assertStatus(201)
-            ->assertJsonFragment(['message' => 'Reservation confirmed']);
+            ->assertJsonFragment(['message' => 'Reservation created. Complete payment to confirm it.']);
+        $this->assertSame('pending', \Modules\Hotels\Entities\HotelReservation::find($res->json('data.id'))->status);
 
-        // 2 nights × 150
+        // Payment confirms the reservation (spec 54/97)
+        $this->postJson("/api/hotels/reservations/{$res->json('data.id')}/pay", ['method' => 'card'])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'confirmed')
+            ->assertJsonPath('data.payment_status', 'paid');
+
+        // 2 nights A- 150
         $this->assertEquals(300.00, (float) \Modules\Hotels\Entities\HotelReservation::find($res->json('data.id'))->total_amount);
 
         // Overlapping reservation is rejected

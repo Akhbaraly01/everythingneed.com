@@ -1,8 +1,8 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link } from '@inertiajs/react';
-import { api } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
 import { useEffect, useState } from 'react';
-import { Clock, CheckCircle, XCircle, Truck, ChefHat } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, Truck, ChefHat, RefreshCcw } from 'lucide-react';
 
 interface FoodOrder {
     id: string;
@@ -27,13 +27,21 @@ const STATUS_MAP: Record<string, { label: string; icon: typeof Clock; color: str
 export default function FoodOrderHistory() {
     const [orders, setOrders] = useState<FoodOrder[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
+    const load = () => {
+        setLoading(true);
+        setError(null);
         api.get<{ data: FoodOrder[] }>('/api/food/orders')
             .then((res) => setOrders(res.data))
-            .catch(() => setOrders([]))
+            .catch((e) => {
+                setError(errorMessage(e, 'Failed to load food orders'));
+                setOrders([]);
+            })
             .finally(() => setLoading(false));
-    }, []);
+    };
+
+    useEffect(load, []);
 
     return (
         <AppLayout title="Food Orders">
@@ -42,6 +50,13 @@ export default function FoodOrderHistory() {
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">My Food Orders</h1>
                 {loading ? (
                     <p className="text-gray-500">Loading...</p>
+                ) : error ? (
+                    <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
+                        <p className="text-red-600 font-medium">{error}</p>
+                        <button onClick={load} className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-500">
+                            <RefreshCcw className="h-4 w-4" /> Retry
+                        </button>
+                    </div>
                 ) : orders.length === 0 ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
                         <ChefHat className="mx-auto h-12 w-12 text-gray-400" />

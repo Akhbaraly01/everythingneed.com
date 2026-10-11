@@ -1,13 +1,15 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link } from '@inertiajs/react';
-import { api } from '@/lib/api';
-import { User, Star, Clock, ArrowRight } from 'lucide-react';
+import { api, errorMessage } from '@/lib/api';
+import {User, Star, RefreshCcw} from 'lucide-react';
 import { useEffect, useState } from 'react';
+import Image from '@/components/shared/Image';
 
 interface Doctor {
     id: string;
     name: string;
     specialty: string;
+    profession?: string;
     bio?: string;
     image_url?: string;
     rating?: number;
@@ -18,17 +20,29 @@ interface Doctor {
 export default function DoctorsPage() {
     const [doctors, setDoctors] = useState<Doctor[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [specialtyFilter, setSpecialtyFilter] = useState('');
+    const [professionFilter, setProfessionFilter] = useState('');
+    const [retryTick, setRetryTick] = useState(0);
 
     useEffect(() => {
-        const params = specialtyFilter ? `?specialty=${encodeURIComponent(specialtyFilter)}` : '';
-        api.get<{ data: Doctor[] }>(`/api/doctors${params}`)
+        setLoading(true);
+        setError(null);
+        const params = new URLSearchParams();
+        if (specialtyFilter) params.set('specialization', specialtyFilter);
+        if (professionFilter) params.set('profession', professionFilter);
+        const query = params.toString() ? `?${params.toString()}` : '';
+        api.get<{ data: Doctor[] }>(`/api/doctors${query}`)
             .then((res) => setDoctors(res.data))
-            .catch(() => setDoctors([]))
+            .catch((e) => {
+                setError(errorMessage(e, 'Failed to load doctors'));
+                setDoctors([]);
+            })
             .finally(() => setLoading(false));
-    }, [specialtyFilter]);
+    }, [specialtyFilter, professionFilter, retryTick]);
 
     const specialties = ['General Practice', 'Cardiology', 'Dermatology', 'Pediatrics', 'Orthopedics', 'Psychiatry'];
+    const professions = ['doctor', 'nurse', 'chew', 'dentist', 'pharmacist', 'medical_laboratory_scientist', 'physiotherapist', 'optometrist', 'midwife', 'dietitian', 'psychologist', 'other'];
 
     return (
         <AppLayout title="Find a Doctor">
@@ -43,7 +57,7 @@ export default function DoctorsPage() {
                 <div className="flex flex-wrap gap-2">
                     <button onClick={() => setSpecialtyFilter('')} className={`rounded-full px-4 py-1.5 text-sm font-medium ${
                         !specialtyFilter ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
-                    }`}>All</button>
+                    }`}>All Specialties</button>
                     {specialties.map((s) => (
                         <button key={s} onClick={() => setSpecialtyFilter(s)} className={`rounded-full px-4 py-1.5 text-sm font-medium ${
                             specialtyFilter === s ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
@@ -51,8 +65,26 @@ export default function DoctorsPage() {
                     ))}
                 </div>
 
+                <div className="flex flex-wrap gap-2">
+                    <button onClick={() => setProfessionFilter('')} className={`rounded-full px-4 py-1.5 text-sm font-medium ${
+                        !professionFilter ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
+                    }`}>All Professions</button>
+                    {professions.map((p) => (
+                        <button key={p} onClick={() => setProfessionFilter(p)} className={`rounded-full px-4 py-1.5 text-sm font-medium ${
+                            professionFilter === p ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
+                        }`}>{p.charAt(0).toUpperCase() + p.slice(1).replace('_', ' ')}</button>
+                    ))}
+                </div>
+
                 {loading ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800"><p className="text-gray-500">Loading...</p></div>
+                ) : error ? (
+                    <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
+                        <p className="text-red-600 font-medium">{error}</p>
+                        <button onClick={() => setRetryTick((t) => t + 1)} className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-500">
+                            <RefreshCcw className="h-4 w-4" /> Retry
+                        </button>
+                    </div>
                 ) : doctors.length === 0 ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
                         <User className="mx-auto h-12 w-12 text-gray-400" />
@@ -66,7 +98,7 @@ export default function DoctorsPage() {
                                 <div className="flex items-center gap-4">
                                     <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full bg-gray-100">
                                         {doc.image_url ? (
-                                            <img src={doc.image_url} alt="" className="h-full w-full object-cover" />
+                                            <Image src={doc.image_url} alt="" className="h-full w-full object-cover" />
                                         ) : (
                                             <div className="flex h-full items-center justify-center text-gray-400"><User className="h-8 w-8" /></div>
                                         )}

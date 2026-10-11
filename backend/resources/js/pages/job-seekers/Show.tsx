@@ -1,7 +1,8 @@
 import { Head, Link } from '@inertiajs/react';
 import AppLayout from '@/layouts/AppLayout';
 import { type WorkerProfile } from '@/types';
-import { formatCurrency, getInitials } from '@/lib/utils';
+import { getInitials } from '@/lib/utils';
+import { formatPrice } from '@/lib/currency';
 import {
     MapPin, Star, BadgeCheck, Clock, Briefcase, GraduationCap,
     FolderOpen, ArrowLeft, Send,
@@ -58,8 +59,8 @@ export default function JobSeekerShow({ worker }: Props) {
                     )}
 
                     <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
-                        <Stat label="Hourly rate" value={worker.hourly_rate ? `${formatCurrency(worker.hourly_rate)}/hr` : 'On request'} />
-                        <Stat label="Daily rate" value={worker.daily_rate ? `${formatCurrency(worker.daily_rate)}/day` : 'On request'} />
+                        <Stat label="Hourly rate" value={worker.hourly_rate ? `${formatPrice(worker.hourly_rate)}/hr` : 'On request'} />
+                        <Stat label="Daily rate" value={worker.daily_rate ? `${formatPrice(worker.daily_rate)}/day` : 'On request'} />
                         <Stat label="Jobs completed" value={String(worker.completed_jobs)} icon={<Clock className="inline h-4 w-4 text-gray-400" />} />
                     </div>
                 </div>

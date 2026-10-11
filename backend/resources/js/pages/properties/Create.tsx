@@ -1,14 +1,15 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { api } from '@/lib/api';
+import {  api, errorMessage } from '@/lib/api';
+import { toast } from 'sonner';
 import { Building2, ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 
 export default function PropertyCreate() {
     const { auth } = usePage().props as { auth?: { user?: { id: string } } };
     const [form, setForm] = useState({
-        title: '', description: '', property_type: 'apartment', price: '',
-        city: '', state: '', country: '', bedrooms: '1', bathrooms: '1', area_sqft: '',
+        title: '', description: '', listing_type: 'sale', property_type: 'apartment', price: '',
+        address: '', city: '', state: '', country: '', bedrooms: '1', bathrooms: '1', area_sqft: '',
         image_url: '',
     });
     const [submitting, setSubmitting] = useState(false);
@@ -27,8 +28,8 @@ export default function PropertyCreate() {
                 area_sqft: parseFloat(form.area_sqft) || 0,
             });
             router.visit('/properties');
-        } catch (e: any) {
-            alert(e.message ?? 'Failed to create');
+        } catch (e) {
+            toast.error(errorMessage(e, 'Failed to create'));
         }
         setSubmitting(false);
     };
@@ -53,12 +54,20 @@ export default function PropertyCreate() {
                         <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
                             <textarea value={form.description} onChange={(e) => handleChange('description', e.target.value)} rows={4} className={inputClass} /></div>
                         <div className="grid grid-cols-2 gap-4">
+                            <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Listing</label>
+                                <select value={form.listing_type} onChange={(e) => handleChange('listing_type', e.target.value)} className={inputClass}>
+                                    <option value="sale">For Sale</option><option value="rent">For Rent</option>
+                                </select></div>
                             <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Type</label>
                                 <select value={form.property_type} onChange={(e) => handleChange('property_type', e.target.value)} className={inputClass}>
                                     <option value="apartment">Apartment</option><option value="house">House</option><option value="condo">Condo</option><option value="land">Land</option><option value="commercial">Commercial</option>
                                 </select></div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
                             <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Price *</label>
                                 <input type="number" value={form.price} onChange={(e) => handleChange('price', e.target.value)} className={inputClass} /></div>
+                            <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Address *</label>
+                                <input type="text" value={form.address} onChange={(e) => handleChange('address', e.target.value)} className={inputClass} /></div>
                         </div>
                         <div className="grid grid-cols-3 gap-4">
                             <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">City *</label>
@@ -80,7 +89,7 @@ export default function PropertyCreate() {
                             <input type="url" value={form.image_url} onChange={(e) => handleChange('image_url', e.target.value)} placeholder="https://..." className={inputClass} /></div>
                     </div>
 
-                    <button onClick={handleSubmit} disabled={submitting || !form.title || !form.price || !form.city}
+                    <button onClick={handleSubmit} disabled={submitting || !form.title || !form.price || !form.city || !form.address}
                         className="mt-6 w-full flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-6 py-3 text-lg font-semibold text-white hover:bg-indigo-500 disabled:opacity-50">
                         <Building2 className="h-5 w-5" /> {submitting ? 'Creating...' : 'List Property'}
                     </button>

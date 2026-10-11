@@ -1,13 +1,13 @@
+import { statusTone } from '@/lib/lifecycle';
+import { EmptyState } from '@/components/shared/Ui';
 import { Head, Link, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/AppLayout';
-import { api, ApiError } from '@/lib/api';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { api, errorMessage } from '@/lib/api';
+import { formatDate } from '@/lib/utils';
+import { formatPrice } from '@/lib/currency';
 import { toast } from 'sonner';
 import { useState } from 'react';
-import {
-    Plane, BedDouble, UtensilsCrossed, CalendarClock,
-    ChevronLeft, ChevronRight, XCircle,
-} from 'lucide-react';
+import {Plane, BedDouble, UtensilsCrossed, CalendarClock, ChevronLeft, ChevronRight} from 'lucide-react';
 
 interface BookingRow {
     id: string;
@@ -28,16 +28,6 @@ const typeIcons: Record<string, React.ReactNode> = {
     food: <UtensilsCrossed className="h-4 w-4 text-orange-500" />,
 };
 
-const statusStyles: Record<string, string> = {
-    pending: 'bg-amber-100 text-amber-800',
-    confirmed: 'bg-green-100 text-green-800',
-    in_progress: 'bg-cyan-100 text-cyan-800',
-    checked_in: 'bg-blue-100 text-blue-800',
-    checked_out: 'bg-gray-100 text-gray-600',
-    completed: 'bg-green-100 text-green-800',
-    cancelled: 'bg-red-100 text-red-700',
-};
-
 function title(b: BookingRow): string {
     const d = (b.details ?? {}) as Record<string, string>;
     return d.route ?? d.hotel_name ?? d.restaurant_name ?? `${b.service_type} booking`;
@@ -53,7 +43,7 @@ export default function MyBookings({ bookings }: Props) {
             toast.success('Booking cancelled — any held inventory has been released.');
             router.reload({ only: ['bookings'] });
         } catch (err) {
-            toast.error(err instanceof ApiError ? err.message : 'Cancellation failed');
+            toast.error(errorMessage(err, 'Cancellation failed'));
         } finally {
             setBusyId(null);
         }
@@ -69,14 +59,16 @@ export default function MyBookings({ bookings }: Props) {
                 </div>
 
                 {bookings.data.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-gray-300 p-16 text-center dark:border-gray-600">
-                        <CalendarClock className="mx-auto mb-3 h-10 w-10 text-gray-300" />
-                        <p className="font-medium text-gray-900 dark:text-white">No bookings yet</p>
-                        <p className="mb-4 text-sm text-gray-500">Flights, hotels and more will appear here.</p>
-                        <Link href="/flights" className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700">
-                            Book a flight
-                        </Link>
-                    </div>
+                    <EmptyState
+                        icon={<CalendarClock className="h-10 w-10 text-gray-300" />}
+                        title="No bookings yet"
+                        description="Flights, hotels and more will appear here."
+                        action={
+                            <Link href="/flights" className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700">
+                                Book a flight
+                            </Link>
+                        }
+                    />
                 ) : (
                     <div className="space-y-3">
                         {bookings.data.map((b) => (
@@ -89,17 +81,17 @@ export default function MyBookings({ bookings }: Props) {
                                         <p className="font-medium capitalize text-gray-900 dark:text-white">{title(b)}</p>
                                         <p className="text-xs text-gray-500">
                                             Booked {formatDate(b.created_at)}
-                                            {(b.details?.reference as string) ? ` · Ref ${b.details.reference}` : ''}
-                                            {(b.details?.travel_date as string) ? ` · Travel ${b.details.travel_date}` : ''}
+                                            {(b.details?.reference as string) ? ` · Ref ${b.details?.reference}` : ''}
+                                            {(b.details?.travel_date as string) ? ` · Travel ${b.details?.travel_date}` : ''}
                                         </p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${statusStyles[b.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${statusTone(b.status)}`}>
                                         {b.status.replace('_', ' ')}
                                     </span>
-                                    {b.service_type === 'flight' && b.details?.total_price && (
-                                        <span className="text-sm font-semibold text-sky-600">{formatCurrency(Number(b.details.total_price))}</span>
+                                    {b.service_type === 'flight' && !!b.details?.total_price && (
+                                        <span className="text-sm font-semibold text-sky-600">{formatPrice(Number(b.details.total_price))}</span>
                                     )}
                                     {!['cancelled', 'completed', 'checked_out'].includes(b.status) && (
                                         <button
@@ -110,7 +102,7 @@ export default function MyBookings({ bookings }: Props) {
                                             Cancel
                                         </button>
                                     )}
-                                    {b.service_type === 'flight' && b.details?.reference && (
+                                    {b.service_type === 'flight' && !!b.details?.reference && (
                                         <Link href={`/flights/confirmation/${b.id}`} className="text-xs font-medium text-indigo-600 hover:underline">
                                             View ticket
                                         </Link>

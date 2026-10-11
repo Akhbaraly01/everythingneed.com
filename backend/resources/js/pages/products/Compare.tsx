@@ -1,8 +1,9 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head } from '@inertiajs/react';
 import { api } from '@/lib/api';
+import { formatPrice } from '@/lib/currency';
 import { useEffect, useState } from 'react';
-import { Scale, X, Star, DollarSign } from 'lucide-react';
+import {Scale, X, Star} from 'lucide-react';
 
 interface Product {
     id: string;
@@ -28,7 +29,7 @@ export default function ProductCompare() {
     useEffect(() => { load(); }, []);
 
     const remove = async (id: string) => {
-        await api.delete(`/api/products/comparison/${id}`).catch(() => {});
+        await api.del(`/api/compare/${id}`).catch(() => {});
         load();
     };
 
@@ -48,7 +49,7 @@ export default function ProductCompare() {
                         <table className="w-full text-sm">
                             <thead><tr className="border-b dark:border-gray-700"><th className="px-4 py-3 text-left">Feature</th>{products.map((p) => <th key={p.id} className="px-4 py-3 text-left"><div className="flex items-center justify-between"><span className="truncate max-w-[120px]">{p.name}</span><button onClick={() => remove(p.id)} className="text-red-500 hover:text-red-700"><X className="h-4 w-4" /></button></div></th>)}</tr></thead>
                             <tbody className="divide-y dark:divide-gray-700">
-                                <tr><td className="px-4 py-3 font-medium">Price</td>{products.map((p) => <td key={p.id} className="px-4 py-3 font-bold text-green-600">${p.price}</td>)}</tr>
+                                <tr><td className="px-4 py-3 font-medium">Price</td>{products.map((p) => <td key={p.id} className="px-4 py-3 font-bold text-green-600">{formatPrice(p.price)}</td>)}</tr>
                                 <tr><td className="px-4 py-3 font-medium">Rating</td>{products.map((p) => <td key={p.id} className="px-4 py-3 flex items-center gap-1"><Star className="h-4 w-4 text-yellow-400" />{p.rating || 'N/A'}</td>)}</tr>
                                 <tr><td className="px-4 py-3 font-medium">Category</td>{products.map((p) => <td key={p.id} className="px-4 py-3">{p.category}</td>)}</tr>
                                 <tr><td className="px-4 py-3 font-medium">Stock</td>{products.map((p) => <td key={p.id} className="px-4 py-3">{p.stock_quantity > 0 ? `${p.stock_quantity} in stock` : 'Out of stock'}</td>)}</tr>

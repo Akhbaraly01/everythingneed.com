@@ -1,6 +1,7 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { api } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
+import { toast } from 'sonner';
 import { ArrowLeft, Send } from 'lucide-react';
 import { useState } from 'react';
 
@@ -19,9 +20,9 @@ export default function TicketCreate() {
                 description,
                 priority,
             });
-            router.visit(`/tickets/${res.data.id}`);
-        } catch (e: any) {
-            alert(e.message ?? 'Failed to create ticket');
+            router.visit(`/account/support/${res.data.id}`);
+        } catch (e) {
+            toast.error(errorMessage(e, 'Failed to create ticket'));
         } finally {
             setSubmitting(false);
         }
@@ -30,12 +31,10 @@ export default function TicketCreate() {
     return (
         <AppLayout title="Create Ticket">
             <Head title="Create Support Ticket" />
-
             <div className="space-y-6 max-w-2xl">
-                <Link href="/tickets" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700">
+                <Link href="/account/support" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700">
                     <ArrowLeft className="h-4 w-4" /> Back to tickets
                 </Link>
-
                 <div className="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
                     <h2 className="text-lg font-semibold text-gray-900 dark:text-white">New Support Ticket</h2>
                     <div className="mt-4 space-y-4">
@@ -74,7 +73,7 @@ export default function TicketCreate() {
                         </div>
                     </div>
                     <div className="mt-6 flex gap-3">
-                        <Link href="/tickets" className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-center text-sm font-medium hover:bg-gray-50 dark:border-gray-600">
+                        <Link href="/account/support" className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-center text-sm font-medium hover:bg-gray-50 dark:border-gray-600">
                             Cancel
                         </Link>
                         <button

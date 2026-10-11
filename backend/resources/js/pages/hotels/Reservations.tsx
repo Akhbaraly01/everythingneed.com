@@ -1,8 +1,12 @@
+import { statusTone } from '@/lib/lifecycle';
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link } from '@inertiajs/react';
-import { api } from '@/lib/api';
-import { formatCurrency, formatDateTime } from '@/lib/utils';
-import { CalendarCheck, ArrowLeft, X } from 'lucide-react';
+import { api, errorMessage } from '@/lib/api';
+import { toast } from 'sonner';
+import { formatPrice } from '@/lib/currency';
+import ConfirmDialog from '@/components/shared/Ui';
+import PaySheet from '@/components/shared/PaySheet';
+import { CalendarCheck, ArrowLeft, X, CreditCard, RefreshCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface Reservation {
@@ -13,6 +17,7 @@ interface Reservation {
     guests: number;
     total_amount: number;
     status: string;
+    payment_status?: string;
     hotel?: { name: string; city: string };
     room?: { room_type: string; price_per_night: number };
     checked_in_at?: string;
@@ -20,33 +25,36 @@ interface Reservation {
     created_at: string;
 }
 
-const statusColors: Record<string, string> = {
-    pending: 'bg-yellow-100 text-yellow-800',
-    confirmed: 'bg-blue-100 text-blue-800',
-    checked_in: 'bg-green-100 text-green-800',
-    checked_out: 'bg-gray-100 text-gray-800',
-    cancelled: 'bg-red-100 text-red-800',
-};
-
 export default function ReservationsPage() {
     const [reservations, setReservations] = useState<Reservation[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [cancelFor, setCancelFor] = useState<string | null>(null);
+    const [payFor, setPayFor] = useState<string | null>(null);
 
     const fetchReservations = () => {
+        setLoading(true);
+        setError(null);
         api.get<{ data: Reservation[] }>('/api/hotels/reservations/mine')
             .then((res) => setReservations(res.data))
-            .catch(() => setReservations([]))
+            .catch((e) => {
+                setError(errorMessage(e, 'Failed to load reservations'));
+                setReservations([]);
+            })
             .finally(() => setLoading(false));
     };
 
     useEffect(() => { fetchReservations(); }, []);
 
     const cancelReservation = async (id: string) => {
-        if (!confirm('Cancel this reservation?')) return;
         try {
             await api.post(`/api/hotels/reservations/${id}/cancel`);
+            toast.success('Reservation cancelled.');
+            setCancelFor(null);
             fetchReservations();
-        } catch {}
+        } catch (e) {
+            toast.error(errorMessage(e, 'Failed to cancel reservation'));
+        }
     };
 
     return (
@@ -60,6 +68,13 @@ export default function ReservationsPage() {
 
                 {loading ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800"><p className="text-gray-500">Loading...</p></div>
+                ) : error ? (
+                    <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
+                        <p className="text-red-600 font-medium">{error}</p>
+                        <button onClick={fetchReservations} className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-500">
+                            <RefreshCcw className="h-4 w-4" /> Retry
+                        </button>
+                    </div>
                 ) : reservations.length === 0 ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
                         <CalendarCheck className="mx-auto h-12 w-12 text-gray-400" />
@@ -76,7 +91,7 @@ export default function ReservationsPage() {
                                     <div>
                                         <div className="flex items-center gap-2">
                                             <span className="font-mono text-sm text-gray-500">{r.reference}</span>
-                                            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColors[r.status] ?? 'bg-gray-100 text-gray-800'}`}>
+                                            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusTone(r.status)}`}>
                                                 {r.status}
                                             </span>
                                         </div>
@@ -86,18 +101,46 @@ export default function ReservationsPage() {
                                             <span>Check-in: {r.check_in_date}</span>
                                             <span>Check-out: {r.check_out_date}</span>
                                         </div>
-                                        <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white">{formatCurrency(r.total_amount)}</p>
+                                        <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white">{formatPrice(r.total_amount)}</p>
+                                        {r.status === 'pending' && r.payment_status !== 'paid' && (
+                                            <button
+                                                onClick={() => setPayFor(payFor === r.id ? null : r.id)}
+                                                className="mt-2 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+                                            >
+                                                <CreditCard className="h-4 w-4" /> Pay now
+                                            </button>
+                                        )}
                                     </div>
                                     {['pending', 'confirmed'].includes(r.status) && (
-                                        <button onClick={() => cancelReservation(r.id)} className="rounded-lg p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20">
+                                        <button onClick={() => setCancelFor(r.id)} className="rounded-lg p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20">
                                             <X className="h-5 w-5" />
                                         </button>
                                     )}
                                 </div>
+                                {payFor === r.id && r.status === 'pending' && (
+                                    <div className="mt-4">
+                                        <PaySheet
+                                            endpoint={`/api/hotels/reservations/${r.id}/pay`}
+                                            amount={r.total_amount}
+                                            title="Confirm your reservation"
+                                            onPaid={() => { setPayFor(null); fetchReservations(); }}
+                                        />
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>
                 )}
+
+                <ConfirmDialog
+                    open={cancelFor !== null}
+                    title="Cancel reservation?"
+                    description="Cancel this hotel reservation? This cannot be undone."
+                    confirmLabel="Cancel reservation"
+                    danger
+                    onConfirm={() => cancelFor && cancelReservation(cancelFor)}
+                    onCancel={() => setCancelFor(null)}
+                />
             </div>
         </AppLayout>
     );

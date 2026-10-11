@@ -6,6 +6,9 @@ use App\Models\Model;
 
 class StockLevel extends Model
 {
+    /** stock_levels has no created_at/updated_at columns. */
+    public $timestamps = false;
+
     protected $fillable = [
         'product_id',
         'warehouse_id',

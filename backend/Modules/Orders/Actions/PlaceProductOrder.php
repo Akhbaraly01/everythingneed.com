@@ -17,7 +17,22 @@ class PlaceProductOrder
 {
     public function execute(array $data): Order
     {
-        return DB::transaction(function () use ($data) {
+        $key = isset($data['idempotency_key']) && is_string($data['idempotency_key']) && trim($data['idempotency_key']) !== ''
+            ? trim($data['idempotency_key'])
+            : null;
+
+        try {
+            return DB::transaction(function () use ($data, $key) {
+                // Idempotent replay: the same key returns the original order
+                // with zero side effects (no stock movement, no coupon use).
+                if ($key !== null) {
+                    $existing = Order::where('user_id', $data['user_id'])
+                        ->where('idempotency_key', $key)
+                        ->first();
+                    if ($existing) {
+                        return $existing;
+                    }
+                }
             $items = collect($data['items'])
                 ->map(fn ($i) => [
                     'product_id' => $i['product_id'],
@@ -36,8 +51,11 @@ class PlaceProductOrder
                 ->keyBy('id');
 
             // Eager-load active variants for all products in this order.
+            // W19 (F-04): locked too - products were already lockForUpdate'd
+            // above, but unlocked variant rows allowed concurrent oversell.
             $variants = ProductVariant::whereIn('product_id', $items->pluck('product_id'))
                 ->where('is_active', true)
+                ->lockForUpdate()
                 ->get()
                 ->keyBy('id');
 
@@ -140,19 +158,30 @@ class PlaceProductOrder
                 }
             }
 
-            $shippingFee = 0.0;
-            $total = round(max(0, $subtotal - $discount + $shippingFee), 2);
+            // Server-computed shipping (rates table; 0.00 when not configured).
+            // Based on the discounted amount the customer actually pays for goods.
+            $shippingService = app(\Core\Services\ShippingService::class);
+            $shippingFee = $shippingService->calculate(max(0, $subtotal - $discount));
+
+            // §33: tax is server-computed (config/commerce.php) - never from
+            // the browser. 0 when no tax is configured, so totals stay
+            // merchandise-only until a rate is set.
+            $taxable = max(0, $subtotal - $discount);
+            $tax = \Core\Support\CommerceTax::amount($taxable);
+            $total = round($taxable + $shippingFee + $tax, 2);
 
             /** @var Order $order */
             $order = Order::create([
                 'user_id' => $data['user_id'],
                 'order_number' => 'EN-'.strtoupper(uniqid()),
+                'idempotency_key' => $key,
                 'status' => Order::STATUS_PENDING,
                 'subtotal' => $subtotal,
                 'discount' => $discount,
                 'shipping_fee' => $shippingFee,
+                'tax' => $tax,
                 'total_amount' => $total,
-                'currency' => 'USD',
+                'currency' => collect($items)->map(fn ($i) => $products[$i['product_id']]->currency)->filter()->first() ?: \Core\Support\Currencies::default(),
                 'coupon_code' => $couponCode,
                 'shipping_address' => $data['shipping_address'],
                 'shipping_city' => $data['shipping_city'] ?? null,
@@ -186,21 +215,83 @@ class PlaceProductOrder
                 ]);
             }
 
+            // §61: ETA from the active shipping provider's advertised window
+            // (null when none is configured - never a fabricated date).
+            $etaDays = $shippingService->estimatedDays();
+
             OrderTracking::create([
                 'order_id' => $order->id,
                 'order_type' => 'product',
                 'user_id' => $data['user_id'],
                 'status' => Order::STATUS_PENDING,
                 'status_message' => 'Order placed successfully',
+                'estimated_delivery' => $etaDays !== null ? now()->addDays($etaDays) : null,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
+
+            // Stock is consumed above - release this buyer's cart holds for
+            // the ordered products so other carts can buy them again.
+            \Modules\Inventory\Entities\InventoryReservation::withTrashed()
+                ->where('user_id', $data['user_id'])
+                ->whereIn('product_id', $items->pluck('product_id'))
+                ->forceDelete();
+
+            // §32 checkout: the server consumes the ordered lines from the
+            // buyer's cart - the client never decides what gets cleared.
+            $this->clearOrderedCartLines($data['user_id'], $items);
 
         $fresh = $order->fresh(['items']);
 
         OrderPlaced::dispatch($fresh);
 
         return $fresh;
-    });
+        });
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Concurrent double-submit: the loser hits the partial unique
+            // index - return the winner's order instead of a 500.
+            if ($key !== null && (string) ($e->errorInfo[0] ?? '') === '23505') {
+                $winner = Order::where('user_id', $data['user_id'])
+                    ->where('idempotency_key', $key)
+                    ->first();
+                if ($winner) {
+                    return $winner;
+                }
+            }
+
+            throw $e;
+        }
+    }
+
+    /**
+     * Remove exactly the ordered product/variant lines from the buyer's cart
+     * and keep the stored coupon discount honest about what is left.
+     *
+     * @param  \Illuminate\Support\Collection<int, array{product_id: string, variant_id: ?string, quantity: int}>  $items
+     */
+    private function clearOrderedCartLines(string $userId, $items): void
+    {
+        $cart = \Modules\Checkout\Entities\Cart::where('user_id', $userId)->first();
+
+        if (! $cart) {
+            return;
+        }
+
+        foreach ($items as $item) {
+            $cart->items()
+                ->where('product_id', $item['product_id'])
+                ->when(
+                    $item['variant_id'],
+                    fn ($query) => $query->where('product_variant_id', $item['variant_id']),
+                    fn ($query) => $query->whereNull('product_variant_id')
+                )
+                ->delete();
+        }
+
+        $remaining = $cart->items()->count();
+
+        if ($remaining === 0) {
+            $cart->update(['coupon_code' => null, 'discount_amount' => 0]);
+        }
     }
 }

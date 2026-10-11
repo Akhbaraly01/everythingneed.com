@@ -11,10 +11,21 @@ Route::prefix('api')->group(function () {
         Route::post('/jobs/{id}/apply', [JobController::class, 'apply']);
         Route::get('/jobs/{id}/applications', [JobController::class, 'applications']);
         Route::get('/jobs/my-applications', [JobController::class, 'myApplications']);
+        Route::get('/jobs/applications/{id}', [JobController::class, 'showApplication']);
+        Route::patch('/jobs/applications/{id}', [JobController::class, 'updateApplication']);
+        Route::get('/jobs/profile', [JobController::class, 'profile']);
     });
 
     // Public reads
     Route::get('/jobs', [JobController::class, 'index']);
     Route::get('/jobs/search', [JobController::class, 'index']);
+
+    // Admin console (all posts incl. inactive/expired)
+    Route::get('/admin/jobs', [JobController::class, 'adminIndex'])
+        ->middleware('role:super_admin,administrator,jobs_admin');
+    Route::put('/admin/jobs/{id}', [JobController::class, 'adminUpdate'])
+        ->middleware('role:super_admin,administrator,jobs_admin');
+    Route::get('/admin/job-applications', [JobController::class, 'adminApplications'])
+        ->middleware('role:super_admin,administrator,jobs_admin');
     Route::get('/jobs/{id}', [JobController::class, 'show']);
 });

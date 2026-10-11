@@ -92,10 +92,12 @@ class EngagementController extends Controller
         }
 
         DB::table('wishlists')->insert([
+            'id' => (string) \Illuminate\Support\Str::uuid(),
             'user_id' => $request->user()->id,
             'product_id' => $request->product_id,
             'entity_type' => $request->entity_type ?? 'product',
             'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         return response()->json(['message' => 'Added to wishlist'], 201);
@@ -113,9 +115,11 @@ class EngagementController extends Controller
 
     public function recentlyViewed(Request $request): JsonResponse
     {
+        // recently_viewed carries viewed_at (written by TableGateway), not
+        // created_at - ordering by created_at 500d on the missing column.
         $items = DB::table('recently_viewed')
             ->where('user_id', $request->user()->id)
-            ->orderByDesc('created_at')
+            ->orderByDesc('viewed_at')
             ->limit(20)
             ->get();
 
@@ -141,10 +145,12 @@ class EngagementController extends Controller
         }
 
         DB::table('favorites')->insert([
+            'id' => (string) \Illuminate\Support\Str::uuid(),
             'user_id' => $request->user()->id,
             'entity_type' => $request->entity_type,
             'entity_id' => $request->entity_id,
             'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         return response()->json(['message' => 'Added to favorites', 'favorited' => true], 201);

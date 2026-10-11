@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import {Head, Link, usePage} from '@inertiajs/react';
 import AppLayout from '@/layouts/AppLayout';
-import { api, ApiError } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
 import { formatDateTime } from '@/lib/utils';
 import { toast } from 'sonner';
 import { ArrowLeft, SendHorizonal, Image as ImageIcon, Paperclip, Loader2 } from 'lucide-react';
@@ -24,7 +24,8 @@ interface Props {
 }
 
 export default function MessageThread({ conversation, initialMessages }: Props) {
-    const auth = usePage().props.auth as { id: string };
+    const auth = usePage().props.auth as { user?: { id: string }; id?: string } | null;
+    const myId = auth?.user?.id ?? auth?.id ?? '';
     const [messages, setMessages] = useState<Array<ChatMessageView & { mine: boolean }>>(initialMessages);
     const [draft, setDraft] = useState('');
     const [sending, setSending] = useState(false);
@@ -46,7 +47,7 @@ export default function MessageThread({ conversation, initialMessages }: Props) 
                 const latest = res.data.at(-1)?.id ?? null;
                 if (latest && latest !== lastIdRef.current) {
                     lastIdRef.current = latest;
-                    setMessages(res.data.map((m) => ({ ...m, mine: m.sender_id === auth.id })));
+                    setMessages(res.data.map((m) => ({ ...m, mine: m.sender_id === myId })));
                 }
             } catch {
                 /* transient network errors are ignored between polls */
@@ -71,7 +72,7 @@ export default function MessageThread({ conversation, initialMessages }: Props) 
             lastIdRef.current = res.data.id;
             setMessages((prev) => [...prev, {
                 id: res.data.id,
-                sender_id: auth.id,
+                sender_id: myId,
                 message: res.data.message,
                 message_type: res.data.message_type ?? 'text',
                 created_at: res.data.created_at ?? new Date().toISOString(),
@@ -79,7 +80,7 @@ export default function MessageThread({ conversation, initialMessages }: Props) 
             }]);
             setDraft('');
         } catch (err) {
-            toast.error(err instanceof ApiError ? err.message : 'Message failed to send');
+            toast.error(errorMessage(err, 'Message failed to send'));
         } finally {
             setSending(false);
         }

@@ -18,7 +18,9 @@ class DoctorFactory extends Factory
             'experience_years' => fake()->numberBetween(1, 30),
             'consultation_fee' => fake()->randomFloat(2, 50, 300),
             'virtual_fee' => fake()->randomFloat(2, 30, 200),
-            'avatar_url' => fake()->imageUrl(),
+            // W1: faker imageUrl() emits URLs on a dead external image
+            // service - local placeholder until a real avatar is attached.
+            'avatar_url' => '/placeholder.svg',
             'is_available' => true,
             'rating' => fake()->randomFloat(1, 1, 5),
         ];

@@ -3,7 +3,6 @@
 namespace Database\Factories;
 
 use Modules\Orders\Entities\MedicineOrder;
-use Modules\Orders\Entities\MedicineOrderItem;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -16,13 +15,10 @@ class MedicineOrderFactory extends Factory
         return [
             'user_id' => User::factory(),
             'order_number' => fake()->unique()->bothify('ORD-#####'),
+            'delivery_address' => fake()->address(),
+            'prescription_url' => null,
+            'total_amount' => fake()->randomFloat(2, 10, 500),
             'status' => 'pending',
-            'total' => fake()->randomFloat(2, 10, 500),
-            'subtotal' => fake()->randomFloat(2, 10, 500),
-            'tax' => fake()->randomFloat(2, 0, 50),
-            'shipping_cost' => fake()->randomFloat(2, 0, 20),
-            'shipping_address' => fake()->address(),
-            'payment_method' => 'card',
         ];
     }
 

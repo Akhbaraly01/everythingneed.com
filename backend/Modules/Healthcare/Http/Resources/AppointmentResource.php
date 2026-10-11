@@ -17,7 +17,10 @@ class AppointmentResource extends JsonResource
             'consultation_fee' => $this->consultation_fee,
             'appointment_date' => $this->appointment_date,
             'appointment_time' => $this->appointment_time,
+            'home_address' => $this->home_address,
             'status' => $this->status,
+            'payment_status' => $this->payment_status ?? 'unpaid',
+            'paid_at' => $this->paid_at,
             'doctor' => [
                 'id' => $this->doctor?->id,
                 'full_name' => $this->doctor?->full_name,

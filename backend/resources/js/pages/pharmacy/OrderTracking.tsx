@@ -1,8 +1,8 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link } from '@inertiajs/react';
 import { api } from '@/lib/api';
-import { formatCurrency, formatDateTime } from '@/lib/utils';
-import { Pill, ArrowRight } from 'lucide-react';
+import { formatPrice } from '@/lib/currency';
+import {Pill} from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface PharmacyOrder {
@@ -23,8 +23,25 @@ export default function PharmacyOrderTracking() {
     useEffect(() => {
         const path = window.location.pathname;
         const id = path.split('/').pop();
-        api.get<PharmacyOrder>(`/api/orders/pharmacy/${id}`)
-            .then((res) => setOrder(res.data))
+        api.get<{ data: Record<string, unknown> }>(`/api/pharmacy/orders/${id}`)
+            .then((res) => {
+                const o = res.data ?? {};
+                const items = Array.isArray(o.items) ? o.items as Array<Record<string, unknown>> : [];
+                setOrder({
+                    id: String(o.id ?? ''),
+                    reference: String(o.order_number ?? o.id ?? ''),
+                    status: String(o.status ?? 'pending'),
+                    total: Number(o.total_amount ?? 0),
+                    items: items.map((it) => ({
+                        name: String(it.name ?? 'Medicine'),
+                        quantity: Number(it.quantity ?? 1),
+                        unit_price: Number(it.unit_price ?? 0),
+                    })),
+                    shipping_address: o.delivery_address != null ? String(o.delivery_address) : undefined,
+                    tracking_number: o.tracking_number != null ? String(o.tracking_number) : undefined,
+                    created_at: String(o.created_at ?? ''),
+                });
+            })
             .catch(() => setOrder(null))
             .finally(() => setLoading(false));
     }, []);
@@ -47,7 +64,7 @@ export default function PharmacyOrderTracking() {
                         <div className="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
                             <p className="text-sm text-gray-500">Order #{order.reference}</p>
                             <div className="flex items-center justify-between">
-                                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(order.total)}</h1>
+                                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{formatPrice(order.total)}</h1>
                                 <span className={`rounded-full px-3 py-1 text-xs font-medium capitalize ${
                                     order.status === 'delivered' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
                                 }`}>{order.status}</span>
@@ -59,7 +76,7 @@ export default function PharmacyOrderTracking() {
                             {order.items.map((item, idx) => (
                                 <div key={idx} className="flex justify-between text-sm py-1">
                                     <span>{item.quantity}x {item.name}</span>
-                                    <span>{formatCurrency(item.unit_price * item.quantity)}</span>
+                                    <span>{formatPrice(item.unit_price * item.quantity)}</span>
                                 </div>
                             ))}
                         </div>

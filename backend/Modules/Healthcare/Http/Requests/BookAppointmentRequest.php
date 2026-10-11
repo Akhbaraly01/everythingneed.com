@@ -17,9 +17,10 @@ class BookAppointmentRequest extends FormRequest
             'doctor_id' => 'nullable|uuid|exists:doctors,id',
             'symptoms' => 'required|string|max:2000',
             'description' => 'nullable|string|max:2000',
-            'consultation_type' => 'nullable|string|in:in_person,virtual',
+            'consultation_type' => 'nullable|string|in:in_person,virtual,home_visit',
             'appointment_date' => 'nullable|date|after:now',
             'appointment_time' => 'nullable|string',
+            'home_address' => 'nullable|string|max:500',
             'is_random_assignment' => 'boolean',
         ];
     }

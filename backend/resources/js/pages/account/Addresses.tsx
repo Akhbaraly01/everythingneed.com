@@ -1,7 +1,8 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head } from '@inertiajs/react';
-import { api } from '@/lib/api';
-import { MapPin, Plus, Trash2, Check } from 'lucide-react';
+import { api, errorMessage } from '@/lib/api';
+import { toast } from 'sonner';
+import { MapPin, Plus, Trash2, Check, RefreshCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface Address {
@@ -18,37 +19,68 @@ interface Address {
 export default function AccountAddresses() {
     const [addresses, setAddresses] = useState<Address[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [showForm, setShowForm] = useState(false);
     const [form, setForm] = useState({ label: 'Home', street: '', city: '', state: '', postal_code: '', country: 'US' });
 
-    useEffect(() => {
-        api.get<{ data: Address[] }>('/api/user/addresses')
-            .then((res) => setAddresses(res.data))
-            .catch(() => setAddresses([]))
+    const load = () => {
+        setLoading(true);
+        setError(null);
+        api.get<{ data: Array<Address & { line1?: string; region?: string }> }>('/api/addresses')
+            .then((res) => setAddresses(
+                (res.data ?? []).map((a) => ({
+                    ...a,
+                    label: a.label || a.line1 || 'Home',
+                    street: a.street || a.line1 || '',
+                    state: a.state || a.region || '',
+                })),
+            ))
+            .catch((e) => {
+                setError(errorMessage(e, 'Failed to load addresses'));
+                setAddresses([]);
+            })
             .finally(() => setLoading(false));
-    }, []);
+    };
+
+    useEffect(load, []);
 
     const addAddress = async () => {
         try {
-            const res = await api.post<{ data: Address }>('/api/user/addresses', form);
-            setAddresses([...addresses, res.data]);
+            const res = await api.post<{ data: Address }>('/api/addresses', {
+                line1: form.street,
+                city: form.city,
+                region: form.state,
+                postal_code: form.postal_code,
+                country: (form.country || 'US').slice(0, 2).toUpperCase(),
+            });
+            const saved = { ...res.data, label: form.label, street: form.street, state: form.state };
+            setAddresses([...addresses, saved]);
             setShowForm(false);
             setForm({ label: 'Home', street: '', city: '', state: '', postal_code: '', country: 'US' });
-        } catch {}
+            toast.success('Address saved.');
+        } catch (e) {
+            toast.error(errorMessage(e, 'Failed to save address'));
+        }
     };
 
     const deleteAddress = async (id: string) => {
         try {
-            await api.del(`/api/user/addresses/${id}`);
+            await api.del(`/api/addresses/${id}`);
             setAddresses(addresses.filter((a) => a.id !== id));
-        } catch {}
+            toast.success('Address removed.');
+        } catch (e) {
+            toast.error(errorMessage(e, 'Failed to remove address'));
+        }
     };
 
     const setDefault = async (id: string) => {
         try {
-            await api.put(`/api/user/addresses/${id}/default`);
+            await api.put(`/api/addresses/${id}/default`);
             setAddresses(addresses.map((a) => ({ ...a, is_default: a.id === id })));
-        } catch {}
+            toast.success('Default address updated.');
+        } catch (e) {
+            toast.error(errorMessage(e, 'Failed to set default address'));
+        }
     };
 
     return (
@@ -93,6 +125,13 @@ export default function AccountAddresses() {
 
                 {loading ? (
                     <p className="text-gray-500">Loading...</p>
+                ) : error ? (
+                    <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
+                        <p className="text-red-600 font-medium">{error}</p>
+                        <button onClick={load} className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-500">
+                            <RefreshCcw className="h-4 w-4" /> Retry
+                        </button>
+                    </div>
                 ) : addresses.length === 0 ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
                         <MapPin className="mx-auto h-12 w-12 text-gray-400" />

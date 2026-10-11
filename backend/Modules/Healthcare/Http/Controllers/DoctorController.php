@@ -22,7 +22,10 @@ class DoctorController extends Controller
         $doctors = $this->healthcareService->getDoctors(
             $request->get('specialization'),
             $request->get('page', 1),
-            $request->get('per_page', 15)
+            $request->get('per_page', 15),
+            $request->get('q'),
+            $request->get('profession'),
+            $request->boolean('virtual')
         );
 
         return response()->json([

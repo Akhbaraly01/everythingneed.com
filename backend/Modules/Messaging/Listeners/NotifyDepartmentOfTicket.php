@@ -19,7 +19,7 @@ class NotifyDepartmentOfTicket implements ShouldQueue
 
         // Route to every active customer-service agent.
         $agentIds = UserRole::query()
-            ->whereIn('role', ['customer_service', 'support_staff'])
+            ->whereIn('role', ['customer_service', 'support_agent'])
             ->whereNull('deleted_at')
             ->pluck('user_id')
             ->unique();

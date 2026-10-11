@@ -1,12 +1,36 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link } from '@inertiajs/react';
-import { api } from '@/lib/api';
-import { formatCurrency } from '@/lib/utils';
-import { BookOpen, Award, Clock, ArrowRight } from 'lucide-react';
+import { api, errorMessage } from '@/lib/api';
+import { Award } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import CourseCard from '@/components/learn/CourseCard';
+import EmptyState from '@/components/shared/EmptyState';
+import LoadingState, { ErrorState } from '@/components/shared/LoadingState';
+
+interface EnrollmentRow {
+    id: string;
+    user_id: string;
+    course_id: string;
+    progress: number;
+    created_at?: string;
+    enrolled_at?: string;
+    /** Merged by LearnService::getUserEnrollments (top level, not on course). */
+    lessons_count?: number;
+    completed_lessons?: number;
+    is_completed?: boolean;
+    course?: {
+        id?: string;
+        title?: string;
+        instructor_name?: string;
+        instructor?: string;
+        thumbnail_url?: string;
+        image_url?: string;
+    };
+}
 
 interface EnrolledCourse {
     id: string;
+    course_id: string;
     title: string;
     instructor?: string;
     image_url?: string;
@@ -16,19 +40,42 @@ interface EnrolledCourse {
     total_lessons: number;
 }
 
+function mapEnrollment(row: EnrollmentRow): EnrolledCourse {
+    const course = row.course ?? {};
+    const totalLessons = Number(row.lessons_count ?? 0);
+    return {
+        id: row.course_id,
+        course_id: row.course_id,
+        title: course.title ?? 'Course',
+        instructor: course.instructor_name ?? course.instructor,
+        image_url: course.thumbnail_url ?? course.image_url,
+        enrolled_at: (row.enrolled_at ?? row.created_at ?? '') as string,
+        progress: Number(row.progress ?? 0),
+        completed_lessons: Number(row.completed_lessons ?? 0),
+        total_lessons: totalLessons,
+    };
+}
+
 export default function MyLearning() {
     const [courses, setCourses] = useState<EnrolledCourse[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [attempt, setAttempt] = useState(0);
 
     useEffect(() => {
-        api.get<{ data: EnrolledCourse[] }>('/api/my-courses')
-            .then((res) => setCourses(res.data))
-            .catch(() => setCourses([]))
+        setLoading(true);
+        setError(null);
+        api.get<{ data: EnrollmentRow[] }>('/api/my-courses')
+            .then((res) => setCourses((res.data ?? []).map(mapEnrollment)))
+            .catch((e) => {
+                setCourses([]);
+                setError(errorMessage(e, 'Failed to load your courses'));
+            })
             .finally(() => setLoading(false));
-    }, []);
+    }, [attempt]);
 
     return (
-        <AppLayout title="My Learning">
+        <AppLayout>
             <Head title="My Learning" />
 
             <div className="space-y-6">
@@ -38,49 +85,42 @@ export default function MyLearning() {
                 </div>
 
                 {loading ? (
-                    <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800"><p className="text-gray-500">Loading...</p></div>
+                    <LoadingState message="Loading..." />
+                ) : error ? (
+                    <ErrorState message={error} onRetry={() => setAttempt((n) => n + 1)} />
                 ) : courses.length === 0 ? (
-                    <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
-                        <BookOpen className="mx-auto h-12 w-12 text-gray-400" />
-                        <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">No courses yet</h3>
-                        <Link href="/learn" className="mt-4 inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
+                    <EmptyState
+                        title="No courses yet"
+                        hint="Enroll in a course to start learning."
+                    >
+                        <Link href="/learn" className="mt-2 inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
                             Browse Courses
                         </Link>
-                    </div>
+                    </EmptyState>
                 ) : (
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                         {courses.map((course) => (
-                            <Link key={course.id} href={`/learn/courses/${course.id}`}
-                                className="group overflow-hidden rounded-lg bg-white shadow transition hover:shadow-lg dark:bg-gray-800">
-                                <div className="h-40 bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
-                                    {course.image_url ? (
-                                        <img src={course.image_url} alt="" className="h-full w-full object-cover" />
-                                    ) : (
-                                        <BookOpen className="h-12 w-12 text-indigo-400" />
-                                    )}
-                                </div>
-                                <div className="p-4">
-                                    <h3 className="font-semibold text-gray-900 group-hover:text-indigo-600 dark:text-white">{course.title}</h3>
-                                    <p className="text-sm text-gray-500">{course.instructor}</p>
-
-                                    {/* Progress bar */}
-                                    <div className="mt-3">
-                                        <div className="flex items-center justify-between text-xs">
-                                            <span className="text-gray-500">{course.completed_lessons}/{course.total_lessons} lessons</span>
-                                            <span className="font-medium text-indigo-600">{course.progress}%</span>
-                                        </div>
-                                        <div className="mt-1 rounded-full bg-gray-200 h-1.5 dark:bg-gray-700">
-                                            <div className="bg-indigo-600 h-1.5 rounded-full" style={{ width: `${course.progress}%` }} />
-                                        </div>
+                            <CourseCard
+                                key={course.id}
+                                hidePrice
+                                course={{
+                                    id: course.course_id,
+                                    title: course.title,
+                                    instructor: course.instructor,
+                                    image_url: course.image_url,
+                                }}
+                                progress={course.progress}
+                                extra={
+                                    <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+                                        <span>{course.completed_lessons}/{course.total_lessons} lessons</span>
+                                        {course.progress === 100 && (
+                                            <span className="inline-flex items-center gap-1 text-green-600">
+                                                <Award className="h-3 w-3" /> Completed
+                                            </span>
+                                        )}
                                     </div>
-
-                                    {course.progress === 100 && (
-                                        <div className="mt-2 inline-flex items-center gap-1 text-xs text-green-600">
-                                            <Award className="h-3 w-3" /> Completed
-                                        </div>
-                                    )}
-                                </div>
-                            </Link>
+                                }
+                            />
                         ))}
                     </div>
                 )}

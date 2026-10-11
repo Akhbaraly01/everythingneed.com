@@ -1,13 +1,15 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, router } from '@inertiajs/react';
-import { api } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
+import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
-import { Video, Calendar, Clock, User, ArrowRight } from 'lucide-react';
+import {Video, User, ArrowRight} from 'lucide-react';
 
 interface Doctor {
     id: string;
     full_name: string;
     specialization: string;
+    profession?: string;
     virtual_fee: number;
     avatar_url: string;
     rating: number;
@@ -17,15 +19,21 @@ export default function VirtualConsultation() {
     const [doctors, setDoctors] = useState<Doctor[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
+    const [professionFilter, setProfessionFilter] = useState('');
     const [form, setForm] = useState({ symptoms: '', description: '', preferred_date: '', preferred_time: '' });
     const [submitting, setSubmitting] = useState(false);
 
+    const professions = ['doctor', 'nurse', 'chew', 'dentist', 'pharmacist', 'medical_laboratory_scientist', 'physiotherapist', 'optometrist', 'midwife', 'dietitian', 'psychologist', 'other'];
+
     useEffect(() => {
-        api.get<{ data: Doctor[] }>('/api/health/doctors', { params: { virtual: true } })
+        const params = new URLSearchParams();
+        params.set('virtual', 'true');
+        if (professionFilter) params.set('profession', professionFilter);
+        api.get<{ data: Doctor[] }>(`/api/health/doctors?${params.toString()}`)
             .then((res) => setDoctors(res.data))
             .catch(() => setDoctors([]))
             .finally(() => setLoading(false));
-    }, []);
+    }, [professionFilter]);
 
     const handleBook = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -38,7 +46,8 @@ export default function VirtualConsultation() {
                 ...form,
             });
             router.visit(`/healthcare/booking-confirmation?id=${res.data.id}`);
-        } catch {
+        } catch (err) {
+            toast.error(errorMessage(err, 'Failed to book the consultation'));
             setSubmitting(false);
         }
     };
@@ -53,8 +62,19 @@ export default function VirtualConsultation() {
                     <Video className="h-8 w-8 text-blue-600" />
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Virtual Consultation</h1>
-                        <p className="text-gray-500">Connect with a doctor from anywhere</p>
+                        <p className="text-gray-500">Connect with a healthcare professional from anywhere</p>
                     </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                    <button onClick={() => setProfessionFilter('')} className={`rounded-full px-4 py-1.5 text-sm font-medium ${
+                        !professionFilter ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
+                    }`}>All Professions</button>
+                    {professions.map((p) => (
+                        <button key={p} onClick={() => setProfessionFilter(p)} className={`rounded-full px-4 py-1.5 text-sm font-medium ${
+                            professionFilter === p ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
+                        }`}>{p.charAt(0).toUpperCase() + p.slice(1).replace('_', ' ')}</button>
+                    ))}
                 </div>
 
                 {!selectedDoctor ? (

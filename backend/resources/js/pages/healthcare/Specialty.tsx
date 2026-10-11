@@ -3,6 +3,7 @@ import { Head, Link } from '@inertiajs/react';
 import { api } from '@/lib/api';
 import { Stethoscope, ArrowLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import Image from '@/components/shared/Image';
 
 interface Doctor {
     id: string;
@@ -21,7 +22,7 @@ export default function HealthcareSpecialty({ specialty }: SpecialtyProps) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        api.get<{ data: Doctor[] }>(`/api/doctors?specialty=${encodeURIComponent(specialty)}`)
+        api.get<{ data: Doctor[] }>(`/api/doctors?specialization=${encodeURIComponent(specialty)}`)
             .then((res) => setDoctors(res.data))
             .catch(() => setDoctors([]))
             .finally(() => setLoading(false));
@@ -50,7 +51,7 @@ export default function HealthcareSpecialty({ specialty }: SpecialtyProps) {
                                 className="group rounded-lg bg-white p-4 shadow transition hover:shadow-md dark:bg-gray-800">
                                 <div className="flex items-center gap-3">
                                     <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full bg-gray-100">
-                                        {doc.image_url && <img src={doc.image_url} alt="" className="h-full w-full rounded-full object-cover" />}
+                                        {doc.image_url && <Image src={doc.image_url} alt="" className="h-full w-full rounded-full object-cover" />}
                                     </div>
                                     <div>
                                         <p className="font-semibold text-gray-900 group-hover:text-indigo-600 dark:text-white">Dr. {doc.name}</p>

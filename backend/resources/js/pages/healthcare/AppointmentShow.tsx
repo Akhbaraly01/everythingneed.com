@@ -1,7 +1,9 @@
 import { Head, Link } from '@inertiajs/react';
 import AppLayout from '@/layouts/AppLayout';
-import { api, ApiError } from '@/lib/api';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { api, errorMessage } from '@/lib/api';
+import { formatDate } from '@/lib/utils';
+import { formatPrice } from '@/lib/currency';
+import ConfirmDialog from '@/components/shared/Ui';
 import { toast } from 'sonner';
 import { useState } from 'react';
 import {
@@ -18,6 +20,7 @@ interface Appointment {
     consultation_fee?: number | string;
     appointment_date?: string;
     appointment_time?: string;
+    home_address?: string | null;
     status: string;
     created_at: string;
     doctor?: { full_name: string; specialization?: string; qualification?: string } | null;
@@ -39,18 +42,19 @@ interface Props {
 export default function AppointmentShow({ appointment: a, consultation }: Props) {
     const [busy, setBusy] = useState(false);
     const [joining, setJoining] = useState(false);
+    const [confirmCancel, setConfirmCancel] = useState(false);
 
     const cancel = async () => {
-        if (!confirm('Cancel this appointment?')) return;
         setBusy(true);
         try {
             await api.post(`/api/appointments/${a.id}/cancel`);
             toast.success('Appointment cancelled');
             window.location.reload();
         } catch (err) {
-            toast.error(err instanceof ApiError ? err.message : 'Cancellation failed');
+            toast.error(errorMessage(err, 'Cancellation failed'));
         } finally {
             setBusy(false);
+            setConfirmCancel(false);
         }
     };
 
@@ -61,7 +65,7 @@ export default function AppointmentShow({ appointment: a, consultation }: Props)
             window.open(res.data.join_url, '_blank', 'noopener');
             toast.info(`Opening ${res.data.provider} room…`, { description: 'The same link is shared with your clinician.' });
         } catch (err) {
-            toast.error(err instanceof ApiError ? err.message : 'Could not open the room');
+            toast.error(errorMessage(err, 'Could not open the room'));
         } finally {
             setJoining(false);
         }
@@ -82,7 +86,7 @@ export default function AppointmentShow({ appointment: a, consultation }: Props)
                 <div className="mb-6 rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
                     <div className="mb-3 flex items-center justify-between">
                         <span className="font-mono text-xs text-gray-400">{a.ticket_number}</span>
-                        <span className="text-sm font-semibold text-rose-600">{formatCurrency(Number(a.consultation_fee ?? 0))}</span>
+                        <span className="text-sm font-semibold text-rose-600">{formatPrice(Number(a.consultation_fee ?? 0))}</span>
                     </div>
                     <h1 className="mb-1 text-lg font-bold text-gray-900 dark:text-white">{a.symptoms}</h1>
                     {a.description && <p className="mb-4 text-sm text-gray-500">{a.description}</p>}
@@ -91,14 +95,19 @@ export default function AppointmentShow({ appointment: a, consultation }: Props)
                         <Info label="Type">
                             {a.consultation_type === 'virtual'
                                 ? <><Video className="mr-1 inline h-4 w-4 text-sky-500" />Virtual consultation</>
-                                : <><MapPin className="mr-1 inline h-4 w-4 text-rose-500" />In-person visit</>}
+                                : a.consultation_type === 'home_visit'
+                                    ? <><MapPin className="mr-1 inline h-4 w-4 text-rose-500" />Home visit</>
+                                    : <><MapPin className="mr-1 inline h-4 w-4 text-rose-500" />In-person visit</>}
                         </Info>
                         <Info label="Status"><span className="font-medium capitalize">{a.status.replace('_', ' ')}</span></Info>
                         <Info label="Scheduled">
                             {a.appointment_date
-                                ? `${formatDate(a.appointment_date)}${a.appointment_time ? ` · ${a.appointment_time.slice(0, 5)}` : ''}`
+                                ? `${formatDate(a.appointment_date)}${a.appointment_time ? ` — ${a.appointment_time.slice(0, 5)}` : ''}`
                                 : 'To be scheduled'}
                         </Info>
+                        {a.home_address ? (
+                            <Info label="Visit address">{a.home_address}</Info>
+                        ) : null}
                         <Info label="Booked">{formatDate(a.created_at)}</Info>
                         <Info label="Doctor">
                             {a.doctor
@@ -119,7 +128,7 @@ export default function AppointmentShow({ appointment: a, consultation }: Props)
 
                     {cancellable && (
                         <button
-                            onClick={cancel}
+                            onClick={() => setConfirmCancel(true)}
                             disabled={busy}
                             className={`flex items-center gap-1.5 rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 dark:border-red-900/50 ${canJoin ? 'mt-3' : 'mt-5'}`}
                         >
@@ -167,6 +176,17 @@ export default function AppointmentShow({ appointment: a, consultation }: Props)
                     </p>
                 )}
             </div>
+
+            <ConfirmDialog
+                open={confirmCancel}
+                title="Cancel appointment?"
+                description="Your practitioner will be notified. This cannot be undone."
+                confirmLabel="Cancel appointment"
+                danger
+                busy={busy}
+                onConfirm={() => void cancel()}
+                onCancel={() => setConfirmCancel(false)}
+            />
         </AppLayout>
     );
 }

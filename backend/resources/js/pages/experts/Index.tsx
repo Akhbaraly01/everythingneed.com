@@ -3,6 +3,7 @@ import { Head, Link } from '@inertiajs/react';
 import { api } from '@/lib/api';
 import { User, Star, MapPin } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import Image from '@/components/shared/Image';
 
 interface Expert {
     id: string;
@@ -47,7 +48,7 @@ export default function ExpertsIndex() {
                                 className="group rounded-lg bg-white p-6 shadow transition hover:shadow-lg dark:bg-gray-800">
                                 <div className="flex items-center gap-4">
                                     <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full bg-gray-100">
-                                        {e.image_url ? <img src={e.image_url} alt="" className="h-full w-full rounded-full object-cover" /> :
+                                        {e.image_url ? <Image src={e.image_url} alt="" className="h-full w-full rounded-full object-cover" /> :
                                             <div className="flex h-full items-center justify-center text-gray-400"><User className="h-8 w-8" /></div>}
                                     </div>
                                     <div>

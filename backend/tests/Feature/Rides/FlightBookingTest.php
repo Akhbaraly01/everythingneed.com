@@ -127,8 +127,9 @@ class FlightBookingTest extends TestCase
             'passengers' => [['name' => 'Owner Only']],
         ])->json('data.booking_id');
 
+        // Web 403s redirect for Inertia (see bootstrap/app.php) — stranger must not see the page.
         $this->actingAs($stranger)->get("/flights/confirmation/{$booked}")
-            ->assertStatus(403);
+            ->assertStatus(302);
 
         $this->actingAs($owner)->get("/flights/confirmation/{$booked}")
             ->assertStatus(200);

@@ -9,25 +9,19 @@ interface AuthLayoutProps {
 
 export default function AuthLayout({ children, title, description }: AuthLayoutProps) {
     return (
-        <div className="flex min-h-screen flex-col items-center bg-gray-50 dark:bg-gray-900 sm:justify-center sm:px-6">
-            <div className="sm:mx-auto sm:w-full sm:max-w-md">
-                <Link href="/" className="flex justify-center">
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">EverythingNeed</h1>
+        <div className="flex min-h-screen flex-col bg-background">
+            <div className="container mx-auto px-4 py-4">
+                <Link href="/dashboard" className="inline-flex items-center gap-2">
+                    <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-2xl font-bold text-transparent">
+                        {title ?? 'everythingneed.com'}
+                    </span>
                 </Link>
-                {title && (
-                    <h2 className="mt-6 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900 dark:text-white">
-                        {title}
-                    </h2>
-                )}
                 {description && (
-                    <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-                        {description}
-                    </p>
+                    <p className="mt-1 text-center text-sm text-muted-foreground">{description}</p>
                 )}
             </div>
-
-            <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-                <div className="bg-white px-6 py-8 shadow dark:bg-gray-800 sm:rounded-lg sm:px-12">
+            <div className="flex flex-1 items-center justify-center px-4 py-8">
+                <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-lg">
                     {children}
                 </div>
             </div>

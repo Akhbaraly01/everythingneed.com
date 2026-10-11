@@ -8,4 +8,6 @@ interface PaymentGatewayInterface
     public function refund(array $data): array;
     public function getPayment(string $id): ?object;
     public function attachMethod(string $userId, array $methodData): array;
+    public function savedMethods(string $userId): array;
+    public function detachMethod(string $userId, string $methodId): bool;
 }

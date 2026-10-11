@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
-import AppLayout from '@/layouts/AppLayout';
-import { api, ApiError } from '@/lib/api';
+import AdminLayout from '@/layouts/AdminLayout';
+import { api, errorMessage } from '@/lib/api';
+import ConfirmDialog from '@/components/shared/Ui';
+import DataTable from '@/components/shared/DataTable';
 import { toast } from 'sonner';
 import { Building2, Plus, Pencil, Trash2, X } from 'lucide-react';
 
@@ -24,6 +26,7 @@ export default function AdminDepartments({ departments }: Props) {
     const [creating, setCreating] = useState(false);
     const [form, setForm] = useState(emptyForm);
     const [busy, setBusy] = useState(false);
+    const [deleteFor, setDeleteFor] = useState<Department | null>(null);
 
     const openCreate = () => { setForm(emptyForm); setEditing(null); setCreating(true); };
     const openEdit = (d: Department) => {
@@ -46,25 +49,26 @@ export default function AdminDepartments({ departments }: Props) {
             setCreating(false);
             router.reload({ only: ['departments'] });
         } catch (err) {
-            toast.error(err instanceof ApiError ? err.message : 'Save failed');
+            toast.error(errorMessage(err, 'Save failed'));
         } finally {
             setBusy(false);
         }
     };
 
     const destroy = async (d: Department) => {
-        if (!confirm(`Delete department "${d.name}"?`)) return;
         try {
             await api.del(`/api/admin/departments/${d.id}`);
             toast.success('Department deleted');
             router.reload({ only: ['departments'] });
         } catch (err) {
-            toast.error(err instanceof ApiError ? err.message : 'Delete failed');
+            toast.error(errorMessage(err, 'Delete failed'));
+        } finally {
+            setDeleteFor(null);
         }
     };
 
     return (
-        <AppLayout title="Admin · Departments">
+        <AdminLayout title="Admin · Departments">
             <Head title="Departments" />
             <div className="mx-auto max-w-4xl px-4 py-8">
                 <div className="mb-6 flex items-center justify-between">
@@ -80,40 +84,35 @@ export default function AdminDepartments({ departments }: Props) {
                     </button>
                 </div>
 
-                <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
-                    <table className="w-full text-left text-sm">
-                        <thead className="border-b border-gray-100 bg-gray-50 text-xs uppercase tracking-wide text-gray-500 dark:border-gray-700 dark:bg-gray-700/50">
-                            <tr>
-                                <th className="px-5 py-3">Name</th>
-                                <th className="px-5 py-3">Description</th>
-                                <th className="px-5 py-3">Tickets</th>
-                                <th className="px-5 py-3 text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                            {departments.map((d) => (
-                                <tr key={d.id}>
-                                    <td className="px-5 py-3 font-medium text-gray-900 dark:text-white">{d.name}</td>
-                                    <td className="max-w-xs truncate px-5 py-3 text-gray-500">{d.description ?? '—'}</td>
-                                    <td className="px-5 py-3">{d.tickets_count}</td>
-                                    <td className="px-5 py-3">
-                                        <div className="flex justify-end gap-2">
-                                            <button onClick={() => openEdit(d)} className="text-gray-400 hover:text-sky-600"><Pencil className="h-4 w-4" /></button>
-                                            <button
-                                                onClick={() => destroy(d)}
-                                                disabled={Number(d.tickets_count) > 0}
-                                                title={Number(d.tickets_count) > 0 ? 'In use by tickets — cannot delete' : 'Delete'}
-                                                className="text-gray-400 hover:text-red-500 disabled:cursor-not-allowed disabled:text-gray-200"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                <DataTable
+                    columns={[
+                        { key: 'name', header: 'Name', accessor: 'name', sortable: true },
+                        {
+                            key: 'description', header: 'Description',
+                            render: (d) => <span className="text-gray-500">{d.description ?? '—'}</span>,
+                        },
+                        { key: 'tickets', header: 'Tickets', accessor: 'tickets_count', sortable: true },
+                        {
+                            key: 'actions', header: 'Actions',
+                            render: (d) => (
+                                <div className="flex justify-end gap-2">
+                                    <button onClick={() => openEdit(d)} className="text-gray-400 hover:text-sky-600"><Pencil className="h-4 w-4" /></button>
+                                    <button
+                                        onClick={() => setDeleteFor(d)}
+                                        disabled={Number(d.tickets_count) > 0}
+                                        title={Number(d.tickets_count) > 0 ? 'In use by tickets — cannot delete' : 'Delete'}
+                                        className="text-gray-400 hover:text-red-500 disabled:cursor-not-allowed disabled:text-gray-200"
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </button>
+                                </div>
+                            ),
+                        },
+                    ]}
+                    data={departments}
+                    emptyTitle="No departments yet"
+                    emptyDescription="Create the first routing department."
+                />
 
                 {/* Modal */}
                 {creating && (
@@ -141,13 +140,23 @@ export default function AdminDepartments({ departments }: Props) {
                             <div className="flex justify-end gap-2 pt-1">
                                 <button type="button" onClick={() => setCreating(false)} className="rounded-lg px-4 py-2 text-sm text-gray-500">Cancel</button>
                                 <button type="submit" disabled={busy} className="rounded-lg bg-sky-600 px-5 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-60">
-                                    {busy ? 'Saving…' : editing ? 'Save changes' : 'Create'}
+                                    {busy ? 'Savingâ€¦' : editing ? 'Save changes' : 'Create'}
                                 </button>
                             </div>
                         </form>
                     </div>
                 )}
+
+                <ConfirmDialog
+                    open={deleteFor !== null}
+                    title="Delete department?"
+                    description={deleteFor ? `Delete department "${deleteFor.name}"?` : undefined}
+                    confirmLabel="Delete"
+                    danger
+                    onConfirm={() => deleteFor && destroy(deleteFor)}
+                    onCancel={() => setDeleteFor(null)}
+                />
             </div>
-        </AppLayout>
+        </AdminLayout>
     );
 }

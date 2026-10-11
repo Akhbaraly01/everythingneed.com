@@ -1,8 +1,9 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link } from '@inertiajs/react';
 import { api } from '@/lib/api';
-import { User, Star, ArrowLeft, Clock, Calendar } from 'lucide-react';
+import {User, Star, ArrowLeft, Clock} from 'lucide-react';
 import { useEffect, useState } from 'react';
+import Image from '@/components/shared/Image';
 
 interface Expert {
     id: string;
@@ -26,12 +27,12 @@ export default function ExpertProfile({ expert_id }: ExpertProfileProps) {
     const [availability, setAvailability] = useState<Record<string, string[]>>({});
 
     useEffect(() => {
-        api.get<Expert>(`/api/experts/${expert_id}`)
+        api.get<{ data: Expert }>(`/api/experts/${expert_id}`)
             .then((res) => setExpert(res.data))
             .catch(() => setExpert(null))
             .finally(() => setLoading(false));
-        api.get<Record<string, string[]>>(`/api/experts/${expert_id}/availability`)
-            .then((res) => setAvailability(res.data))
+        api.get<{ data: Record<string, string[]> }>(`/api/experts/${expert_id}/availability`)
+            .then((res) => setAvailability(res.data ?? {}))
             .catch(() => {});
     }, [expert_id]);
 
@@ -49,7 +50,7 @@ export default function ExpertProfile({ expert_id }: ExpertProfileProps) {
                 <div className="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
                     <div className="flex items-center gap-6">
                         <div className="h-24 w-24 shrink-0 overflow-hidden rounded-full bg-gray-100">
-                            {expert.image_url ? <img src={expert.image_url} alt="" className="h-full w-full rounded-full object-cover" /> :
+                            {expert.image_url ? <Image src={expert.image_url} alt="" className="h-full w-full rounded-full object-cover" /> :
                                 <div className="flex h-full items-center justify-center text-gray-400"><User className="h-12 w-12" /></div>}
                         </div>
                         <div>
@@ -61,9 +62,18 @@ export default function ExpertProfile({ expert_id }: ExpertProfileProps) {
                     </div>
                     {expert.bio && <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">{expert.bio}</p>}
                     {expert.hourly_rate != null && <p className="mt-2 text-lg font-bold text-gray-900 dark:text-white">${expert.hourly_rate}/hour</p>}
-                    <button className="mt-4 rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500">
+                    <Link
+                        href={`/experts/${expert.id}/book`}
+                        className="mt-4 inline-block rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500"
+                    >
                         Book Consultation
-                    </button>
+                    </Link>
+                    <Link
+                        href="/experts/bookings"
+                        className="mt-2 block text-sm font-medium text-indigo-600 hover:text-indigo-500"
+                    >
+                        My sessions
+                    </Link>
                 </div>
 
                 {Object.keys(availability).length > 0 && (

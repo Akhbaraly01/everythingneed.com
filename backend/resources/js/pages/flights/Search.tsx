@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/AppLayout';
 import { type Flight } from '@/types';
-import { formatCurrency } from '@/lib/utils';
-import { Search as SearchIcon, Plane, ArrowRight, CalendarDays, Users, ChevronLeft, ChevronRight } from 'lucide-react';
+import { formatPrice } from '@/lib/currency';
+import {Search as SearchIcon, Plane, CalendarDays, ChevronLeft, ChevronRight} from 'lucide-react';
 
 interface Props {
     flights: { data: Flight[]; current_page: number; last_page: number; total: number };
@@ -105,7 +105,7 @@ export default function FlightsSearch({ flights, filters }: Props) {
                                     </div>
                                     {/* Price */}
                                     <div className="text-right">
-                                        <p className="text-xl font-bold text-sky-600">{formatCurrency(Number(flight.price))}</p>
+                                        <p className="text-xl font-bold text-sky-600">{formatPrice(Number(flight.price))}</p>
                                         <p className="text-[11px] text-gray-400">{flight.seats_available} seats left</p>
                                     </div>
                                 </div>

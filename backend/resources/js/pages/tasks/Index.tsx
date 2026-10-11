@@ -1,7 +1,9 @@
+import { statusTone } from '@/lib/lifecycle';
 import { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/AppLayout';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
+import { formatPrice } from '@/lib/currency';
 import { Search as SearchIcon, ListChecks, Plus, ClipboardList, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface TaskPost {
@@ -23,14 +25,6 @@ interface Props {
     tasks: { data: TaskPost[]; current_page: number; last_page: number; total: number };
     filters: { q?: string; mine?: string };
 }
-
-const statusStyles: Record<string, string> = {
-    open: 'bg-green-100 text-green-800',
-    in_review: 'bg-amber-100 text-amber-800',
-    assigned: 'bg-indigo-100 text-indigo-800',
-    completed: 'bg-gray-100 text-gray-600',
-    cancelled: 'bg-red-100 text-red-700',
-};
 
 export default function TasksIndex({ tasks, filters }: Props) {
     const [q, setQ] = useState(filters.q ?? '');
@@ -113,7 +107,7 @@ export default function TasksIndex({ tasks, filters }: Props) {
                                     <div className="min-w-0 flex-1">
                                         <div className="mb-1 flex items-center gap-2">
                                             <span className="font-mono text-[11px] text-gray-400">{task.post_number}</span>
-                                            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusStyles[task.status] ?? ''}`}>{task.status.replace('_', ' ')}</span>
+                                            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusTone(task.status)}`}>{task.status.replace('_', ' ')}</span>
                                         </div>
                                         <h3 className="font-semibold text-gray-900 dark:text-white">{task.title}</h3>
                                         <p className="mt-0.5 line-clamp-1 text-sm text-gray-500">{task.description}</p>
@@ -123,7 +117,7 @@ export default function TasksIndex({ tasks, filters }: Props) {
                                         </p>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-xl font-bold text-violet-600">{formatCurrency(Number(task.budget))}</p>
+                                        <p className="text-xl font-bold text-violet-600">{formatPrice(Number(task.budget))}</p>
                                         <p className="text-xs text-gray-500">Qty {task.quantity} · {task.applications_count ?? 0} applicant{((task.applications_count ?? 0)) === 1 ? '' : 's'}</p>
                                     </div>
                                 </div>

@@ -1,0 +1,173 @@
+name: Backend
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  tests:
+    name: PHPUnit
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: everythingneed_test
+          # phpunit.xml authenticates as postgres with an empty password
+          # (matches the local dev box) - trust keeps that working.
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          # 8.5 matches the dev box; symfony/* v8.1 requires php >=8.4.1,
+          # so 8.3 would fail `composer install` platform checks.
+          php-version: "8.5"
+          extensions: pgsql, mbstring, dom, fileinfo, curl, tokenizer, ctype, openssl
+          coverage: none
+
+      - name: Install Composer dependencies
+        working-directory: backend
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare environment
+        working-directory: backend
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Run test suite
+        working-directory: backend
+        run: php artisan test --no-coverage
+
+  frontend:
+    name: Lint, typecheck, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: ESLint
+        working-directory: backend
+        run: npm run lint
+
+      - name: TypeScript
+        working-directory: backend
+        run: npm run typecheck
+
+      - name: Production build
+        working-directory: backend
+        run: npm run build
+
+  e2e:
+    name: Playwright (chromium)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: everythingneed
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          # 8.5 matches the dev box; symfony/* v8.1 requires php >=8.4.1,
+          # so 8.3 would fail `composer install` platform checks.
+          php-version: "8.5"
+          extensions: pgsql, mbstring, dom, fileinfo, curl, tokenizer, ctype, openssl
+          coverage: none
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install Composer dependencies
+        working-directory: backend
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Install npm dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Prepare app, database and seed accounts
+        working-directory: backend
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          php artisan migrate --seed --force
+
+      - name: Install Playwright browser
+        working-directory: backend
+        run: npx playwright install --with-deps chromium
+
+      # The config's webServer starts `php artisan serve --port=8000`
+      # (CI=true disables server reuse). Seeded accounts: user@/Password1,
+      # super@/password, admin@/Password1, cs@/Password1.
+      - name: Run browser tests
+        working-directory: backend
+        env:
+          MAIL_ENABLED: "false"
+          BROADCAST_CONNECTION: log
+        run: npx playwright test
+
+      - name: Enforce E2E coverage floor
+        working-directory: backend
+        env:
+          E2E_MIN_TESTS: "6"
+        run: node ../scripts/check-e2e-results.mjs
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.run_attempt }}
+          path: backend/playwright-report
+          retention-days: 7
+
+      - name: Upload traces, screenshots, videos
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts-${{ github.run_attempt }}
+          path: |
+            backend/test-results/**/trace.zip
+            backend/test-results/**/*.png
+            backend/test-results/**/*.webm
+          retention-days: 7
+          if-no-files-found: ignore

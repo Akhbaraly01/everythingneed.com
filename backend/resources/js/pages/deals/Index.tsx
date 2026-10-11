@@ -1,6 +1,9 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link } from '@inertiajs/react';
 import { Briefcase, Hotel, UtensilsCrossed, Building2, Sprout, HardHat, Plane, Truck, Handshake } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { api } from '@/lib/api';
+import { formatPrice } from '@/lib/currency';
 
 const dealCategories = [
     { name: 'Tasks & Gigs', href: '/tasks', icon: Briefcase, color: 'text-blue-600', desc: 'Find freelancers or get tasks done' },
@@ -15,6 +18,15 @@ const dealCategories = [
 ];
 
 export default function DealsIndex() {
+    const [live, setLive] = useState<Array<{ id: string; slug?: string | null; name: string; price?: number | null }>>([]);
+
+    // Live deal items below the hub (the grid above is the directory).
+    useEffect(() => {
+        api.get<{ data: Array<{ id: string; slug?: string | null; name: string; price?: number | null }> }>('/api/deals?per_page=6')
+            .then((res) => setLive(Array.isArray(res.data) ? res.data : []))
+            .catch(() => setLive([]));
+    }, []);
+
     return (
         <AppLayout title="Deals">
             <Head title="Deals" />
@@ -31,6 +43,26 @@ export default function DealsIndex() {
                         </Link>
                     ))}
                 </div>
+
+                {live.length > 0 && (
+                    <div>
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Latest deals</h2>
+                        <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                            {live.map((deal) => (
+                                <Link
+                                    key={deal.id}
+                                    href={`/deals/${deal.slug || deal.id}`}
+                                    className="rounded-lg bg-white p-4 shadow transition hover:shadow-lg dark:bg-gray-800"
+                                >
+                                    <p className="font-semibold text-gray-900 dark:text-white">{deal.name}</p>
+                                    {deal.price != null && (
+                                        <p className="mt-1 font-bold text-indigo-600">{formatPrice(deal.price)}</p>
+                                    )}
+                                </Link>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
         </AppLayout>
     );

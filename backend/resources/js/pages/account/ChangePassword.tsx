@@ -1,6 +1,7 @@
 import AppLayout from '@/layouts/AppLayout';
-import { Head, router } from '@inertiajs/react';
-import { api } from '@/lib/api';
+import {Head} from '@inertiajs/react';
+import {  api, errorMessage } from '@/lib/api';
+import { toast } from 'sonner';
 import { Lock } from 'lucide-react';
 import { useState } from 'react';
 
@@ -12,22 +13,22 @@ export default function AccountChangePassword() {
 
     const handleSave = async () => {
         if (password !== confirmation) {
-            alert('Passwords do not match');
+            toast.warning('Passwords do not match');
             return;
         }
         if (password.length < 8) {
-            alert('Password must be at least 8 characters');
+            toast.warning('Password must be at least 8 characters');
             return;
         }
         setSaving(true);
         try {
-            await api.put('/api/user/password', { current_password: current, password, password_confirmation: confirmation });
-            alert('Password changed successfully');
+            await api.post('/api/auth/change-password', { current_password: current, password, password_confirmation: confirmation });
+            toast.success('Password changed successfully');
             setCurrent('');
             setPassword('');
             setConfirmation('');
-        } catch (e: any) {
-            alert(e.message ?? 'Failed to change password');
+        } catch (e) {
+            toast.error(errorMessage(e, 'Failed to change password'));
         }
         setSaving(false);
     };

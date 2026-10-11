@@ -3,12 +3,16 @@
 namespace Modules\Needs\Entities;
 
 use App\Models\Model;
+use Core\Support\HasSlug;
 
 class NeedItem extends Model
 {
+    use HasSlug;
+
     protected $fillable = [
         'category_id',
         'name',
+        'slug',
         'description',
         'price',
         'image_url',

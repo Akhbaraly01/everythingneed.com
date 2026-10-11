@@ -1,16 +1,17 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, router } from '@inertiajs/react';
-import { api } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
+import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
-import { TestTube, Calendar, Clock, FileText, ArrowRight } from 'lucide-react';
+import {TestTube, FileText, ArrowRight} from 'lucide-react';
 
 interface LabTest {
     id: string;
     name: string;
-    description: string;
+    description?: string;
     price: number;
-    preparation_instructions: string;
-    result_time: string;
+    preparation_instructions?: string | null;
+    result_time_hours?: number | null;
 }
 
 export default function LabBooking({ test_id }: { test_id?: string }) {
@@ -39,11 +40,14 @@ export default function LabBooking({ test_id }: { test_id?: string }) {
         setSubmitting(true);
         try {
             const res = await api.post<{ data: { id: string } }>('/api/health/labs/book', {
-                test_id,
-                ...form,
+                lab_test_id: test_id,
+                appointment_date: form.preferred_date,
+                appointment_time: form.preferred_time,
+                notes: form.notes.trim() || undefined,
             });
             router.visit(`/healthcare/lab-confirmation?id=${res.data.id}`);
-        } catch {
+        } catch (err) {
+            toast.error(errorMessage(err, 'Failed to book the lab test'));
             setSubmitting(false);
         }
     };
@@ -68,7 +72,7 @@ export default function LabBooking({ test_id }: { test_id?: string }) {
                         </div>
                         <div className="rounded bg-gray-50 p-3 dark:bg-gray-700">
                             <span className="text-gray-500">Results In</span>
-                            <p className="font-semibold text-gray-900 dark:text-white">{test.result_time}</p>
+                            <p className="font-semibold text-gray-900 dark:text-white">{test.result_time_hours != null ? `${test.result_time_hours} hours` : '—'}</p>
                         </div>
                     </div>
                     {test.preparation_instructions && (

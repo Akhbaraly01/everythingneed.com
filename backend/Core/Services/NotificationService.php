@@ -30,13 +30,23 @@ class NotificationService
             'created_at' => $now,
         ]);
 
-        broadcast(new NotificationCreated($userId, [
-            'title' => $title,
-            'message' => mb_substr($message, 0, 120),
-            'type' => $type,
-            'related_id' => $relatedId,
-            'is_read' => false,
-            'created_at' => $now->toIso8601String(),
-        ]));
+        // Realtime push is best-effort: a Reverb/broadcaster outage must never
+        // fail the business operation (checkout, replies, payouts) that queued
+        // this notification — the row above is already persisted.
+        try {
+            broadcast(new NotificationCreated($userId, [
+                'title' => $title,
+                'message' => mb_substr($message, 0, 500),
+                'type' => $type,
+                'related_id' => $relatedId,
+                'is_read' => false,
+                'created_at' => $now->toIso8601String(),
+            ]));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Broadcast skipped (notification not pushed): ' . $e->getMessage(), [
+                'type' => $type,
+                'user_id' => $userId,
+            ]);
+        }
     }
 }

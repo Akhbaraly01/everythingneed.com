@@ -3,14 +3,15 @@
 use Laravel\Sanctum\Sanctum;
 
 return [
-    'stateful' => explode(',', env(
-        'SANCTUM_STATEFUL_DOMAINS',
-        sprintf(
-            '%s%s',
-            'localhost,localhost:3000,localhost:8080,127.0.0.1,127.0.0.1:8000,127.0.0.1:8080,::1',
-            Sanctum::currentApplicationUrlWithPort()
-        )
-    )),
+    // Same-origin (stateful) domains. The app's own URL host:port is ALWAYS
+    // merged in - without it every cookie-authenticated /api/* call is treated
+    // as cross-site (no session started) and 401s. env() may add more;
+    // entries are trimmed and deduped. Single app: everything on :8000.
+    'stateful' => array_values(array_unique(array_filter(array_map('trim', explode(',', sprintf(
+        '%s,%s',
+        env('SANCTUM_STATEFUL_DOMAINS', 'localhost,localhost:8000,127.0.0.1,127.0.0.1:8000,::1'),
+        Sanctum::currentApplicationUrlWithPort()
+    )))))),
 
     'guard' => ['web'],
 

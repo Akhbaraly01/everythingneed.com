@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/AppLayout';
-import { api, ApiError } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, X, Package } from 'lucide-react';
@@ -57,7 +57,7 @@ export default function VendorProducts({ products }: Props) {
             setCreating(false);
             router.reload({ only: ['products'] });
         } catch (err) {
-            toast.error(err instanceof ApiError ? err.message : 'Save failed');
+            toast.error(errorMessage(err, 'Save failed'));
         } finally {
             setBusy(false);
         }
@@ -68,7 +68,7 @@ export default function VendorProducts({ products }: Props) {
             await api.put(`/api/products/${p.id}`, { is_active: !p.is_active });
             router.reload({ only: ['products'] });
         } catch (err) {
-            toast.error(err instanceof ApiError ? err.message : 'Update failed');
+            toast.error(errorMessage(err, 'Update failed'));
         }
     };
 
@@ -80,7 +80,7 @@ export default function VendorProducts({ products }: Props) {
             setPendingDelete(null);
             router.reload({ only: ['products'] });
         } catch (err) {
-            toast.error(err instanceof ApiError ? err.message : 'Delete failed');
+            toast.error(errorMessage(err, 'Delete failed'));
         } finally {
             setBusy(false);
         }

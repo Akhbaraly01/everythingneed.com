@@ -1,8 +1,9 @@
 import AppLayout from '@/layouts/AppLayout';
-import { Head, Link } from '@inertiajs/react';
+import {Head, Link} from '@inertiajs/react';
 import type { Property } from '@/types';
-import { formatCurrency } from '@/lib/utils';
-import { MapPin, Bed, Bath, Maximize, Building2, Calendar } from 'lucide-react';
+import { formatPrice } from '@/lib/currency';
+import {MapPin, Bed, Bath, Maximize, Building2} from 'lucide-react';
+import Image from '@/components/shared/Image';
 
 interface PropertyShowProps {
     property: Property;
@@ -19,7 +20,7 @@ export default function PropertyShow({ property }: PropertyShowProps) {
                     <div className="flex flex-col gap-6 lg:flex-row">
                         <div className="aspect-video w-full overflow-hidden rounded-lg bg-gray-100 lg:w-2/3">
                             {property.images && property.images.length > 0 ? (
-                                <img src={property.images[0]} alt={property.title} className="h-full w-full object-cover" />
+                                <Image src={property.images[0]} alt={property.title} className="h-full w-full object-cover" />
                             ) : (
                                 <div className="flex h-full items-center justify-center text-gray-400">
                                     <Building2 className="h-12 w-12" />
@@ -36,7 +37,14 @@ export default function PropertyShow({ property }: PropertyShowProps) {
                                 <MapPin className="h-4 w-4" />
                                 {property.address}, {property.city}{property.state ? `, ${property.state}` : ''}, {property.country}
                             </div>
-                            <p className="mt-4 text-3xl font-bold text-gray-900 dark:text-white">{formatCurrency(property.price)}</p>
+                            <p className="mt-4 text-3xl font-bold text-gray-900 dark:text-white">{formatPrice(property.price)}</p>
+
+                            <Link
+                                href={`/properties/${property.id}/inquiry`}
+                                className="mt-4 inline-block rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500"
+                            >
+                                Enquire About This Property
+                            </Link>
 
                             <div className="mt-6 grid grid-cols-3 gap-4">
                                 {property.bedrooms != null && (
@@ -96,7 +104,7 @@ export default function PropertyShow({ property }: PropertyShowProps) {
                         <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                             {property.images.slice(1).map((img, i) => (
                                 <div key={i} className="aspect-square overflow-hidden rounded-lg bg-gray-100">
-                                    <img src={img} alt={`${property.title} ${i + 2}`} className="h-full w-full object-cover" />
+                                    <Image src={img} alt={`${property.title} ${i + 2}`} className="h-full w-full object-cover" />
                                 </div>
                             ))}
                         </div>

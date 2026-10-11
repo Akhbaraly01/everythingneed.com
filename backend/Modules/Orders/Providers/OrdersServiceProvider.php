@@ -12,7 +12,7 @@ class OrdersServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        $this->app->bind(\Core\Services\Contracts\OrderQueryInterface::class, \Modules\Orders\Services\OrderQueryService::class);
     }
 
     public function boot(): void
@@ -31,7 +31,9 @@ class OrdersServiceProvider extends ServiceProvider
     protected function registerRoutes(): void
     {
         if (file_exists(__DIR__ . '/../Routes/api.php')) {
-            Route::group([], __DIR__ . '/../Routes/api.php');
+            // Same-origin cookie auth requires Sanctum's stateful middleware to start a
+    // session; without it every browser /api/* call 401s on these routes.
+    Route::group(['middleware' => [\Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class]], __DIR__ . '/../Routes/api.php');
         }
     }
 

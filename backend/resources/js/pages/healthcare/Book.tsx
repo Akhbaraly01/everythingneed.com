@@ -1,9 +1,12 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { api } from '@/lib/api';
-import { formatCurrency } from '@/lib/utils';
-import { ArrowLeft, Calendar, Clock, Star } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import {  api, errorMessage } from '@/lib/api';
+import { toast } from 'sonner';
+import { formatPrice } from '@/lib/currency';
+import {ArrowLeft} from 'lucide-react';
+import {useState} from 'react';
+import Image from '@/components/shared/Image';
+import PaySheet from '@/components/shared/PaySheet';
 
 interface Doctor {
     id: string;
@@ -31,6 +34,9 @@ export default function DoctorBooking({ doctor, availability }: DoctorBookingPro
     const [selectedTime, setSelectedTime] = useState('');
     const [reason, setReason] = useState('');
     const [submitting, setSubmitting] = useState(false);
+    // Spec 97 workflow: Book -> Pay -> Appointment. After booking, the page
+    // switches to a payment step instead of jumping straight to the list.
+    const [booked, setBooked] = useState<{ id: string } | null>(null);
 
     const dates = Object.keys(availability).sort();
     const slots = selectedDate ? (availability[selectedDate] ?? []) : [];
@@ -39,16 +45,19 @@ export default function DoctorBooking({ doctor, availability }: DoctorBookingPro
         if (!selectedDate || !selectedTime) return;
         setSubmitting(true);
         try {
-            await api.post('/api/appointments', {
+            const res = await api.post<{ data: { id: string } }>('/api/appointments', {
                 doctor_id: doctor.id,
                 appointment_date: selectedDate,
                 appointment_time: selectedTime,
-                reason: reason || undefined,
-                type: 'consultation',
+                // API contract: `symptoms` is the required free-text reason;
+                // consultation_type must be in_person | virtual.
+                symptoms: reason.trim() || 'Consultation request',
+                description: reason.trim() || undefined,
+                consultation_type: 'in_person',
             });
-            router.visit('/healthcare/appointments');
-        } catch (e: any) {
-            alert(e.message ?? 'Failed to book');
+            setBooked(res.data);
+        } catch (e) {
+            toast.error(errorMessage(e, 'Failed to book'));
         }
         setSubmitting(false);
     };
@@ -64,7 +73,7 @@ export default function DoctorBooking({ doctor, availability }: DoctorBookingPro
                 <div className="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
                     <div className="flex items-center gap-4">
                         <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full bg-gray-100">
-                            {doctor.image_url ? <img src={doctor.image_url} alt="" className="h-full w-full object-cover" /> : null}
+                            {doctor.image_url ? <Image src={doctor.image_url} alt="" className="h-full w-full object-cover" /> : null}
                         </div>
                         <div>
                             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{doctor.name}</h1>
@@ -76,10 +85,26 @@ export default function DoctorBooking({ doctor, availability }: DoctorBookingPro
                     {doctor.bio && <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">{doctor.bio}</p>}
 
                     {doctor.consultation_fee != null && (
-                        <p className="mt-4 text-lg font-bold text-gray-900 dark:text-white">Consultation fee: {formatCurrency(doctor.consultation_fee)}</p>
+                        <p className="mt-4 text-lg font-bold text-gray-900 dark:text-white">Consultation fee: {formatPrice(doctor.consultation_fee)}</p>
                     )}
                 </div>
 
+                {booked ? (
+                    <>
+                        <PaySheet
+                            endpoint={`/api/appointments/${booked.id}/pay`}
+                            amount={doctor.consultation_fee ?? null}
+                            title="Pay consultation fee"
+                            onPaid={() => router.visit('/healthcare/appointments')}
+                        />
+                        <button
+                            onClick={() => router.visit('/healthcare/appointments')}
+                            className="w-full rounded-lg border border-gray-300 px-6 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                        >
+                            Pay later - manage from Appointments
+                        </button>
+                    </>
+                ) : (
                 <div className="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
                     <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Select Date & Time</h2>
 
@@ -121,6 +146,7 @@ export default function DoctorBooking({ doctor, availability }: DoctorBookingPro
                         {submitting ? 'Booking...' : 'Book Appointment'}
                     </button>
                 </div>
+                )}
             </div>
         </AppLayout>
     );

@@ -1,6 +1,7 @@
 import AppLayout from '@/layouts/AppLayout';
-import { Head, router } from '@inertiajs/react';
-import { api } from '@/lib/api';
+import {Head} from '@inertiajs/react';
+import {  api, errorMessage } from '@/lib/api';
+import { toast } from 'sonner';
 import { CheckCircle, XCircle, Clock, Award } from 'lucide-react';
 import { useState } from 'react';
 
@@ -13,38 +14,87 @@ interface Question {
 
 interface QuizPageProps {
     course: { id: string; title: string };
-    quiz: { id: string; title: string; description?: string; passing_score: number; time_limit_minutes?: number };
+    quiz: { id: string; title: string; description?: string; passing_score: number; time_limit_minutes?: number } | null;
     questions: Question[];
+}
+
+interface CourseProgressState {
+    progress: number;
+    course_completed: boolean;
+}
+
+interface SubmitResult {
+    score: number;
+    passed: boolean;
+    total: number;
+    percent?: number;
+    course_progress?: CourseProgressState | null;
+}
+
+interface QuizResultView {
+    score: number;
+    passed: boolean;
+    correct_count: number;
+    total: number;
+    percent: number;
+    course_progress: CourseProgressState | null;
 }
 
 export default function CourseQuiz({ course, quiz, questions }: QuizPageProps) {
     const [answers, setAnswers] = useState<Record<string, string>>({});
     const [submitting, setSubmitting] = useState(false);
-    const [results, setResults] = useState<{ score: number; passed: boolean; correct_count: number; total: number; detail: any[] } | null>(null);
+    const [results, setResults] = useState<QuizResultView | null>(null);
 
-    const handleSelect = (questionId: string, answer: string) => {
-        setAnswers({ ...answers, [questionId]: answer });
+    if (!quiz) {
+        return (
+            <AppLayout>
+                <Head title={`Quiz - ${course.title}`} />
+                <div className="mx-auto max-w-2xl space-y-6">
+                    <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
+                        <h1 className="text-xl font-bold text-gray-900 dark:text-white">No quiz yet</h1>
+                        <p className="mt-2 text-gray-500">This course does not have a quiz. Check back later.</p>
+                    </div>
+                </div>
+            </AppLayout>
+        );
+    }
+
+    // Answers are option positions ("0", "1", ...) - the server grades them
+    // against its own answer key, so free text would never match.
+    const handleSelect = (questionId: string, optionIndex: number) => {
+        setAnswers({ ...answers, [questionId]: String(optionIndex) });
     };
 
     const handleSubmit = async () => {
         if (Object.keys(answers).length < questions.length) {
-            alert('Please answer all questions');
+            toast.warning('Please answer all questions');
             return;
         }
         setSubmitting(true);
         try {
-            const res = await api.post<{ score: number; passed: boolean; correct_count: number; total: number; detail: any[] }>(
+            const res = await api.post<{ data: SubmitResult }>(
                 `/api/quizzes/${quiz.id}/submit`,
                 { answers }
             );
-            setResults(res.data ?? res as any);
-        } catch (e: any) {
-            alert(e.message ?? 'Failed to submit');
+            const graded = res.data;
+            const total = graded?.total ?? questions.length;
+            const score = graded?.score ?? 0;
+            setResults({
+                score,
+                passed: graded?.passed ?? false,
+                correct_count: score,
+                total,
+                percent: graded?.percent ?? (total > 0 ? Math.round((score / total) * 100) : 0),
+                course_progress: graded?.course_progress ?? null,
+            });
+        } catch (e) {
+            toast.error(errorMessage(e, 'Failed to submit'));
         }
         setSubmitting(false);
     };
 
     if (results) {
+        const courseCompleted = results.course_progress?.course_completed === true;
         return (
             <AppLayout>
                 <Head title="Quiz Results" />
@@ -59,15 +109,28 @@ export default function CourseQuiz({ course, quiz, questions }: QuizPageProps) {
                             {results.passed ? 'Congratulations!' : 'Keep Practicing'}
                         </h2>
                         <p className="mt-2 text-gray-500">
-                            You scored {results.correct_count}/{results.total} ({results.score}%)
+                            You scored {results.correct_count}/{results.total} ({results.percent}%)
                         </p>
                         <p className="text-sm text-gray-400">Passing score: {quiz.passing_score}%</p>
-                        {results.passed && (
-                            <a href={`/learn/courses/${course.id}/certificate`} target="_blank"
-                                className="mt-6 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-6 py-3 text-white hover:bg-indigo-500">
-                                <Award className="h-5 w-5" /> View Certificate
-                            </a>
+                        {results.course_progress && (
+                            <p className="mt-4 text-sm font-medium text-indigo-600">
+                                Course progress: {results.course_progress.progress}%
+                                {!courseCompleted && results.passed && ' — finish the rest of the course to unlock your certificate'}
+                            </p>
                         )}
+                        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                            {courseCompleted && results.passed ? (
+                                <a href="/learn/certificates"
+                                    className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-6 py-3 text-white hover:bg-indigo-500">
+                                    <Award className="h-5 w-5" /> View Certificates
+                                </a>
+                            ) : (
+                                <a href={`/learn/${course.id}`}
+                                    className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-6 py-3 text-white hover:bg-indigo-500">
+                                    Back to course
+                                </a>
+                            )}
+                        </div>
                     </div>
                 </div>
             </AppLayout>
@@ -92,11 +155,14 @@ export default function CourseQuiz({ course, quiz, questions }: QuizPageProps) {
                             <span className="text-indigo-600">Q{idx + 1}.</span> {q.question}
                         </p>
                         <div className="mt-3 space-y-2">
-                            {q.options.map((opt) => (
-                                <label key={opt} className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 ${
-                                    answers[q.id] === opt ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-gray-200 dark:border-gray-700'
+                            {q.options.map((opt, optionIndex) => (
+                                <label key={optionIndex} className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 ${
+                                    answers[q.id] === String(optionIndex) ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-gray-200 dark:border-gray-700'
                                 }`}>
-                                    <input type="radio" name={q.id} value={opt} checked={answers[q.id] === opt} onChange={() => handleSelect(q.id, opt)} className="text-indigo-600" />
+                                    <input type="radio" name={q.id} value={optionIndex}
+                                        checked={answers[q.id] === String(optionIndex)}
+                                        onChange={() => handleSelect(q.id, optionIndex)}
+                                        className="text-indigo-600" />
                                     <span className="text-sm text-gray-700 dark:text-gray-300">{opt}</span>
                                 </label>
                             ))}

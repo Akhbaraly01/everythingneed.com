@@ -1,7 +1,8 @@
+import { statusTone } from '@/lib/lifecycle';
 import { useState } from 'react';
-import { Head, Link, router } from '@inertiajs/react';
+import {Head, router} from '@inertiajs/react';
 import AppLayout from '@/layouts/AppLayout';
-import { api, ApiError } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
 import { ShoppingCart, Truck, PackageCheck } from 'lucide-react';
@@ -23,14 +24,6 @@ interface Props {
     orders: { data: VendorOrderRow[]; current_page: number; last_page: number; total: number };
 }
 
-const statusStyles: Record<string, string> = {
-    pending: 'bg-amber-100 text-amber-800',
-    confirmed: 'bg-blue-100 text-blue-800',
-    shipped: 'bg-indigo-100 text-indigo-800',
-    delivered: 'bg-green-100 text-green-800',
-    cancelled: 'bg-red-100 text-red-700',
-};
-
 export default function VendorOrders({ orders }: Props) {
     const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -41,7 +34,7 @@ export default function VendorOrders({ orders }: Props) {
             toast.success(label);
             router.reload({ only: ['orders'] });
         } catch (err) {
-            toast.error(err instanceof ApiError ? err.message : 'Action failed');
+            toast.error(errorMessage(err, 'Action failed'));
         } finally {
             setBusyId(null);
         }
@@ -78,7 +71,7 @@ export default function VendorOrders({ orders }: Props) {
                                         {o.shipping_address && <p className="mt-1 text-xs text-gray-400">📍 {o.shipping_address}</p>}
                                     </div>
                                     <div className="flex items-center gap-3">
-                                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${statusStyles[o.status]}`}>{o.status}</span>
+                                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${statusTone(o.status)}`}>{o.status}</span>
                                         <span className="font-bold text-gray-900 dark:text-white">{formatCurrency(Number(o.total_price))}</span>
                                     </div>
                                 </div>

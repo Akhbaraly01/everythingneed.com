@@ -3,18 +3,48 @@
 namespace Modules\Admin\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use Core\Services\Contracts\OrderQueryInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
-use Throwable;
+use Modules\Admin\Http\Requests\AdminRefundOrderRequest;
+use Modules\Admin\Http\Requests\AdminUpdateOrderStatusRequest;
 
 /**
  * AdminOrderController — Order management endpoints for the admin panel.
  */
 class AdminOrderController extends Controller
 {
-    private const VALID_STATUSES = ['pending', 'processing', 'in_progress', 'completed', 'cancelled', 'refunded'];
+    /**
+     * Every status that exists on vendor_orders (matches the DB CHECK
+     * constraint) — used for list filtering.
+     */
+    public const ORDER_STATUSES = [
+        'pending', 'paid', 'confirmed', 'processing',
+        'shipped', 'delivered', 'completed', 'cancelled', 'refunded',
+    ];
+
+    /**
+     * Statuses an admin may set through the API. Excludes 'paid': payment
+     * state changes come from the payment provider/webhook, never from a
+     * browser-driven status update.
+     */
+    public const VALID_STATUSES = [
+        'pending', 'confirmed', 'processing', 'shipped',
+        'delivered', 'completed', 'cancelled', 'refunded',
+    ];
+
+    public function __construct(
+        private OrderQueryInterface $orders,
+        private \Core\Services\Contracts\ScopeResolverInterface $scopes,
+    ) {}
+
+    /**
+     * Server-side row scope for the orders console (W1.6).
+     */
+    private function scopeFor(Request $request): \Core\DTOs\ScopeContext
+    {
+        return $this->scopes->contextFor($request->user(), 'orders.orders.view');
+    }
 
     /**
      * Paginated list of all orders with filters.
@@ -25,7 +55,7 @@ class AdminOrderController extends Controller
     {
         $validated = $request->validate([
             'search'     => ['nullable', 'string', 'max:100'],
-            'status'     => ['nullable', 'string', 'in:' . implode(',', self::VALID_STATUSES)],
+            'status'     => ['nullable', 'string', 'in:' . implode(',', self::ORDER_STATUSES)],
             'vendor_id'  => ['nullable', 'string'],
             'date_from'  => ['nullable', 'date'],
             'date_to'    => ['nullable', 'date', 'after_or_equal:date_from'],
@@ -33,65 +63,19 @@ class AdminOrderController extends Controller
             'page'       => ['nullable', 'integer', 'min:1'],
         ]);
 
-        $query = DB::table('vendor_orders as o')
-            ->leftJoin('users as u', 'u.id', '=', 'o.customer_id')
-            ->leftJoin('vendors as v', 'v.id', '=', 'o.vendor_id')
-            ->whereNull('o.deleted_at')
-            ->select([
-                'o.id', 'o.order_number', 'o.status', 'o.total_price',
-                'o.created_at', 'u.name as customer_name', 'v.store_name as vendor_name',
-            ]);
+        $validated['scope_context'] = $this->scopeFor($request);
 
-        if (! empty($validated['search'])) {
-            $term = '%' . $validated['search'] . '%';
-            $query->where(fn ($q) => $q->where('o.order_number', 'like', $term)
-                ->orWhere('u.name', 'like', $term));
-        }
-
-        if (! empty($validated['status'])) {
-            $query->where('o.status', $validated['status']);
-        }
-
-        if (! empty($validated['vendor_id'])) {
-            $query->where('o.vendor_id', $validated['vendor_id']);
-        }
-
-        if (! empty($validated['date_from'])) {
-            $query->whereDate('o.created_at', '>=', $validated['date_from']);
-        }
-
-        if (! empty($validated['date_to'])) {
-            $query->whereDate('o.created_at', '<=', $validated['date_to']);
-        }
-
-        $perPage = (int) ($validated['per_page'] ?? 20);
-        $page    = (int) ($validated['page'] ?? 1);
-        $total   = $query->count();
-        $orders  = $query->orderByDesc('o.created_at')
-            ->offset(($page - 1) * $perPage)
-            ->limit($perPage)
-            ->get();
-
-        return response()->json([
-            'data' => $orders,
-            'meta' => ['total' => $total, 'page' => $page, 'per_page' => $perPage],
-        ]);
+        return response()->json($this->orders->paginate($validated));
     }
 
     /**
-     * Returns full order detail.
+     * Returns full order detail (404 for rows outside the caller's scope).
      *
      * GET /api/admin/orders/{id}
      */
-    public function show(string $id): JsonResponse
+    public function show(Request $request, string $id): JsonResponse
     {
-        $order = DB::table('vendor_orders as o')
-            ->leftJoin('users as u', 'u.id', '=', 'o.customer_id')
-            ->leftJoin('vendors as v', 'v.id', '=', 'o.vendor_id')
-            ->where('o.id', $id)
-            ->whereNull('o.deleted_at')
-            ->select(['o.*', 'u.name as customer_name', 'u.email as customer_email', 'v.store_name as vendor_name'])
-            ->first();
+        $order = $this->orders->find($id, $this->scopeFor($request));
 
         if (! $order) {
             return response()->json(['message' => 'Order not found'], 404);
@@ -101,29 +85,27 @@ class AdminOrderController extends Controller
     }
 
     /**
-     * Updates order status.
+     * Updates order status (state-machine guarded: forward-only, terminal
+     * states are final; same-state updates are idempotent).
      *
      * PUT /api/admin/orders/{id}/status
      */
-    public function updateStatus(Request $request, string $id): JsonResponse
+    public function updateStatus(AdminUpdateOrderStatusRequest $request, string $id): JsonResponse
     {
-        $validated = $request->validate([
-            'status' => ['required', 'string', 'in:' . implode(',', self::VALID_STATUSES)],
-            'reason' => ['nullable', 'string', 'max:500'],
-        ]);
+        $validated = $request->validated();
 
-        $affected = DB::table('vendor_orders')
-            ->where('id', $id)
-            ->whereNull('deleted_at')
-            ->update(['status' => $validated['status'], 'updated_at' => now()]);
+        $result = $this->orders->updateStatus(
+            $id,
+            $validated['status'],
+            $validated['reason'] ?? null,
+            $this->scopeFor($request),
+        );
 
-        if (! $affected) {
-            return response()->json(['message' => 'Order not found'], 404);
-        }
-
-        $this->logAudit('update', 'order', $id, "Status updated to {$validated['status']}" . (! empty($validated['reason']) ? ": {$validated['reason']}" : ''));
-
-        return response()->json(['message' => 'Order status updated']);
+        return match ($result) {
+            'missing' => response()->json(['message' => 'Order not found'], 404),
+            'invalid_transition' => response()->json(['message' => 'Invalid status transition'], 422),
+            default => response()->json(['message' => 'Order status updated']),
+        };
     }
 
     /**
@@ -131,47 +113,17 @@ class AdminOrderController extends Controller
      *
      * POST /api/admin/orders/{id}/refund
      */
-    public function refund(Request $request, string $id): JsonResponse
+    public function refund(AdminRefundOrderRequest $request, string $id): JsonResponse
     {
-        $validated = $request->validate([
-            'reason' => ['nullable', 'string', 'max:500'],
-        ]);
+        $validated = $request->validated();
 
-        $order = DB::table('vendor_orders')->where('id', $id)->whereNull('deleted_at')->first();
+        $result = $this->orders->refund($id, $validated['reason'] ?? null, $this->scopeFor($request));
 
-        if (! $order) {
-            return response()->json(['message' => 'Order not found'], 404);
-        }
-
-        if ($order->status === 'refunded') {
-            return response()->json(['message' => 'Order already refunded'], 422);
-        }
-
-        DB::table('vendor_orders')
-            ->where('id', $id)
-            ->update(['status' => 'refunded', 'updated_at' => now()]);
-
-        $this->logAudit('update', 'order', $id, 'Refund issued' . (! empty($validated['reason']) ? ": {$validated['reason']}" : ''));
-
-        return response()->json(['message' => 'Refund issued successfully']);
-    }
-
-    /**
-     * Writes an audit log entry.
-     */
-    private function logAudit(string $action, string $entityType, string $entityId, string $details): void
-    {
-        try {
-            DB::table('audit_logs')->insert([
-                'id'           => Str::uuid()->toString(),
-                'action'       => $action,
-                'entity_type'  => $entityType,
-                'entity_id'    => $entityId,
-                'new_values'   => json_encode(['details' => $details]),
-                'performed_by' => auth()->id(),
-                'created_at'   => now(),
-            ]);
-        } catch (Throwable) {
-        }
+        return match ($result) {
+            'missing' => response()->json(['message' => 'Order not found'], 404),
+            'already_refunded' => response()->json(['message' => 'Order already refunded'], 422),
+            'not_refundable' => response()->json(['message' => 'Refund not allowed for this order status'], 422),
+            default => response()->json(['message' => 'Refund issued successfully']),
+        };
     }
 }

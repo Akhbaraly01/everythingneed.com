@@ -3,7 +3,6 @@
 namespace Database\Factories;
 
 use Modules\Payments\Entities\Payment;
-use Modules\Orders\Entities\MedicineOrder;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -15,12 +14,13 @@ class PaymentFactory extends Factory
     {
         return [
             'user_id' => User::factory(),
-            'order_id' => MedicineOrder::factory(),
+            'order_id' => null,
             'amount' => fake()->randomFloat(2, 10, 500),
             'currency' => 'USD',
             'method' => 'card',
-            'status' => 'completed',
-            'transaction_id' => fake()->unique()->bothify('txn_############'),
+            'status' => 'succeeded',
+            'reference' => 'PAY-'.fake()->unique()->numerify('########'),
+            'provider' => 'mock',
         ];
     }
 
@@ -35,6 +35,13 @@ class PaymentFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'status' => 'failed',
+        ]);
+    }
+
+    public function processing(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => 'processing',
         ]);
     }
 }

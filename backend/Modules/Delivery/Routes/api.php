@@ -13,4 +13,11 @@ Route::prefix('api')->middleware('auth:sanctum')->group(function () {
     Route::put('/delivery/availability', [DeliveryController::class, 'updateAvailability']);
     Route::get('/delivery/my', [DeliveryController::class, 'myDeliveries']);
     Route::get('/delivery/rates', [DeliveryController::class, 'rates']);
+
+    // Plan G2: order <-> rider assignment ledger.
+    Route::post('/delivery/assign/{orderId}', [DeliveryController::class, 'assign']);
+    Route::get('/delivery/queue', [DeliveryController::class, 'queue']);
+    Route::get('/delivery/history', [DeliveryController::class, 'history']);
+    Route::post('/delivery/{id}/transition', [DeliveryController::class, 'transition']);
+    Route::get('/delivery/order/{orderId}', [DeliveryController::class, 'trackingForOrder']);
 });

@@ -54,6 +54,17 @@
         ],
         "post-create-project-cmd": [
             "@php artisan key:generate --ansi"
+        ],
+        "optimize-prod": [
+            "@php artisan config:cache",
+            "@php artisan event:cache",
+            "@php artisan view:cache",
+            "@php artisan icons:cache --ansi || true"
+        ],
+        "deploy-check": [
+            "@php artisan config:clear",
+            "@php artisan route:list --json > /dev/null",
+            "@php artisan about"
         ]
     },
     "extra": {

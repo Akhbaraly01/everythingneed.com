@@ -10,9 +10,51 @@ use Illuminate\Http\Request;
 
 class StockController extends Controller
 {
+    /**
+     * Product IDs the current user may see/manage. Null = unrestricted
+     * (super_admin / administrator). Vendors are isolated to their own
+     * products; everyone else sees nothing.
+     *
+     * @return array<int, string>|null
+     */
+    private function ownProductIds(Request $request): ?array
+    {
+        $user = $request->user();
+
+        if ($user->hasRole('super_admin') || $user->hasRole('administrator')) {
+            return null;
+        }
+
+        $vendorIds = \Modules\Vendors\Entities\Vendor::where('user_id', $user->id)->pluck('id');
+
+        return \Modules\Products\Entities\Product::whereIn('vendor_id', $vendorIds)->pluck('id')->all();
+    }
+
+    private function scopeToOwnProducts(Request $request, $query): void
+    {
+        $ids = $this->ownProductIds($request);
+
+        if ($ids !== null) {
+            $query->whereIn('product_id', $ids);
+        }
+    }
+
+    private function ownsProduct(Request $request, string $productId): bool
+    {
+        $ids = $this->ownProductIds($request);
+
+        if ($ids === null) {
+            return true;
+        }
+
+        return in_array($productId, $ids, true);
+    }
+
     public function index(Request $request): JsonResponse
     {
         $query = StockLevel::with('product');
+
+        $this->scopeToOwnProducts($request, $query);
 
         if ($request->has('product_id')) {
             $query->where('product_id', $request->product_id);
@@ -35,12 +77,16 @@ class StockController extends Controller
         ]);
     }
 
-    public function show(string $id): JsonResponse
+    public function show(Request $request, string $id): JsonResponse
     {
         $stock = StockLevel::with('product')->find($id);
 
         if (!$stock) {
             return response()->json(['message' => 'Stock level not found'], 404);
+        }
+
+        if (!$this->ownsProduct($request, (string) $stock->product_id)) {
+            return response()->json(['message' => 'Forbidden'], 403);
         }
 
         return response()->json(['data' => $stock]);
@@ -55,6 +101,10 @@ class StockController extends Controller
         ]);
 
         $stock = StockLevel::findOrFail($id);
+
+        if (!$this->ownsProduct($request, (string) $stock->product_id)) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
         $stock->update($request->only(['quantity', 'reserved_quantity', 'reorder_point']));
 
         return response()->json([
@@ -66,6 +116,8 @@ class StockController extends Controller
     public function movements(Request $request): JsonResponse
     {
         $query = StockMovement::with('product');
+
+        $this->scopeToOwnProducts($request, $query);
 
         if ($request->has('product_id')) {
             $query->where('product_id', $request->product_id);
@@ -96,6 +148,10 @@ class StockController extends Controller
             return response()->json(['message' => 'Stock level not found'], 404);
         }
 
+        if (!$this->ownsProduct($request, (string) $stock->product_id)) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $movements = StockMovement::with('product')
             ->where('product_id', $stock->product_id)
             ->latest()
@@ -120,6 +176,10 @@ class StockController extends Controller
             'quantity' => 'required|integer|min:1',
             'notes' => 'nullable|string|max:500',
         ]);
+
+        if (!$this->ownsProduct($request, (string) $request->product_id)) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
 
         $stock = StockLevel::firstOrCreate(
             ['product_id' => $request->product_id],

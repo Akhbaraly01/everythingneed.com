@@ -2,7 +2,7 @@ import AppLayout from '@/layouts/AppLayout';
 import { Head, Link } from '@inertiajs/react';
 import { api } from '@/lib/api';
 import { useEffect, useState } from 'react';
-import { User, Star, MapPin, Clock, Briefcase } from 'lucide-react';
+import {User, Star, Clock, Briefcase} from 'lucide-react';
 
 interface Worker {
     id: string;

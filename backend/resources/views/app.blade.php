@@ -2,11 +2,123 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <meta name="description" content="{{ config('app.name', 'EverythingNeed') }} - Your one-stop platform for all needs">
 
-    <title inertia>{{ config('app.name', 'EverythingNeed') }}</title>
+    {{-- Browser chrome + iOS home-screen affordances --}}
+    <meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#01050f" media="(prefers-color-scheme: dark)">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="{{ config('app.name', 'EverythingNeed') }}">
+
+    {{-- No-flash theme + quality tier. Runs before first paint so dark users
+         never see the light card (defect D14 / X1). Keep in sync with
+         components/ThemeProvider.tsx and lib/quality.ts. --}}
+    <script>
+        (function () {
+            try {
+                var root = document.documentElement;
+                var KEY = 'everythingneed-theme';
+                var stored = localStorage.getItem(KEY);
+                var theme = (stored === 'dark' || stored === 'light' || stored === 'system') ? stored : 'system';
+                var dark = theme === 'dark'
+                    || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                root.classList.toggle('dark', dark);
+                root.classList.toggle('light', !dark);
+
+                var themeMeta = document.querySelector('meta[name="theme-color"]:not([media])');
+                if (!themeMeta) {
+                    themeMeta = document.createElement('meta');
+                    themeMeta.setAttribute('name', 'theme-color');
+                    document.head.appendChild(themeMeta);
+                }
+                themeMeta.setAttribute('content', dark ? '#01050f' : '#f8fafc');
+
+                // Quality tier: Full / Balanced / Lite (see resources/css/app.css).
+                var tier = 'full';
+                var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+                    || window.matchMedia('(prefers-reduced-transparency: reduce)').matches;
+                var weak = (navigator.deviceMemory && navigator.deviceMemory <= 4)
+                    || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4)
+                    || (navigator.connection && navigator.connection.saveData === true);
+                if (reduced) { tier = 'lite'; } else if (weak) { tier = 'balanced'; }
+                var savedTier = localStorage.getItem('everythingneed-tier');
+                if (savedTier === 'full' || savedTier === 'balanced' || savedTier === 'lite') {
+                    tier = savedTier;
+                }
+                root.setAttribute('data-tier', tier);
+            } catch (e) {
+                document.documentElement.setAttribute('data-tier', 'full');
+            }
+        })();
+    </script>
+
+    @php
+        // Spec 88: server-rendered SEO head for crawlers. Controllers opt in
+        // with an `seo` prop (title/description/image/canonical/robots/json_ld);
+        // everything else falls back to site defaults so the initial
+        // (non-JS) document is always complete: title, description, canonical,
+        // Open Graph, Twitter card and structured data.
+        $seo = [];
+        if (isset($page) && is_array($page['props']['seo'] ?? null)) {
+            $seo = $page['props']['seo'];
+        }
+        $seoTitle = trim((string) ($seo['title'] ?? '')) !== ''
+            ? $seo['title']
+            : config('app.name', 'EverythingNeed');
+        $seoDescription = trim((string) ($seo['description'] ?? '')) !== ''
+            ? $seo['description']
+            : config('app.name', 'EverythingNeed').' - Your one-stop platform for all needs';
+        $seoImage = $seo['image'] ?? null;
+        if (is_string($seoImage) && $seoImage !== '' && str_starts_with($seoImage, '/')) {
+            $seoImage = url($seoImage);
+        }
+        $seoCanonical = $seo['canonical'] ?? url()->current();
+        $seoRobots = $seo['robots'] ?? 'index,follow';
+        $seoType = $seo['type'] ?? 'website';
+        $seoJsonLd = is_array($seo['json_ld'] ?? null) ? $seo['json_ld'] : [];
+        // NOTE: build inline arrays in @php - Blade's @json splits its
+        // argument at the first comma, which truncates literal arrays.
+        $websiteJsonLd = [
+            '@context' => 'https://schema.org',
+            '@type' => 'WebSite',
+            'name' => config('app.name', 'EverythingNeed'),
+            'url' => url('/'),
+        ];
+    @endphp
+
+    <title inertia>{{ $seoTitle }}</title>
+    <meta name="description" content="{{ $seoDescription }}">
+    <meta name="robots" content="{{ $seoRobots }}">
+    <link rel="canonical" href="{{ $seoCanonical }}">
+
+    {{-- Open Graph (spec 88) --}}
+    <meta property="og:site_name" content="{{ config('app.name', 'EverythingNeed') }}">
+    <meta property="og:type" content="{{ $seoType }}">
+    <meta property="og:title" content="{{ $seoTitle }}">
+    <meta property="og:description" content="{{ $seoDescription }}">
+    <meta property="og:url" content="{{ $seoCanonical }}">
+    @if (is_string($seoImage) && $seoImage !== '')
+        <meta property="og:image" content="{{ $seoImage }}">
+    @endif
+
+    {{-- Twitter (spec 88) --}}
+    <meta name="twitter:card" content="{{ is_string($seoImage) && $seoImage !== '' ? 'summary_large_image' : 'summary' }}">
+    <meta name="twitter:title" content="{{ $seoTitle }}">
+    <meta name="twitter:description" content="{{ $seoDescription }}">
+    @if (is_string($seoImage) && $seoImage !== '')
+        <meta name="twitter:image" content="{{ $seoImage }}">
+    @endif
+
+    {{-- Structured data: sitewide WebSite + page-specific blocks (spec 88) --}}
+    <script type="application/ld+json">@json($websiteJsonLd)</script>
+    @foreach ($seoJsonLd as $jsonLdBlock)
+        @if (is_array($jsonLdBlock))
+            <script type="application/ld+json">@json($jsonLdBlock)</script>
+        @endif
+    @endforeach
 
     {{-- Fonts --}}
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -18,7 +130,7 @@
 
     @inertiaHead
 </head>
-<body class="font-sans antialiased bg-gray-50 dark:bg-gray-900">
+<body class="font-sans antialiased">
     @inertia
 </body>
 </html>

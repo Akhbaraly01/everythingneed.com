@@ -14,8 +14,12 @@ class UpdateOrderStatus implements ShouldQueue
     {
         $payment = $event->payment;
 
-        if ($payment->order) {
-            $payment->order->update(['status' => 'confirmed']);
+        // Marketplace product orders own their status via ChargePayment
+        // (pending → paid). Only nudge still-pending orders here, and never
+        // write a status outside the Order enum (e.g. legacy 'confirmed').
+        $order = $payment->order;
+        if ($order && $order->status === \Modules\Orders\Entities\Order::STATUS_PENDING) {
+            $order->update(['status' => \Modules\Orders\Entities\Order::STATUS_PAID]);
         }
     }
 }

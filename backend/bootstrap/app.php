@@ -23,9 +23,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \App\Http\Middleware\EnsureUserHasRole::class,
             'permission' => \App\Http\Middleware\EnsureUserHasPermission::class,
             'verified.custom' => \App\Http\Middleware\EnsureEmailIsVerified::class,
+            'audit' => \App\Http\Middleware\AuditLog::class,
         ]);
 
         $middleware->web(append: [
+            \App\Http\Middleware\EnsureAccountActive::class,
             \App\Http\Middleware\HandleInertiaRequests::class,
         ]);
 
@@ -47,6 +49,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // route-independent limiter guarantees full coverage.
         $middleware->use([
             \App\Http\Middleware\GlobalRateLimit::class,
+            \App\Http\Middleware\SecurityHeaders::class,
+            // W16 (R-06/N-01): route-independent audit coverage for every
+            // authenticated mutating request (admin + API). The middleware
+            // itself filters to POST/PUT/PATCH/DELETE with a user.
+            \App\Http\Middleware\AuditLog::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
@@ -101,7 +108,29 @@ return Application::configure(basePath: dirname(__DIR__))
                 ], 422);
             }
 
-            if ($e instanceof AccessDeniedHttpException) {
+            // abort(403) throws plain HttpException; AccessDeniedHttpException
+            // is thrown by explicit throwers — cover both as web 403.
+            if ($e instanceof AccessDeniedHttpException
+                || ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpException
+                    && $e->getStatusCode() === 403)) {
+                // Web context: redirect guests to login; authenticated users
+                // land on their own workspace (never back onto the forbidden
+                // URL itself, which would self-loop on direct entries).
+                if (!$request->expectsJson() && !($request->is('api/*'))) {
+                    if (!$request->user()) {
+                        return redirect()->guest(route('login'));
+                    }
+
+                    try {
+                        $landing = app(\Core\Services\Contracts\WorkspaceResolverInterface::class)
+                            ->landingPath($request->user());
+                    } catch (\Throwable) {
+                        $landing = '/dashboard';
+                    }
+
+                    return redirect()->to($landing)->with('error', 'You do not have permission to perform this action.');
+                }
+
                 return response()->json([
                     'message' => 'Forbidden',
                     'error' => $e->getMessage() ?: 'You do not have permission to perform this action.',
@@ -109,6 +138,11 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             if ($e instanceof NotFoundHttpException) {
+                // Web context: redirect back so Inertia receives a valid response.
+                if (!$request->expectsJson() && !($request->is('api/*'))) {
+                    return redirect()->back()->with('error', 'The requested resource was not found.');
+                }
+
                 return response()->json([
                     'message' => 'Not Found',
                     'error' => config('app.debug')
@@ -120,8 +154,26 @@ return Application::configure(basePath: dirname(__DIR__))
 
             $status = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
 
+            // Web context: never leak plain JSON to Inertia visits.
+            if (!$request->expectsJson() && !($request->is('api/*'))) {
+                // Always log first — otherwise web errors vanish silently.
+                \Illuminate\Support\Facades\Log::error($e->getMessage(), [
+                    'exception' => $e,
+                    'path' => $request->path(),
+                ]);
+
+                return redirect()->back()->with('error', 'An unexpected error occurred.');
+            }
+
+            // Never leak exception internals to API clients (even in debug).
+            // Log the real message; return a generic one in `message`.
+            \Illuminate\Support\Facades\Log::error($e->getMessage(), [
+                'exception' => $e,
+                'path' => $request->path(),
+            ]);
+
             return response()->json([
-                'message' => $e->getMessage() ?: 'Server Error',
+                'message' => 'Server Error',
                 'error' => config('app.debug') ? $e->getMessage() : 'An unexpected error occurred.',
             ], $status);
         });

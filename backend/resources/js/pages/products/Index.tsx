@@ -2,8 +2,9 @@ import AppLayout from '@/layouts/AppLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { api } from '@/lib/api';
 import type { Product } from '@/types';
-import { formatCurrency } from '@/lib/utils';
-import { ShoppingCart, Heart, Star, Search } from 'lucide-react';
+import { formatPrice } from '@/lib/currency';
+import { toast } from 'sonner';
+import {ShoppingCart, Star, Search} from 'lucide-react';
 import { useState } from 'react';
 
 interface ProductsProps {
@@ -19,6 +20,7 @@ interface ProductsProps {
     filters?: {
         category?: string;
         search?: string;
+        sort?: string;
     };
 }
 
@@ -39,6 +41,7 @@ export default function Products({ products, filters }: ProductsProps) {
             setCartMessage('Added to cart!');
             setTimeout(() => setCartMessage(null), 2000);
         } catch {
+            toast.error('Could not add to cart. Please try again.');
         }
     };
 
@@ -88,15 +91,43 @@ export default function Products({ products, filters }: ProductsProps) {
                     </div>
                 </div>
 
-                {/* Product count */}
-                <p className="text-sm text-gray-500">{products.meta.total} product{products.meta.total !== 1 ? 's' : ''} found</p>
+                {/* Product count + server-side sort */}
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm text-gray-500">{products.meta.total} product{products.meta.total !== 1 ? 's' : ''} found</p>
+                    <div className="flex items-center gap-2">
+                        <label htmlFor="product-sort" className="text-sm text-gray-500">Sort:</label>
+                        <select
+                            id="product-sort"
+                            value={filters?.sort ?? 'newest'}
+                            onChange={(e) =>
+                                router.get(
+                                    '/products',
+                                    {
+                                        ...(filters?.search ? { search: filters.search } : {}),
+                                        ...(filters?.category ? { category: filters.category } : {}),
+                                        ...(e.target.value !== 'newest' ? { sort: e.target.value } : {}),
+                                    },
+                                    { preserveState: true },
+                                )
+                            }
+                            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                        >
+                            <option value="newest">Newest</option>
+                            <option value="price_asc">Price: Low to High</option>
+                            <option value="price_desc">Price: High to Low</option>
+                            <option value="rating">Top Rated</option>
+                            <option value="popular">Most Popular</option>
+                            <option value="name_asc">Name: A-Z</option>
+                        </select>
+                    </div>
+                </div>
 
                 {/* Product Grid */}
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {products.data.map((product) => (
                         <Link
                             key={product.id}
-                            href={`/products/${product.id}`}
+                            href={`/products/${product.slug ?? product.id}`}
                             className="group rounded-lg bg-white shadow transition hover:shadow-md dark:bg-gray-800"
                         >
                             <div className="relative aspect-square overflow-hidden rounded-t-lg bg-gray-100">
@@ -132,11 +163,11 @@ export default function Products({ products, filters }: ProductsProps) {
                                 <div className="mt-3 flex items-center justify-between">
                                     <div>
                                         <span className="text-lg font-bold text-gray-900 dark:text-white">
-                                            {formatCurrency(product.price)}
+                                            {formatPrice(product.price)}
                                         </span>
                                         {product.compare_price && (
                                             <span className="ml-2 text-sm text-gray-400 line-through">
-                                                {formatCurrency(product.compare_price)}
+                                                {formatPrice(product.compare_price)}
                                             </span>
                                         )}
                                     </div>

@@ -21,24 +21,13 @@ Route::prefix('api')->middleware('auth:sanctum')->group(function () {
     Route::get('/orders/{id}/tracking', [ProductOrderController::class, 'tracking']);
     Route::get('/product-orders/{id}', [ProductOrderController::class, 'show']);
     Route::post('/product-orders/{id}/cancel', [ProductOrderController::class, 'cancel']);
+    Route::post('/product-orders/{id}/complete', [ProductOrderController::class, 'complete']);
 
     // Vendor fulfilment workspace
     Route::get('/vendor/orders', [ProductOrderController::class, 'vendorOrders']);
-    Route::get('/vendor/orders/{id}', function (string $id, \Illuminate\Http\Request $request) {
-        $order = \Modules\Orders\Entities\VendorOrder::with('customer:id,name,email')->find($id);
-        if (!$order) return response()->json(['message' => 'Order not found'], 404);
-        // vendor ownership check
-        $vendor = \Modules\Vendors\Entities\Vendor::where('user_id', $request->user()->id)->first();
-        if (!$vendor || (string)$order->vendor_id !== (string)$vendor->id) return response()->json(['message' => 'Forbidden'], 403);
-        return response()->json(['data' => $order]);
-    });
-    Route::patch('/vendor/orders/{id}', function (string $id, \Illuminate\Http\Request $request) {
-        $order = \Modules\Orders\Entities\VendorOrder::find($id); if (!$order) return response()->json(['message' => 'Order not found'], 404);
-        $vendor = \Modules\Vendors\Entities\Vendor::where('user_id', $request->user()->id)->first();
-        if (!$vendor || (string)$order->vendor_id !== (string)$vendor->id) return response()->json(['message' => 'Forbidden'], 403);
-        $validated = $request->validate(['status' => 'required|string|in:confirmed,processing,shipped,delivered,cancelled']);
-        $order->update(['status' => $validated['status']]); return response()->json(['data' => $order->fresh()]);
-    });
+    Route::get('/vendor/orders/top-products', [ProductOrderController::class, 'vendorTopProducts']);
+    Route::get('/vendor/orders/{id}', [ProductOrderController::class, 'vendorShow']);
+    Route::patch('/vendor/orders/{id}', [ProductOrderController::class, 'vendorUpdate']);
     Route::post('/vendor/orders/{id}/{action}', [ProductOrderController::class, 'vendorTransition'])
         ->whereIn('action', ['accept', 'ship', 'deliver']);
 });

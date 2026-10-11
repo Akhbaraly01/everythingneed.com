@@ -25,6 +25,26 @@ class EnrollInCourse
             throw new ValidationException('User is already enrolled in this course');
         }
 
+        $price = round((float) ($course->price ?? 0), 2);
+
+        if ($price > 0) {
+            $result = app(\Core\Services\Contracts\PaymentGatewayInterface::class)->charge([
+                'order_id' => $courseId,
+                'user_id' => $userId,
+                'amount' => $price,
+                'currency' => \Core\Support\Currencies::default(),
+                'method' => 'card',
+                'reference' => 'COURSE-ENROLL-'.strtoupper(substr($courseId, 0, 8)).'-'.strtoupper(substr($userId, 0, 8)),
+                'idempotency_key' => 'ENROLL-'.$courseId.'-'.$userId,
+                'purpose' => 'course_enrollment',
+                'metadata' => ['kind' => 'course_enrollment', 'course_id' => $courseId],
+            ]);
+
+            if (!($result['success'] ?? false)) {
+                throw new ValidationException($result['error'] ?? 'Course payment failed');
+            }
+        }
+
         $enrollment = Enrollment::create([
             'user_id' => $userId,
             'course_id' => $courseId,

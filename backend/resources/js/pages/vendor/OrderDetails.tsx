@@ -1,6 +1,7 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head } from '@inertiajs/react';
-import { api } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
+import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
 import { Package, User, MapPin, DollarSign, Clock } from 'lucide-react';
 
@@ -39,7 +40,10 @@ export default function VendorOrderDetails({ order_id }: { order_id?: string }) 
         try {
             const res = await api.patch<{ data: Order }>(`/api/vendor/orders/${id}`, { status });
             setOrder(res.data);
-        } catch {}
+            toast.success(`Order marked ${status.replace('_', ' ')}.`);
+        } catch (e) {
+            toast.error(errorMessage(e, 'Failed to update status'));
+        }
         setUpdating(false);
     };
 

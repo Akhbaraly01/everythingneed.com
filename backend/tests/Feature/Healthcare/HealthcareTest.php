@@ -14,6 +14,7 @@ class HealthcareTest extends TestCase
         return Doctor::create(array_merge([
             'full_name' => fake()->name(),
             'specialization' => 'Cardiology',
+            'profession' => 'doctor',
             'qualification' => 'MBBS, MD',
             'experience_years' => 10,
             'consultation_fee' => 50.00,
@@ -94,6 +95,7 @@ class HealthcareTest extends TestCase
         $response = $this->postJson('/api/doctors', [
             'full_name' => 'Dr. New Doctor',
             'specialization' => 'Neurology',
+            'profession' => 'doctor',
             'qualification' => 'MBBS, DM Neurology',
             'experience_years' => 15,
             'consultation_fee' => 75.00,

@@ -1,9 +1,12 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link } from '@inertiajs/react';
-import { api } from '@/lib/api';
-import { formatCurrency, formatDateTime } from '@/lib/utils';
-import { Heart, Trash2 } from 'lucide-react';
+import { api, errorMessage } from '@/lib/api';
+import { toast } from 'sonner';
+import {formatCurrency} from '@/lib/utils';
+import { Heart, Trash2, RefreshCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { invalidateWishlist } from '@/hooks/useWishlist';
+import Image from '@/components/shared/Image';
 
 interface WishlistItem {
     id: string;
@@ -18,19 +21,34 @@ interface WishlistItem {
 export default function WishlistPage() {
     const [items, setItems] = useState<WishlistItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
+    const load = () => {
+        setLoading(true);
+        setError(null);
         api.get<{ data: WishlistItem[] }>('/api/wishlist')
             .then((res) => setItems(res.data))
-            .catch(() => setItems([]))
+            .catch((e) => {
+                setError(errorMessage(e, 'Failed to load wishlist'));
+                setItems([]);
+            })
             .finally(() => setLoading(false));
+    };
+
+    useEffect(() => {
+        load();
+        invalidateWishlist();
     }, []);
 
     const removeItem = async (id: string) => {
         try {
             await api.del(`/api/wishlist/${id}`);
             setItems(items.filter((i) => i.id !== id));
-        } catch {}
+            invalidateWishlist();
+            toast.success('Removed from wishlist.');
+        } catch (e) {
+            toast.error(errorMessage(e, 'Could not remove from wishlist'));
+        }
     };
 
     return (
@@ -42,6 +60,13 @@ export default function WishlistPage() {
 
                 {loading ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800"><p className="text-gray-500">Loading...</p></div>
+                ) : error ? (
+                    <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
+                        <p className="text-red-600 font-medium">{error}</p>
+                        <button onClick={load} className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-500">
+                            <RefreshCcw className="h-4 w-4" /> Retry
+                        </button>
+                    </div>
                 ) : items.length === 0 ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
                         <Heart className="mx-auto h-12 w-12 text-gray-400" />
@@ -56,7 +81,7 @@ export default function WishlistPage() {
                             <div key={item.id} className="rounded-lg bg-white p-4 shadow dark:bg-gray-800">
                                 <Link href={`/products/${item.product_id}`}>
                                     <div className="h-40 overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-700">
-                                        {item.image_url ? <img src={item.image_url} alt="" className="h-full w-full object-cover" /> : null}
+                                        {item.image_url ? <Image src={item.image_url} alt="" className="h-full w-full object-cover" /> : null}
                                     </div>
                                     <p className="mt-2 font-semibold text-gray-900 hover:text-indigo-600 dark:text-white">{item.name}</p>
                                 </Link>

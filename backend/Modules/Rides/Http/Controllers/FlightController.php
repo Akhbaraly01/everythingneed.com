@@ -141,4 +141,45 @@ class FlightController extends Controller
             ],
         ], 201);
     }
+
+    /**
+     * Admin console: every flight including inactive/sold-out (public hides them).
+     */
+    public function adminIndex(Request $request): JsonResponse
+    {
+        $query = Flight::query()->orderByDesc('created_at');
+
+        if ($request->filled('search')) {
+            $search = $request->string('search')->toString();
+            $query->where(fn ($q) => $q->where('flight_number', 'ilike', "%{$search}%")->orWhere('airline', 'ilike', "%{$search}%"));
+        }
+        if (in_array($request->get('status', 'all'), ['active', 'inactive'], true)) {
+            $query->where('is_active', $request->get('status') === 'active');
+        }
+
+        $flights = $query->paginate($request->get('per_page', 25));
+
+        return response()->json([
+            'data' => $flights->items(),
+            'meta' => [
+                'current_page' => $flights->currentPage(),
+                'last_page' => $flights->lastPage(),
+                'per_page' => $flights->perPage(),
+                'total' => $flights->total(),
+            ],
+        ]);
+    }
+
+    public function adminUpdate(Request $request, string $id): JsonResponse
+    {
+        $request->validate(['is_active' => 'required|boolean']);
+
+        $flight = Flight::find($id);
+        if (!$flight) {
+            return response()->json(['message' => 'Flight not found'], 404);
+        }
+        $flight->update(['is_active' => $request->boolean('is_active')]);
+
+        return response()->json(['data' => $flight]);
+    }
 }

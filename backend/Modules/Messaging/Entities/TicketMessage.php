@@ -13,11 +13,13 @@ class TicketMessage extends Model
         'sender_id',
         'message',
         'is_internal',
+        'attachments',
         'created_at',
     ];
 
     protected $casts = [
         'is_internal' => 'boolean',
+        'attachments' => 'array',
     ];
 
     public function ticket()

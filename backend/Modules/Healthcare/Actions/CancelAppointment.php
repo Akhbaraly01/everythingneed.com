@@ -20,6 +20,11 @@ class CancelAppointment
             throw new ValidationException('Cannot cancel appointment in current status');
         }
 
-        $ticket->update(['status' => 'cancelled']);
+        $update = ['status' => 'cancelled'];
+        if ($reason !== null && $reason !== '') {
+            $update['description'] = trim(((string) $ticket->description)."\n[Cancelled: {$reason}]");
+        }
+
+        $ticket->update($update);
     }
 }

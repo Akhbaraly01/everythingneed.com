@@ -20,6 +20,9 @@ class HotelReservation extends Model
         'special_requests',
         'checked_in_at',
         'checked_out_at',
+        'payment_status',
+        'payment_id',
+        'paid_at',
     ];
 
     protected $casts = [
@@ -29,10 +32,13 @@ class HotelReservation extends Model
         'total_amount' => 'decimal:2',
         'checked_in_at' => 'datetime',
         'checked_out_at' => 'datetime',
+        'paid_at' => 'datetime',
     ];
 
     const STATUS_PENDING = 'pending';
     const STATUS_CONFIRMED = 'confirmed';
+    const STATUS_CHECKED_IN = 'checked_in';
+    const STATUS_CHECKED_OUT = 'checked_out';
     const STATUS_CANCELLED = 'cancelled';
     const STATUS_COMPLETED = 'completed';
 

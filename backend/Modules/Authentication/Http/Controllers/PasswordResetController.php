@@ -8,6 +8,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Modules\Authentication\Http\Requests\ChangePasswordRequest;
+use Modules\Authentication\Http\Requests\ForgotPasswordLinkRequest;
+use Modules\Authentication\Http\Requests\ResetPasswordTokenRequest;
 use Modules\Authentication\Mail\ResetPasswordMail;
 use App\Models\User;
 
@@ -18,10 +21,8 @@ class PasswordResetController extends Controller
      * emailed via the configured mailer; it is additionally returned in
      * non-production environments so local tooling can complete the flow.
      */
-    public function forgot(Request $request): JsonResponse
+    public function forgot(ForgotPasswordLinkRequest $request): JsonResponse
     {
-        $request->validate(['email' => ['required', 'email']]);
-
         $user = User::where('email', $request->input('email'))->first();
 
         if (!$user) {
@@ -43,26 +44,28 @@ class PasswordResetController extends Controller
             ],
         );
 
-        \Illuminate\Support\Facades\Mail::to($user->email)->send(
-            new ResetPasswordMail($plainToken, $user->name),
-        );
+        // Paused for local testing (MAIL_ENABLED=false): skip the blocking
+        // mail send; the token below (non-production) still completes the flow.
+        if (config('verification.mail_enabled', true)) {
+            \Illuminate\Support\Facades\Mail::to($user->email)->send(
+                new ResetPasswordMail($plainToken, $user->name),
+            );
+        }
 
         $response = ['message' => 'If that email exists, a reset link has been sent.'];
 
-        if (app()->environment() !== 'production') {
+        // Only expose the plain token in local/testing — never staging/prod.
+        if (app()->environment(['local', 'testing'])) {
             $response['token'] = $plainToken;
-            $response['dev_note'] = 'Token returned outside production for local development.';
+            $response['dev_note'] = 'Token returned in local development only.';
         }
 
         return response()->json($response);
     }
 
-    public function confirm(Request $request): JsonResponse
+    public function confirm(ResetPasswordTokenRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'token' => ['required', 'string'],
-            'newPassword' => ['required', 'string', 'min:8'],
-        ]);
+        $validated = $request->validated();
 
         $record = DB::table('password_reset_tokens')
             ->where('created_at', '>=', now()->subHour())
@@ -87,7 +90,10 @@ class PasswordResetController extends Controller
         }
 
         DB::transaction(function () use ($user, $validated, $match) {
-            $user->forceFill(['password' => Hash::make($validated['newPassword'])])->save();
+            $user->forceFill([
+                'password' => Hash::make($validated['newPassword']),
+                'remember_token' => Str::random(60),
+            ])->save();
             DB::table('password_reset_tokens')->where('email', $match->email)->delete();
             // Invalidate existing API sessions after a credential change.
             $user->tokens()->delete();
@@ -100,12 +106,9 @@ class PasswordResetController extends Controller
      * Authenticated password change: verifies the current password first,
      * then rotates it and revokes all existing API sessions.
      */
-    public function change(Request $request): JsonResponse
+    public function change(ChangePasswordRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'current_password' => ['required', 'string'],
-            'password' => ['required', 'string', 'min:8', 'different:current_password'],
-        ]);
+        $validated = $request->validated();
 
         $user = $request->user();
 
@@ -117,7 +120,10 @@ class PasswordResetController extends Controller
         }
 
         DB::transaction(function () use ($request, $user, $validated) {
-            $user->forceFill(['password' => Hash::make($validated['password'])])->save();
+            $user->forceFill([
+                'password' => Hash::make($validated['password']),
+                'remember_token' => Str::random(60),
+            ])->save();
 
             // Keep the current session's token; revoke every other device.
             // (Transient tokens in tests have no DB id — fall back to full revoke.)

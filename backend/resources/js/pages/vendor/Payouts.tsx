@@ -1,7 +1,8 @@
+import { statusTone } from '@/lib/lifecycle';
 import { useCallback, useEffect, useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/AppLayout';
-import { api, ApiError } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Wallet, BanknoteIcon, Clock, CheckCircle2, XCircle } from 'lucide-react';
@@ -22,12 +23,6 @@ interface Withdrawal {
     created_at: string;
 }
 
-const statusStyles: Record<string, string> = {
-    pending: 'bg-amber-100 text-amber-800',
-    paid: 'bg-green-100 text-green-800',
-    rejected: 'bg-red-100 text-red-700',
-};
-
 export default function VendorPayouts() {
     const [summary, setSummary] = useState<Summary | null>(null);
     const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
@@ -44,7 +39,7 @@ export default function VendorPayouts() {
             setSummary(s.data);
             setWithdrawals(p.data);
         } catch (err) {
-            toast.error(err instanceof ApiError ? err.message : 'Failed to load earnings');
+            toast.error(errorMessage(err, 'Failed to load earnings'));
         } finally {
             setLoading(false);
         }
@@ -62,7 +57,7 @@ export default function VendorPayouts() {
             await load();
             router.reload({ only: [] });
         } catch (err) {
-            toast.error(err instanceof ApiError ? err.message : 'Request failed');
+            toast.error(errorMessage(err, 'Request failed'));
         } finally {
             setBusy(false);
         }
@@ -133,7 +128,7 @@ export default function VendorPayouts() {
                                             {w.notes && <span className="ml-2 text-xs text-gray-500">{w.notes}</span>}
                                             <p className="text-[11px] text-gray-400">{formatDateTime(w.created_at)}</p>
                                         </div>
-                                        <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${statusStyles[w.status] ?? ''}`}>
+                                        <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${statusTone(w.status)}`}>
                                             {w.status === 'pending' && <Clock className="h-3 w-3" />}
                                             {w.status === 'paid' && <CheckCircle2 className="h-3 w-3" />}
                                             {w.status === 'rejected' && <XCircle className="h-3 w-3" />}

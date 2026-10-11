@@ -49,22 +49,27 @@ class RestaurantController extends Controller
 
     public function order(Request $request, string $restaurantId): JsonResponse
     {
-        $restaurant = Restaurant::find($restaurantId);
+        $validated = $request->validate([
+            'items' => 'required|array|min:1',
+            'items.*.menu_item_id' => 'nullable|uuid',
+            'items.*.id' => 'nullable|uuid',
+            'items.*.quantity' => 'nullable|integer|min:1',
+            'items.*.special_instructions' => 'nullable|string|max:500',
+            'delivery_address' => 'nullable|string|max:500',
+            'phone' => 'nullable|string|max:50',
+            'notes' => 'nullable|string|max:1000',
+        ]);
 
-        if (!$restaurant) {
-            return response()->json(['message' => 'Restaurant not found'], 404);
-        }
-
-        $order = FoodOrder::create(array_merge($request->validate([
-            'items' => 'required|array',
-            'items.*.menu_item_id' => 'required|uuid',
-            'items.*.quantity' => 'required|integer|min:1',
-            'delivery_address' => 'required|string|max:500',
-        ]), [
-            'user_id' => $request->user()->id,
-            'restaurant_id' => $restaurantId,
-            'total' => $this->calculateTotal($request->items),
-        ]));
+        $order = app(\Modules\Food\Actions\PlaceFoodOrder::class)->execute(
+            $request->user()->id,
+            $restaurantId,
+            $validated['items'],
+            [
+                'delivery_address' => $validated['delivery_address'] ?? null,
+                'phone' => $validated['phone'] ?? null,
+                'notes' => $validated['notes'] ?? null,
+            ]
+        );
 
         return response()->json([
             'message' => 'Order placed successfully',
@@ -129,5 +134,89 @@ class RestaurantController extends Controller
             }
         }
         return $total;
+    }
+
+    /**
+     * Admin console: every restaurant including inactive (public hides them).
+     */
+    public function adminIndex(Request $request): JsonResponse
+    {
+        $query = \Modules\Food\Entities\Restaurant::query()->orderByDesc('created_at');
+
+        if ($request->filled('search')) {
+            $search = $request->string('search')->toString();
+            $query->where(fn ($q) => $q->where('name', 'ilike', "%{$search}%")->orWhere('city', 'ilike', "%{$search}%"));
+        }
+        if (in_array($request->get('status', 'all'), ['active', 'inactive'], true)) {
+            $query->where('is_active', $request->get('status') === 'active');
+        }
+
+        $restaurants = $query->paginate($request->get('per_page', 25));
+
+        return response()->json([
+            'data' => $restaurants->items(),
+            'meta' => [
+                'current_page' => $restaurants->currentPage(),
+                'last_page' => $restaurants->lastPage(),
+                'per_page' => $restaurants->perPage(),
+                'total' => $restaurants->total(),
+            ],
+        ]);
+    }
+
+    public function adminUpdate(Request $request, string $id): JsonResponse
+    {
+        $request->validate(['is_active' => 'required|boolean']);
+
+        $restaurant = \Modules\Food\Entities\Restaurant::find($id);
+        if (!$restaurant) {
+            return response()->json(['message' => 'Restaurant not found'], 404);
+        }
+        $restaurant->update(['is_active' => $request->boolean('is_active')]);
+
+        return response()->json(['data' => $restaurant]);
+    }
+
+    /**
+     * Admin console: create a restaurant (spec 47 — live in the public
+     * listing, detail page, search and category navigation immediately).
+     *
+     * POST /api/admin/restaurants (role: super_admin, administrator, food_admin)
+     */
+    public function adminStore(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string|max:2000',
+            'cuisine_type' => 'required|string|max:100',
+            'address' => 'required|string|max:500',
+            'city' => 'required|string|max:100',
+            'phone' => 'nullable|string|max:30',
+            'image_url' => 'nullable|url|max:500',
+            'opening_hours' => 'nullable|array',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        $restaurant = \Modules\Food\Entities\Restaurant::create(array_merge($data, [
+            'user_id' => $request->user()?->id,
+            'is_active' => $data['is_active'] ?? true,
+        ]));
+
+        try {
+            app(\Core\Services\Contracts\AuditServiceInterface::class)->log([
+                'action' => 'create',
+                'entity_type' => 'restaurant',
+                'entity_id' => $restaurant->id,
+                'performed_by' => $request->user()?->id,
+                'new_values' => ['name' => $restaurant->name, 'city' => $restaurant->city],
+            ]);
+        } catch (\Throwable) {
+            // Audit failures must not break content creation.
+        }
+
+        return response()->json([
+            'message' => 'Restaurant created successfully',
+            'data' => $restaurant,
+        ], 201);
     }
 }

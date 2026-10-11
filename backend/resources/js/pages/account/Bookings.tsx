@@ -1,13 +1,13 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link } from '@inertiajs/react';
-import { api } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
 import { useEffect, useState } from 'react';
-import { Calendar, Hotel, Plane, HardHat, Stethoscope, MapPin } from 'lucide-react';
+import {Calendar, RefreshCcw} from 'lucide-react';
 
 interface Booking {
     id: string;
     service_type: string;
-    details: any;
+    details?: Record<string, unknown>;
     status: string;
     created_at: string;
 }
@@ -15,14 +15,22 @@ interface Booking {
 export default function AccountBookings() {
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [filter, setFilter] = useState('all');
 
-    useEffect(() => {
+    const load = () => {
+        setLoading(true);
+        setError(null);
         api.get<{ data: Booking[] }>('/api/bookings')
             .then((res) => setBookings(res.data))
-            .catch(() => setBookings([]))
+            .catch((e) => {
+                setError(errorMessage(e, 'Failed to load bookings'));
+                setBookings([]);
+            })
             .finally(() => setLoading(false));
-    }, []);
+    };
+
+    useEffect(load, []);
 
     const filtered = filter === 'all' ? bookings : bookings.filter((b) => b.service_type === filter);
 
@@ -36,7 +44,14 @@ export default function AccountBookings() {
                         <button key={t} onClick={() => setFilter(t)} className={`rounded-full px-4 py-1.5 text-sm capitalize ${filter === t ? 'bg-blue-600 text-white' : 'bg-white border dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300'}`}>{t}</button>
                     ))}
                 </div>
-                {loading ? <p className="text-gray-500">Loading...</p> : filtered.length === 0 ? (
+                {loading ? <p className="text-gray-500">Loading...</p> : error ? (
+                    <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
+                        <p className="text-red-600 font-medium">{error}</p>
+                        <button onClick={load} className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-500">
+                            <RefreshCcw className="h-4 w-4" /> Retry
+                        </button>
+                    </div>
+                ) : filtered.length === 0 ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
                         <Calendar className="mx-auto h-12 w-12 text-gray-400" />
                         <p className="mt-4 text-gray-500">No bookings found</p>

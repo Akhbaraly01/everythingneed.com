@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/AppLayout';
-import { formatCurrency } from '@/lib/utils';
+import { formatPrice } from '@/lib/currency';
 import { Search as SearchIcon, Sprout, Tractor, GraduationCap, Users, ChevronLeft, ChevronRight } from 'lucide-react';
+import Image from '@/components/shared/Image';
 
 interface AgriProduct {
     id: string;
@@ -41,7 +42,7 @@ export default function AgricultureIndex({ products, filters }: Props) {
                         Farm inputs, equipment, produce and hands — everything that keeps the fields moving.
                     </p>
                     <div className="mt-5 flex flex-wrap gap-2">
-                        <Pill icon={<Tractor className="h-4 w-4" />} label="Products & equipment" href="/agriculture" />
+                        <Pill icon={<Tractor className="h-4 w-4" />} label="Products & equipment" href="/agriculture/products" />
                         <Pill icon={<Users className="h-4 w-4" />} label="Farm workers" href="/job-seekers?category=Agriculture" />
                         <Pill icon={<GraduationCap className="h-4 w-4" />} label="Training tasks" href="/tasks" />
                     </div>
@@ -71,14 +72,14 @@ export default function AgricultureIndex({ products, filters }: Props) {
                             <div key={p.id} className="overflow-hidden rounded-xl border border-gray-200 bg-white transition hover:shadow-md dark:border-gray-700 dark:bg-gray-800">
                                 <div className="flex h-36 items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/20">
                                     {p.image_url
-                                        ? <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" />
+                                        ? <Image src={p.image_url} alt={p.name} className="h-full w-full object-cover" />
                                         : <Sprout className="h-12 w-12 text-green-500/60" />}
                                 </div>
                                 <div className="p-4">
                                     <h3 className="line-clamp-1 font-semibold text-gray-900 dark:text-white">{p.name}</h3>
                                     <p className="mt-0.5 line-clamp-2 h-8 text-xs text-gray-500">{p.description}</p>
                                     <div className="mt-3 flex items-center justify-between">
-                                        <span className="font-bold text-green-700">{formatCurrency(Number(p.price))}</span>
+                                        <span className="font-bold text-green-700">{formatPrice(Number(p.price))}</span>
                                         {p.vendor?.store_name && (
                                             <span className="truncate text-[11px] text-gray-400">{p.vendor.store_name}</span>
                                         )}

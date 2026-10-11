@@ -1,9 +1,11 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { api } from '@/lib/api';
-import { formatCurrency } from '@/lib/utils';
-import { Calendar, Users, ArrowLeft, Check } from 'lucide-react';
+import {  api, errorMessage } from '@/lib/api';
+import { toast } from 'sonner';
+import { formatPrice } from '@/lib/currency';
+import {ArrowLeft, Check} from 'lucide-react';
 import { useState } from 'react';
+import PaySheet from '@/components/shared/PaySheet';
 
 interface HotelRoom {
     id: string;
@@ -20,12 +22,21 @@ interface HotelBookingProps {
 
 export default function HotelBooking({ hotel, rooms }: HotelBookingProps) {
     const { auth } = usePage().props as { auth?: { user?: { id: string } } };
-    const [selectedRoom, setSelectedRoom] = useState('');
+    // Deep links from room details (?room=<id>) preselect that room.
+    const initialRoom = (() => {
+        if (typeof window === 'undefined') return '';
+        const id = new URLSearchParams(window.location.search).get('room') ?? '';
+        return rooms.some((r) => r.id === id) ? id : '';
+    })();
+    const [selectedRoom, setSelectedRoom] = useState(initialRoom);
     const [checkIn, setCheckIn] = useState('');
     const [checkOut, setCheckOut] = useState('');
     const [guests, setGuests] = useState(2);
     const [specialRequests, setSpecialRequests] = useState('');
     const [submitting, setSubmitting] = useState(false);
+    // Set after a successful reserve: the booking enters a Pay step
+    // (spec 54/97: booking -> payment -> confirmation).
+    const [created, setCreated] = useState<{ id: string; total_amount: number } | null>(null);
 
     const selectedRoomData = rooms.find((r) => r.id === selectedRoom);
     const nights = checkIn && checkOut ? Math.max(1, Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000)) : 0;
@@ -36,16 +47,16 @@ export default function HotelBooking({ hotel, rooms }: HotelBookingProps) {
         if (!selectedRoom || !checkIn || !checkOut) return;
         setSubmitting(true);
         try {
-            await api.post(`/api/hotels/${hotel.id}/reserve`, {
+            const res = await api.post<{ data: { id: string; total_amount: number } }>(`/api/hotels/${hotel.id}/reserve`, {
                 room_id: selectedRoom,
-                check_in_date: checkIn,
-                check_out_date: checkOut,
+                check_in: checkIn,
+                check_out: checkOut,
                 guests,
                 special_requests: specialRequests || undefined,
             });
-            router.visit('/hotels/reservations');
-        } catch (e: any) {
-            alert(e.message ?? 'Failed to reserve');
+            setCreated(res.data);
+        } catch (e) {
+            toast.error(errorMessage(e, 'Failed to reserve'));
         } finally {
             setSubmitting(false);
         }
@@ -60,6 +71,22 @@ export default function HotelBooking({ hotel, rooms }: HotelBookingProps) {
                     <ArrowLeft className="h-4 w-4" /> Back to hotel
                 </Link>
 
+                {created ? (
+                    <>
+                        <PaySheet
+                            endpoint={`/api/hotels/reservations/${created.id}/pay`}
+                            amount={created.total_amount}
+                            title="Confirm your reservation"
+                            onPaid={() => router.visit('/hotels/reservations')}
+                        />
+                        <button
+                            onClick={() => router.visit('/hotels/reservations')}
+                            className="w-full rounded-lg border border-gray-300 px-6 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                        >
+                            Pay later - keep it pending
+                        </button>
+                    </>
+                ) : (
                 <div className="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Reserve at {hotel.name}</h1>
                     <p className="text-sm text-gray-500">{hotel.city}</p>
@@ -79,7 +106,7 @@ export default function HotelBooking({ hotel, rooms }: HotelBookingProps) {
                                                 <p className="text-xs text-gray-500">Up to {room.capacity} guests</p>
                                             </div>
                                         </div>
-                                        <p className="font-semibold text-gray-900 dark:text-white">{formatCurrency(room.price_per_night)}/night</p>
+                                        <p className="font-semibold text-gray-900 dark:text-white">{formatPrice(room.price_per_night)}/night</p>
                                     </label>
                                 ))}
                             </div>
@@ -116,8 +143,8 @@ export default function HotelBooking({ hotel, rooms }: HotelBookingProps) {
                     {nights > 0 && selectedRoomData && (
                         <div className="mt-6 rounded-lg bg-gray-50 p-4 dark:bg-gray-700">
                             <div className="flex justify-between text-sm"><span className="text-gray-500">Room</span><span>{selectedRoomData.room_type}</span></div>
-                            <div className="flex justify-between text-sm"><span className="text-gray-500">{formatCurrency(selectedRoomData.price_per_night)} x {nights} nights</span></div>
-                            <div className="mt-2 flex justify-between text-lg font-bold"><span>Total</span><span>{formatCurrency(total)}</span></div>
+                            <div className="flex justify-between text-sm"><span className="text-gray-500">{formatPrice(selectedRoomData.price_per_night)} x {nights} nights</span></div>
+                            <div className="mt-2 flex justify-between text-lg font-bold"><span>Total</span><span>{formatPrice(total)}</span></div>
                         </div>
                     )}
 
@@ -126,6 +153,7 @@ export default function HotelBooking({ hotel, rooms }: HotelBookingProps) {
                         <Check className="h-5 w-5" /> {submitting ? 'Reserving...' : 'Confirm Reservation'}
                     </button>
                 </div>
+                )}
             </div>
         </AppLayout>
     );

@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/AppLayout';
 import { type WorkerProfile } from '@/types';
-import { api, ApiError } from '@/lib/api';
-import { formatCurrency, getInitials } from '@/lib/utils';
+import {  api, ApiError, errorMessage } from '@/lib/api';
+import { getInitials } from '@/lib/utils';
+import { formatPrice } from '@/lib/currency';
 import { toast } from 'sonner';
 import { ArrowLeft, Send } from 'lucide-react';
 
@@ -52,7 +53,7 @@ export default function CreateWorkRequest({ worker }: Props) {
         } catch (err) {
             if (err instanceof ApiError) {
                 setErrors(err.errors ?? {});
-                toast.error(err.message);
+                toast.error(errorMessage(err, 'Action failed'));
             } else {
                 toast.error('Something went wrong. Please try again.');
             }
@@ -76,7 +77,7 @@ export default function CreateWorkRequest({ worker }: Props) {
                     </span>
                     <div>
                         <p className="font-semibold text-gray-900 dark:text-white">{worker.user?.name}</p>
-                        <p className="text-xs text-gray-500">{worker.headline} · {formatCurrency(worker.hourly_rate ?? 0)}/hr</p>
+                        <p className="text-xs text-gray-500">{worker.headline} · {formatPrice(worker.hourly_rate ?? 0)}/hr</p>
                     </div>
                 </div>
 

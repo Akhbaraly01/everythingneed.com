@@ -12,7 +12,8 @@ class TicketResource extends JsonResource
             'id' => $this->id,
             'ticket_number' => $this->ticket_number,
             'subject' => $this->subject,
-            'message' => $this->first_message?->message,
+            'message' => $this->description,
+            'attachments' => $this->attachments ?? [],
             'priority' => $this->priority,
             'status' => $this->status,
             'department' => [
@@ -27,6 +28,7 @@ class TicketResource extends JsonResource
                 'sender_id' => $m->sender_id,
                 'message' => $m->message,
                 'is_internal' => (bool) $m->is_internal,
+                'attachments' => $m->attachments ?? [],
                 'created_at' => $m->created_at,
             ])),
             'satisfaction_rating' => $this->satisfaction_rating ?? null,

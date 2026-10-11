@@ -2,7 +2,7 @@ import AppLayout from '@/layouts/AppLayout';
 import { Head } from '@inertiajs/react';
 import { api } from '@/lib/api';
 import { useEffect, useState } from 'react';
-import { Package, Truck, CheckCircle, Clock, MapPin } from 'lucide-react';
+import {CheckCircle, Clock} from 'lucide-react';
 
 interface Tracking {
     id: string;
@@ -25,8 +25,12 @@ export default function OrderTracking({ order_id }: { order_id?: string }) {
 
     useEffect(() => {
         if (id) {
-            api.get<{ data: Tracking; history: Tracking[] }>(`/api/orders/${id}/tracking`)
-                .then((res) => { setTracking(res.data); setHistory((res as any).history || []); })
+            api.get<{ data: Tracking[] }>(`/api/orders/${id}/tracking`)
+                .then((res) => {
+                    const rows = Array.isArray(res.data) ? res.data : [];
+                    setHistory(rows);
+                    setTracking(rows.length ? rows[rows.length - 1] : null);
+                })
                 .catch(() => {})
                 .finally(() => setLoading(false));
         } else setLoading(false);

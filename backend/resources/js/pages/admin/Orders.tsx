@@ -1,18 +1,20 @@
-import AppLayout from '@/layouts/AppLayout';
-import { Head } from '@inertiajs/react';
-import { api } from '@/lib/api';
+import AdminLayout from '@/layouts/AdminLayout';
+import { Head, Link } from '@inertiajs/react';
+import { api, errorMessage } from '@/lib/api';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
-import { ShoppingCart } from 'lucide-react';
+import DataTable from '@/components/shared/DataTable';
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
+import { ORDER_STATUSES, settableOptionsFor } from '@/lib/orderStatus';
+import { statusTone } from '@/lib/lifecycle';
 
 interface Order {
     id: string;
-    reference: string;
-    user_name?: string;
-    total: number;
+    order_number: string;
+    customer_name?: string | null;
+    vendor_name?: string | null;
+    total_price: number;
     status: string;
-    payment_status: string;
-    items_count: number;
     created_at: string;
 }
 
@@ -22,92 +24,121 @@ export default function AdminOrders() {
     const [statusFilter, setStatusFilter] = useState('all');
 
     useEffect(() => {
+        setLoading(true);
         const params = statusFilter !== 'all' ? `?status=${statusFilter}` : '';
         api.get<{ data: Order[] }>(`/api/admin/orders${params}`)
-            .then((res) => setOrders(res.data))
-            .catch(() => setOrders([]))
+            .then((res) => setOrders(Array.isArray(res.data) ? res.data : []))
+            .catch((e) => {
+                setOrders([]);
+                toast.error(errorMessage(e, 'Failed to load orders'));
+            })
             .finally(() => setLoading(false));
     }, [statusFilter]);
 
     const updateStatus = async (orderId: string, status: string) => {
+        const previous = orders;
+        setOrders(orders.map((o) => (o.id === orderId ? { ...o, status } : o)));
         try {
             await api.put(`/api/admin/orders/${orderId}/status`, { status });
-            setOrders(orders.map((o) => o.id === orderId ? { ...o, status } : o));
-        } catch {}
+            toast.success('Order status updated.');
+        } catch (e) {
+            setOrders(previous);
+            toast.error(errorMessage(e, 'Failed to update status'));
+        }
     };
 
     return (
-        <AppLayout title="Manage Orders">
+        <AdminLayout title="Manage Orders">
             <Head title="Manage Orders" />
 
             <div className="space-y-6">
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Manage Orders</h1>
 
-                <div className="flex flex-wrap gap-2">
-                    {['all', 'pending', 'processing', 'shipped', 'delivered', 'cancelled'].map((s) => (
-                        <button key={s} onClick={() => setStatusFilter(s)} className={`rounded-full px-4 py-1.5 text-sm font-medium capitalize ${
-                            statusFilter === s ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 dark:bg-gray-700'
-                        }`}>{s}</button>
+                <div className="flex flex-wrap gap-2" role="group" aria-label="Filter orders by status">
+                    {['all', ...ORDER_STATUSES].map((s) => (
+                        <button
+                            key={s}
+                            onClick={() => setStatusFilter(s)}
+                            aria-pressed={statusFilter === s}
+                            className={`rounded-full px-4 py-1.5 text-sm font-medium capitalize ${
+                                statusFilter === s ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'
+                            }`}
+                        >
+                            {s}
+                        </button>
                     ))}
                 </div>
 
-                {loading ? (
-                    <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800"><p className="text-gray-500">Loading...</p></div>
-                ) : orders.length === 0 ? (
-                    <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
-                        <ShoppingCart className="mx-auto h-12 w-12 text-gray-400" />
-                        <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">No orders</h3>
-                    </div>
-                ) : (
-                    <div className="overflow-x-auto rounded-lg bg-white shadow dark:bg-gray-800">
-                        <table className="w-full text-left text-sm">
-                            <thead className="border-b bg-gray-50 dark:border-gray-700 dark:bg-gray-700">
-                                <tr>
-                                    <th className="px-4 py-3">Reference</th>
-                                    <th className="px-4 py-3">Customer</th>
-                                    <th className="px-4 py-3">Items</th>
-                                    <th className="px-4 py-3">Total</th>
-                                    <th className="px-4 py-3">Status</th>
-                                    <th className="px-4 py-3">Payment</th>
-                                    <th className="px-4 py-3">Date</th>
-                                    <th className="px-4 py-3">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y dark:divide-gray-700">
-                                {orders.map((o) => (
-                                    <tr key={o.id}>
-                                        <td className="px-4 py-3 font-mono text-xs">{o.reference}</td>
-                                        <td className="px-4 py-3 text-sm">{o.user_name}</td>
-                                        <td className="px-4 py-3 text-sm">{o.items_count}</td>
-                                        <td className="px-4 py-3 font-semibold">{formatCurrency(o.total)}</td>
-                                        <td className="px-4 py-3">
-                                            <span className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${
-                                                o.status === 'delivered' ? 'bg-green-100 text-green-800' : o.status === 'cancelled' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
-                                            }`}>{o.status}</span>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <span className={`text-xs font-medium ${
-                                                o.payment_status === 'paid' ? 'text-green-600' : o.payment_status === 'refunded' ? 'text-orange-600' : 'text-gray-500'
-                                            }`}>{o.payment_status}</span>
-                                        </td>
-                                        <td className="px-4 py-3 text-xs text-gray-500">{formatDateTime(o.created_at)}</td>
-                                        <td className="px-4 py-3">
-                                            <select value={o.status} onChange={(e) => updateStatus(o.id, e.target.value)}
-                                                className="rounded border px-2 py-1 text-xs dark:border-gray-600 dark:bg-gray-700">
-                                                <option value="pending">Pending</option>
-                                                <option value="processing">Processing</option>
-                                                <option value="shipped">Shipped</option>
-                                                <option value="delivered">Delivered</option>
-                                                <option value="cancelled">Cancelled</option>
-                                            </select>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+                <DataTable
+                    columns={[
+                        {
+                            key: 'number', header: 'Order #', accessor: 'order_number', sortable: true,
+                            render: (o) => (
+                                <Link href={`/admin/orders/${o.id}`} className="font-mono text-xs text-indigo-600 hover:underline">
+                                    {o.order_number}
+                                </Link>
+                            ),
+                        },
+                        {
+                            key: 'customer', header: 'Customer', accessor: 'customer_name', sortable: true,
+                            render: (o) => <span className="text-sm">{o.customer_name ?? '—'}</span>,
+                        },
+                        {
+                            key: 'vendor', header: 'Vendor', accessor: 'vendor_name', sortable: true,
+                            render: (o) => <span className="text-sm">{o.vendor_name ?? '—'}</span>,
+                        },
+                        {
+                            key: 'total', header: 'Total', accessor: 'total_price', sortable: true,
+                            render: (o) => <span className="font-semibold">{formatCurrency(Number(o.total_price ?? 0))}</span>,
+                        },
+                        {
+                            key: 'status', header: 'Status', accessor: 'status', sortable: true,
+                            render: (o) => (
+                                <span className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${statusTone(o.status)}`}>
+                                    {o.status}
+                                </span>
+                            ),
+                        },
+                        {
+                            key: 'date', header: 'Date', accessor: 'created_at', sortable: true,
+                            render: (o) => <span className="text-xs text-gray-500">{formatDateTime(o.created_at)}</span>,
+                        },
+                        {
+                            key: 'actions', header: 'Actions',
+                            render: (o) => {
+                                const options = settableOptionsFor(o.status).filter((s) => s !== o.status);
+                                return (
+                                    <>
+                                        <label className="sr-only" htmlFor={`status-${o.id}`}>Status for order {o.order_number}</label>
+                                        <select
+                                            id={`status-${o.id}`}
+                                            value={o.status}
+                                            disabled={options.length === 0}
+                                            onChange={(e) => updateStatus(o.id, e.target.value)}
+                                            className="rounded border px-2 py-1 text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                        >
+                                            {/* Only legal transitions (order state machine); 'paid' is provider-owned. */}
+                                            {o.status === 'paid' && <option value="paid">paid (locked)</option>}
+                                            {options.length === 0 && o.status !== 'paid' && (
+                                                <option value={o.status}>{o.status} (final)</option>
+                                            )}
+                                            {options.map((s) => (
+                                                <option key={s} value={s}>
+                                                    {s}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </>
+                                );
+                            },
+                        },
+                    ]}
+                    data={orders}
+                    loading={loading}
+                    emptyTitle="No orders"
+                    emptyDescription={statusFilter === 'all' ? 'No orders have been placed yet.' : `No orders with status "${statusFilter}".`}
+                />
             </div>
-        </AppLayout>
+        </AdminLayout>
     );
 }

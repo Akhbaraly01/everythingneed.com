@@ -43,14 +43,32 @@ class StoreProductRequest extends FormRequest
         return [
             'vendor_id' => 'required|uuid|exists:vendors,id',
             'name' => 'required|string|max:255',
+            'slug' => 'nullable|string|max:160|unique:products,slug',
             'description' => 'nullable|string|max:2000',
             'category' => 'required|string|max:100',
             'subcategory' => 'nullable|string|max:100',
+            'sku' => 'nullable|string|max:64',
             'price' => 'required|numeric|min:0',
             'compare_price' => 'nullable|numeric|min:0',
+            'currency' => 'nullable|string|size:3',
+            'tax_rate' => 'nullable|numeric|min:0|max:100',
+            'discount_percent' => 'nullable|numeric|min:0|max:100',
+            'featured' => 'nullable|boolean',
+            'publication_state' => 'nullable|string|in:draft,published,hidden,archived',
+            'specifications' => 'nullable|array',
+            'attributes' => 'nullable|array',
+            'shipping' => 'nullable|array',
             'image_url' => 'nullable|url|max:500',
             'images' => 'nullable|array',
             'stock_quantity' => 'required|integer|min:0',
+            // Spec 37 variants: managed alongside the product (product_variants).
+            'variants' => 'nullable|array',
+            'variants.*.name' => 'required|string|max:120',
+            'variants.*.sku' => 'nullable|string|max:64',
+            'variants.*.price' => 'required|numeric|min:0',
+            'variants.*.stock_quantity' => 'nullable|integer|min:0',
+            'variants.*.attributes' => 'nullable|array',
+            'variants.*.is_active' => 'nullable|boolean',
         ];
     }
 }

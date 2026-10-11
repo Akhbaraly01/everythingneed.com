@@ -1,9 +1,9 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link } from '@inertiajs/react';
 import { api } from '@/lib/api';
-import { formatCurrency } from '@/lib/utils';
-import { Store, Star, MapPin } from 'lucide-react';
+import { Store, MapPin } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import Image from '@/components/shared/Image';
 
 interface StoreItem {
     id: string;
@@ -21,8 +21,17 @@ export default function StoresIndex() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        api.get<{ data: StoreItem[] }>('/api/stores')
-            .then((res) => setStores(res.data))
+        api.get<{ data: Array<{ id: string; store_name: string; description?: string; rating?: number; products_count?: number }> }>('/api/vendors')
+            .then((res) => setStores(
+                (res.data ?? []).map((v) => ({
+                    id: v.id,
+                    name: v.store_name,
+                    description: v.description,
+                    rating: v.rating,
+                    products_count: v.products_count,
+                    vendor_name: v.store_name,
+                })),
+            ))
             .catch(() => setStores([]))
             .finally(() => setLoading(false));
     }, []);
@@ -47,7 +56,7 @@ export default function StoresIndex() {
                             <Link key={store.id} href={`/stores/${store.id}`}
                                 className="group overflow-hidden rounded-lg bg-white shadow transition hover:shadow-lg dark:bg-gray-800">
                                 <div className="h-40 bg-gray-100 dark:bg-gray-700">
-                                    {store.image_url ? <img src={store.image_url} alt="" className="h-full w-full object-cover" /> : null}
+                                    {store.image_url ? <Image src={store.image_url} alt="" className="h-full w-full object-cover" /> : null}
                                 </div>
                                 <div className="p-4">
                                     <h3 className="font-semibold text-gray-900 group-hover:text-indigo-600 dark:text-white">{store.name}</h3>

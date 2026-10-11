@@ -1,9 +1,10 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link, usePage } from '@inertiajs/react';
-import { api } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
+import { toast } from 'sonner';
 import { formatDateTime } from '@/lib/utils';
-import { Send, ArrowLeft, AlertCircle, CheckCircle, Clock, MessageSquare } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Send, ArrowLeft, MessageSquare } from 'lucide-react';
+import { useState } from 'react';
 
 interface TicketMessage {
     id: string;
@@ -50,8 +51,8 @@ export default function TicketShow({ ticket }: TicketShowProps) {
             const res = await api.post<{ data: TicketMessage }>(`/api/tickets/${ticket.id}/reply`, { message: reply });
             setMessages([...messages, res.data]);
             setReply('');
-        } catch (e: any) {
-            alert(e.message ?? 'Failed to send reply');
+        } catch (e) {
+            toast.error(errorMessage(e, 'Failed to send reply'));
         } finally {
             setSending(false);
         }
@@ -60,12 +61,10 @@ export default function TicketShow({ ticket }: TicketShowProps) {
     return (
         <AppLayout>
             <Head title={`Ticket ${ticket.ticket_number}`} />
-
             <div className="space-y-6">
-                <Link href="/tickets" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700">
+                <Link href="/account/support" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700">
                     <ArrowLeft className="h-4 w-4" /> Back to tickets
                 </Link>
-
                 {/* Header */}
                 <div className="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
                     <div className="flex items-start justify-between">
@@ -91,7 +90,6 @@ export default function TicketShow({ ticket }: TicketShowProps) {
                         </div>
                     )}
                 </div>
-
                 {/* Messages */}
                 <div className="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
                     <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white">
@@ -121,7 +119,6 @@ export default function TicketShow({ ticket }: TicketShowProps) {
                             })
                         )}
                     </div>
-
                     {/* Reply form */}
                     {ticket.status !== 'closed' && (
                         <div className="mt-6 border-t border-gray-200 pt-4 dark:border-gray-700">

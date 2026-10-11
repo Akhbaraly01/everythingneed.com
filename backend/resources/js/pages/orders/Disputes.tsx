@@ -1,8 +1,10 @@
+import { statusTone } from '@/lib/lifecycle';
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link } from '@inertiajs/react';
-import { api } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
+import { toast } from 'sonner';
 import { formatDateTime } from '@/lib/utils';
-import { AlertTriangle, ArrowLeft, Plus, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Plus, X, RefreshCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface Dispute {
@@ -22,15 +24,10 @@ interface DisputesResponse {
     meta: { current_page: number; last_page: number; per_page: number; total: number };
 }
 
-const statusColors: Record<string, string> = {
-    open: 'bg-yellow-100 text-yellow-800',
-    resolved: 'bg-green-100 text-green-800',
-    closed: 'bg-gray-100 text-gray-800',
-};
-
 export default function DisputesPage() {
     const [disputes, setDisputes] = useState<Dispute[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [showForm, setShowForm] = useState(false);
     const [orderId, setOrderId] = useState('');
     const [subject, setSubject] = useState('');
@@ -38,9 +35,14 @@ export default function DisputesPage() {
     const [submitting, setSubmitting] = useState(false);
 
     const fetchDisputes = () => {
+        setLoading(true);
+        setError(null);
         api.get<DisputesResponse>('/api/disputes')
             .then((res) => setDisputes(res.data))
-            .catch(() => setDisputes([]))
+            .catch((e) => {
+                setError(errorMessage(e, 'Failed to load disputes'));
+                setDisputes([]);
+            })
             .finally(() => setLoading(false));
     };
 
@@ -60,8 +62,8 @@ export default function DisputesPage() {
             setSubject('');
             setDescription('');
             fetchDisputes();
-        } catch (e: any) {
-            alert(e.message ?? 'Failed to create dispute');
+        } catch (e) {
+            toast.error(errorMessage(e, 'Failed to create dispute'));
         } finally {
             setSubmitting(false);
         }
@@ -124,6 +126,13 @@ export default function DisputesPage() {
 
                 {loading ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800"><p className="text-gray-500">Loading...</p></div>
+                ) : error ? (
+                    <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
+                        <p className="text-red-600 font-medium">{error}</p>
+                        <button onClick={fetchDisputes} className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-500">
+                            <RefreshCcw className="h-4 w-4" /> Retry
+                        </button>
+                    </div>
                 ) : disputes.length === 0 ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
                         <AlertTriangle className="mx-auto h-12 w-12 text-gray-400" />
@@ -142,7 +151,7 @@ export default function DisputesPage() {
                                         <p className="mt-1 text-xs text-gray-400">{formatDateTime(d.created_at)}</p>
                                     </div>
                                     <div className="text-right">
-                                        <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusColors[d.status] ?? 'bg-gray-100 text-gray-800'}`}>
+                                        <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusTone(d.status)}`}>
                                             {d.status}
                                         </span>
                                         {d.resolution && (

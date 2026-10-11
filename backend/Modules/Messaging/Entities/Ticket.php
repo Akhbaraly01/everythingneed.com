@@ -18,6 +18,11 @@ class Ticket extends Model
         'satisfaction_rating',
         'satisfaction_comment',
         'escalated_at',
+        'attachments',
+    ];
+
+    protected $casts = [
+        'attachments' => 'array',
     ];
 
     const PRIORITY_LOW = 'low';

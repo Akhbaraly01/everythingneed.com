@@ -1,6 +1,7 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, router } from '@inertiajs/react';
-import { api } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
+import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
 import { Package, ArrowRight } from 'lucide-react';
 
@@ -12,7 +13,7 @@ export default function VendorProductEdit({ product_id }: { product_id?: string 
     useEffect(() => {
         const id = product_id || window.location.pathname.split('/').pop();
         if (id) {
-            api.get<{ data: any }>(`/api/products/${id}`)
+            api.get<{ data: { name: string; description?: string | null; category: string; price: number | string; stock_quantity: number | string; image_url?: string | null; is_active: boolean } }>(`/api/products/${id}`)
                 .then((res) => setForm({ name: res.data.name, description: res.data.description || '', category: res.data.category, price: String(res.data.price), stock_quantity: String(res.data.stock_quantity), image_url: res.data.image_url || '', is_active: res.data.is_active }))
                 .catch(() => {})
                 .finally(() => setLoading(false));
@@ -26,7 +27,10 @@ export default function VendorProductEdit({ product_id }: { product_id?: string 
         try {
             await api.put(`/api/vendor/products/${id}`, { ...form, price: parseFloat(form.price), stock_quantity: parseInt(form.stock_quantity) });
             router.visit('/vendor/products');
-        } catch { setSubmitting(false); }
+        } catch (err) {
+            toast.error(errorMessage(err, 'Failed to save the product'));
+            setSubmitting(false);
+        }
     };
 
     if (loading) return <AppLayout title="Edit Product"><p className="p-12 text-center text-gray-500">Loading...</p></AppLayout>;

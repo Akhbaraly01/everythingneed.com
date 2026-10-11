@@ -9,12 +9,21 @@ use Modules\Admin\Http\Controllers\AdminAuditController;
 use Modules\Admin\Http\Controllers\AdminSettingsController;
 use Modules\Admin\Http\Controllers\AdminFinanceController;
 use Modules\Admin\Http\Controllers\AdminAnalyticsController;
+use Modules\Admin\Http\Controllers\AdminReportController;
 use Modules\Admin\Http\Controllers\AdminCmsController;
+use Modules\Admin\Http\Controllers\AdminPageBuilderController;
+use Modules\Admin\Http\Controllers\AdminNavigationController;
+use Modules\Admin\Http\Controllers\AdminMediaController;
+use Modules\Admin\Http\Controllers\AdminDynamicModuleController;
+use Modules\Admin\Http\Controllers\AdminCmsFormController;
 use Modules\Admin\Http\Controllers\AdminSupportController;
 use Modules\Admin\Http\Controllers\AdminRbacController;
 use Modules\Admin\Http\Controllers\AdminProductApprovalController;
 use Modules\Admin\Http\Controllers\AdminDepartmentController;
 use Modules\Admin\Http\Controllers\AdminBrandController;
+use Modules\Admin\Http\Controllers\AdminKycController;
+use App\Http\Controllers\Api\AdminDomainController;
+use App\Http\Middleware\EnsureAccountActive;
 
 /*
 |--------------------------------------------------------------------------
@@ -22,7 +31,7 @@ use Modules\Admin\Http\Controllers\AdminBrandController;
 |--------------------------------------------------------------------------
 */
 
-Route::prefix('api/admin')->middleware(['api', 'auth:sanctum', 'role:super_admin,administrator'])->group(function () {
+Route::prefix('api/admin')->middleware(['api', 'auth:sanctum', EnsureAccountActive::class])->group(function () {
 
     // Dashboard stats
     Route::get('/stats', [AdminStatsController::class, 'index'])
@@ -32,6 +41,9 @@ Route::prefix('api/admin')->middleware(['api', 'auth:sanctum', 'role:super_admin
 
     // User management
     Route::get('/users', [AdminUserController::class, 'index'])
+        ->can('manageUsers');
+    Route::post('/users', [AdminUserController::class, 'store'])
+        ->middleware('permission:users.users.create')
         ->can('manageUsers');
     Route::get('/users/{id}', [AdminUserController::class, 'show'])
         ->can('manageUsers');
@@ -75,23 +87,45 @@ Route::prefix('api/admin')->middleware(['api', 'auth:sanctum', 'role:super_admin
         ->can('manageFinance');
     Route::get('/finance/withdrawals', [AdminFinanceController::class, 'withdrawals'])
         ->can('manageFinance');
+    Route::post('/finance/withdrawals/{id}/process', [AdminFinanceController::class, 'processWithdrawal'])
+        ->can('manageFinance');
 
-    // Analytics
+    // Analytics (gate mirrors the /admin/analytics web group)
     Route::get('/analytics/overview', [AdminAnalyticsController::class, 'overview'])
-        ->can('viewDashboard');
+        ->can('viewAnalytics');
     Route::get('/analytics/user-growth', [AdminAnalyticsController::class, 'userGrowth'])
-        ->can('viewDashboard');
+        ->can('viewAnalytics');
     Route::get('/analytics/revenue', [AdminAnalyticsController::class, 'revenue'])
-        ->can('viewDashboard');
+        ->can('viewAnalytics');
     Route::get('/analytics/categories', [AdminAnalyticsController::class, 'categories'])
-        ->can('viewDashboard');
+        ->can('viewAnalytics');
     Route::get('/analytics/traffic', [AdminAnalyticsController::class, 'traffic'])
-        ->can('viewDashboard');
+        ->can('viewAnalytics');
+    // Spec §63 — domain series (bookings/healthcare/learning/needs/services/
+    // wallet/payments/orders) + conversion funnel in one payload.
+    Route::get('/analytics/domains', [AdminAnalyticsController::class, 'domains'])
+        ->can('viewAnalytics');
+    // CSV export — tighter gate than viewAnalytics: only roles holding the
+    // analytics.overview.export permission (super, analytics_admin,
+    // administrator) can pull data out.
+    Route::get('/analytics/export', [AdminAnalyticsController::class, 'export'])
+        ->middleware('permission:analytics.overview.export');
 
-    // CMS management
+    // Reports (W5.4) — reports.reports.view to read, reports.reports.export
+    // to download the CSV (auditor holds both; analyst is view-only).
+    Route::get('/reports/sales', [AdminReportController::class, 'sales'])
+        ->middleware('permission:reports.reports.view');
+    Route::get('/reports/analytics', [AdminReportController::class, 'analytics'])
+        ->middleware('permission:reports.reports.view');
+    Route::get('/reports/export', [AdminReportController::class, 'export'])
+        ->middleware('permission:reports.reports.export');
+
+// CMS management
     Route::get('/cms/pages', [AdminCmsController::class, 'pages'])
         ->can('manageCms');
     Route::post('/cms/pages', [AdminCmsController::class, 'createPage'])
+        ->can('manageCms');
+    Route::put('/cms/pages/{id}', [AdminCmsController::class, 'updatePage'])
         ->can('manageCms');
     Route::delete('/cms/pages/{id}', [AdminCmsController::class, 'deletePage'])
         ->can('manageCms');
@@ -99,11 +133,15 @@ Route::prefix('api/admin')->middleware(['api', 'auth:sanctum', 'role:super_admin
         ->can('manageCms');
     Route::post('/cms/blog', [AdminCmsController::class, 'createBlog'])
         ->can('manageCms');
+    Route::put('/cms/blog/{id}', [AdminCmsController::class, 'updateBlog'])
+        ->can('manageCms');
     Route::delete('/cms/blog/{id}', [AdminCmsController::class, 'deleteBlog'])
         ->can('manageCms');
     Route::get('/cms/banners', [AdminCmsController::class, 'banners'])
         ->can('manageCms');
     Route::post('/cms/banners', [AdminCmsController::class, 'createBanner'])
+        ->can('manageCms');
+    Route::put('/cms/banners/{id}', [AdminCmsController::class, 'updateBanner'])
         ->can('manageCms');
     Route::delete('/cms/banners/{id}', [AdminCmsController::class, 'deleteBanner'])
         ->can('manageCms');
@@ -111,11 +149,100 @@ Route::prefix('api/admin')->middleware(['api', 'auth:sanctum', 'role:super_admin
         ->can('manageCms');
     Route::post('/cms/announcements', [AdminCmsController::class, 'createAnnouncement'])
         ->can('manageCms');
+    Route::put('/cms/announcements/{id}', [AdminCmsController::class, 'updateAnnouncement'])
+        ->can('manageCms');
     Route::delete('/cms/announcements/{id}', [AdminCmsController::class, 'deleteAnnouncement'])
         ->can('manageCms');
 
+    // No-code page builder (Wave C - spec S40-S45, S68, S99): closed block
+    // registry + revision history, gated by the granular cms.* permissions
+    // on top of the manageCms role gate.
+    Route::get('/cms/blocks/registry', [AdminPageBuilderController::class, 'registry'])
+        ->middleware('permission:cms.blocks.view')
+        ->can('manageCms');
+    Route::get('/cms/pages/{id}/blocks', [AdminPageBuilderController::class, 'blocks'])
+        ->middleware('permission:cms.blocks.view')
+        ->can('manageCms');
+    Route::put('/cms/pages/{id}/blocks', [AdminPageBuilderController::class, 'saveBlocks'])
+        ->middleware('permission:cms.blocks.manage')
+        ->can('manageCms');
+    Route::get('/cms/pages/{id}/revisions', [AdminPageBuilderController::class, 'revisions'])
+        ->middleware('permission:cms.revisions.view')
+        ->can('manageCms');
+    Route::get('/cms/pages/{id}/revisions/{version}', [AdminPageBuilderController::class, 'revision'])
+        ->middleware('permission:cms.revisions.view')
+        ->can('manageCms');
+    Route::post('/cms/pages/{id}/revisions/{version}/restore', [AdminPageBuilderController::class, 'restore'])
+        ->middleware('permission:cms.revisions.restore')
+        ->can('manageCms');
+
+    // Navigation builder (Wave C - spec S46)
+    Route::get('/navigations', [AdminNavigationController::class, 'index'])
+        ->middleware('permission:navigation.view')
+        ->can('manageCms');
+    Route::post('/navigations', [AdminNavigationController::class, 'store'])
+        ->middleware('permission:navigation.manage')
+        ->can('manageCms');
+    Route::put('/navigations/{id}', [AdminNavigationController::class, 'update'])
+        ->middleware('permission:navigation.manage')
+        ->can('manageCms');
+    Route::delete('/navigations/{id}', [AdminNavigationController::class, 'destroy'])
+        ->middleware('permission:navigation.manage')
+        ->can('manageCms');
+    Route::put('/navigations/{id}/items', [AdminNavigationController::class, 'replaceItems'])
+        ->middleware('permission:navigation.manage')
+        ->can('manageCms');
+
+    // Media library (Wave C - spec S44/S86; W1 adds the permission-gated
+    // shared-library upload alongside the personal /api/upload endpoint)
+    Route::get('/media', [AdminMediaController::class, 'index'])
+        ->middleware('permission:media.view')
+        ->can('manageCms');
+    Route::post('/media', [AdminMediaController::class, 'store'])
+        ->middleware('permission:media.manage')
+        ->can('manageCms');
+    Route::delete('/media/{id}', [AdminMediaController::class, 'destroy'])
+        ->middleware('permission:media.manage')
+        ->can('manageCms');
+
+    // No-code dynamic modules (W3 - spec S40/S47): schema-declared
+    // entities with validated entries; published modules read publicly.
+    Route::get('/modules', [AdminDynamicModuleController::class, 'index'])
+        ->middleware('permission:modules.view');
+    Route::post('/modules', [AdminDynamicModuleController::class, 'store'])
+        ->middleware('permission:modules.manage');
+    Route::get('/modules/{id}', [AdminDynamicModuleController::class, 'show'])
+        ->middleware('permission:modules.view');
+    Route::put('/modules/{id}', [AdminDynamicModuleController::class, 'update'])
+        ->middleware('permission:modules.manage');
+    Route::delete('/modules/{id}', [AdminDynamicModuleController::class, 'destroy'])
+        ->middleware('permission:modules.manage');
+    Route::get('/modules/{id}/entries', [AdminDynamicModuleController::class, 'entries'])
+        ->middleware('permission:modules.view');
+    Route::post('/modules/{id}/entries', [AdminDynamicModuleController::class, 'storeEntry'])
+        ->middleware('permission:modules.manage');
+    Route::put('/modules/{id}/entries/{entryId}', [AdminDynamicModuleController::class, 'updateEntry'])
+        ->middleware('permission:modules.manage');
+    Route::delete('/modules/{id}/entries/{entryId}', [AdminDynamicModuleController::class, 'destroyEntry'])
+        ->middleware('permission:modules.manage');
+
+    Route::get('/forms', [AdminCmsFormController::class, 'index'])
+        ->middleware('permission:forms.view');
+    Route::post('/forms', [AdminCmsFormController::class, 'store'])
+        ->middleware('permission:forms.manage');
+    Route::get('/forms/{formId}', [AdminCmsFormController::class, 'show'])
+        ->middleware('permission:forms.view');
+    Route::put('/forms/{formId}', [AdminCmsFormController::class, 'update'])
+        ->middleware('permission:forms.manage');
+    Route::delete('/forms/{formId}', [AdminCmsFormController::class, 'destroy'])
+        ->middleware('permission:forms.manage');
+    Route::get('/forms/{formId}/submissions', [AdminCmsFormController::class, 'submissions'])
+        ->middleware('permission:forms.view');
+
     // Support tickets
     Route::get('/support/tickets', [AdminSupportController::class, 'tickets'])
+        ->can('manageSupport');
+    Route::get('/support/tickets/{id}', [AdminSupportController::class, 'show'])
         ->can('manageSupport');
     Route::patch('/support/tickets/{id}/assign', [AdminSupportController::class, 'assign'])
         ->can('manageSupport');
@@ -123,11 +250,24 @@ Route::prefix('api/admin')->middleware(['api', 'auth:sanctum', 'role:super_admin
     // Audit logs
     Route::get('/audit-logs', [AdminAuditController::class, 'index'])
         ->can('viewAuditLogs');
+    // Distinct action vocabulary for the console filter dropdown.
+    Route::get('/audit-logs/actions', [AdminAuditController::class, 'actions'])
+        ->can('viewAuditLogs');
+    // CSV export: view policy AND the export permission (holders of
+    // audit.logs.export = super, security_admin, auditor, administrator;
+    // the view policy keeps administrator out — permission alone is not enough).
+    Route::get('/audit-logs/export', [AdminAuditController::class, 'export'])
+        ->middleware('permission:audit.logs.export')
+        ->can('viewAuditLogs');
 
     // System settings & feature flags
     Route::get('/settings', [AdminSettingsController::class, 'index'])
         ->can('manageSettings');
+    Route::get('/ui-texts', [AdminSettingsController::class, 'uiTexts'])
+        ->can('manageSettings');
     Route::put('/settings', [AdminSettingsController::class, 'update'])
+        ->can('manageSettings');
+    Route::delete('/settings/{key}', [AdminSettingsController::class, 'destroy'])
         ->can('manageSettings');
     Route::get('/feature-flags', [AdminSettingsController::class, 'featureFlags'])
         ->can('manageSettings');
@@ -140,15 +280,15 @@ Route::prefix('api/admin')->middleware(['api', 'auth:sanctum', 'role:super_admin
 
     // Product approval queue
     Route::get('/products/pending', [AdminProductApprovalController::class, 'pending'])
-        ->middleware('permission:products.approve');
+        ->middleware('permission:products.products.approve');
     Route::post('/products/{id}/approve', [AdminProductApprovalController::class, 'approve'])
-        ->middleware('permission:products.approve');
+        ->middleware('permission:products.products.approve');
     Route::post('/products/{id}/reject', [AdminProductApprovalController::class, 'reject'])
-        ->middleware('permission:products.approve');
+        ->middleware('permission:products.products.approve');
 
     // Departments (shared by support + healthcare)
     Route::get('/departments', [AdminDepartmentController::class, 'index'])
-        ->middleware('role:super_admin,administrator,customer_service,support_staff');
+        ->middleware('role:super_admin,administrator,customer_service,support_agent,support_admin');
     Route::post('/departments', [AdminDepartmentController::class, 'store'])
         ->middleware('role:super_admin,administrator');
     Route::put('/departments/{id}', [AdminDepartmentController::class, 'update'])
@@ -164,16 +304,79 @@ Route::prefix('api/admin')->middleware(['api', 'auth:sanctum', 'role:super_admin
         ->middleware('role:super_admin');
     Route::post('/rbac/revoke', [AdminRbacController::class, 'revoke'])
         ->middleware('role:super_admin');
+    Route::get('/users/{id}/permissions', [AdminRbacController::class, 'userPermissions'])
+        ->middleware('role:super_admin');
+    Route::post('/users/{id}/permissions', [AdminRbacController::class, 'grantUserPermission'])
+        ->middleware('role:super_admin');
+    Route::delete('/users/{id}/permissions/{permission}', [AdminRbacController::class, 'revokeUserPermission'])
+        ->middleware('role:super_admin');
+    Route::get('/rbac/scopes', [AdminRbacController::class, 'scopes'])
+        ->middleware('role:super_admin');
+    Route::post('/rbac/scopes', [AdminRbacController::class, 'grantScope'])
+        ->middleware('role:super_admin');
+    Route::delete('/rbac/scopes/{id}', [AdminRbacController::class, 'revokeScope'])
+        ->middleware('role:super_admin');
     Route::put('/roles/assign', [AdminRbacController::class, 'updateRole'])
         ->can('manageUsers');
 
-    // Brand management
+    // Brand management (category_admin: spec §65 Category Admin console).
     Route::get('/brands', [AdminBrandController::class, 'index'])
-        ->middleware('role:super_admin,administrator,category_admin');
+        ->middleware('role:super_admin,administrator,marketplace_admin,category_admin');
     Route::post('/brands', [AdminBrandController::class, 'store'])
-        ->middleware('role:super_admin,administrator');
+        ->middleware('role:super_admin,administrator,marketplace_admin,category_admin');
     Route::put('/brands/{id}', [AdminBrandController::class, 'update'])
-        ->middleware('role:super_admin,administrator');
+        ->middleware('role:super_admin,administrator,marketplace_admin,category_admin');
     Route::delete('/brands/{id}', [AdminBrandController::class, 'destroy'])
+        ->middleware('role:super_admin,administrator,marketplace_admin,category_admin');
+
+    // KYC review queue (decisions reuse POST /api/kyc/{id}/review)
+    Route::get('/kyc', [AdminKycController::class, 'index'])
+        ->middleware('permission:kyc.applications.view');
+
+    // Domain consoles (AdminDomainController) — role lists mirror the web
+    // console groups that render the consuming pages.
+    Route::get('/pharmacy/orders', [AdminDomainController::class, 'pharmacyOrders'])
+        ->middleware('role:super_admin,administrator,pharmacy_admin');
+    Route::get('/building/bookings', [AdminDomainController::class, 'buildingBookings'])
+        ->middleware('role:super_admin,administrator,building_admin');
+    Route::get('/disputes', [AdminDomainController::class, 'disputes'])
+        ->middleware('role:super_admin,administrator,moderator,finance_admin,platform_ops,orders_admin,refund_agent');
+    Route::put('/disputes/{id}', [AdminDomainController::class, 'updateDispute'])
+        ->middleware('role:super_admin,administrator,moderator,finance_admin,platform_ops,orders_admin,refund_agent');
+    Route::get('/refunds', [AdminDomainController::class, 'refunds'])
+        ->middleware('role:super_admin,administrator,moderator,finance_admin,platform_ops,orders_admin,refund_agent');
+    // Gap 3 support review queue: approve (same-method payout) / reject.
+    Route::put('/refunds/{id}', [AdminDomainController::class, 'decideRefund'])
+        ->middleware('role:super_admin,administrator,moderator,finance_admin,platform_ops,orders_admin,refund_agent');
+    Route::get('/subscriptions', [AdminDomainController::class, 'subscriptions'])
         ->middleware('role:super_admin,administrator');
+    Route::get('/wallet/transactions', [AdminDomainController::class, 'walletTransactions'])
+        ->middleware('role:super_admin,administrator,finance_admin,wallet_admin');
+    Route::get('/notifications', [AdminDomainController::class, 'notifications'])
+        ->middleware('role:super_admin,administrator');
+    Route::get('/properties', [AdminDomainController::class, 'properties'])
+        ->middleware('role:super_admin,administrator,building_admin,real_estate_admin');
+    Route::put('/properties/{id}', [AdminDomainController::class, 'updateProperty'])
+        ->middleware('role:super_admin,administrator,building_admin,real_estate_admin');
+    Route::delete('/reviews/{id}', [AdminDomainController::class, 'destroyReview'])
+        ->middleware('role:super_admin,administrator,moderator');
+
+    // RMA return queue (approve issues the gateway refund via RefundPayment)
+    Route::get('/returns', [\Modules\Orders\Http\Controllers\ReturnRequestController::class, 'adminIndex'])
+        ->middleware('role:super_admin,administrator,moderator,finance_admin,platform_ops,orders_admin,refund_agent');
+    Route::put('/returns/{id}', [\Modules\Orders\Http\Controllers\ReturnRequestController::class, 'decide'])
+        ->middleware('role:super_admin,administrator,moderator,finance_admin,platform_ops,orders_admin,refund_agent');
+
+    // Generic approval engine (W4) — gate mirrors the /admin/approvals page
+    // role group; per-step approver roles are enforced inside the engine.
+    Route::get('/approval-requests', [\Modules\Admin\Http\Controllers\AdminApprovalRequestController::class, 'index'])
+        ->middleware('permission:products.products.approve');
+    Route::post('/approval-requests', [\Modules\Admin\Http\Controllers\AdminApprovalRequestController::class, 'store'])
+        ->middleware('permission:products.products.approve');
+    Route::get('/approval-requests/{id}', [\Modules\Admin\Http\Controllers\AdminApprovalRequestController::class, 'show'])
+        ->middleware('permission:products.products.approve');
+    Route::post('/approval-requests/{id}/approve', [\Modules\Admin\Http\Controllers\AdminApprovalRequestController::class, 'approve'])
+        ->middleware('permission:products.products.approve');
+    Route::post('/approval-requests/{id}/reject', [\Modules\Admin\Http\Controllers\AdminApprovalRequestController::class, 'reject'])
+        ->middleware('permission:products.products.approve');
 });

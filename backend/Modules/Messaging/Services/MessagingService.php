@@ -10,20 +10,36 @@ class MessagingService
 {
     public function createTicket(string $userId, array $data): Ticket
     {
-        $ticket = Ticket::create([
-            'user_id' => $userId,
-            'ticket_number' => $this->generateTicketNumber(),
-            'subject' => $data['subject'],
-            'description' => $data['message'],
-            'priority' => $data['priority'] ?? Ticket::PRIORITY_MEDIUM,
-            'department_id' => $data['department_id'] ?? null,
-        ]);
+        $attachments = $this->scopedAttachments($userId, $data['attachments'] ?? null);
+
+        // The ticket number is unique: regenerate on the rare collision
+        // instead of surfacing a 500.
+        $ticket = null;
+        for ($attempt = 0; $attempt < 3; $attempt++) {
+            try {
+                $ticket = Ticket::create([
+                    'user_id' => $userId,
+                    'ticket_number' => $this->generateTicketNumber(),
+                    'subject' => $data['subject'],
+                    'description' => $data['message'],
+                    'priority' => $data['priority'] ?? Ticket::PRIORITY_MEDIUM,
+                    'department_id' => $data['department_id'] ?? null,
+                    'attachments' => $attachments,
+                ]);
+                break;
+            } catch (\Illuminate\Database\QueryException $e) {
+                if ((string) ($e->errorInfo[0] ?? '') !== '23505' || $attempt === 2) {
+                    throw $e;
+                }
+            }
+        }
 
         TicketMessage::create([
             'ticket_id' => $ticket->id,
             'sender_id' => $userId,
             'message' => $data['message'],
             'is_internal' => false,
+            'attachments' => $attachments,
             'created_at' => now(),
         ]);
 
@@ -43,6 +59,7 @@ class MessagingService
             'sender_id' => $userId,
             'message' => $data['message'],
             'is_internal' => (bool) ($data['is_internal'] ?? false),
+            'attachments' => $this->scopedAttachments($userId, $data['attachments'] ?? null),
             'created_at' => now(),
         ]);
 
@@ -169,5 +186,37 @@ class MessagingService
     private function generateTicketNumber(): string
     {
         return 'TKT-' . strtoupper(uniqid());
+    }
+
+    /**
+     * Attachments only count when they came through the ticket uploader
+     * (POST /api/upload, folder ticket-attachments): arbitrary client paths
+     * and traversal are rejected instead of stored.
+     */
+    private function scopedAttachments(string $userId, mixed $value): ?array
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $paths = array_values(array_filter(
+            array_map(fn ($p) => ltrim(trim((string) $p), '/'), (array) $value),
+            fn ($p) => $p !== ''
+        ));
+
+        if ($paths === []) {
+            return null;
+        }
+
+        $scope = 'uploads/u/'.$userId.'/ticket-attachments/';
+        foreach ($paths as $path) {
+            if (!str_starts_with($path, $scope) || str_contains($path, '..')) {
+                throw new \Core\Exceptions\ValidationException(
+                    'Attachments must be uploaded through the ticket file uploader.'
+                );
+            }
+        }
+
+        return $paths;
     }
 }

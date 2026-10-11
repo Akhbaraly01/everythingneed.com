@@ -1,8 +1,7 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link } from '@inertiajs/react';
-import { api } from '@/lib/api';
 import { Stethoscope, Star, ArrowLeft, Clock } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import Image from '@/components/shared/Image';
 
 interface DoctorProfileProps {
     doctor: { id: string; name: string; specialty: string; bio?: string; image_url?: string; rating?: number; years_experience?: number; consultation_fee?: number };
@@ -21,7 +20,7 @@ export default function DoctorProfile({ doctor, availability }: DoctorProfilePro
                 <div className="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
                     <div className="flex items-center gap-6">
                         <div className="h-24 w-24 shrink-0 overflow-hidden rounded-full bg-gray-100">
-                            {doctor.image_url ? <img src={doctor.image_url} alt="" className="h-full w-full object-cover" /> :
+                            {doctor.image_url ? <Image src={doctor.image_url} alt="" className="h-full w-full object-cover" /> :
                                 <div className="flex h-full items-center justify-center text-gray-400"><Stethoscope className="h-12 w-12" /></div>}
                         </div>
                         <div>
@@ -32,7 +31,7 @@ export default function DoctorProfile({ doctor, availability }: DoctorProfilePro
                         </div>
                     </div>
                     {doctor.bio && <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">{doctor.bio}</p>}
-                    <Link href={`/healthcare/doctors/${doctor.id}`} className="mt-4 inline-flex rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500">
+                                <Link href={`/healthcare/doctors/${doctor.id}/book`} className="mt-4 inline-flex rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500">
                         Book Appointment
                     </Link>
                 </div>

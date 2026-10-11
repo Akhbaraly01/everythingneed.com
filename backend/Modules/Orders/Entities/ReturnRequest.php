@@ -16,6 +16,7 @@ class ReturnRequest extends Model
         'status',
         'refund_amount',
         'admin_notes',
+        'previous_status',
     ];
 
     protected $casts = [

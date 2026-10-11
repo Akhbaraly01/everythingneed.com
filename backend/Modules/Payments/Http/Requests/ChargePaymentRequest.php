@@ -18,6 +18,7 @@ class ChargePaymentRequest extends FormRequest
             'amount' => 'required|numeric|min:0.01',
             'currency' => 'nullable|string|size:3',
             'method' => 'required|string|max:50',
+            'idempotency_key' => 'nullable|string|max:100',
         ];
     }
 }

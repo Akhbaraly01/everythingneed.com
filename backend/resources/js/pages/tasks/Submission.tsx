@@ -1,8 +1,8 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, router } from '@inertiajs/react';
-import { api } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
 import { useState } from 'react';
-import { Upload, FileText, ArrowRight } from 'lucide-react';
+import {Upload, ArrowRight} from 'lucide-react';
 
 export default function TaskSubmission({ task_id }: { task_id?: string }) {
     const [form, setForm] = useState({ evidence_note: '', evidence_url: '' });
@@ -14,9 +14,18 @@ export default function TaskSubmission({ task_id }: { task_id?: string }) {
         e.preventDefault();
         setSubmitting(true); setError('');
         try {
-            await api.post(`/api/task-posts/${id}/submit`, form);
+            const mine = await api.get<{ data: Array<{ id: string; task_post_id: string; status: string }> }>('/api/my-task-applications?per_page=100');
+            const mineForTask = (mine.data ?? []).find(
+                (a) => String(a.task_post_id) === String(id) && a.status === 'approved',
+            );
+            if (!mineForTask) {
+                setError('No approved application found for this task.');
+                setSubmitting(false);
+                return;
+            }
+            await api.post(`/api/task-applications/${mineForTask.id}/submit`, form);
             router.visit(`/tasks/${id}`);
-        } catch (err: any) { setError(err.response?.data?.message || 'Submission failed'); setSubmitting(false); }
+        } catch (err) { setError(errorMessage(err, 'Submission failed')); setSubmitting(false); }
     };
 
     return (

@@ -1,8 +1,8 @@
+import { statusTone } from '@/lib/lifecycle';
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link } from '@inertiajs/react';
-import { api } from '@/lib/api';
-import { formatDateTime } from '@/lib/utils';
-import { Video, FileText, Calendar, Clock } from 'lucide-react';
+import { api, errorMessage } from '@/lib/api';
+import { Video, FileText, Calendar, Clock, RefreshCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface Appointment {
@@ -19,24 +19,25 @@ interface Appointment {
     created_at: string;
 }
 
-const statusColors: Record<string, string> = {
-    pending: 'bg-yellow-100 text-yellow-800',
-    confirmed: 'bg-blue-100 text-blue-800',
-    completed: 'bg-green-100 text-green-800',
-    cancelled: 'bg-red-100 text-red-800',
-};
-
 export default function AppointmentsPage() {
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming');
 
-    useEffect(() => {
+    const load = () => {
+        setLoading(true);
+        setError(null);
         api.get<{ data: Appointment[] }>('/api/appointments')
             .then((res) => setAppointments(res.data))
-            .catch(() => setAppointments([]))
+            .catch((e) => {
+                setError(errorMessage(e, 'Failed to load appointments'));
+                setAppointments([]);
+            })
             .finally(() => setLoading(false));
-    }, []);
+    };
+
+    useEffect(load, []);
 
     const now = new Date();
     const filtered = appointments.filter((a) => {
@@ -55,6 +56,10 @@ export default function AppointmentsPage() {
                         Book New
                     </Link>
                 </div>
+                <div className="flex flex-wrap gap-2 text-sm">
+                    <Link href="/healthcare/bookings" className="font-medium text-indigo-600 hover:underline">← Health Bookings</Link>
+                    <Link href="/healthcare/records" className="font-medium text-indigo-600 hover:underline">Health Records</Link>
+                </div>
 
                 <div className="flex gap-2">
                     <button onClick={() => setTab('upcoming')} className={`rounded-lg px-4 py-2 text-sm font-medium ${tab === 'upcoming' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
@@ -67,6 +72,13 @@ export default function AppointmentsPage() {
 
                 {loading ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800"><p className="text-gray-500">Loading...</p></div>
+                ) : error ? (
+                    <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
+                        <p className="text-red-600 font-medium">{error}</p>
+                        <button onClick={load} className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-500">
+                            <RefreshCcw className="h-4 w-4" /> Retry
+                        </button>
+                    </div>
                 ) : filtered.length === 0 ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
                         <Calendar className="mx-auto h-12 w-12 text-gray-400" />
@@ -80,7 +92,7 @@ export default function AppointmentsPage() {
                                     <div>
                                         <div className="flex items-center gap-2">
                                             <span className="font-mono text-sm text-gray-500">{a.reference}</span>
-                                            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColors[a.status] ?? 'bg-gray-100 text-gray-800'}`}>
+                                            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusTone(a.status)}`}>
                                                 {a.status}
                                             </span>
                                         </div>
@@ -95,7 +107,7 @@ export default function AppointmentsPage() {
                                     </div>
                                     <div className="flex items-center gap-2">
                                         {a.video_room_id && a.status === 'confirmed' && (
-                                            <a href={`/video/${a.video_room_id}`} target="_blank"
+                                            <a href={`/healthcare/virtual?room=${a.video_room_id}`} target="_blank"
                                                 className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-500">
                                                 <Video className="h-4 w-4" /> Join Video
                                             </a>

@@ -11,6 +11,7 @@ class OtpChallenge extends Model
     protected $fillable = [
         'user_id',
         'phone',
+        'email',
         'code',
         'expires_at',
         'attempts',

@@ -3,11 +3,9 @@
 namespace Modules\Admin\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use Core\Services\Contracts\VendorQueryInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
-use Throwable;
 
 /**
  * AdminVendorController
@@ -17,6 +15,8 @@ use Throwable;
  */
 class AdminVendorController extends Controller
 {
+    public function __construct(private VendorQueryInterface $vendors) {}
+
     /**
      * Paginated list of vendors with filters.
      *
@@ -26,40 +26,12 @@ class AdminVendorController extends Controller
     {
         $validated = $request->validate([
             'search'   => ['nullable', 'string', 'max:100'],
-            'status'   => ['nullable', 'string', 'in:all,pending,verified,suspended'],
+            'status'   => ['nullable', 'string', 'in:all,pending,verified'],
             'per_page' => ['nullable', 'integer', 'min:5', 'max:100'],
             'page'     => ['nullable', 'integer', 'min:1'],
         ]);
 
-        $query = DB::table('vendors')
-            ->whereNull('deleted_at')
-            ->select(['id', 'store_name', 'category', 'is_verified', 'created_at']);
-
-        if (! empty($validated['search'])) {
-            $term = '%' . $validated['search'] . '%';
-            $query->where(fn ($q) => $q->where('store_name', 'like', $term)->orWhere('category', 'like', $term));
-        }
-
-        $status = $validated['status'] ?? 'all';
-        match ($status) {
-            'pending'   => $query->where('is_verified', false),
-            'verified'  => $query->where('is_verified', true),
-            'suspended' => $query->whereRaw('1 = 0'),
-            default     => null,
-        };
-
-        $perPage = (int) ($validated['per_page'] ?? 20);
-        $page    = (int) ($validated['page'] ?? 1);
-        $total   = $query->count();
-        $vendors = $query->orderByDesc('created_at')
-            ->offset(($page - 1) * $perPage)
-            ->limit($perPage)
-            ->get();
-
-        return response()->json([
-            'data' => $vendors,
-            'meta' => ['total' => $total, 'page' => $page, 'per_page' => $perPage],
-        ]);
+        return response()->json($this->vendors->paginate($validated));
     }
 
     /**
@@ -69,7 +41,7 @@ class AdminVendorController extends Controller
      */
     public function show(string $id): JsonResponse
     {
-        $vendor = DB::table('vendors')->where('id', $id)->whereNull('deleted_at')->first();
+        $vendor = $this->vendors->find($id);
 
         if (! $vendor) {
             return response()->json(['message' => 'Vendor not found'], 404);
@@ -85,7 +57,7 @@ class AdminVendorController extends Controller
      */
     public function approve(string $id): JsonResponse
     {
-        return $this->updateVendor($id, ['is_verified' => true], 'approve', 'Vendor approved');
+        return $this->decide($id, true, 'approve', 'Vendor approved');
     }
 
     /**
@@ -95,7 +67,7 @@ class AdminVendorController extends Controller
      */
     public function reject(string $id): JsonResponse
     {
-        return $this->updateVendor($id, ['is_verified' => false], 'update', 'Vendor application rejected');
+        return $this->decide($id, false, 'update', 'Vendor application rejected');
     }
 
     /**
@@ -105,7 +77,7 @@ class AdminVendorController extends Controller
      */
     public function suspend(string $id): JsonResponse
     {
-        return $this->updateVendor($id, ['is_verified' => false], 'update', 'Vendor suspended');
+        return $this->decide($id, false, 'update', 'Vendor suspended');
     }
 
     /**
@@ -115,47 +87,18 @@ class AdminVendorController extends Controller
      */
     public function restore(string $id): JsonResponse
     {
-        return $this->updateVendor($id, ['is_verified' => true], 'update', 'Vendor restored');
+        return $this->decide($id, true, 'update', 'Vendor restored');
     }
 
     /**
-     * Shared update helper with audit logging.
-     *
-     * @param  array<string, mixed>  $data
+     * Shared decision helper (verification flip + audit logging).
      */
-    private function updateVendor(string $id, array $data, string $action, string $details): JsonResponse
+    private function decide(string $id, bool $verified, string $action, string $details): JsonResponse
     {
-        $affected = DB::table('vendors')
-            ->where('id', $id)
-            ->whereNull('deleted_at')
-            ->update(array_merge($data, ['updated_at' => now()]));
-
-        if (! $affected) {
+        if (! $this->vendors->setVerified($id, $verified, $action, $details)) {
             return response()->json(['message' => 'Vendor not found'], 404);
         }
 
-        $this->logAudit($action, 'vendor', $id, $details);
-
         return response()->json(['message' => $details]);
-    }
-
-    /**
-     * Writes an audit log entry.
-     */
-    private function logAudit(string $action, string $entityType, string $entityId, string $details): void
-    {
-        try {
-            DB::table('audit_logs')->insert([
-                'id'           => Str::uuid()->toString(),
-                'action'       => $action,
-                'entity_type'  => $entityType,
-                'entity_id'    => $entityId,
-                'new_values'   => json_encode(['details' => $details]),
-                'performed_by' => auth()->id(),
-                'created_at'   => now(),
-            ]);
-        } catch (Throwable) {
-            // Audit failures must not break responses
-        }
     }
 }

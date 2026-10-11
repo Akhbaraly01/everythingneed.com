@@ -3,37 +3,70 @@
 namespace Modules\Upload\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use Core\Services\Contracts\MediaServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Modules\Admin\Entities\MediaItem;
+use Modules\Upload\Http\Requests\DeleteUploadRequest;
+use Modules\Upload\Http\Requests\UploadFileRequest;
 
 class UploadController extends Controller
 {
     /**
      * Every upload is namespaced under the uploader's personal scope:
      * uploads/u/{user_id}/{optional-subfolder}/filename
+     *
+     * W1: images flow through the GD pipeline (capped at 2048px, quality
+     * 85) so huge camera uploads never land raw on the public disk. The
+     * response shape is unchanged.
      */
-    public function store(Request $request): JsonResponse
+    public function store(UploadFileRequest $request, MediaServiceInterface $media): JsonResponse
     {
-        $request->validate([
-            'file' => 'required|file|max:10240|mimes:jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx,mp4,webm',
-            'folder' => ['nullable', 'string', 'max:100', 'regex:/^[A-Za-z0-9_-]+$/'],
-        ]);
-
         $file = $request->file('file');
         $subfolder = Str::slug($request->get('folder', 'files')) ?: 'files';
         $scope = 'uploads/u/'.$request->user()->id."/$subfolder";
 
-        $path = $file->store($scope, 'public');
+        $result = $media->upload($scope, $file, [
+            'disk' => 'public',
+            'max_width' => 2048,
+            'max_height' => 2048,
+            'quality' => 85,
+        ]);
+        $path = $result['path'];
+
+        // Record the upload in the media library (spec S44): every stored
+        // file gets an auditable row with real MIME/size/dimensions - the
+        // finfo-derived MIME of the stored bytes is used, never the
+        // browser-supplied one (mimes rule validated it first).
+        $mime = $result['mime_type'];
+        $dimensions = null;
+        if (str_starts_with($mime, 'image/')) {
+            $dimensions = @getimagesize(Storage::disk('public')->path($path)) ?: null;
+        }
+
+        MediaItem::create([
+            'title' => Str::limit(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME), 250, ''),
+            'file_name' => Str::limit($file->getClientOriginalName(), 255, ''),
+            'disk' => 'public',
+            'path' => $path,
+            'mime_type' => $mime,
+            'size' => (int) $result['size'],
+            'width' => $dimensions[0] ?? null,
+            'height' => $dimensions[1] ?? null,
+            'owner_type' => 'user',
+            'owner_id' => $request->user()->id,
+            'meta' => ['folder' => $subfolder],
+        ]);
 
         return response()->json([
             'data' => [
-                'url' => Storage::disk('public')->url($path),
+                'url' => $result['url'],
                 'path' => $path,
                 'name' => $file->getClientOriginalName(),
-                'size' => $file->getSize(),
-                'mime_type' => $file->getMimeType(),
+                'size' => $result['size'],
+                'mime_type' => $mime,
             ],
         ], 201);
     }
@@ -42,17 +75,9 @@ class UploadController extends Controller
      * Users may delete ONLY files inside their own scope. Admins may
      * moderate any upload. Traversal tricks are rejected outright.
      */
-    public function destroy(Request $request): JsonResponse
+    public function destroy(DeleteUploadRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'path' => [
-                'required',
-                'string',
-                'max:500',
-                // No absolute paths, no traversal, no backslashes
-                'not_regex:(^/|\.\.|\\\\)',
-            ],
-        ]);
+        $validated = $request->validated();
 
         $path = ltrim($validated['path'], '/');
 

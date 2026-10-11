@@ -1,9 +1,11 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link } from '@inertiajs/react';
-import { api } from '@/lib/api';
-import { formatCurrency } from '@/lib/utils';
+import { api, errorMessage } from '@/lib/api';
+import { toast } from 'sonner';
+import { formatPrice } from '@/lib/currency';
 import { Pill, Search, ShoppingCart } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import Image from '@/components/shared/Image';
 
 interface Medicine {
     id: string;
@@ -20,7 +22,7 @@ export default function PharmacyIndex() {
     const [medicines, setMedicines] = useState<Medicine[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
-    const [categoryFilter, setCategoryFilter] = useState('');
+    const [categoryFilter] = useState('');
 
     useEffect(() => {
         const params = new URLSearchParams();
@@ -36,18 +38,20 @@ export default function PharmacyIndex() {
 
     const addToCart = (med: Medicine) => {
         if (med.requires_prescription) {
-            alert('This medicine requires a valid prescription. Please upload a prescription first.');
+            toast.warning('This medicine requires a valid prescription. Please upload a prescription first.');
             return;
         }
         try {
-            const cart = JSON.parse(localStorage.getItem('pharmacy_cart') ?? '[]');
-            const existing = cart.find((i: any) => i.medicine_id === med.id);
+            const cart = JSON.parse(localStorage.getItem('pharmacy_cart') ?? '[]') as { medicine_id: string; name: string; price: number; quantity: number; image_url?: string | null }[];
+            const existing = cart.find((i) => i.medicine_id === med.id);
             if (existing) { existing.quantity += 1; } else {
                 cart.push({ medicine_id: med.id, name: med.name, price: med.price, quantity: 1, image_url: med.image_url });
             }
             localStorage.setItem('pharmacy_cart', JSON.stringify(cart));
-            alert('Added to cart');
-        } catch {}
+            toast.success('Added to cart.');
+        } catch (e) {
+            toast.error(errorMessage(e, 'Could not add to cart'));
+        }
     };
 
     return (
@@ -83,7 +87,7 @@ export default function PharmacyIndex() {
                         {medicines.map((med) => (
                             <div key={med.id} className="rounded-lg bg-white p-4 shadow dark:bg-gray-800">
                                 <div className="h-32 bg-gray-100 rounded-lg flex items-center justify-center dark:bg-gray-700">
-                                    {med.image_url ? <img src={med.image_url} alt="" className="h-full w-full object-cover rounded-lg" /> : <Pill className="h-10 w-10 text-gray-400" />}
+                                    {med.image_url ? <Image src={med.image_url} alt="" className="h-full w-full object-cover rounded-lg" /> : <Pill className="h-10 w-10 text-gray-400" />}
                                 </div>
                                 <div className="mt-3">
                                     <h3 className="font-semibold text-gray-900 dark:text-white">{med.name}</h3>
@@ -91,7 +95,7 @@ export default function PharmacyIndex() {
                                     {med.description && <p className="mt-1 text-xs text-gray-500 line-clamp-2">{med.description}</p>}
                                     {med.requires_prescription && <p className="mt-1 text-xs text-orange-600 font-medium">Prescription required</p>}
                                     <div className="mt-2 flex items-center justify-between">
-                                        <span className="text-lg font-bold text-gray-900 dark:text-white">{formatCurrency(med.price)}</span>
+                                        <span className="text-lg font-bold text-gray-900 dark:text-white">{formatPrice(med.price)}</span>
                                         <button onClick={() => addToCart(med)} disabled={med.stock_quantity <= 0}
                                             className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500 disabled:opacity-50">
                                             {med.stock_quantity > 0 ? 'Add to Cart' : 'Out of Stock'}

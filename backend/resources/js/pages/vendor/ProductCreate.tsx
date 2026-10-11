@@ -1,6 +1,6 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, router } from '@inertiajs/react';
-import { api } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
 import { useState } from 'react';
 import { Package, ArrowRight } from 'lucide-react';
 
@@ -15,7 +15,7 @@ export default function VendorProductCreate() {
         try {
             await api.post('/api/vendor/products', { ...form, price: parseFloat(form.price), stock_quantity: parseInt(form.stock_quantity) });
             router.visit('/vendor/products');
-        } catch (err: any) { setError(err.response?.data?.message || 'Failed to create product'); setSubmitting(false); }
+        } catch (err) { setError(errorMessage(err, 'Failed to create product')); setSubmitting(false); }
     };
 
     return (

@@ -1,15 +1,16 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, router } from '@inertiajs/react';
-import { api } from '@/lib/api';
-import { useEffect, useState } from 'react';
-import { Car, MapPin, Clock, DollarSign, ArrowRight } from 'lucide-react';
+import { api, errorMessage } from '@/lib/api';
+import { toast } from 'sonner';
+import {useState} from 'react';
+import {Car, ArrowRight} from 'lucide-react';
 
 interface Vehicle {
     id: string;
-    driver: { full_name: string; rating: number; vehicle_type: string };
+    driver: { full_name: string; rating?: number | null };
     vehicle_type: string;
-    estimated_fare: number;
-    estimated_time: string;
+    fare_quote?: number | null;
+    fare_note?: string;
 }
 
 export default function RideBooking() {
@@ -25,8 +26,9 @@ export default function RideBooking() {
         try {
             const res = await api.get<{ data: Vehicle[] }>('/api/rides/available', { params: form });
             setVehicles(res.data);
-        } catch {
+        } catch (err) {
             setVehicles([]);
+            toast.error(errorMessage(err, 'Could not search for available vehicles'));
         } finally {
             setLoading(false);
         }
@@ -41,7 +43,8 @@ export default function RideBooking() {
                 ...form,
             });
             router.visit(`/transportation/tracking/${res.data.id}`);
-        } catch {
+        } catch (err) {
+            toast.error(errorMessage(err, 'Failed to book the ride'));
             setSubmitting(false);
         }
     };
@@ -96,8 +99,10 @@ export default function RideBooking() {
                                         <p className="text-sm text-gray-500">{v.vehicle_type} • ★ {v.driver.rating || 'New'}</p>
                                     </div>
                                     <div className="text-right">
-                                        <p className="font-bold text-gray-900 dark:text-white">${v.estimated_fare}</p>
-                                        <p className="text-xs text-gray-500">{v.estimated_time}</p>
+                                        <p className="font-bold text-gray-900 dark:text-white">
+                                            {v.fare_quote != null ? `$${v.fare_quote}` : 'Quote on accept'}
+                                        </p>
+                                        <p className="text-xs text-gray-500">{v.fare_note ?? 'Fare confirmed by driver'}</p>
                                     </div>
                                 </div>
                             </button>

@@ -1,8 +1,8 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link } from '@inertiajs/react';
-import { api } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
 import { useEffect, useState } from 'react';
-import { HardHat, Calendar, MapPin, DollarSign } from 'lucide-react';
+import { HardHat, Calendar, MapPin, DollarSign, RefreshCcw } from 'lucide-react';
 
 interface Booking {
     id: string;
@@ -19,13 +19,21 @@ interface Booking {
 export default function BuildingServiceBookings() {
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
+    const load = () => {
+        setLoading(true);
+        setError(null);
         api.get<{ data: Booking[] }>('/api/building-services/bookings')
             .then((res) => setBookings(res.data))
-            .catch(() => setBookings([]))
+            .catch((e) => {
+                setError(errorMessage(e, 'Failed to load bookings'));
+                setBookings([]);
+            })
             .finally(() => setLoading(false));
-    }, []);
+    };
+
+    useEffect(load, []);
 
     return (
         <AppLayout title="My Building Service Bookings">
@@ -35,7 +43,14 @@ export default function BuildingServiceBookings() {
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Building Service Bookings</h1>
                     <Link href="/building-services/book" className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">New Booking</Link>
                 </div>
-                {loading ? <p className="text-gray-500">Loading...</p> : bookings.length === 0 ? (
+                {loading ? <p className="text-gray-500">Loading...</p> : error ? (
+                    <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
+                        <p className="text-red-600 font-medium">{error}</p>
+                        <button onClick={load} className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-500">
+                            <RefreshCcw className="h-4 w-4" /> Retry
+                        </button>
+                    </div>
+                ) : bookings.length === 0 ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
                         <HardHat className="mx-auto h-12 w-12 text-gray-400" />
                         <p className="mt-4 text-gray-500">No bookings yet</p>

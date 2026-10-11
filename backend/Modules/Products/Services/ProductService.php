@@ -39,12 +39,12 @@ class ProductService
 
     public function getProduct(string $productId): ?Product
     {
-        return Product::with(['vendor', 'reviews'])->find($productId);
+        return Product::with(['vendor', 'reviews', 'variants'])->find($productId);
     }
 
     public function getProducts(array $filters = [], int $page = 1, int $perPage = 15): object
     {
-        $query = Product::with(['vendor']);
+        $query = Product::with(['vendor', 'variants']);
 
         if (!empty($filters['search'])) {
             $query->where('name', 'ilike', "%{$filters['search']}%");
@@ -71,8 +71,9 @@ class ProductService
             $query->whereNotNull('approved_at');
         }
 
-        return $query->orderBy('created_at', 'desc')
-            ->paginate($perPage, ['*'], 'page', $page);
+        $query->applySort($filters['sort'] ?? null);
+
+        return $query->paginate($perPage, ['*'], 'page', $page);
     }
 
     public function getActiveProducts(int $page = 1, int $perPage = 15): object

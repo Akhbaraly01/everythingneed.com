@@ -13,11 +13,13 @@ class Enrollment extends Model
         'course_id',
         'progress',
         'completed_at',
+        'last_active_at',
     ];
 
     protected $casts = [
         'progress' => 'integer',
         'completed_at' => 'datetime',
+        'last_active_at' => 'datetime',
     ];
 
     public function user()

@@ -7,13 +7,15 @@ Route::prefix('api')->group(function () {
     Route::get('/settings/public', [SettingController::class, 'publicIndex']);
 });
 
-Route::prefix('api')->middleware('auth:sanctum')->group(function () {
+Route::prefix('api')->middleware(['auth:sanctum', 'permission:settings.system.update'])->group(function () {
     Route::get('/settings', [SettingController::class, 'index']);
     Route::put('/settings', [SettingController::class, 'update']);
     Route::get('/settings/{key}', [SettingController::class, 'show']);
     Route::delete('/settings/{key}', [SettingController::class, 'destroy']);
+});
 
-    // Per-user settings (self or admin)
+Route::prefix('api')->middleware('auth:sanctum')->group(function () {
+    // Per-user settings (self or admin — enforced in SettingController::resolveTargetUserId)
     Route::get('/users/{userId}/settings', [SettingController::class, 'indexForUser']);
     Route::put('/users/{userId}/settings', [SettingController::class, 'updateForUser']);
     Route::get('/users/{userId}/settings/{key}', [SettingController::class, 'showForUser']);

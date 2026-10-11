@@ -16,7 +16,13 @@ class VendorPortalPageController extends Controller
     {
         $vendor = Vendor::where('user_id', $request->user()->id)->first();
 
-        abort_unless($vendor !== null, 404, 'You do not have a vendor account yet.');
+        // No store yet: send them to registration with an explanation
+        // instead of stranding them on a 404.
+        if ($vendor === null) {
+            throw new \Illuminate\Http\Exceptions\HttpResponseException(
+                redirect('/vendor/register')->with('error', 'Create your vendor store first.')
+            );
+        }
 
         return $vendor;
     }

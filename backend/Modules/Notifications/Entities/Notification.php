@@ -25,4 +25,10 @@ class Notification extends Model
     {
         return $this->belongsTo(\App\Models\User::class);
     }
+
+    public function markAsRead(): void
+    {
+        $this->is_read = true;
+        $this->save();
+    }
 }
