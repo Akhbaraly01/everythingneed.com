@@ -64,7 +64,10 @@ export default function AdminKyc() {
             .finally(() => setLoading(false));
     };
 
+    // Reloads on tab/page changes only; the search box submits via searchNow().
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(load, [status, page]);
+
 
     const searchNow = (e: FormEvent) => {
         e.preventDefault();

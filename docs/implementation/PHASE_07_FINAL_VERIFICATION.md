@@ -4,12 +4,13 @@ Status: evidence compiled below from this programme run.
 
 ## VER-01 Static/structural
 
-- `tsc --noEmit`: clean (2026-10-17 re-run after lesson management + product
-  videos: 0 errors).
-- `eslint`: clean (0 errors; incl. new `e2e/admin.spec.ts` lesson-manager
-  test).
+- `tsc --noEmit`: clean (2026-10-17 re-runs after lesson management, product
+  videos and the public-listing sweep: 0 errors).
+- `eslint`: clean at `--max-warnings 0` (2026-10-17: removed a dead
+  `turnstileConfigured` export; scoped disable on the intentional KYC
+  effect deps).
 - Routes: 271/271 Inertia targets resolve; 0 dead static links (re-verified
-  method, prior session).
+  method, prior session; 271 pages / 1,073 routes re-confirmed 2026-10-17).
 - Migrations: all ran (`migrate:status` clean through
   `2026_10_12_000004`); no `migrate:fresh` on shared DBs.
 - Boundary tests green (ownership, dependency ratchet, closures, BaaS).
@@ -29,14 +30,14 @@ Status: evidence compiled below from this programme run.
 | Auth + RBAC/Users/Settings | 47 + 79 passed |
 | Integration (Money/Financial/Dependency/DomainEvent) | 21 passed |
 
-**2026-10-17 full-suite certification (after Learn lesson management +
-product videos):** entire backend suite in 7 sequential batches —
-**1,883 passed (12,406 assertions), 0 failures** (Admin 366;
-Needs+Notifications 148; Learn+Healthcare+Engagement 189;
-Security+Auth+Payments+Checkout+Orders+Wallet 285; Wave A–U 251; misc
-domains 164; remaining domains+Unit 480). Frontend: vitest 56/56; playback
-e2e 4/4; admin e2e 5/5 (incl. lesson-manager modal loop); learn-landing
-6/6; `npm run build` green.
+**2026-10-17 full-suite re-certification (after the L-C/L-D bug-fix round):**
+entire backend suite in 7 sequential batches — **1,892 passed (12,457
+assertions), 0 failures** (Admin 367; Needs+Notifications 148;
+Learn+Healthcare+Engagement 189; Security+Auth+Payments+Checkout+Orders+
+Wallet 285; Wave A–U 251; commerce/service domains 270; remaining domains +
+Unit + SecurityHeaders 382). Frontend: vitest 56/56; **full chromium e2e
+sweep 63/63 across all 16 spec files**; `npm run build` green; live API
+probes clean.
 
 ## VER-03 Browser (this run)
 

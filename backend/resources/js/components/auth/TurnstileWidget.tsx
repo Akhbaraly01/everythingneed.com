@@ -95,7 +95,3 @@ export default function TurnstileWidget({ onToken }: TurnstileWidgetProps) {
 
     return <div ref={containerRef} className="flex justify-center" data-testid="turnstile-widget" />;
 }
-
-export function turnstileConfigured(): boolean {
-    return SITE_KEY !== '';
-}

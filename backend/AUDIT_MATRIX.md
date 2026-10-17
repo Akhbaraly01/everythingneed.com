@@ -935,3 +935,13 @@ Gate: docs-only change; no code, no routes, no migrations. `PHASE_07` VER-07 upd
 | L-D.4 | **data gap: seeded agriculture products had `approved_at=NULL`** (`publication_state` defaulted published, `is_active=true`) so the canonical catalogue filter hid them while `/api/agriculture` showed them | Aligned `NeedController@agriculture` to the canonical gate (`is_active` + `approved_at`); `DemoDataSeeder::seedAgricultureProducts` now writes `publication_state='published'` + `approved_at`; 5 existing dev rows backfilled. | Live: `/api/agriculture` 5 rows, `search=Compost` in `/api/products` 1 row. `AgricultureMarketplaceTest` extended (unapproved excluded). |
 | L-D.5 | **reviewed, decision-deferred**: job-seeker directory exposes `user.name/email` to guests; hotel/restaurant nested collections reachable when parent inactive; job-seeker category counts include unavailable profiles | No code change — privacy/UX decisions to take with product sign-off before touching contact flows. | Logged here for the decision register. |
 | L-D gates | Regression after the fixes | Categories + Vendors + Needs + Products + Admin approval/manage suites **67 passed (257 assertions)**; e2e marketplace + vendor-products + admin **21/21**; live probes clean. | |
+
+## L-E full re-certification after bug-fix round (2026-10-17)
+
+| Gate | Result |
+|---|---|
+| Backend PHPUnit (7 sequential batches) | **1,892 passed (12,457 assertions), 0 failures** — Admin 367; Needs+Notifications 148; Learn+Healthcare+Engagement 189; Security+Auth+Payments+Checkout+Orders+Wallet 285; Wave A–U 251; commerce/service domains 270; remaining domains + Unit + SecurityHeaders 382 |
+| Chromium e2e (all 16 spec files) | **63/63 passed** (chunks: 15 + 23 + 25) — account-pages, admin-needs, admin, chains, console, customer, engagement, healthcare, learn-landing, learn, learning-admin, marketplace, needs-gigs, playback, scan, vendor-products |
+| Frontend static | `tsc --noEmit` clean; `eslint --max-warnings 0` clean (fixed 2 pre-existing warnings: dead `turnstileConfigured` export removed; KYC effect deps documented with scoped disable); `vitest` **56/56**; `npm run build` green |
+| Inventory | 271 Inertia pages / 1,073 routes (unchanged, re-confirmed) |
+| Gated residue | FINAL_VALIDATION_CHECKLIST 5 unchecked (4 decision-deferred + 1 env-gated live-gateway smoke); MASTER_GAP_REGISTER 0 open rows |
