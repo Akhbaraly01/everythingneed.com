@@ -18,6 +18,8 @@ Route::prefix('api')->group(function () {
         ->middleware('role:super_admin,administrator,food_admin');
     Route::put('/admin/restaurants/{id}', [RestaurantController::class, 'adminUpdate'])
         ->middleware('role:super_admin,administrator,food_admin');
+    Route::delete('/admin/restaurants/{id}', [RestaurantController::class, 'adminDestroy'])
+        ->middleware('role:super_admin,administrator,food_admin');
     Route::post('/admin/restaurants', [RestaurantController::class, 'adminStore'])
         ->middleware('role:super_admin,administrator,food_admin');
     Route::get('/restaurants/{id}', [RestaurantController::class, 'show']);

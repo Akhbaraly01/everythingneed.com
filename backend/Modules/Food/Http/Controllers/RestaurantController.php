@@ -167,17 +167,93 @@ class RestaurantController extends Controller
         ]);
     }
 
+    /**
+     * Admin console: full edit of a restaurant. Every field is optional, but
+     * at least one change must be present (the is_active toggle rides here).
+     *
+     * PUT /api/admin/restaurants/{id} (role: super_admin, administrator, food_admin)
+     */
     public function adminUpdate(Request $request, string $id): JsonResponse
     {
-        $request->validate(['is_active' => 'required|boolean']);
+        $data = $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'description' => 'sometimes|nullable|string|max:2000',
+            'cuisine_type' => 'sometimes|string|max:100',
+            'address' => 'sometimes|string|max:500',
+            'city' => 'sometimes|string|max:100',
+            'phone' => 'sometimes|nullable|string|max:30',
+            'latitude' => 'sometimes|nullable|numeric|between:-90,90',
+            'longitude' => 'sometimes|nullable|numeric|between:-180,180',
+            'image_url' => 'sometimes|nullable|url|max:500',
+            'opening_hours' => 'sometimes|nullable|array',
+            'is_active' => 'sometimes|boolean',
+        ]);
+
+        if ($data === []) {
+            return response()->json(['message' => 'No changes provided'], 422);
+        }
 
         $restaurant = \Modules\Food\Entities\Restaurant::find($id);
         if (!$restaurant) {
             return response()->json(['message' => 'Restaurant not found'], 404);
         }
-        $restaurant->update(['is_active' => $request->boolean('is_active')]);
 
-        return response()->json(['data' => $restaurant]);
+        $restaurant->update($data);
+
+        try {
+            app(\Core\Services\Contracts\AuditServiceInterface::class)->log([
+                'action' => 'update',
+                'entity_type' => 'restaurant',
+                'entity_id' => $restaurant->id,
+                'performed_by' => $request->user()?->id,
+                'new_values' => ['fields' => array_keys($data)],
+            ]);
+        } catch (\Throwable) {
+            // Audit failures must not break edits.
+        }
+
+        return response()->json([
+            'message' => 'Restaurant updated successfully',
+            'data' => $restaurant->fresh(),
+        ]);
+    }
+
+    /**
+     * Admin console: delete a restaurant (soft delete — keeps order history
+     * readable while hiding it from every scoped read). Refused while orders
+     * exist.
+     *
+     * DELETE /api/admin/restaurants/{id} (role: super_admin, administrator, food_admin)
+     */
+    public function adminDestroy(Request $request, string $id): JsonResponse
+    {
+        $restaurant = \Modules\Food\Entities\Restaurant::find($id);
+        if (!$restaurant) {
+            return response()->json(['message' => 'Restaurant not found'], 404);
+        }
+
+        if ($restaurant->orders()->exists()) {
+            return response()->json([
+                'message' => 'This restaurant has orders and cannot be deleted. Deactivate it instead.',
+            ], 422);
+        }
+
+        $name = $restaurant->name;
+        $restaurant->delete();
+
+        try {
+            app(\Core\Services\Contracts\AuditServiceInterface::class)->log([
+                'action' => 'delete',
+                'entity_type' => 'restaurant',
+                'entity_id' => $id,
+                'performed_by' => $request->user()?->id,
+                'new_values' => ['name' => $name],
+            ]);
+        } catch (\Throwable) {
+            // Audit failures must not break deletion.
+        }
+
+        return response()->json(['message' => 'Restaurant deleted']);
     }
 
     /**
