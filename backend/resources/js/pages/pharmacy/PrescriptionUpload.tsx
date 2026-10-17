@@ -1,6 +1,7 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, router } from '@inertiajs/react';
 import {  api, errorMessage } from '@/lib/api';
+import { prepareForUpload } from '@/lib/media-compress';
 import { useState } from 'react';
 import { FileUp, Pill, ArrowRight } from 'lucide-react';
 
@@ -15,8 +16,9 @@ export default function PrescriptionUpload() {
         if (!file) { setError('Please select a prescription file'); return; }
         setSubmitting(true); setError('');
         try {
+            const prepared = await prepareForUpload(file);
             const fd = new FormData();
-            fd.append('prescription', file);
+            fd.append('prescription', prepared.file);
             fd.append('notes', notes);
             const res = await api.post<{ data: { id: string } }>('/api/pharmacy/prescriptions', fd);
             router.visit(`/pharmacy/orders/${res.data.id}`);

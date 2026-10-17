@@ -36,9 +36,11 @@ test('vendor creates a product with a video URL from the portal form', async ({ 
     await page.getByTestId('product-category').fill('electronics');
     await page.getByTestId('product-price').fill('19.99');
     await page.getByTestId('product-stock').fill('5');
+    await page.getByTestId('product-video-link-toggle').click();
     await page
         .getByTestId('product-video-url')
         .fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+    await page.getByRole('button', { name: 'Use link' }).click();
 
     // The submit button waits for the vendor profile (/api/vendors/mine) to
     // resolve so the payload always carries vendor_id.

@@ -3,6 +3,7 @@ import { Head, router } from '@inertiajs/react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { api, errorMessage } from '@/lib/api';
 import ConfirmDialog from '@/components/shared/Ui';
+import MediaUploadInput from '@/components/shared/MediaUploadInput';
 import { toast } from 'sonner';
 import { FolderTree, Plus, Pencil, Trash2, Search, Globe } from 'lucide-react';
 
@@ -285,13 +286,13 @@ export default function AdminCategories({ categories }: Props) {
                                 />
                             </div>
                             <div>
-                                <label className={label} htmlFor="cat-image">Image URL</label>
-                                <input
-                                    id="cat-image"
-                                    type="url"
+                                <MediaUploadInput
+                                    kind="image"
                                     value={form.image_url}
-                                    onChange={(e) => set('image_url', e.target.value)}
-                                    className={field}
+                                    onChange={(url) => set('image_url', url)}
+                                    folder="categories"
+                                    label="Category image"
+                                    uploadTestId="category-image"
                                 />
                             </div>
                             <div className="flex items-center gap-2 sm:col-span-2">

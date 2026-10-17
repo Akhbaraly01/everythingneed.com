@@ -1,6 +1,7 @@
 import AdminLayout from '@/layouts/AdminLayout';
 import { Head } from '@inertiajs/react';
 import { api, errorMessage } from '@/lib/api';
+import { prepareForUpload } from '@/lib/media-compress';
 import ConfirmDialog from '@/components/shared/Ui';
 import PageBuilder from '@/components/cms/PageBuilder';
 import { FileText, Megaphone, Image as ImageIcon, Plus, Trash2, Newspaper, Pencil, Search, LayoutGrid } from 'lucide-react';
@@ -232,15 +233,12 @@ export default function AdminCms() {
 
     const uploadImageField = async (field: 'image_url' | 'seo_image', file: File) => {
         if (!file) return;
-        if (file.size > 10 * 1024 * 1024) {
-            setError('Image must be 10MB or smaller');
-            return;
-        }
         setUploading(true);
         setError(null);
         try {
+            const prepared = await prepareForUpload(file);
             const fd = new FormData();
-            fd.append('file', file);
+            fd.append('file', prepared.file);
             const res = await api.post<{ data: { url: string } }>('/api/upload', fd);
             setForm((f) => ({ ...f, [field]: res.data.url }));
         } catch (e) {

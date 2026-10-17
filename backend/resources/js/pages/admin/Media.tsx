@@ -5,6 +5,7 @@ import ConfirmDialog from '@/components/shared/Ui';
 import Image from '@/components/shared/Image';
 import MediaPicker from '@/components/shared/MediaPicker';
 import { libraryUrl, isImageItem, type LibraryItem, type LibraryPage } from '@/lib/media';
+import { prepareForUpload } from '@/lib/media-compress';
 import { FileText, Images, Link2, Plus, Search, Trash2, Upload } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -56,8 +57,9 @@ export default function AdminMedia() {
         if (!file) return;
         setUploading(true);
         try {
+            const prepared = await prepareForUpload(file);
             const fd = new FormData();
-            fd.append('file', file);
+            fd.append('file', prepared.file);
             fd.append('folder', folder);
             if (title.trim()) fd.append('title', title.trim());
             await api.post('/api/admin/media', fd);

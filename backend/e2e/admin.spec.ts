@@ -66,7 +66,9 @@ test('super admin manages course lessons from the Learning console', async ({ pa
     // Add a lesson with a YouTube URL - the learner page plays it in-app.
     const title = `E2E lesson ${Date.now()}`;
     await page.getByTestId('lesson-title').fill(title);
+    await page.getByTestId('lesson-video-link-toggle').click();
     await page.getByTestId('lesson-video-url').fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+    await page.getByRole('button', { name: 'Use link' }).click();
     await page.getByTestId('lesson-save').click();
 
     const list = page.getByTestId('lesson-list');

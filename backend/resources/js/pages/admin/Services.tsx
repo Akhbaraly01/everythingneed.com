@@ -5,6 +5,7 @@ import { Plus, Pencil, Trash2, ClipboardList, X, RefreshCw, Inbox } from 'lucide
 import { api, errorMessage, rows } from '@/lib/api';
 import { toast } from 'sonner';
 import ConfirmDialog, { EmptyState, StatusBadge, TableSkeleton } from '@/components/shared/Ui';
+import MediaUploadInput from '@/components/shared/MediaUploadInput';
 
 const CATEGORIES = [
     'building', 'cleaning', 'food', 'transport', 'healthcare', 'learning',
@@ -523,15 +524,14 @@ export default function AdminServices() {
                             </label>
 
                             <div className="grid gap-4 sm:grid-cols-2">
-                                <label className="block text-sm">
-                                    <span className="text-gray-600 dark:text-gray-300">Image URL</span>
-                                    <input
-                                        value={editor.image_url}
-                                        onChange={(e) => setEditor((p) => (p ? { ...p, image_url: e.target.value } : p))}
-                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-                                        placeholder="https://…"
-                                    />
-                                </label>
+                                <MediaUploadInput
+                                    kind="image"
+                                    value={editor.image_url}
+                                    onChange={(url) => setEditor((p) => (p ? { ...p, image_url: url } : p))}
+                                    folder="services"
+                                    label="Service image"
+                                    uploadTestId="service-image"
+                                />
                                 <label className="block text-sm">
                                     <span className="text-gray-600 dark:text-gray-300">Provider</span>
                                     <input

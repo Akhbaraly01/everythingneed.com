@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, errorMessage, ApiError } from '@/lib/api';
+import { prepareForUpload } from '@/lib/media-compress';
 import ConfirmDialog from '@/components/shared/Ui';
 import {
     ArrowDown, ArrowUp, Eye, EyeOff, History, LayoutGrid, Loader2,
@@ -401,14 +402,11 @@ export default function PageBuilder({ page, onClose, onSaved }: PageBuilderProps
     };
 
     const uploadImage = async (targetIndex: number, fieldKey: string, file: File) => {
-        if (file.size > 10 * 1024 * 1024) {
-            setError(['Image must be 10MB or smaller']);
-            return;
-        }
         setUploading(true);
         try {
+            const prepared = await prepareForUpload(file);
             const fd = new FormData();
-            fd.append('file', file);
+            fd.append('file', prepared.file);
             const res = await api.post<{ data: { url: string } }>('/api/upload', fd);
             const url = res.data.url;
             setBlocks((prev) =>

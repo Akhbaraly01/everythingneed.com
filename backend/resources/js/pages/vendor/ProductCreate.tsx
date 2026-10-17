@@ -3,7 +3,7 @@ import { Head, router } from '@inertiajs/react';
 import { api, errorMessage } from '@/lib/api';
 import { useEffect, useState } from 'react';
 import { Package, ArrowRight } from 'lucide-react';
-import ImageUploadField from '@/components/shared/ImageUploadField';
+import MediaUploadInput from '@/components/shared/MediaUploadInput';
 
 export default function VendorProductCreate() {
     const [form, setForm] = useState({ vendor_id: '', name: '', description: '', category: '', price: '', stock_quantity: '', image_url: '', video_url: '' });
@@ -41,16 +41,25 @@ export default function VendorProductCreate() {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div><label className="block text-sm font-medium mb-1 dark:text-gray-300">Stock Quantity</label><input type="number" required data-testid="product-stock" value={form.stock_quantity} onChange={(e) => setForm({ ...form, stock_quantity: e.target.value })} className="w-full rounded-lg border px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></div>
-                        <div><label className="block text-sm font-medium mb-1 dark:text-gray-300">Image URL</label><input value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} placeholder="https://… or upload below" className="w-full rounded-lg border px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></div>
+                        <MediaUploadInput
+                            kind="image"
+                            value={form.image_url}
+                            onChange={(url) => setForm({ ...form, image_url: url })}
+                            folder="products"
+                            label="Product photo"
+                            uploadTestId="product-image"
+                            hint="Uploaded photos are auto-compressed (no manual resizing)."
+                        />
                     </div>
-                    <div><label className="block text-sm font-medium mb-1 dark:text-gray-300">Video URL (plays in-app on your product page)</label><input data-testid="product-video-url" value={form.video_url} onChange={(e) => setForm({ ...form, video_url: e.target.value })} placeholder="https://www.youtube.com/watch?v=… or MP4 link" className="w-full rounded-lg border px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></div>
-                    <ImageUploadField
-                        value={form.image_url ? [form.image_url] : []}
-                        onChange={(urls) => setForm({ ...form, image_url: urls[0] ?? '' })}
+                    <MediaUploadInput
+                        kind="video"
+                        value={form.video_url}
+                        onChange={(url) => setForm({ ...form, video_url: url })}
                         folder="products"
-                        max={1}
-                        label="Product photo or video (upload)"
-                        hint="Upload fills the Image URL above. JPG, PNG, GIF, MP4, WebM up to 10MB."
+                        label="Product video (plays in-app on your product page)"
+                        linkTestId="product-video-url"
+                        uploadTestId="product-video"
+                        hint="Upload a video (auto-compressed) or paste a YouTube/MP4 link."
                     />
                 </div>
                 <button type="submit" disabled={submitting || !form.vendor_id} data-testid="product-submit" className="w-full rounded-lg bg-blue-600 px-4 py-3 text-white hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2">

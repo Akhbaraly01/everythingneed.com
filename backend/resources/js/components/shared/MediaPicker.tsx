@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, errorMessage } from '@/lib/api';
 import { libraryUrl, isImageItem, type LibraryItem, type LibraryPage } from '@/lib/media';
+import { prepareForUpload } from '@/lib/media-compress';
 import Image from '@/components/shared/Image';
 import { FileText, Images, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -71,8 +72,9 @@ export default function MediaPicker({ open, title = 'Choose image', onSelect, on
         if (!file) return;
         setUploading(true);
         try {
+            const prepared = await prepareForUpload(file);
             const fd = new FormData();
-            fd.append('file', file);
+            fd.append('file', prepared.file);
             fd.append('folder', folder);
             const res = await api.post<{ data: { url: string } }>('/api/admin/media', fd);
             toast.success('Uploaded to the library.');

@@ -4,6 +4,7 @@ import { api, errorMessage } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import ConfirmDialog, { PromptDialog } from '@/components/shared/Ui';
 import DataTable from '@/components/shared/DataTable';
+import MediaUploadInput from '@/components/shared/MediaUploadInput';
 import { CheckCircle, XCircle, Eye, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -595,18 +596,29 @@ export default function AdminProducts() {
                                 </div>
 
                                 {/* Media (images + gallery) */}
-                                <div>
-                                    <label htmlFor="product-image" className="mb-1 block text-xs font-medium text-gray-500">Main image URL</label>
-                                    <input id="product-image" type="url" value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} className={field} />
-                                </div>
+                                <MediaUploadInput
+                                    kind="image"
+                                    value={form.image_url}
+                                    onChange={(url) => setForm((f) => ({ ...f, image_url: url }))}
+                                    folder="products"
+                                    label="Main image"
+                                    uploadTestId="admin-product-image"
+                                    hint="Upload from this device (auto-compressed) or paste a link."
+                                />
                                 <div>
                                     <label htmlFor="product-gallery" className="mb-1 block text-xs font-medium text-gray-500">Gallery URLs (one per line)</label>
                                     <textarea id="product-gallery" rows={2} value={form.imagesText} onChange={(e) => setForm({ ...form, imagesText: e.target.value })} className={field} />
                                 </div>
-                                <div>
-                                    <label htmlFor="product-video" className="mb-1 block text-xs font-medium text-gray-500">Product video URL (plays in-app on the product page)</label>
-                                    <input id="product-video" type="url" value={form.video_url} onChange={(e) => setForm({ ...form, video_url: e.target.value })} placeholder="https://www.youtube.com/watch?v=… or MP4 link" className={field} />
-                                </div>
+                                <MediaUploadInput
+                                    kind="video"
+                                    value={form.video_url}
+                                    onChange={(url) => setForm((f) => ({ ...f, video_url: url }))}
+                                    folder="products"
+                                    label="Product video (plays in-app on the product page)"
+                                    linkTestId="product-video"
+                                    uploadTestId="admin-product-video"
+                                    hint="Upload a video (auto-compressed like WhatsApp) or paste a YouTube/MP4 link."
+                                />
 
                                 {/* Specifications + attributes */}
                                 <div className="grid grid-cols-2 gap-3">

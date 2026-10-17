@@ -3,6 +3,7 @@ import { Head } from '@inertiajs/react';
 import { api, errorMessage, rows } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import ConfirmDialog from '@/components/shared/Ui';
+import MediaUploadInput from '@/components/shared/MediaUploadInput';
 import { BookOpen, ListChecks, Pencil, Plus, Search, Star, Trash2, X } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -617,11 +618,16 @@ function LessonManager({ course, onClose }: { course: Course; onClose: () => voi
                                 data-testid="lesson-title"
                                 className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700" />
                         </label>
-                        <label className="text-sm text-gray-600 dark:text-gray-300">Video URL (YouTube, Vimeo, TikTok, Facebook, MP4/HLS)
-                            <input value={form.video_url} placeholder="https://www.youtube.com/watch?v=..." onChange={(e) => setForm({ ...form, video_url: e.target.value })}
-                                data-testid="lesson-video-url"
-                                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700" />
-                        </label>
+                        <MediaUploadInput
+                            kind="video"
+                            value={form.video_url}
+                            onChange={(url) => setForm((f) => ({ ...f, video_url: url }))}
+                            folder="lessons"
+                            label="Lesson video (YouTube, Vimeo, TikTok, Facebook, MP4/HLS)"
+                            linkTestId="lesson-video-url"
+                            uploadTestId="lesson-video"
+                            hint="Upload a video from this device (auto-compressed) or paste a platform link."
+                        />
                         <label className="text-sm text-gray-600 dark:text-gray-300">Duration (minutes)
                             <input type="number" min="0" value={form.duration_minutes} onChange={(e) => setForm({ ...form, duration_minutes: e.target.value })}
                                 className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700" />

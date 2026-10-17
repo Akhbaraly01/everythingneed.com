@@ -5,6 +5,7 @@ import { formatDateTime } from '@/lib/utils';
 import { BadgeCheck, ShieldAlert, UploadCloud } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api, errorMessage } from '@/lib/api';
+import { prepareForUpload } from '@/lib/media-compress';
 
 const DOCUMENT_TYPES = ['passport', 'national_id', 'drivers_license', 'voters_id'];
 
@@ -51,8 +52,9 @@ export default function KycSubmit() {
         setUploading(side);
         setError(null);
         try {
+            const prepared = await prepareForUpload(file);
             const fd = new FormData();
-            fd.append('file', file);
+            fd.append('file', prepared.file);
             fd.append('folder', 'kyc-documents');
             const res = await api.post<{ data: { path: string } }>('/api/upload', fd);
             if (side === 'front') setFrontPath(res.data.path);
