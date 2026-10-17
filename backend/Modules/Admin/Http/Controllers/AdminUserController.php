@@ -110,6 +110,45 @@ class AdminUserController extends Controller
     }
 
     /**
+     * Updates a user's profile (name / email). Role changes have their own
+     * endpoint; suspension has its own switch.
+     *
+     * PUT /api/admin/users/{id}
+     */
+    public function update(Request $request, string $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'name'  => ['sometimes', 'string', 'min:2', 'max:255'],
+            'email' => ['sometimes', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($id)],
+        ]);
+
+        if ($validated === []) {
+            return response()->json(['message' => 'No changes provided.'], 422);
+        }
+
+        $payload = [];
+
+        if (array_key_exists('name', $validated)) {
+            $payload['name'] = trim($validated['name']);
+        }
+
+        if (array_key_exists('email', $validated)) {
+            $payload['email'] = strtolower(trim($validated['email']));
+            // Console-set addresses stay usable exactly like provisioned ones.
+            $payload['email_verified_at'] = now();
+        }
+
+        if (! $this->users->update($id, $payload)) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+
+        return response()->json([
+            'message' => 'User updated successfully',
+            'data' => $this->users->find($id),
+        ]);
+    }
+
+    /**
      * Suspends a user account (the dashboard access on/off switch).
      * Never allowed on yourself, and never on the last active super admin.
      *
@@ -150,12 +189,25 @@ class AdminUserController extends Controller
     }
 
     /**
-     * Soft-deletes a user.
+     * Soft-deletes a user. Same self/lockout guards as suspend: you can
+     * never delete yourself and the last active super admin can never go.
      *
      * DELETE /api/admin/users/{id}
      */
-    public function destroy(string $id): JsonResponse
+    public function destroy(Request $request, string $id): JsonResponse
     {
+        $actor = $request->user();
+
+        if ($actor !== null && $actor->id === $id) {
+            return response()->json(['message' => 'You cannot delete your own account.'], 403);
+        }
+
+        // Lockout guard: deleting the last active super admin would strand
+        // the platform with no one holding the wildcard permission set.
+        if ($this->users->isLastActiveSuperAdmin($id)) {
+            return response()->json(['message' => 'The last active super admin cannot be deleted.'], 409);
+        }
+
         if (! $this->users->softDelete($id)) {
             return response()->json(['message' => 'User not found'], 404);
         }

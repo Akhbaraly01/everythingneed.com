@@ -27,6 +27,15 @@ interface UserAdminInterface
 
     public function restore(string $id): bool;
 
+    /**
+     * Profile update (name / email). Returns false when the user is missing.
+     * Role changes are NOT done here: grants go through
+     * RoleAssignmentInterface::assign (the single guarded write path).
+     *
+     * @param  array{name?: string, email?: string, email_verified_at?: mixed}  $data
+     */
+    public function update(string $id, array $data): bool;
+
     public function softDelete(string $id): bool;
 
     /** Email uniqueness for admin-provisioned accounts (soft-delete aware). */

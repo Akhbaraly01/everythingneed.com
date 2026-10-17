@@ -49,13 +49,19 @@ Route::prefix('api/admin')->middleware(['api', 'auth:sanctum', EnsureAccountActi
         ->can('manageUsers');
     Route::get('/users/{id}', [AdminUserController::class, 'show'])
         ->can('manageUsers');
+    // Profile edits (name / email) need users.users.update in the role matrix.
+    Route::put('/users/{id}', [AdminUserController::class, 'update'])
+        ->middleware('permission:users.users.update')
+        ->can('manageUsers');
     Route::put('/users/{id}/role', [AdminUserController::class, 'updateRole'])
         ->can('manageUsers');
     Route::post('/users/{id}/suspend', [AdminUserController::class, 'suspend'])
         ->can('manageUsers');
     Route::post('/users/{id}/restore', [AdminUserController::class, 'restore'])
         ->can('manageUsers');
+    // Deletion is destructive: only roles holding users.users.delete (super_admin).
     Route::delete('/users/{id}', [AdminUserController::class, 'destroy'])
+        ->middleware('permission:users.users.delete')
         ->can('manageUsers');
 
     // Vendor management

@@ -8,7 +8,8 @@ import SearchInput from '@/components/shared/SearchInput';
 import { StatusBadge } from '@/components/shared/Ui';
 import Breadcrumb from '@/components/shared/Breadcrumb';
 import { toast } from 'sonner';
-import { KeyRound, Plus, X } from 'lucide-react';
+import { KeyRound, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { useConfirm } from '@/lib/confirm';
 
 /** Real shape returned by UserAdminService::paginate(). */
 interface User {
@@ -34,6 +35,9 @@ export default function AdminUsers() {
     const permissions =
         (usePage().props.auth as { permissions?: string[] } | null)?.permissions ?? [];
     const canCreate = permissions.includes('*') || permissions.includes('users.users.create');
+    const canEdit = permissions.includes('*') || permissions.includes('users.users.update');
+    const canDelete = permissions.includes('*') || permissions.includes('users.users.delete');
+    const confirm = useConfirm();
 
     const [users, setUsers] = useState<User[]>([]);
     const [roles, setRoles] = useState<string[]>([]);
@@ -44,6 +48,11 @@ export default function AdminUsers() {
     const [showAdd, setShowAdd] = useState(false);
     const [adding, setAdding] = useState(false);
     const [addForm, setAddForm] = useState({ name: '', email: '', password: '', role: '' });
+
+    // Edit-user dialog (name / email).
+    const [editUser, setEditUser] = useState<User | null>(null);
+    const [saving, setSaving] = useState(false);
+    const [editForm, setEditForm] = useState({ name: '', email: '' });
 
     useEffect(() => {
         api.get<{ data: RoleSummary[] }>('/api/admin/roles')
@@ -114,6 +123,50 @@ export default function AdminUsers() {
     const roleOptions = (current: string | null): string[] => {
         const list = current && !roles.includes(current) ? [current, ...roles] : roles;
         return list;
+    };
+
+    const openEdit = (user: User) => {
+        setEditUser(user);
+        setEditForm({ name: user.name, email: user.email });
+    };
+
+    const saveEdit = async () => {
+        if (!editUser) return;
+        if (!editForm.name.trim() || !editForm.email.trim()) {
+            toast.error('Name and email are required.');
+            return;
+        }
+        setSaving(true);
+        try {
+            await api.put(`/api/admin/users/${editUser.id}`, {
+                name: editForm.name.trim(),
+                email: editForm.email.trim(),
+            });
+            toast.success(`${editForm.name.trim()} updated.`);
+            setEditUser(null);
+            fetchUsers();
+        } catch (e) {
+            toast.error(errorMessage(e, 'Failed to update user'));
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const deleteUser = async (user: User) => {
+        const ok = await confirm({
+            title: `Delete ${user.name}?`,
+            description: 'The account is soft-deleted and can no longer sign in. This cannot be undone from the console.',
+            confirmLabel: 'Delete',
+            danger: true,
+        });
+        if (!ok) return;
+        try {
+            await api.del(`/api/admin/users/${user.id}`);
+            toast.success(`${user.name} deleted.`);
+            fetchUsers();
+        } catch (e) {
+            toast.error(errorMessage(e, 'Failed to delete user'));
+        }
     };
 
     // Per-user permission grants (super_admin-only endpoints; layered on the role matrix)
@@ -265,12 +318,32 @@ export default function AdminUsers() {
                                     >
                                         <KeyRound className="h-3.5 w-3.5" /> Perms
                                     </button>
+                                    {canEdit && (
+                                        <button
+                                            onClick={() => openEdit(u)}
+                                            data-testid={`user-edit-${u.id}`}
+                                            title="Edit profile"
+                                            className="flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700"
+                                        >
+                                            <Pencil className="h-3.5 w-3.5" /> Edit
+                                        </button>
+                                    )}
                                     <button
                                         onClick={() => toggleSuspend(u)}
                                         className={`text-xs font-medium ${u.status === 'suspended' ? 'text-green-600' : 'text-red-600'}`}
                                     >
                                         {u.status === 'suspended' ? 'Restore' : 'Suspend'}
                                     </button>
+                                    {canDelete && (
+                                        <button
+                                            onClick={() => void deleteUser(u)}
+                                            data-testid={`user-delete-${u.id}`}
+                                            title="Delete user"
+                                            className="flex items-center gap-1 text-xs font-medium text-red-700 hover:text-red-800"
+                                        >
+                                            <Trash2 className="h-3.5 w-3.5" /> Delete
+                                        </button>
+                                    )}
                                 </div>
                             ),
                         },
@@ -355,6 +428,74 @@ export default function AdminUsers() {
                                     className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
                                 >
                                     {adding ? 'Creating...' : 'Create User'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {editUser && (
+                    <div
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+                        role="dialog"
+                        aria-modal="true"
+                        data-testid="user-edit-modal"
+                    >
+                        <div className="w-full max-w-lg rounded-xl border border-gray-200 bg-white p-5 shadow-xl dark:border-gray-700 dark:bg-gray-800">
+                            <div className="mb-4 flex items-start justify-between">
+                                <div>
+                                    <h2 className="font-semibold text-gray-900 dark:text-white">Edit User</h2>
+                                    <p className="text-xs text-gray-500">
+                                        {editUser.email} - role and suspension have their own controls.
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => setEditUser(null)}
+                                    className="rounded p-1 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                    aria-label="Close"
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
+                            </div>
+
+                            <div className="space-y-3">
+                                <div>
+                                    <label htmlFor="edit-user-name" className="mb-1 block text-xs font-medium text-gray-500">Name</label>
+                                    <input
+                                        id="edit-user-name"
+                                        data-testid="user-edit-name"
+                                        value={editForm.name}
+                                        onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                                        className="w-full rounded-md border border-gray-300 bg-transparent px-2.5 py-1.5 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none dark:border-gray-600 dark:text-white"
+                                    />
+                                </div>
+                                <div>
+                                    <label htmlFor="edit-user-email" className="mb-1 block text-xs font-medium text-gray-500">Email</label>
+                                    <input
+                                        id="edit-user-email"
+                                        data-testid="user-edit-email"
+                                        type="email"
+                                        value={editForm.email}
+                                        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                                        className="w-full rounded-md border border-gray-300 bg-transparent px-2.5 py-1.5 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none dark:border-gray-600 dark:text-white"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="mt-5 flex justify-end gap-2">
+                                <button
+                                    onClick={() => setEditUser(null)}
+                                    className="rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={() => void saveEdit()}
+                                    disabled={saving}
+                                    data-testid="user-edit-save"
+                                    className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                                >
+                                    {saving ? 'Saving...' : 'Save Changes'}
                                 </button>
                             </div>
                         </div>

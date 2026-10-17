@@ -115,6 +115,27 @@ class UserAdminService extends BaseService implements UserAdminInterface
         return true;
     }
 
+    public function update(string $id, array $data): bool
+    {
+        $exists = DB::table('users')
+            ->where('id', $id)
+            ->whereNull('deleted_at')
+            ->exists();
+
+        if (! $exists) {
+            return false;
+        }
+
+        DB::table('users')
+            ->where('id', $id)
+            ->whereNull('deleted_at')
+            ->update($data + ['updated_at' => now()]);
+
+        $this->auditLog('update', $id, 'User profile updated: ' . implode(', ', array_keys($data)));
+
+        return true;
+    }
+
     public function softDelete(string $id): bool
     {
         $affected = DB::table('users')
