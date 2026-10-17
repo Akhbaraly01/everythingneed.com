@@ -17,8 +17,16 @@ class VendorController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        $filters = $request->only(['category', 'is_verified']);
+
+        // Public directory: only approved, non-suspended vendors (suspension
+        // sets is_verified=false). Managers keep their filters for tooling.
+        if (!$this->isCatalogueManager($request)) {
+            $filters['is_verified'] = true;
+        }
+
         $vendors = $this->vendorService->getVendors(
-            $request->only(['category', 'is_verified']),
+            $filters,
             $request->get('page', 1),
             $request->get('per_page', 15)
         );
@@ -32,6 +40,19 @@ class VendorController extends Controller
                 'total' => $vendors->total(),
             ],
         ]);
+    }
+
+    private function isCatalogueManager(Request $request): bool
+    {
+        $user = $request->user();
+
+        if ($user === null) {
+            return false;
+        }
+
+        return $user->hasRole('super_admin')
+            || $user->hasRole('administrator')
+            || $user->hasRole('platform_ops');
     }
 
     public function mine(Request $request): JsonResponse

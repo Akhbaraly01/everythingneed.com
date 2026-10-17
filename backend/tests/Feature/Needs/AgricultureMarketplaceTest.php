@@ -45,13 +45,17 @@ class AgricultureMarketplaceTest extends TestCase
         $this->makeProduct('electronics');
         $this->makeProduct('agriculture', active: false);
 
+        $unapproved = $this->makeProduct('agriculture');
+        $unapproved->forceFill(['approved_at' => null])->save();
+
         $response = $this->getJson('/api/agriculture')->assertOk();
         $ids = collect($response->json('data'))->pluck('id');
 
         $this->assertTrue($ids->contains($agri->id));
-        $this->assertCount(1, $ids, 'Inactive and non-agri products stay out');
+        $this->assertCount(1, $ids, 'Inactive, unapproved and non-agri products stay out');
         $this->assertArrayHasKey('meta', $response->json());
     }
+
 
     public function test_farmer_directory_filters_vendors_by_agriculture_category(): void
     {

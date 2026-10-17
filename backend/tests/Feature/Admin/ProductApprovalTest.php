@@ -133,6 +133,35 @@ class ProductApprovalTest extends TestCase
             ->assertStatus(403);
     }
 
+    public function test_vendor_cannot_self_publish_via_update(): void
+    {
+        [$user, $vendor] = $this->vendorUser();
+
+        $productId = $this->actingAs($user)->postJson('/api/products', [
+            'vendor_id' => $vendor->id,
+            'name' => 'Sneaky Publish',
+            'category' => 'misc',
+            'price' => 5,
+            'stock_quantity' => 1,
+        ])->json('data.id');
+
+        // Publication controls are admin-only; benign edits still pass.
+        $this->actingAs($user)->putJson("/api/products/{$productId}", [
+            'price' => 6,
+            'publication_state' => 'published',
+            'is_active' => true,
+        ])->assertOk();
+
+        $product = Product::find($productId);
+        $this->assertSame('draft', $product->publication_state);
+        $this->assertFalse((bool) $product->is_active);
+        $this->assertNull($product->approved_at);
+        $this->assertEquals(6.0, (float) $product->price);
+
+        $public = $this->getJson('/api/products?search=Sneaky+Publish');
+        $this->assertEquals(0, $public->json('meta.total'));
+    }
+
     public function test_admin_created_products_are_published_immediately(): void
     {
         $admin = User::factory()->create();

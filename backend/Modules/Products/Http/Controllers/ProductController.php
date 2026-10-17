@@ -166,6 +166,13 @@ class ProductController extends Controller
             ->filter(fn ($v) => $v !== null)
             ->all();
 
+        // Publication controls are admin-only (spec 37): a vendor owner must
+        // not be able to self-publish or hide via update - submissions stay in
+        // the approval queue until an admin decides.
+        if (!$this->isAdmin($request)) {
+            unset($payload['publication_state'], $payload['is_active']);
+        }
+
         // The publication state drives marketplace visibility (spec 37).
         if (array_key_exists('publication_state', $payload)) {
             $payload['is_active'] = $payload['publication_state'] === 'published';

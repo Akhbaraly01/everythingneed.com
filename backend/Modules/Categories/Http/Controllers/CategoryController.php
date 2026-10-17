@@ -15,7 +15,13 @@ class CategoryController extends Controller
     ) {}
     public function index(Request $request): JsonResponse
     {
-        $query = Category::with('children');
+        // Public default: active categories only (children constrained too).
+        // Explicit ?is_active=0/1 preserves the legacy admin/tooling view.
+        $activeOnly = !$request->has('is_active') || $request->boolean('is_active');
+
+        $query = Category::with([
+            'children' => fn ($q) => $activeOnly ? $q->where('is_active', true) : $q,
+        ]);
 
         if ($request->has('parent_id')) {
             $query->where('parent_id', $request->parent_id);
@@ -29,6 +35,8 @@ class CategoryController extends Controller
 
         if ($request->has('is_active')) {
             $query->where('is_active', $request->boolean('is_active'));
+        } else {
+            $query->where('is_active', true);
         }
 
         $categories = $query->orderBy('sort_order')->orderBy('name')->get();
@@ -38,7 +46,13 @@ class CategoryController extends Controller
 
     public function tree(): JsonResponse
     {
-        $categories = Category::with('children.children.children')
+        $activeChildren = fn ($q) => $q->where('is_active', true);
+
+        $categories = Category::with([
+                'children' => $activeChildren,
+                'children.children' => $activeChildren,
+                'children.children.children' => $activeChildren,
+            ])
             ->whereNull('parent_id')
             ->where('is_active', true)
             ->orderBy('sort_order')

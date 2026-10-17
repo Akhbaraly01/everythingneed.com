@@ -109,6 +109,10 @@ class DemoDataSeeder extends Seeder
                 'price' => $price,
                 'stock_quantity' => $stock,
                 'is_active' => true,
+                // Demo rows are the established published catalogue: set the
+                // publication fields the public catalogue filters on.
+                'publication_state' => 'published',
+                'approved_at' => $now,
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);

@@ -145,7 +145,7 @@ class VendorRegistrationTest extends TestCase
     public function test_anyone_can_list_vendors(): void
     {
         $vendorUser = $this->createUser();
-        $this->createVendor($vendorUser, ['store_name' => 'Test Vendor']);
+        $this->createVendor($vendorUser, ['store_name' => 'Test Vendor', 'is_verified' => true]);
 
         $response = $this->actingAs($this->createUser(), 'sanctum')
             ->getJson('/api/vendors');
@@ -155,6 +155,22 @@ class VendorRegistrationTest extends TestCase
                 'data' => [['id', 'store_name', 'category']],
                 'meta' => ['current_page', 'last_page', 'per_page', 'total'],
             ]);
+    }
+
+    public function test_public_directory_hides_unverified_and_suspended_vendors(): void
+    {
+        $approvedUser = $this->createUser();
+        $approved = $this->createVendor($approvedUser, ['store_name' => 'Approved Shop', 'is_verified' => true]);
+
+        $pendingUser = $this->createUser();
+        $this->createVendor($pendingUser, ['store_name' => 'Pending Shop', 'is_verified' => false]);
+
+        $response = $this->getJson('/api/vendors?per_page=50');
+
+        $response->assertOk();
+        $ids = collect($response->json('data'))->pluck('id');
+        $this->assertTrue($ids->contains($approved->id));
+        $this->assertCount(1, $ids, 'Only approved vendors are publicly listed');
     }
 
     public function test_anyone_can_view_a_vendor(): void

@@ -239,6 +239,7 @@ class NeedController extends Controller
     {
         $products = \Modules\Products\Entities\Product::query()
             ->where('is_active', true)
+            ->whereNotNull('approved_at')
             ->where('category', 'ilike', '%agric%')
             ->with('vendor')
             ->orderByDesc('created_at')
