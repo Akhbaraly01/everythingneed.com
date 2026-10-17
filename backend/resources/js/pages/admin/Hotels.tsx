@@ -2,8 +2,9 @@ import AdminLayout from '@/layouts/AdminLayout';
 import { Head } from '@inertiajs/react';
 import { api, errorMessage, rows } from '@/lib/api';
 import { FormEvent, useEffect, useState } from 'react';
-import { Hotel, MapPin, Plus, Power } from 'lucide-react';
+import { Hotel, MapPin, Pencil, Plus, Power, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { useConfirm } from '@/lib/confirm';
 
 interface HotelItem {
     id: string;
@@ -13,6 +14,11 @@ interface HotelItem {
     star_rating: number;
     is_active: boolean;
     rooms_count?: number;
+    address?: string;
+    state?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    description?: string | null;
 }
 
 interface Meta {
@@ -22,6 +28,7 @@ interface Meta {
 }
 
 export default function AdminHotels() {
+    const confirm = useConfirm();
     const [hotels, setHotels] = useState<HotelItem[]>([]);
     const [meta, setMeta] = useState<Meta | null>(null);
     const [loading, setLoading] = useState(true);
@@ -33,6 +40,14 @@ export default function AdminHotels() {
     const [form, setForm] = useState({
         name: '', address: '', city: '', country: '', state: '', phone: '', email: '',
         star_rating: '', description: '',
+    });
+
+    // Edit dialog (full profile incl. the active switch).
+    const [editHotel, setEditHotel] = useState<HotelItem | null>(null);
+    const [editSaving, setEditSaving] = useState(false);
+    const [editForm, setEditForm] = useState({
+        name: '', address: '', city: '', country: '', state: '', phone: '', email: '',
+        star_rating: '', description: '', is_active: true,
     });
 
     useEffect(() => {
@@ -76,6 +91,69 @@ export default function AdminHotels() {
             toast.success(`Hotel ${!h.is_active ? 'activated' : 'deactivated'}.`);
         } catch (e) {
             toast.error(errorMessage(e, 'Update failed'));
+        }
+    };
+
+    const openEdit = (h: HotelItem) => {
+        setEditHotel(h);
+        setEditForm({
+            name: h.name,
+            address: h.address ?? '',
+            city: h.city,
+            country: h.country,
+            state: h.state ?? '',
+            phone: h.phone ?? '',
+            email: h.email ?? '',
+            star_rating: h.star_rating ? String(h.star_rating) : '',
+            description: h.description ?? '',
+            is_active: h.is_active,
+        });
+    };
+
+    const saveEdit = async () => {
+        if (!editHotel) return;
+        if (!editForm.name.trim() || !editForm.address.trim() || !editForm.city.trim() || !editForm.country.trim()) {
+            toast.error('Name, address, city and country are required.');
+            return;
+        }
+        setEditSaving(true);
+        try {
+            await api.put(`/api/admin/hotels/${editHotel.id}`, {
+                name: editForm.name.trim(),
+                address: editForm.address.trim(),
+                city: editForm.city.trim(),
+                country: editForm.country.trim(),
+                state: editForm.state || null,
+                phone: editForm.phone || null,
+                email: editForm.email || null,
+                star_rating: editForm.star_rating ? Number(editForm.star_rating) : null,
+                description: editForm.description || null,
+                is_active: editForm.is_active,
+            });
+            toast.success(`${editForm.name.trim()} updated.`);
+            setEditHotel(null);
+            setTick((t) => t + 1);
+        } catch (e) {
+            toast.error(errorMessage(e, 'Failed to update hotel'));
+        } finally {
+            setEditSaving(false);
+        }
+    };
+
+    const deleteHotel = async (h: HotelItem) => {
+        const ok = await confirm({
+            title: `Delete ${h.name}?`,
+            description: 'The hotel and its rooms are removed. Hotels with reservations cannot be deleted — deactivate instead.',
+            confirmLabel: 'Delete',
+            danger: true,
+        });
+        if (!ok) return;
+        try {
+            await api.del(`/api/admin/hotels/${h.id}`);
+            toast.success(`${h.name} deleted.`);
+            setTick((t) => t + 1);
+        } catch (e) {
+            toast.error(errorMessage(e, 'Failed to delete hotel'));
         }
     };
 
@@ -183,16 +261,97 @@ export default function AdminHotels() {
                                             </span>
                                         </td>
                                         <td className="px-4 py-3">
-                                            <button onClick={() => toggle(h)} title={h.is_active ? 'Deactivate' : 'Activate'}
-                                                className="flex items-center gap-1 rounded-lg border border-gray-300 px-2 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300">
-                                                <Power className="h-3 w-3" /> {h.is_active ? 'Disable' : 'Enable'}
-                                            </button>
+                                            <div className="flex items-center gap-2">
+                                                <button onClick={() => toggle(h)} title={h.is_active ? 'Deactivate' : 'Activate'}
+                                                    className="flex items-center gap-1 rounded-lg border border-gray-300 px-2 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300">
+                                                    <Power className="h-3 w-3" /> {h.is_active ? 'Disable' : 'Enable'}
+                                                </button>
+                                                <button onClick={() => openEdit(h)} title="Edit hotel" data-testid={`hotel-edit-${h.id}`}
+                                                    className="flex items-center gap-1 rounded-lg border border-gray-300 px-2 py-1 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 dark:border-gray-600">
+                                                    <Pencil className="h-3 w-3" /> Edit
+                                                </button>
+                                                <button onClick={() => void deleteHotel(h)} title="Delete hotel" data-testid={`hotel-delete-${h.id}`}
+                                                    className="flex items-center gap-1 rounded-lg border border-red-200 px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 dark:border-red-800">
+                                                    <Trash2 className="h-3 w-3" /> Delete
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
                                 {hotels.length === 0 && <tr><td colSpan={5} className="px-4 py-12 text-center text-gray-500">No hotels</td></tr>}
                             </tbody>
                         </table>
+                    </div>
+                )}
+
+                {editHotel && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" data-testid="hotel-edit-modal">
+                        <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-gray-200 bg-white p-5 shadow-xl dark:border-gray-700 dark:bg-gray-800">
+                            <div className="mb-4 flex items-start justify-between">
+                                <div>
+                                    <h2 className="font-semibold text-gray-900 dark:text-white">Edit hotel</h2>
+                                    <p className="text-xs text-gray-500">{editHotel.city}, {editHotel.country}</p>
+                                </div>
+                                <button onClick={() => setEditHotel(null)} className="rounded p-1 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Close">
+                                    <X className="h-4 w-4" />
+                                </button>
+                            </div>
+
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <label className="text-sm text-gray-600 dark:text-gray-300">Name
+                                    <input data-testid="hotel-edit-name" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700" />
+                                </label>
+                                <label className="text-sm text-gray-600 dark:text-gray-300">Stars (1-5)
+                                    <input data-testid="hotel-edit-stars" type="number" min="1" max="5" value={editForm.star_rating} onChange={(e) => setEditForm({ ...editForm, star_rating: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700" />
+                                </label>
+                                <label className="text-sm text-gray-600 dark:text-gray-300 sm:col-span-2">Address
+                                    <input data-testid="hotel-edit-address" value={editForm.address} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700" />
+                                </label>
+                                <label className="text-sm text-gray-600 dark:text-gray-300">City
+                                    <input data-testid="hotel-edit-city" value={editForm.city} onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700" />
+                                </label>
+                                <label className="text-sm text-gray-600 dark:text-gray-300">Country
+                                    <input data-testid="hotel-edit-country" value={editForm.country} onChange={(e) => setEditForm({ ...editForm, country: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700" />
+                                </label>
+                                <label className="text-sm text-gray-600 dark:text-gray-300">State
+                                    <input data-testid="hotel-edit-state" value={editForm.state} onChange={(e) => setEditForm({ ...editForm, state: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700" />
+                                </label>
+                                <label className="text-sm text-gray-600 dark:text-gray-300">Phone
+                                    <input data-testid="hotel-edit-phone" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700" />
+                                </label>
+                                <label className="text-sm text-gray-600 dark:text-gray-300 sm:col-span-2">Email
+                                    <input data-testid="hotel-edit-email" type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700" />
+                                </label>
+                                <label className="text-sm text-gray-600 dark:text-gray-300 sm:col-span-2">Description
+                                    <textarea data-testid="hotel-edit-description" rows={3} value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700" />
+                                </label>
+                                <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 sm:col-span-2">
+                                    <input data-testid="hotel-edit-active" type="checkbox" checked={editForm.is_active} onChange={(e) => setEditForm({ ...editForm, is_active: e.target.checked })}
+                                        className="h-4 w-4 rounded border-gray-300 text-blue-600" />
+                                    Active (visible in listings and search)
+                                </label>
+                            </div>
+
+                            <div className="mt-5 flex justify-end gap-2">
+                                <button onClick={() => setEditHotel(null)}
+                                    className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300">
+                                    Cancel
+                                </button>
+                                <button onClick={() => void saveEdit()} disabled={editSaving} data-testid="hotel-edit-save"
+                                    className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50">
+                                    {editSaving ? 'Saving...' : 'Save changes'}
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 )}
 

@@ -25,6 +25,8 @@ Route::prefix('api')->group(function () {
         ->middleware('role:super_admin,administrator,hotel_admin');
     Route::put('/admin/hotels/{id}', [HotelController::class, 'adminUpdate'])
         ->middleware('role:super_admin,administrator,hotel_admin');
+    Route::delete('/admin/hotels/{id}', [HotelController::class, 'adminDestroy'])
+        ->middleware('role:super_admin,administrator,hotel_admin');
     Route::post('/admin/hotels', [HotelController::class, 'adminStore'])
         ->middleware('role:super_admin,administrator,hotel_admin');
     Route::get('/hotels/{id}/rooms/{roomId}', [HotelController::class, 'room']);

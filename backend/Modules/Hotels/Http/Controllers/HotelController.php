@@ -371,17 +371,96 @@ class HotelController extends Controller
         ]);
     }
 
+    /**
+     * Admin console: full edit of a hotel. Every field is optional, but at
+     * least one change must be present (the is_active toggle rides on this).
+     *
+     * PUT /api/admin/hotels/{id} (role: super_admin, administrator, hotel_admin)
+     */
     public function adminUpdate(Request $request, string $id): JsonResponse
     {
-        $request->validate(['is_active' => 'required|boolean']);
+        $data = $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'description' => 'sometimes|nullable|string|max:2000',
+            'address' => 'sometimes|string|max:500',
+            'city' => 'sometimes|string|max:100',
+            'country' => 'sometimes|string|max:100',
+            'state' => 'sometimes|nullable|string|max:100',
+            'phone' => 'sometimes|nullable|string|max:30',
+            'email' => 'sometimes|nullable|email|max:255',
+            'star_rating' => 'sometimes|nullable|integer|min:1|max:5',
+            'image_url' => 'sometimes|nullable|url|max:500',
+            'amenities' => 'sometimes|nullable|array',
+            'latitude' => 'sometimes|nullable|numeric|between:-90,90',
+            'longitude' => 'sometimes|nullable|numeric|between:-180,180',
+            'is_active' => 'sometimes|boolean',
+        ]);
+
+        if ($data === []) {
+            return response()->json(['message' => 'No changes provided'], 422);
+        }
 
         $hotel = Hotel::find($id);
         if (!$hotel) {
             return response()->json(['message' => 'Hotel not found'], 404);
         }
-        $hotel->update(['is_active' => $request->boolean('is_active')]);
 
-        return response()->json(['data' => $hotel]);
+        $hotel->update($data);
+
+        try {
+            app(\Core\Services\Contracts\AuditServiceInterface::class)->log([
+                'action' => 'update',
+                'entity_type' => 'hotel',
+                'entity_id' => $hotel->id,
+                'performed_by' => $request->user()?->id,
+                'new_values' => ['fields' => array_keys($data)],
+            ]);
+        } catch (\Throwable) {
+            // Audit failures must not break edits.
+        }
+
+        return response()->json([
+            'message' => 'Hotel updated successfully',
+            'data' => $hotel->fresh(),
+        ]);
+    }
+
+    /**
+     * Admin console: delete a hotel (soft delete — row kept for history,
+     * hidden from every scoped read). Refused while reservations exist so
+     * the booking history stays intact.
+     *
+     * DELETE /api/admin/hotels/{id} (role: super_admin, administrator, hotel_admin)
+     */
+    public function adminDestroy(Request $request, string $id): JsonResponse
+    {
+        $hotel = Hotel::find($id);
+        if (!$hotel) {
+            return response()->json(['message' => 'Hotel not found'], 404);
+        }
+
+        if ($hotel->reservations()->exists()) {
+            return response()->json([
+                'message' => 'This hotel has reservations and cannot be deleted. Deactivate it instead.',
+            ], 422);
+        }
+
+        $name = $hotel->name;
+        $hotel->delete();
+
+        try {
+            app(\Core\Services\Contracts\AuditServiceInterface::class)->log([
+                'action' => 'delete',
+                'entity_type' => 'hotel',
+                'entity_id' => $id,
+                'performed_by' => $request->user()?->id,
+                'new_values' => ['name' => $name],
+            ]);
+        } catch (\Throwable) {
+            // Audit failures must not break deletion.
+        }
+
+        return response()->json(['message' => 'Hotel deleted']);
     }
 
     /**
