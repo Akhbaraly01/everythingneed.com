@@ -9,6 +9,7 @@ import { formatDate } from '@/lib/utils';
 import { formatPrice } from '@/lib/currency';
 import { toast } from 'sonner';
 import { ArrowLeft, Star, XCircle, BadgeDollarSign, Check, Handshake } from 'lucide-react';
+import { Button, buttonClasses } from '@/components/shared/Button';
 
 interface Props {
     requests: { data: WorkRequest[]; current_page: number; last_page: number; total: number };
@@ -57,7 +58,7 @@ export default function MyWorkRequests({ requests }: Props) {
                         title="No requests yet"
                         description="Find a worker and send your first request."
                         action={
-                            <Link href="/job-seekers" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
+                            <Link href="/job-seekers" className={buttonClasses('primary', 'md')}>
                                 Browse directory
                             </Link>
                         }
@@ -80,13 +81,14 @@ export default function MyWorkRequests({ requests }: Props) {
                                             </p>
                                         </div>
                                         {!['cancelled', 'completed'].includes(req.status) && (
-                                            <button
+                                            <Button
+                                                variant="danger"
+                                                size="sm"
                                                 disabled={busyId === req.id}
                                                 onClick={() => act(req, () => api.post(`/api/work-requests/${req.id}/cancel`), 'Request cancelled')}
-                                                className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700"
                                             >
                                                 <XCircle className="h-3.5 w-3.5" /> Cancel
-                                            </button>
+                                            </Button>
                                         )}
                                     </div>
 
@@ -99,28 +101,30 @@ export default function MyWorkRequests({ requests }: Props) {
                                                 {offer.message && <span className="font-normal">— “{offer.message}”</span>}
                                             </p>
                                             <div className="flex gap-2">
-                                                <button
+                                                <Button
+                                                    variant="success"
+                                                    size="sm"
                                                     disabled={busyId === req.id}
                                                     onClick={() => act(
                                                         req,
                                                         () => api.post(`/api/work-offers/${offer.id}/respond`, { decision: 'accept' }),
                                                         'Offer accepted — proceed to payment',
                                                     )}
-                                                    className="rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700"
                                                 >
                                                     Accept offer
-                                                </button>
-                                                <button
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
                                                     disabled={busyId === req.id}
                                                     onClick={() => act(
                                                         req,
                                                         () => api.post(`/api/work-offers/${offer.id}/respond`, { decision: 'reject' }),
                                                         'Offer rejected',
                                                     )}
-                                                    className="rounded-md border border-gray-300 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300"
                                                 >
                                                     Reject
-                                                </button>
+                                                </Button>
                                             </div>
                                         </div>
                                     )}
@@ -128,13 +132,14 @@ export default function MyWorkRequests({ requests }: Props) {
                                     {/* Lifecycle actions */}
                                     <div className="flex flex-wrap gap-2 border-t border-gray-100 pt-3 dark:border-gray-700">
                                         {req.status === 'accepted' && (
-                                            <button
+                                            <Button
+                                                variant="primary"
+                                                size="sm"
                                                 disabled={busyId === req.id}
                                                 onClick={() => act(req, () => api.post(`/api/work-requests/${req.id}/pay`), 'Marked as paid')}
-                                                className="flex items-center gap-1.5 rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-700"
                                             >
                                                 <BadgeDollarSign className="h-3.5 w-3.5" /> Mark as paid ({formatPrice(Number(req.agreed_rate ?? 0))})
-                                            </button>
+                                            </Button>
                                         )}
                                         {req.status === 'in_progress' && (
                                             <span className="rounded-lg bg-cyan-50 px-3 py-1.5 text-xs text-cyan-700">Work in progress — the worker will mark it complete.</span>
@@ -143,29 +148,32 @@ export default function MyWorkRequests({ requests }: Props) {
                                             ratingFor === req.id ? (
                                                 <div className="flex items-center gap-2">
                                                     {[1, 2, 3, 4, 5].map((n) => (
-                                                        <button key={n} onClick={() => setRating(n)}>
+                                                        <Button key={n} variant="icon" iconOnly size="sm" aria-label={`Rate ${n} star${n === 1 ? '' : 's'}`} onClick={() => setRating(n)}>
                                                             <Star className={`h-6 w-6 ${n <= rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
-                                                        </button>
+                                                        </Button>
                                                     ))}
-                                                    <button
+                                                    <Button
+                                                        variant="primary"
+                                                        size="sm"
+                                                        className="ml-2"
                                                         disabled={busyId === req.id}
                                                         onClick={() => act(
                                                             req,
                                                             () => api.post(`/api/work-requests/${req.id}/rate`, { rating }),
                                                             'Rating recorded — thank you!',
                                                         ).then(() => setRatingFor(null))}
-                                                        className="ml-2 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white"
                                                     >
-                                                        <Check className="mr-1 inline h-3 w-3" /> Submit
-                                                    </button>
+                                                        <Check className="h-3 w-3" /> Submit
+                                                    </Button>
                                                 </div>
                                             ) : (
-                                                <button
+                                                <Button
+                                                    variant="primary"
+                                                    size="sm"
                                                     onClick={() => { setRatingFor(req.id); setRating(5); }}
-                                                    className="flex items-center gap-1.5 rounded-lg bg-yellow-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-yellow-600"
                                                 >
                                                     <Star className="h-3.5 w-3.5" /> Rate this worker
-                                                </button>
+                                                </Button>
                                             )
                                         )}
                                         {req.status === 'completed' && req.rated_at && (
@@ -182,13 +190,13 @@ export default function MyWorkRequests({ requests }: Props) {
                 {requests.last_page > 1 && (
                     <div className="mt-8 flex justify-center gap-3">
                         {requests.current_page > 1 && (
-                            <Link href={`/job-seekers/my-requests?page=${requests.current_page - 1}`} preserveState className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm dark:border-gray-600 dark:text-white">
+                            <Link href={`/job-seekers/my-requests?page=${requests.current_page - 1}`} preserveState className={buttonClasses('outline', 'sm')}>
                                 Previous
                             </Link>
                         )}
                         <span className="self-center text-sm text-gray-500">Page {requests.current_page} of {requests.last_page}</span>
                         {requests.current_page < requests.last_page && (
-                            <Link href={`/job-seekers/my-requests?page=${requests.current_page + 1}`} preserveState className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm dark:border-gray-600 dark:text-white">
+                            <Link href={`/job-seekers/my-requests?page=${requests.current_page + 1}`} preserveState className={buttonClasses('outline', 'sm')}>
                                 Next
                             </Link>
                         )}

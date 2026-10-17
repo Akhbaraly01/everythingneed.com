@@ -82,10 +82,15 @@ class WaveIWalletKycTest extends TestCase
 
         $this->assertDatabaseHas('kyc_verifications', [
             'user_id' => $user->id,
-            'full_name' => 'Ama Test',
-            'nationality' => 'GHA',
             'attempts' => 1,
         ]);
+
+        // Phase 2: PII rests AES-256-GCM encrypted, never plaintext.
+        $row = DB::table('kyc_verifications')->where('user_id', $user->id)->first();
+        $this->assertNotSame('Ama Test', $row->full_name);
+        $this->assertTrue(\Core\Support\PiiCipher::isEncrypted($row->full_name));
+        $this->assertSame('Ama Test', \Core\Support\PiiCipher::decrypt($row->full_name));
+        $this->assertSame('GHA', \Core\Support\PiiCipher::decrypt($row->nationality));
     }
 
     public function test_requires_action_loops_back_to_resubmission_with_attempts(): void
@@ -162,6 +167,7 @@ class WaveIWalletKycTest extends TestCase
     public function test_kyc_documents_upload_and_stream_with_scoping(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
         $user = $this->createUser();
         $stranger = $this->createUser();
         $admin = $this->createAdmin();

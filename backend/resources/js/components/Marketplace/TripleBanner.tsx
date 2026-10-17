@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from '@inertiajs/react';
 import {
     TrendingUp,
@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import Image from '@/components/shared/Image';
 import { formatPrice } from '@/lib/currency';
+import { useLanguage } from '@/lib/use-language';
 
 interface BannerItem {
     title: string;
@@ -33,14 +34,14 @@ interface TrendingItem {
     link?: string;
 }
 
-const rightTopBanners: BannerItem[] = [
-    { title: 'Submit Your Need', subtitle: 'We find it for you', cta: 'Request', link: '/needs/request', gradient: 'from-amber-500 to-orange-600', icon: 'sparkles' },
-    { title: 'Learn New Skills & Advance Your Career', subtitle: 'Master in-demand skills', cta: 'Start', link: '/learn', gradient: 'from-emerald-500 to-teal-600', icon: 'learn' },
+const rightTopBanners = (t: (key: string) => string): BannerItem[] => [
+    { title: t('home.submitNeed'), subtitle: t('banner.needSub'), cta: t('banner.request'), link: '/needs/request', gradient: 'from-amber-500 to-orange-600', icon: 'sparkles' },
+    { title: t('home.learn'), subtitle: t('banner.learnSub'), cta: t('banner.start'), link: '/learn', gradient: 'from-emerald-500 to-teal-600', icon: 'learn' },
 ];
 
-const rightBottomBanners: BannerItem[] = [
-    { title: 'Healthcare', subtitle: 'Book appointments', cta: 'Book', link: '/healthcare', gradient: 'from-rose-500 to-pink-600', icon: 'health' },
-    { title: 'Pharmacy', subtitle: 'Order medicines', cta: 'Order', link: '/pharmacy', gradient: 'from-cyan-500 to-blue-600', icon: 'package' },
+const rightBottomBanners = (t: (key: string) => string): BannerItem[] => [
+    { title: t('home.healthcare'), subtitle: t('banner.healthSub'), cta: t('banner.book'), link: '/healthcare', gradient: 'from-rose-500 to-pink-600', icon: 'health' },
+    { title: t('home.pharmacy'), subtitle: t('banner.pharmacySub'), cta: t('banner.order'), link: '/pharmacy', gradient: 'from-cyan-500 to-blue-600', icon: 'package' },
 ];
 
 function BannerIcon({ icon }: { icon: BannerItem['icon'] }) {
@@ -92,7 +93,10 @@ interface TripleBannerProps {
 }
 
 export default function TripleBanner({ trending }: TripleBannerProps) {
+    const { t } = useLanguage();
     const items = trending ?? [];
+    const topBanners = useMemo(() => rightTopBanners(t), [t]);
+    const bottomBanners = useMemo(() => rightBottomBanners(t), [t]);
     const [trendingIndex, setTrendingIndex] = useState(0);
     const [rightTopIndex, setRightTopIndex] = useState(0);
     const [rightBottomIndex, setRightBottomIndex] = useState(0);
@@ -109,30 +113,30 @@ export default function TripleBanner({ trending }: TripleBannerProps) {
     useEffect(() => {
         if (paused || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
         const interval = setInterval(() => {
-            setRightTopIndex((prev) => (prev + 1) % rightTopBanners.length);
+            setRightTopIndex((prev) => (prev + 1) % topBanners.length);
         }, 5500);
         return () => clearInterval(interval);
-    }, [paused]);
+    }, [paused, topBanners.length]);
 
     useEffect(() => {
         if (paused || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
         const interval = setInterval(() => {
-            setRightBottomIndex((prev) => (prev + 1) % rightBottomBanners.length);
+            setRightBottomIndex((prev) => (prev + 1) % bottomBanners.length);
         }, 6500);
         return () => clearInterval(interval);
-    }, [paused]);
+    }, [paused, bottomBanners.length]);
 
     if (items.length === 0) {
         return (
-            <div className="grid grid-cols-5 gap-2 h-[130px] md:h-[140px]">
+            <div className="grid grid-cols-5 gap-2 min-h-[150px] md:min-h-[160px]">
                 <div className="col-span-3 rounded-xl border border-border bg-card p-3 flex flex-col justify-center">
-                    <p className="text-sm font-semibold">Trending Now</p>
-                    <p className="text-xs text-muted-foreground mt-1">Popular items will appear once available.</p>
-                    <Link href="/products" className="mt-2 text-xs text-primary font-medium">Browse products</Link>
+                    <p className="text-sm font-semibold">{t('home.trendingItems')}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{t('home.nothingHereText')}</p>
+                    <Link href="/products" className="mt-2 text-xs text-primary font-medium">{t('home.browseProducts')}</Link>
                 </div>
                 <div className="col-span-2 flex flex-col gap-2">
-                    <div className="flex-1"><BannerSlide item={rightTopBanners[0]} /></div>
-                    <div className="flex-1"><BannerSlide item={rightBottomBanners[0]} /></div>
+                    <div className="flex-1"><BannerSlide item={topBanners[0]} /></div>
+                    <div className="flex-1"><BannerSlide item={bottomBanners[0]} /></div>
                 </div>
             </div>
         );
@@ -143,7 +147,7 @@ export default function TripleBanner({ trending }: TripleBannerProps) {
 
     return (
         <div
-            className="grid grid-cols-5 gap-2 h-[130px] md:h-[140px]"
+            className="grid grid-cols-5 gap-2 min-h-[150px] md:min-h-[160px]"
             onMouseEnter={() => setPaused(true)}
             onMouseLeave={() => setPaused(false)}
             onTouchStart={() => setPaused(true)}
@@ -161,7 +165,7 @@ export default function TripleBanner({ trending }: TripleBannerProps) {
                                 <div className="p-1 bg-white/20 rounded-lg">
                                     <TrendingUp className="h-3 w-3 text-white" />
                                 </div>
-                                <span className="text-white font-bold text-xs">Trending Now</span>
+                                <span className="text-white font-bold text-xs">{t('home.trendingItems')}</span>
                             </div>
                             <span className="bg-white/20 text-white text-[9px] px-1.5 rounded-md">
                                 🔥 Hot
@@ -213,7 +217,7 @@ export default function TripleBanner({ trending }: TripleBannerProps) {
                         className="flex h-full transition-transform duration-500 ease-out"
                         style={{ transform: `translateX(-${rightTopIndex * 100}%)` }}
                     >
-                        {rightTopBanners.map((banner, idx) => (
+                        {topBanners.map((banner, idx) => (
                             <div key={idx} className="min-w-full h-full">
                                 <BannerSlide item={banner} />
                             </div>
@@ -222,7 +226,7 @@ export default function TripleBanner({ trending }: TripleBannerProps) {
                     <button
                         type="button"
                         aria-label="Previous banner"
-                        onClick={() => setRightTopIndex((p) => (p - 1 + rightTopBanners.length) % rightTopBanners.length)}
+                        onClick={() => setRightTopIndex((p) => (p - 1 + topBanners.length) % topBanners.length)}
                         className="absolute left-1 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-full bg-black/30 text-white opacity-0 transition-opacity group-hover/rt:opacity-100"
                     >
                         <ChevronLeft className="h-3 w-3" />
@@ -230,7 +234,7 @@ export default function TripleBanner({ trending }: TripleBannerProps) {
                     <button
                         type="button"
                         aria-label="Next banner"
-                        onClick={() => setRightTopIndex((p) => (p + 1) % rightTopBanners.length)}
+                        onClick={() => setRightTopIndex((p) => (p + 1) % topBanners.length)}
                         className="absolute right-1 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-full bg-black/30 text-white opacity-0 transition-opacity group-hover/rt:opacity-100"
                     >
                         <ChevronRight className="h-3 w-3" />
@@ -241,7 +245,7 @@ export default function TripleBanner({ trending }: TripleBannerProps) {
                         className="flex h-full transition-transform duration-500 ease-out"
                         style={{ transform: `translateX(-${rightBottomIndex * 100}%)` }}
                     >
-                        {rightBottomBanners.map((banner, idx) => (
+                        {bottomBanners.map((banner, idx) => (
                             <div key={idx} className="min-w-full h-full">
                                 <BannerSlide item={banner} />
                             </div>
@@ -250,7 +254,7 @@ export default function TripleBanner({ trending }: TripleBannerProps) {
                     <button
                         type="button"
                         aria-label="Previous banner"
-                        onClick={() => setRightBottomIndex((p) => (p - 1 + rightBottomBanners.length) % rightBottomBanners.length)}
+                        onClick={() => setRightBottomIndex((p) => (p - 1 + bottomBanners.length) % bottomBanners.length)}
                         className="absolute left-1 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-full bg-black/30 text-white opacity-0 transition-opacity group-hover/rb:opacity-100"
                     >
                         <ChevronLeft className="h-3 w-3" />
@@ -258,7 +262,7 @@ export default function TripleBanner({ trending }: TripleBannerProps) {
                     <button
                         type="button"
                         aria-label="Next banner"
-                        onClick={() => setRightBottomIndex((p) => (p + 1) % rightBottomBanners.length)}
+                        onClick={() => setRightBottomIndex((p) => (p + 1) % bottomBanners.length)}
                         className="absolute right-1 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-full bg-black/30 text-white opacity-0 transition-opacity group-hover/rb:opacity-100"
                     >
                         <ChevronRight className="h-3 w-3" />

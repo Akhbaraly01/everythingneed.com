@@ -1,6 +1,7 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link } from '@inertiajs/react';
 import { api, errorMessage } from '@/lib/api';
+import { Button } from '@/components/shared/Button';
 import {User, Star, RefreshCcw} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Image from '@/components/shared/Image';
@@ -55,24 +56,16 @@ export default function DoctorsPage() {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                    <button onClick={() => setSpecialtyFilter('')} className={`rounded-full px-4 py-1.5 text-sm font-medium ${
-                        !specialtyFilter ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
-                    }`}>All Specialties</button>
+                    <Button onClick={() => setSpecialtyFilter('')} variant={!specialtyFilter ? 'primary' : 'outline'} size="sm" className="rounded-full px-4 py-1.5">All Specialties</Button>
                     {specialties.map((s) => (
-                        <button key={s} onClick={() => setSpecialtyFilter(s)} className={`rounded-full px-4 py-1.5 text-sm font-medium ${
-                            specialtyFilter === s ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
-                        }`}>{s}</button>
+                        <Button key={s} onClick={() => setSpecialtyFilter(s)} variant={specialtyFilter === s ? 'primary' : 'outline'} size="sm" className="rounded-full px-4 py-1.5">{s}</Button>
                     ))}
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                    <button onClick={() => setProfessionFilter('')} className={`rounded-full px-4 py-1.5 text-sm font-medium ${
-                        !professionFilter ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
-                    }`}>All Professions</button>
+                    <Button onClick={() => setProfessionFilter('')} variant={!professionFilter ? 'primary' : 'outline'} size="sm" className="rounded-full px-4 py-1.5">All Professions</Button>
                     {professions.map((p) => (
-                        <button key={p} onClick={() => setProfessionFilter(p)} className={`rounded-full px-4 py-1.5 text-sm font-medium ${
-                            professionFilter === p ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
-                        }`}>{p.charAt(0).toUpperCase() + p.slice(1).replace('_', ' ')}</button>
+                        <Button key={p} onClick={() => setProfessionFilter(p)} variant={professionFilter === p ? 'primary' : 'outline'} size="sm" className="rounded-full px-4 py-1.5">{p.charAt(0).toUpperCase() + p.slice(1).replace('_', ' ')}</Button>
                     ))}
                 </div>
 
@@ -81,9 +74,9 @@ export default function DoctorsPage() {
                 ) : error ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
                         <p className="text-red-600 font-medium">{error}</p>
-                        <button onClick={() => setRetryTick((t) => t + 1)} className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-500">
-                            <RefreshCcw className="h-4 w-4" /> Retry
-                        </button>
+                        <Button onClick={() => setRetryTick((t) => t + 1)} variant="ghost" size="sm" className="mt-4 gap-2" iconLeft={<RefreshCcw className="h-4 w-4" />}>
+                            Retry
+                        </Button>
                     </div>
                 ) : doctors.length === 0 ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">

@@ -9,6 +9,8 @@ class Dispute extends Model
     protected $fillable = [
         'user_id',
         'order_id',
+        'need_request_id',
+        'task_id',
         'subject',
         'description',
         'status',
@@ -31,5 +33,21 @@ class Dispute extends Model
     public function assignee()
     {
         return $this->belongsTo(\App\Models\User::class, 'assigned_to');
+    }
+
+    /** P0 needs console: needs/task-scoped disputes (order flow untouched). */
+    public function needRequest()
+    {
+        return $this->belongsTo(\Modules\Needs\Entities\NeedRequest::class, 'need_request_id');
+    }
+
+    public function task()
+    {
+        return $this->belongsTo(\Modules\Needs\Entities\TaskPost::class, 'task_id');
+    }
+
+    public function evidence()
+    {
+        return $this->hasMany(DisputeEvidence::class, 'dispute_id')->orderBy('created_at');
     }
 }

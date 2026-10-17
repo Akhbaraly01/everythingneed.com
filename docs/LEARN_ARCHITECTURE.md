@@ -91,19 +91,26 @@ Report and heartbeat endpoints carry route throttles
 ## 5. Video pipeline (self-hosted + provider embeds)
 
 Decision (mega-plan): **self-hosted uploads for platform media, plus
-external-link ingestion** — a creator pastes a YouTube / Vimeo / Facebook
-URL at submit time; the post is moderated, and approved posts play inside our
-player chrome via the provider's embed SDK. Provider bytes are never re-hosted.
+external-link ingestion** — a creator pastes a YouTube / Vimeo / Facebook /
+TikTok URL (or a direct MP4/HLS file link) at submit time; the post is
+moderated, and approved posts play inside our player chrome via the
+provider's embed player or a native `<video>` element. Provider bytes are
+never re-hosted.
 
 - `backend/Modules/Learn/Support/VideoResolver.php` resolves a submitted URL
   at **submit time** into `video_provider` ∈
-  `upload|youtube|vimeo|facebook` + `provider_video_id`; unsupported hosts are
-  rejected with 422 (pinned by `LearnFeedV2Test`).
+  `upload|youtube|vimeo|facebook|tiktok|file` + `provider_video_id`;
+  unsupported hosts are rejected with 422 (pinned by `LearnFeedV2Test`).
 - `backend/resources/js/lib/video.ts` mirrors the resolution rules client-side
-  (embed URL construction for the player).
+  (embed URL construction for the player; `resolvePlaybackSource()` also
+  powers lesson/course surfaces).
 - `backend/resources/js/components/learn/VideoPlayer.tsx`: shared player chrome
-  (external embed or native `<video>` for uploads), muted autoplay in view,
-  progress callbacks for the watch-time heartbeat.
+  (provider embed or native `<video>` for uploads/files), muted autoplay in
+  view, progress callbacks for the watch-time heartbeat. When a player SDK
+  fails it falls back to the provider's plain embed iframe in-app — it never
+  replaces a failed player with an external redirect.
+- Provider compatibility matrix (what embeds, what cannot, and why):
+  `docs/architecture/VIDEO_PROVIDER_COMPATIBILITY.md`.
 - Watch time: `POST /api/learn/posts/{id}/view-heartbeat` accumulates
   `learn_video_views.seconds_watched` per viewer (30s or 75% of duration in
   the client), counted once per viewer for `views_count`.

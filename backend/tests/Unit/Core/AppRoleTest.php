@@ -135,9 +135,10 @@ class AppRoleTest extends TestCase
         // analytics_admin) + Batch C (orders/wallet/support/real_estate/
         // needs_admin) + Batch D (payout_reviewer, refund_agent,
         // inventory_manager, cms_editor, auditor, analyst) = 35,
-        // + spec §65 named admin roles (category_admin, vendor_manager,
-        // content_admin) = 38, + learn 2.0 learning_reviewer = 39.
-        $this->assertCount(39, $values);
+        // + spec A?65 named admin roles (category_admin, vendor_manager,
+        // content_admin) = 38, + learn 2.0 learning_reviewer = 39,
+        // + TODO 21 needs_viewer = 40.
+        $this->assertCount(40, $values);
     }
 
     public function test_label_returns_human_readable_labels(): void

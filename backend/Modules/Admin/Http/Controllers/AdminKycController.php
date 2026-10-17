@@ -3,6 +3,7 @@
 namespace Modules\Admin\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use Core\Support\PiiCipher;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -35,10 +36,10 @@ class AdminKycController extends Controller
 
         if (is_string($validated['search'] ?? null) && $validated['search'] !== '') {
             $search = $validated['search'];
+            // document_number is AES-256-GCM at rest: unsearchable by design.
             $query->where(function ($q) use ($search) {
                 $q->where('u.name', 'ilike', "%{$search}%")
-                    ->orWhere('u.email', 'ilike', "%{$search}%")
-                    ->orWhere('k.document_number', 'ilike', "%{$search}%");
+                    ->orWhere('u.email', 'ilike', "%{$search}%");
             });
         }
 
@@ -51,10 +52,29 @@ class AdminKycController extends Controller
         $page  = (int) ($validated['page'] ?? 1);
         $rows  = $query->offset(($page - 1) * 15)->limit(15)->get();
 
+        // Reviewers see decrypted identity fields; the document number stays
+        // masked in the queue (full review happens on the streamed image).
+        $rows = $rows->map(function ($row) {
+            $row->document_number = self::maskDocumentNumber(PiiCipher::decrypt($row->document_number));
+            $row->full_name = $row->full_name ? PiiCipher::decrypt($row->full_name) : null;
+            $row->nationality = $row->nationality ? PiiCipher::decrypt($row->nationality) : null;
+
+            return $row;
+        });
+
         return response()->json([
             'data'  => $rows,
             'total' => $total,
             'meta'  => ['page' => $page, 'per_page' => 15, 'total' => $total],
         ]);
+    }
+
+    private static function maskDocumentNumber(?string $number): ?string
+    {
+        if ($number === null || $number === '') {
+            return null;
+        }
+
+        return strlen($number) > 4 ? '****'.substr($number, -4) : '****';
     }
 }

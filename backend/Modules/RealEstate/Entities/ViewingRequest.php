@@ -14,13 +14,11 @@ class ViewingRequest extends Model
         'phone',
         'message',
         'viewing_date',
-        'preferred_date',
-        'preferred_time',
+        'viewing_time',
         'status',
     ];
 
     protected $casts = [
-        'preferred_date' => 'date',
         'viewing_date' => 'date',
     ];
 

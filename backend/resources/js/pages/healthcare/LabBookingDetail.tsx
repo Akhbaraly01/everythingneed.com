@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { api, errorMessage } from '@/lib/api';
 import { formatDateTime } from '@/lib/utils';
 import LoadingState, { ErrorState } from '@/components/shared/LoadingState';
+import { Button } from '@/components/shared/Button';
 import { toast } from 'sonner';
 
 interface LabBookingDetail {
@@ -135,24 +136,23 @@ export default function LabBookingDetail({ booking_id }: DetailProps) {
 
                         <div className="mt-6 flex flex-wrap gap-3">
                             {!booking.is_paid && booking.status !== 'cancelled' && (
-                                <button
+                                <Button
                                     type="button"
                                     onClick={handlePay}
-                                    disabled={paying}
-                                    className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
+                                    loading={paying}
                                 >
-                                    {paying ? 'Paying...' : 'Pay now'}
-                                </button>
+                                    Pay now
+                                </Button>
                             )}
                             {booking.status !== 'cancelled' && booking.status !== 'completed' && (
-                                <button
+                                <Button
                                     type="button"
                                     onClick={handleCancel}
-                                    disabled={cancelling}
-                                    className="rounded-lg border border-red-300 px-5 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
+                                    loading={cancelling}
+                                    variant="danger"
                                 >
-                                    {cancelling ? 'Cancelling...' : 'Cancel booking'}
-                                </button>
+                                    Cancel booking
+                                </Button>
                             )}
                         </div>
                     </div>

@@ -1,8 +1,9 @@
 import AppLayout from '@/layouts/AppLayout';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { api } from '@/lib/api';
 import { useEffect, useState } from 'react';
 import {Bed, Maximize, DollarSign, ArrowRight} from 'lucide-react';
+import ReviewSection from '@/components/reviews/ReviewSection';
 
 interface Room {
     id: string;
@@ -23,6 +24,7 @@ interface Hotel {
 }
 
 export default function RoomDetails({ hotel_id, room_id }: { hotel_id?: string; room_id?: string }) {
+    const { auth } = usePage().props as { auth?: { user?: { id: string } } };
     const [hotel, setHotel] = useState<Hotel | null>(null);
     const [room, setRoom] = useState<Room | null>(null);
     const [loading, setLoading] = useState(true);
@@ -81,6 +83,9 @@ export default function RoomDetails({ hotel_id, room_id }: { hotel_id?: string; 
                         </div>
                     )}
                 </div>
+
+                {/* N-40: hotel reviews follow you to the room page */}
+                <ReviewSection reviewableType="hotel" reviewableId={hotel.id} authenticated={Boolean(auth?.user)} />
 
                 <button
                     onClick={() => router.visit(`/hotels/${hotel.id}/book?room=${room.id}`)}

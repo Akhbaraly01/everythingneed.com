@@ -3,7 +3,9 @@
 namespace Core\Services;
 
 use App\Models\AuditLog;
+use Core\Support\AuditChain;
 use Core\Services\Contracts\AuditServiceInterface;
+use Illuminate\Support\Facades\DB;
 
 class AuditService extends BaseService implements AuditServiceInterface
 {
@@ -17,7 +19,11 @@ class AuditService extends BaseService implements AuditServiceInterface
             $actor = '00000000-0000-0000-0000-000000000000';
         }
 
-        AuditLog::create([
+        // Second precision: the timestamp column stores no microseconds, and
+        // the hash must be computed over exactly what is persisted.
+        $createdAt = now()->toDateTimeString();
+
+        $fields = [
             'action' => $data['action'],
             'entity_type' => $data['entity_type'],
             'entity_id' => (string) $data['entity_id'],
@@ -26,8 +32,24 @@ class AuditService extends BaseService implements AuditServiceInterface
             'old_values' => $data['old_values'] ?? null,
             'new_values' => $data['new_values'] ?? null,
             'metadata' => $data['metadata'] ?? null,
-            'created_at' => now(),
-        ]);
+            'created_at' => $createdAt,
+        ];
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($fields) {
+            // Lock the chain tip so concurrent writers cannot fork it.
+            $tip = DB::table('audit_logs')
+                ->orderByDesc('sequence')
+                ->lockForUpdate()
+                ->first(['sequence', 'hash']);
+
+            $prev = $tip->hash ?? AuditChain::GENESIS;
+            $hash = AuditChain::hash($fields, $prev);
+
+            AuditLog::create($fields + [
+                'prev_hash' => $prev === AuditChain::GENESIS ? null : $prev,
+                'hash' => $hash,
+            ]);
+        });
     }
 
     /** Request IP when an HTTP context exists; null in console/queue. */

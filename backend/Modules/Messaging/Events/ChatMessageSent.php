@@ -32,11 +32,12 @@ class ChatMessageSent implements ShouldBroadcast
 
     public function broadcastWith(): array
     {
+        // Minimal identifiers only: no message bodies cross the socket.
+        // Clients fetch content over the authed API (participant-scoped).
         return [
             'id' => $this->message->id,
             'conversation_id' => $this->message->conversation_id,
             'sender_id' => $this->message->sender_id,
-            'message' => $this->message->message,
             'message_type' => $this->message->message_type,
             'created_at' => optional($this->message->created_at)->toIso8601String(),
         ];

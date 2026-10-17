@@ -2,9 +2,29 @@ import AppLayout from '@/layouts/AppLayout';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { api, errorMessage } from '@/lib/api';
 import { NEED_STATUS_LABELS, needStatusClasses } from '@/lib/needs';
+import { Button } from '@/components/shared/Button';
+import { useConfirm } from '@/lib/confirm';
 import { ArrowLeft, Check, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import type { NeedOffer, NeedRequestDetail } from '@/types';
+
+interface ProviderMatch {
+    user_id: string;
+    display_name: string;
+    score: number;
+    reasons: string[];
+}
+
+// TODO 12 quotation fields surfaced for comparison.
+interface OfferWithQuote extends NeedOffer {
+    scope_of_work?: string | null;
+    deliverables?: string | null;
+    exclusions?: string | null;
+    estimated_duration?: string | null;
+    terms?: string | null;
+    expires_at?: string | null;
+    revision_no?: number | null;
+}
 
 /**
  * Spec S14 /needs/my-needs/{id}/offers: the requester accepts or rejects
@@ -13,14 +33,20 @@ import type { NeedOffer, NeedRequestDetail } from '@/types';
  */
 export default function MyNeedOffers({ need_id }: { need_id: string }) {
     const { auth } = usePage().props as { auth?: { user?: { id: string } } };
+    const ask = useConfirm();
     const [need, setNeed] = useState<NeedRequestDetail | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
+    // TODO 11 explainable recommendations (owner-only endpoint).
+    const [matches, setMatches] = useState<ProviderMatch[]>([]);
 
     const load = useCallback(() => {
         api.get<{ data: NeedRequestDetail }>(`/api/need-requests/${need_id}`)
             .then((res) => setNeed(res.data))
             .catch((e) => setError(errorMessage(e, 'Could not load offers')));
+        api.get<{ data: { matches: ProviderMatch[] } }>(`/api/need-requests/${need_id}/matches`)
+            .then((res) => setMatches(res.data?.matches ?? []))
+            .catch(() => setMatches([]));
     }, [need_id]);
 
     useEffect(() => {
@@ -43,6 +69,21 @@ export default function MyNeedOffers({ need_id }: { need_id: string }) {
         }
         setBusy(false);
     };
+
+    const withdraw = async (offerId: string) => {
+        if (!(await ask({ title: 'Withdraw your offer?', description: 'This cannot be undone.', danger: true }))) return;
+        setBusy(true);
+        setError(null);
+        try {
+            await api.post(`/api/need-requests/${need_id}/offers/${offerId}/withdraw`);
+            load();
+        } catch (e) {
+            setError(errorMessage(e, 'Could not withdraw the offer'));
+        }
+        setBusy(false);
+    };
+
+    const isProvider = !!need && auth?.user?.id && auth.user.id !== need.user_id;
 
     return (
         <AppLayout title="Offers">
@@ -69,6 +110,21 @@ export default function MyNeedOffers({ need_id }: { need_id: string }) {
 
                 {!need && !error && <p className="text-sm text-gray-500">Loading...</p>}
 
+                {isOwner && matches.length > 0 && (
+                    <div className="rounded-lg border border-indigo-200 bg-indigo-50/50 p-4 dark:border-indigo-900 dark:bg-indigo-900/20">
+                        <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Recommended providers</h2>
+                        <p className="mt-0.5 text-xs text-gray-500">Ranked by category fit, service area, verification and track record.</p>
+                        <ul className="mt-2 space-y-2">
+                            {matches.map((m) => (
+                                <li key={m.user_id} className="text-sm">
+                                    <span className="font-medium text-gray-800 dark:text-gray-200">{m.display_name}</span>
+                                    <span className="text-gray-500"> — {m.reasons.join(' · ')}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+
                 {need && (need.offers ?? []).length === 0 && (
                     <div className="rounded-lg border border-gray-200 bg-white p-8 text-center dark:border-gray-700 dark:bg-gray-800">
                         <p className="font-medium text-gray-800 dark:text-gray-200">No offers yet</p>
@@ -78,45 +134,69 @@ export default function MyNeedOffers({ need_id }: { need_id: string }) {
 
                 {need && (need.offers ?? []).length > 0 && (
                     <ul className="space-y-3">
-                        {(need.offers ?? []).map((offer: NeedOffer) => (
+                        {(need.offers as OfferWithQuote[] ?? []).map((offer: OfferWithQuote) => (
                             <li key={offer.id} className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
                                 <div className="flex flex-wrap items-start justify-between gap-3">
                                     <div>
                                         <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
                                             {offer.provider?.name ?? 'Provider'} · {new Date(offer.created_at).toLocaleDateString()}
+                                            {(offer.revision_no ?? 1) > 1 && ` · rev ${offer.revision_no}`}
                                         </p>
                                         <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white">
                                             {need.currency} {offer.price}
                                         </p>
                                         {offer.message && <p className="mt-2 whitespace-pre-line text-sm text-gray-600 dark:text-gray-300">{offer.message}</p>}
+                                        {offer.scope_of_work && <p className="mt-1 text-sm text-gray-600 dark:text-gray-300"><span className="font-medium">Scope:</span> {offer.scope_of_work}</p>}
+                                        {offer.deliverables && <p className="mt-1 text-sm text-gray-600 dark:text-gray-300"><span className="font-medium">Deliverables:</span> {offer.deliverables}</p>}
+                                        {offer.estimated_duration && <p className="mt-1 text-sm text-gray-600 dark:text-gray-300"><span className="font-medium">Duration:</span> {offer.estimated_duration}</p>}
+                                        {offer.expires_at && <p className="mt-1 text-sm text-gray-600 dark:text-gray-300"><span className="font-medium">Valid until:</span> {new Date(offer.expires_at).toLocaleDateString()}</p>}
+                                        {offer.terms && <p className="mt-1 text-sm text-gray-600 dark:text-gray-300"><span className="font-medium">Terms:</span> {offer.terms}</p>}
                                         <span className={`mt-2 inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${
                                             offer.status === 'accepted' ? 'bg-green-100 text-green-700'
                                                 : offer.status === 'rejected' ? 'bg-red-100 text-red-700'
-                                                    : 'bg-blue-100 text-blue-700'
+                                                    : offer.status === 'expired' ? 'bg-gray-200 text-gray-600'
+                                                        : 'bg-blue-100 text-blue-700'
                                         }`}>
                                             {offer.status === 'pending' ? 'Awaiting decision' : offer.status}
                                         </span>
                                     </div>
                                     {canDecide && offer.status === 'pending' && (
                                         <div className="flex gap-2">
-                                            <button
+                                            <Button
                                                 type="button"
                                                 disabled={busy}
                                                 data-testid={`offer-accept-${offer.id}`}
                                                 onClick={() => decide(offer.id, 'accept')}
-                                                className="inline-flex items-center gap-1 rounded-md bg-green-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-green-500 disabled:opacity-50"
+                                                variant="success"
+                                                size="sm"
+                                                iconLeft={<Check className="h-4 w-4" />}
                                             >
-                                                <Check className="h-4 w-4" /> Accept
-                                            </button>
-                                            <button
+                                                Accept
+                                            </Button>
+                                            <Button
                                                 type="button"
                                                 disabled={busy}
                                                 data-testid={`offer-reject-${offer.id}`}
                                                 onClick={() => decide(offer.id, 'reject')}
-                                                className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:text-gray-200"
+                                                variant="outline"
+                                                size="sm"
+                                                iconLeft={<X className="h-4 w-4" />}
                                             >
-                                                <X className="h-4 w-4" /> Reject
-                                            </button>
+                                                Reject
+                                            </Button>
+                                        </div>
+                                    )}
+                                    {isProvider && offer.status === 'pending' && auth?.user?.id === offer.provider_id && (
+                                        <div className="flex gap-2">
+                                            <Button
+                                                type="button"
+                                                disabled={busy}
+                                                onClick={() => withdraw(offer.id)}
+                                                variant="outline"
+                                                size="sm"
+                                            >
+                                                Withdraw
+                                            </Button>
                                         </div>
                                     )}
                                 </div>

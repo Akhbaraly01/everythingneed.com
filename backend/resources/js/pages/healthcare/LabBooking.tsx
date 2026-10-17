@@ -1,6 +1,7 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, router } from '@inertiajs/react';
 import { api, errorMessage } from '@/lib/api';
+import { Button } from '@/components/shared/Button';
 import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
 import {TestTube, FileText, ArrowRight} from 'lucide-react';
@@ -117,13 +118,14 @@ export default function LabBooking({ test_id }: { test_id?: string }) {
                             placeholder="Any special requirements..."
                         />
                     </div>
-                    <button
+                    <Button
                         type="submit"
-                        disabled={submitting}
-                        className="w-full rounded-lg bg-blue-600 px-4 py-3 text-white hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                        loading={submitting}
+                        fullWidth
+                        iconRight={<ArrowRight className="h-4 w-4" />}
                     >
-                        {submitting ? 'Booking...' : 'Book Lab Test'} <ArrowRight className="h-4 w-4" />
-                    </button>
+                        Book Lab Test
+                    </Button>
                 </form>
             </div>
         </AppLayout>

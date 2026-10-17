@@ -9,6 +9,9 @@ import { useEffect, useState } from 'react';
 import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
 import { useWishlist } from '@/hooks/useWishlist';
 import Image from '@/components/shared/Image';
+import { Button } from '@/components/shared/Button';
+import VideoPlayer from '@/components/learn/VideoPlayer';
+import { resolvePlaybackSource } from '@/lib/video';
 
 interface ProductShowProps {
     product: Product;
@@ -31,6 +34,14 @@ export default function ProductShow({ product }: ProductShowProps) {
     const selectedVariant = activeVariants.find((v) => v.id === variantId) ?? null;
     const effectivePrice = selectedVariant ? Number(selectedVariant.price) : product.price;
     const effectiveStock = selectedVariant ? selectedVariant.stock_quantity : product.stock_quantity;
+
+    // Vendor-provided product video plays in-app (same resolver as lessons
+    // and the knowledge feed). Internal live-room links never render here.
+    const videoSource = product.video_url ?? product.production_video_url ?? null;
+    const playback = resolvePlaybackSource(videoSource);
+    const showVideo = Boolean(
+        playback && playback.provider !== 'jitsi' && (playback.playable || playback.provider === 'udemy'),
+    );
 
     useEffect(() => {
         recordView({
@@ -129,6 +140,23 @@ export default function ProductShow({ product }: ProductShowProps) {
                                 ))}
                             </div>
                         )}
+                        {showVideo && playback && (
+                            <div className="overflow-hidden rounded-lg bg-white shadow dark:bg-gray-800" data-testid="product-video">
+                                <p className="border-b border-gray-100 px-4 py-2 text-sm font-semibold text-gray-900 dark:border-gray-700 dark:text-white">
+                                    Product video
+                                </p>
+                                <VideoPlayer
+                                    post={{
+                                        id: product.id,
+                                        video_url: playback.url,
+                                        video_provider: playback.provider,
+                                        provider_video_id: playback.videoId,
+                                    }}
+                                    autoplay={false}
+                                    heartbeat={false}
+                                />
+                            </div>
+                        )}
                     </div>
 
                     {/* Details */}
@@ -173,21 +201,18 @@ export default function ProductShow({ product }: ProductShowProps) {
                                 <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Option</p>
                                 <div className="flex flex-wrap gap-2">
                                     {activeVariants.map((v) => (
-                                        <button
+                                        <Button
                                             key={v.id}
                                             type="button"
+                                            variant={v.id === variantId ? 'secondary' : 'outline'}
+                                            size="sm"
                                             onClick={() => setVariantId(v.id === variantId ? null : v.id)}
                                             disabled={v.stock_quantity <= 0 && v.id !== variantId}
-                                            className={`rounded-lg border px-3 py-2 text-sm transition disabled:cursor-not-allowed disabled:opacity-50 ${
-                                                v.id === variantId
-                                                    ? 'border-indigo-600 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300'
-                                                    : 'border-gray-300 text-gray-700 hover:border-indigo-400 dark:border-gray-600 dark:text-gray-300'
-                                            }`}
                                         >
                                             {v.name}
                                             <span className="ml-2 text-xs text-gray-500">{formatPrice(Number(v.price))}</span>
                                             {v.stock_quantity <= 0 && <span className="ml-1 text-xs text-red-500">- out</span>}
-                                        </button>
+                                        </Button>
                                     ))}
                                 </div>
                             </div>
@@ -215,26 +240,31 @@ export default function ProductShow({ product }: ProductShowProps) {
                         {/* Quantity + Add to Cart */}
                         <div className="flex items-center gap-4">
                             <div className="flex items-center rounded-lg border border-gray-300 dark:border-gray-600">
-                                <button
+                                <Button
+                                    variant="icon"
+                                    iconOnly
+                                    size="sm"
+                                    aria-label="Decrease quantity"
                                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                                    className="p-3 hover:bg-gray-50 dark:hover:bg-gray-700"
                                 >
                                     <Minus className="h-4 w-4" />
-                                </button>
+                                </Button>
                                 <span className="w-12 text-center font-medium">{quantity}</span>
-                                <button
+                                <Button
+                                    variant="icon"
+                                    iconOnly
+                                    size="sm"
+                                    aria-label="Increase quantity"
                                     onClick={() => setQuantity(quantity + 1)}
-                                    className="p-3 hover:bg-gray-50 dark:hover:bg-gray-700"
                                 >
                                     <Plus className="h-4 w-4" />
-                                </button>
+                                </Button>
                             </div>
-                            <button
+                            <Button
+                                variant={added ? 'success' : 'primary'}
+                                className="flex-1"
                                 onClick={handleAddToCart}
                                 disabled={adding || effectiveStock <= 0}
-                                className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-6 py-3 text-lg font-semibold text-white transition ${
-                                    added ? 'bg-green-600' : 'bg-indigo-600 hover:bg-indigo-500'
-                                } disabled:opacity-50`}
                             >
                                 {added ? (
                                     <><Check className="h-5 w-5" /> Added!</>
@@ -245,26 +275,26 @@ export default function ProductShow({ product }: ProductShowProps) {
                                 ) : (
                                     <><ShoppingCart className="h-5 w-5" /> Add to Cart</>
                                 )}
-                            </button>
-                            <button
+                            </Button>
+                            <Button
+                                variant="icon"
+                                iconOnly
+                                size="sm"
                                 onClick={handleWishlist}
                                 title={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
+                                aria-label={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
                                 aria-pressed={inWishlist}
-                                className={`rounded-lg border p-3 dark:border-gray-600 dark:hover:bg-gray-700 ${
-                                    inWishlist
-                                        ? 'border-red-300 bg-red-50 hover:bg-red-100 dark:border-red-800 dark:bg-red-900/20'
-                                        : 'border-gray-300 hover:bg-gray-50'
-                                }`}
                             >
                                 <Heart className={`h-6 w-6 ${inWishlist ? 'fill-current text-red-500' : 'text-gray-600 dark:text-gray-400'}`} />
-                            </button>
-                            <button
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
                                 onClick={handleCompare}
                                 title="Add to compare"
-                                className="rounded-lg border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700 dark:text-gray-300"
                             >
                                 Compare
-                            </button>
+                            </Button>
                         </div>
 
                         <div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-800">

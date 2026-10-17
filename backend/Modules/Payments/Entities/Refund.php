@@ -29,7 +29,7 @@ class Refund extends Model
 
     protected $casts = [
         'amount' => 'decimal:2',
-        'gateway_response' => 'array',
+        'gateway_response' => 'encrypted:array',
         'requested_at' => 'datetime',
         'reviewed_at' => 'datetime',
     ];

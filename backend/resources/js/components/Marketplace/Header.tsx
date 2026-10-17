@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { Link, router, usePage } from '@inertiajs/react';
 import {
     User,
@@ -13,9 +13,9 @@ import {
 } from 'lucide-react';
 import { useTheme } from '@/components/ThemeProvider';
 import { useLanguage } from '@/lib/use-language';
-import { type Language } from '@/lib/i18n-dict';
-import { LANGUAGES } from '@/lib/i18n-dict';
+import { type Language, LANGUAGES, LANGUAGE_NAMES } from '@/lib/i18n-dict';
 import { getInitials } from '@/lib/utils';
+import { Button } from '@/components/shared/Button';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import { useCartDrawer } from '@/components/cart/CartDrawerContext';
 import type { SiteNav, SiteNavItem } from '@/types';
@@ -100,6 +100,20 @@ export default function Header({
 
     const isDark = theme === 'dark';
 
+    // Fixed chrome: the bar never scrolls, so a measured spacer keeps page
+    // content from hiding underneath (robust across breakpoints/rows).
+    const headerRef = useRef<HTMLElement>(null);
+    const [spacerH, setSpacerH] = useState(0);
+    useLayoutEffect(() => {
+        const el = headerRef.current;
+        if (!el) return;
+        const measure = () => setSpacerH(el.offsetHeight);
+        measure();
+        const ro = new ResizeObserver(measure);
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, []);
+
     const getUserInitials = (): string => {
         if (user?.name) return getInitials(user.name);
         if (user?.email) return user.email[0].toUpperCase();
@@ -115,7 +129,13 @@ export default function Header({
     };
 
     return (
-        <div className="glass-2 sticky top-0 z-sticky border-b border-border/60">
+        <>
+            <div aria-hidden="true" style={{ height: spacerH }} />
+            <header
+                ref={headerRef}
+                data-testid="site-header"
+                className="glass-2 fixed inset-x-0 top-0 z-50 border-b border-border/60"
+            >
             <div className="container mx-auto px-3 py-2">
                 <div className="flex items-center gap-2">
                     <Link
@@ -140,21 +160,21 @@ export default function Header({
                     ) : (
                         <Link
                             href="/login"
-                            className="tap-safe flex h-9 w-9 items-center justify-center rounded-full text-foreground hover:bg-muted/70"
+                            className="icon-glass-3d tap-safe"
                             aria-label={t('nav.signIn')}
                         >
-                            <User className="h-5 w-5" />
+                            <User className="h-[18px] w-[18px]" />
                         </Link>
                     )}
 
                     <form
-                        className="flex-1 relative"
+                        className="search-capsule flex-1"
                         onSubmit={(e) => {
                             e.preventDefault();
                             submitSearch(query);
                         }}
                     >
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                         <input
                             type="search"
                             value={query}
@@ -164,39 +184,46 @@ export default function Header({
                             }}
                             placeholder={t('nav.searchPlaceholder')}
                             aria-label={t('nav.searchLabel')}
-                            className="h-9 w-full rounded-full border border-border/60 bg-background/70 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                         />
+                        <Button
+                            type="submit"
+                            size="sm"
+                            className="!h-8 !min-h-8 !w-8 !rounded-full !px-0"
+                            aria-label={t('nav.searchLabel')}
+                        >
+                            <Search className="h-3.5 w-3.5" aria-hidden="true" />
+                        </Button>
                     </form>
 
                     <button
                         type="button"
                         onClick={() => setTheme(isDark ? 'light' : 'dark')}
-                        className="tap-safe flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-foreground hover:bg-muted/70"
+                        className="icon-glass-3d tap-safe"
                         aria-label={t('nav.theme')}
                     >
-                        {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                        {isDark ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
                     </button>
 
                     <Link
                         href="/scan"
-                        className="tap-safe hidden h-9 w-9 shrink-0 items-center justify-center rounded-full text-foreground hover:bg-muted/70 sm:flex"
+                        className="icon-glass-3d tap-safe hidden sm:inline-flex"
                         aria-label={t('nav.scan')}
                     >
-                        <ScanQrCode className="h-5 w-5" />
+                        <ScanQrCode className="h-[18px] w-[18px]" />
                     </Link>
 
                     <details className="relative shrink-0">
                         <summary
-                            className="tap-safe flex h-9 cursor-pointer list-none items-center justify-center rounded-full px-1 text-foreground hover:bg-muted/70 [&::-webkit-details-marker]:hidden"
+                            className="icon-glass-3d tap-safe cursor-pointer list-none gap-0.5 px-1.5 [&::-webkit-details-marker]:hidden"
                             aria-label={t('nav.language')}
                         >
-                            <Languages className="h-5 w-5" />
-                            <span className="ml-0.5 text-[10px] font-bold uppercase">
+                            <Languages className="h-4 w-4" />
+                            <span className="text-[9px] font-bold uppercase">
                                 {language}
                             </span>
                         </summary>
                         <div className="glass-3 glass-edge absolute right-0 top-full z-modal mt-1 w-36 rounded-xl p-1">
-                            {(LANGUAGES as readonly string[]).map((code) => (
+                            {LANGUAGES.map((code) => (
                                 <button
                                     key={code}
                                     type="button"
@@ -208,7 +235,7 @@ export default function Header({
                                         language === code ? 'font-bold text-primary' : 'text-foreground'
                                     }`}
                                 >
-                                    {code === 'en' ? 'English' : code === 'es' ? 'Español' : 'Français'}
+                                    {LANGUAGE_NAMES[code]}
                                 </button>
                             ))}
                         </div>
@@ -216,21 +243,21 @@ export default function Header({
 
                     <Link
                         href={user ? '/tickets' : '/login'}
-                        className="tap-safe flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-foreground hover:bg-muted/70"
+                        className="icon-glass-3d tap-safe"
                         aria-label={t('nav.support')}
                     >
-                        <Headphones className="h-5 w-5" />
+                        <Headphones className="h-[18px] w-[18px]" />
                     </Link>
 
                     <button
                         type="button"
                         onClick={openCart}
-                        className="tap-safe relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-foreground hover:bg-muted/70"
+                        className="icon-glass-3d tap-safe relative"
                         aria-label={t('nav.cart')}
                     >
-                        <ShoppingCart className="h-5 w-5" />
+                        <ShoppingCart className="h-[18px] w-[18px]" />
                         {cartCount > 0 && (
-                            <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive p-0 text-[10px] font-medium text-destructive-foreground">
+                            <span className="badge-pop absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive p-0 text-[10px] font-medium text-destructive-foreground">
                                 {cartCount > 9 ? '9+' : cartCount}
                             </span>
                         )}
@@ -241,10 +268,10 @@ export default function Header({
                     ) : (
                         <Link
                             href="/login"
-                            className="tap-safe relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-foreground hover:bg-muted/70"
+                            className="icon-glass-3d tap-safe relative"
                             aria-label={t('nav.notificationsSignIn')}
                         >
-                            <User className="h-5 w-5" />
+                            <User className="h-[18px] w-[18px]" />
                         </Link>
                     )}
                 </div>
@@ -272,6 +299,7 @@ export default function Header({
                     )}
                 </nav>
             </div>
-        </div>
+            </header>
+        </>
     );
 }

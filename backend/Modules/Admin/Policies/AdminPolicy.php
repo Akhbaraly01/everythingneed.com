@@ -37,6 +37,7 @@ class AdminPolicy
             AppRole::AGRICULTURE_ADMIN, AppRole::BUILDING_ADMIN, AppRole::KYC_REVIEWER,
             AppRole::ANALYTICS_ADMIN, AppRole::ORDERS_ADMIN, AppRole::WALLET_ADMIN,
             AppRole::SUPPORT_ADMIN, AppRole::REAL_ESTATE_ADMIN, AppRole::NEEDS_ADMIN,
+            AppRole::NEEDS_VIEWER,
             AppRole::PAYOUT_REVIEWER, AppRole::REFUND_AGENT, AppRole::INVENTORY_MANAGER,
             AppRole::CMS_EDITOR, AppRole::AUDITOR, AppRole::ANALYST,
             AppRole::CATEGORY_ADMIN, AppRole::VENDOR_MANAGER, AppRole::CONTENT_ADMIN,

@@ -1,8 +1,9 @@
 import AppLayout from '@/layouts/AppLayout';
-import { Head, Link } from '@inertiajs/react';
-import { api } from '@/lib/api';
-import {User, Star, ArrowLeft, Clock} from 'lucide-react';
+import { Head, Link, usePage } from '@inertiajs/react';
+import { api, errorMessage } from '@/lib/api';
+import { User, Star, ArrowLeft, Clock } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import Image from '@/components/shared/Image';
 
 interface Expert {
@@ -17,14 +18,34 @@ interface Expert {
     years_experience?: number;
 }
 
+interface ExpertReview {
+    id: string;
+    rating: number;
+    comment?: string | null;
+    user_name?: string | null;
+    created_at: string;
+}
+
 interface ExpertProfileProps {
     expert_id: string;
 }
 
 export default function ExpertProfile({ expert_id }: ExpertProfileProps) {
+    const { props } = usePage();
+    const auth = (props.auth ?? null) as { user?: { id: string } } | null;
     const [expert, setExpert] = useState<Expert | null>(null);
     const [loading, setLoading] = useState(true);
     const [availability, setAvailability] = useState<Record<string, string[]>>({});
+    const [reviews, setReviews] = useState<ExpertReview[]>([]);
+    const [rating, setRating] = useState(5);
+    const [comment, setComment] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+
+    const loadReviews = () => {
+        api.get<{ data: ExpertReview[] }>(`/api/experts/${expert_id}/reviews?per_page=20`)
+            .then((res) => setReviews(Array.isArray(res.data) ? res.data : []))
+            .catch(() => setReviews([]));
+    };
 
     useEffect(() => {
         api.get<{ data: Expert }>(`/api/experts/${expert_id}`)
@@ -34,7 +55,28 @@ export default function ExpertProfile({ expert_id }: ExpertProfileProps) {
         api.get<{ data: Record<string, string[]> }>(`/api/experts/${expert_id}/availability`)
             .then((res) => setAvailability(res.data ?? {}))
             .catch(() => {});
+        loadReviews();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [expert_id]);
+
+    const submitReview = async () => {
+        if (!auth?.user) {
+            toast.error('Sign in to leave a review');
+            return;
+        }
+        setSubmitting(true);
+        try {
+            await api.post(`/api/experts/${expert_id}/review`, { rating, comment: comment.trim() || undefined });
+            toast.success('Review submitted');
+            setComment('');
+            setRating(5);
+            loadReviews();
+        } catch (e) {
+            toast.error(errorMessage(e, 'Could not submit review'));
+        } finally {
+            setSubmitting(false);
+        }
+    };
 
     if (loading) return <AppLayout title="Expert Profile"><p className="p-12 text-center text-gray-500">Loading...</p></AppLayout>;
     if (!expert) return <AppLayout title="Expert Profile"><p className="p-12 text-center text-red-500">Not found</p></AppLayout>;
@@ -93,6 +135,59 @@ export default function ExpertProfile({ expert_id }: ExpertProfileProps) {
                         </div>
                     </div>
                 )}
+
+                <div className="rounded-lg bg-white p-6 shadow dark:bg-gray-800" data-testid="expert-reviews">
+                    <h2 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                        <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" /> Client reviews
+                    </h2>
+                    <div className="mt-4 space-y-3">
+                        {reviews.length === 0 ? (
+                            <p className="text-sm text-gray-500">No reviews yet — be the first to share your experience.</p>
+                        ) : (
+                            reviews.map((r) => (
+                                <div key={r.id} className="border-b border-gray-100 pb-3 last:border-0 dark:border-gray-700">
+                                    <p className="flex items-center gap-1 text-sm">
+                                        <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+                                        <span className="font-semibold">{r.rating}/5</span>
+                                        <span className="text-gray-500">· {r.user_name ?? 'Verified client'}</span>
+                                    </p>
+                                    {r.comment && <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{r.comment}</p>}
+                                </div>
+                            ))
+                        )}
+                    </div>
+                    <div className="mt-4 border-t border-gray-100 pt-4 dark:border-gray-700">
+                        <div className="flex items-center gap-2">
+                            {[1, 2, 3, 4, 5].map((n) => (
+                                <button
+                                    key={n}
+                                    type="button"
+                                    onClick={() => setRating(n)}
+                                    aria-label={`Rate ${n} out of 5`}
+                                    className="tap-safe"
+                                >
+                                    <Star className={`h-6 w-6 ${n <= rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300 dark:text-gray-600'}`} />
+                                </button>
+                            ))}
+                        </div>
+                        <textarea
+                            value={comment}
+                            onChange={(e) => setComment(e.target.value)}
+                            rows={2}
+                            maxLength={1000}
+                            placeholder="Share your experience (optional)..."
+                            className="mt-2 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => void submitReview()}
+                            disabled={submitting}
+                            className="btn-3d mt-2 px-5 py-2 text-xs font-semibold disabled:opacity-60"
+                        >
+                            {submitting ? 'Submitting…' : 'Submit review'}
+                        </button>
+                    </div>
+                </div>
             </div>
         </AppLayout>
     );

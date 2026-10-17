@@ -1,5 +1,5 @@
 import AppLayout from '@/layouts/AppLayout';
-import {Head, usePage} from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import type { Hotel, HotelRoom } from '@/types';
 import {MapPin, Star, Wifi, Car, Coffee, Users} from 'lucide-react';
 import { formatPrice } from '@/lib/currency';
@@ -87,6 +87,12 @@ export default function HotelShow({ hotel }: HotelShowProps) {
                                     <div className="text-right">
                                         <p className="text-xl font-bold text-gray-900 dark:text-white">{formatPrice(room.price_per_night)}</p>
                                         <p className="text-xs text-gray-500">per night</p>
+                                        <Link
+                                            href={`/hotels/${hotel.id}/rooms/${room.id}`}
+                                            className="mt-2 inline-block rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500"
+                                        >
+                                            View details
+                                        </Link>
                                     </div>
                                 </div>
                             ))

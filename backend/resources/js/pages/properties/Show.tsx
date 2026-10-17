@@ -1,15 +1,35 @@
 import AppLayout from '@/layouts/AppLayout';
-import {Head, Link} from '@inertiajs/react';
+import {Head, Link, router, usePage} from '@inertiajs/react';
 import type { Property } from '@/types';
 import { formatPrice } from '@/lib/currency';
-import {MapPin, Bed, Bath, Maximize, Building2} from 'lucide-react';
+import {MapPin, Bed, Bath, Maximize, Building2, Heart} from 'lucide-react';
 import Image from '@/components/shared/Image';
+import { useWishlist } from '@/hooks/useWishlist';
+import { errorMessage } from '@/lib/api';
+import { toast } from 'sonner';
 
 interface PropertyShowProps {
     property: Property;
 }
 
 export default function PropertyShow({ property }: PropertyShowProps) {
+    const { auth } = usePage().props as { auth?: { user?: { id: string } } };
+    const { has: isSaved, toggle: toggleSaved } = useWishlist('property');
+    const saved = isSaved(property.id);
+
+    const handleSave = async () => {
+        if (!auth?.user) {
+            router.visit('/login');
+            return;
+        }
+        try {
+            const nowSaved = await toggleSaved(property.id);
+            toast.success(nowSaved ? 'Property saved' : 'Removed from saved homes');
+        } catch (e) {
+            toast.error(errorMessage(e, 'Could not save property'));
+        }
+    };
+
     return (
         <AppLayout>
             <Head title={property.title} />
@@ -39,12 +59,28 @@ export default function PropertyShow({ property }: PropertyShowProps) {
                             </div>
                             <p className="mt-4 text-3xl font-bold text-gray-900 dark:text-white">{formatPrice(property.price)}</p>
 
-                            <Link
-                                href={`/properties/${property.id}/inquiry`}
-                                className="mt-4 inline-block rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500"
-                            >
-                                Enquire About This Property
-                            </Link>
+                            <div className="mt-4 flex items-center gap-3">
+                                <Link
+                                    href={`/properties/${property.id}/inquiry`}
+                                    className="inline-block rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500"
+                                >
+                                    Enquire About This Property
+                                </Link>
+                                <button
+                                    type="button"
+                                    onClick={handleSave}
+                                    aria-pressed={saved}
+                                    aria-label={saved ? 'Remove from saved homes' : 'Save this home'}
+                                    className={`inline-flex items-center gap-1.5 rounded-lg border px-4 py-2.5 text-sm font-semibold transition ${
+                                        saved
+                                            ? 'border-red-300 bg-red-50 text-red-600 dark:border-red-700 dark:bg-red-900/20 dark:text-red-400'
+                                            : 'border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700'
+                                    }`}
+                                >
+                                    <Heart className={`h-4 w-4 ${saved ? 'fill-current' : ''}`} />
+                                    {saved ? 'Saved' : 'Save'}
+                                </button>
+                            </div>
 
                             <div className="mt-6 grid grid-cols-3 gap-4">
                                 {property.bedrooms != null && (

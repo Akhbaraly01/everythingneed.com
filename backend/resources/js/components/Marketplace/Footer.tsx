@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import { api } from '@/lib/api';
+import { useLanguage } from '@/lib/use-language';
 import type { SiteNav } from '@/types';
 import {
     Facebook,
@@ -38,6 +39,7 @@ interface FooterProps {
 }
 
 export default function Footer({ socialLinks = {}, appLinks = {} }: FooterProps) {
+    const { t } = useLanguage();
     const currentYear = new Date().getFullYear();
     const { uiTexts, siteNav } = usePage().props as {
         uiTexts?: { ui?: Record<string, { label?: string; value?: string }> };
@@ -63,7 +65,7 @@ export default function Footer({ socialLinks = {}, appLinks = {} }: FooterProps)
         const value = email.trim();
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
             setSubState('error');
-            setSubMessage('Enter a valid email address.');
+            setSubMessage(t('footer.newsInvalid'));
             return;
         }
         setSubState('sending');
@@ -71,11 +73,11 @@ export default function Footer({ socialLinks = {}, appLinks = {} }: FooterProps)
         try {
             await api.post('/api/newsletter/subscribe', { email: value });
             setSubState('done');
-            setSubMessage('Subscribed! Watch your inbox for deals.');
+            setSubMessage(t('footer.newsDone'));
             setEmail('');
         } catch {
             setSubState('error');
-            setSubMessage('Could not subscribe. Please try again.');
+            setSubMessage(t('footer.newsFail'));
         }
     };
 
@@ -92,7 +94,7 @@ export default function Footer({ socialLinks = {}, appLinks = {} }: FooterProps)
           }))
         : [
               {
-                  title: 'CATEGORIES',
+                  title: t('footer.categories'),
                   links: [
                       { name: 'Electronics', path: '/products?category=electronics' },
                       { name: 'Fashion', path: '/products?category=fashion' },
@@ -101,7 +103,7 @@ export default function Footer({ socialLinks = {}, appLinks = {} }: FooterProps)
                   ],
               },
               {
-                  title: 'MY ACCOUNT',
+                  title: t('footer.account'),
                   links: [
                       { name: 'Dashboard', path: '/dashboard' },
                       { name: 'My Orders', path: '/orders' },
@@ -111,7 +113,7 @@ export default function Footer({ socialLinks = {}, appLinks = {} }: FooterProps)
                   ],
               },
               {
-                  title: 'SUPPORT',
+                  title: t('footer.support'),
                   links: [
                       { name: 'Contact Us', path: '/tickets/create' },
                       { name: 'Help Center', path: '/p/about-everythingneed' },
@@ -123,11 +125,11 @@ export default function Footer({ socialLinks = {}, appLinks = {} }: FooterProps)
     return (
         <footer className="glass-1 border-t border-border/60 text-card-foreground relative">
             <div aria-hidden className="h-1 w-full" style={{ backgroundImage: 'var(--gradient-primary)' }} />
-            <div className="container mx-auto px-4 py-6">
+            <div className="container mx-auto px-4 pb-6 pt-4">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4" data-testid="site-nav-footer">
                     {footerColumns.map((column) => (
                         <div key={column.title}>
-                            <h4 className="font-bold text-foreground mb-4 text-lg">{column.title}</h4>
+                            <h4 className="font-bold text-foreground mb-3 text-base md:text-lg">{column.title}</h4>
                             <ul className="space-y-2">
                                 {column.links.map((link) => (
                                     <li key={`${column.title}-${link.name}-${link.path}`}>
@@ -140,7 +142,7 @@ export default function Footer({ socialLinks = {}, appLinks = {} }: FooterProps)
                         </div>
                     ))}
                     <div className="col-span-2 md:col-span-1">
-                        <h4 className="font-bold text-foreground mb-4 text-lg">GET IN TOUCH</h4>
+                        <h4 className="font-bold text-foreground mb-3 text-base md:text-lg">{t('footer.contact')}</h4>
                         <div className="space-y-3">
                             <div className="flex items-start gap-3">
                                 <HomeIcon className="h-5 w-5 text-primary mt-0.5 shrink-0" />
@@ -154,7 +156,7 @@ export default function Footer({ socialLinks = {}, appLinks = {} }: FooterProps)
                             </div>
                             <div className="flex items-center gap-3">
                                 <Mail className="h-5 w-5 text-primary shrink-0" />
-                                <a href="mailto:support@everythingneed.com" className="text-sm text-muted-foreground hover:text-foreground">
+                                <a href="mailto:support@everythingneed.com" className="text-sm text-muted-foreground hover:text-foreground break-all">
                                     support@everythingneed.com
                                 </a>
                             </div>
@@ -180,8 +182,8 @@ export default function Footer({ socialLinks = {}, appLinks = {} }: FooterProps)
                 <div className="bg-muted rounded-lg p-4 mb-4 mt-6">
                     <div className="flex flex-col md:flex-row items-center justify-between gap-3">
                         <div className="text-center md:text-left">
-                            <h3 className="text-sm font-bold text-foreground mb-1">Subscribe to our newsletter</h3>
-                            <p className="text-muted-foreground text-xs">Get exclusive deals and updates</p>
+                            <h3 className="text-sm font-bold text-foreground mb-1">{t('footer.newsTitle')}</h3>
+                            <p className="text-muted-foreground text-xs">{t('footer.newsText')}</p>
                         </div>
                         <form onSubmit={(e) => void subscribe(e)} className="w-full md:w-auto">
                             <div className="flex w-full md:w-auto gap-2">
@@ -189,17 +191,17 @@ export default function Footer({ socialLinks = {}, appLinks = {} }: FooterProps)
                                     type="email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    placeholder="Enter your email"
-                                    aria-label="Email for newsletter"
+                                    placeholder={t('footer.emailPh')}
+                                    aria-label={t('footer.emailPh')}
                                     className="max-w-xs flex-1 rounded-md bg-background border border-border text-foreground placeholder:text-muted-foreground h-8 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                                 />
                                 <button
                                     type="submit"
                                     disabled={subState === 'sending'}
-                                    className="shrink-0 inline-flex items-center rounded-md bg-primary text-primary-foreground hover:opacity-90 h-8 px-3 text-sm font-medium disabled:opacity-60"
+                                    className="btn-3d shrink-0 inline-flex items-center !rounded-md bg-primary text-primary-foreground hover:opacity-90 h-8 !px-3 !text-sm font-medium !min-h-0 disabled:opacity-60"
                                 >
                                     <Send className="h-3 w-3 mr-1" />
-                                    {subState === 'sending' ? 'Joining…' : 'Subscribe'}
+                                    {subState === 'sending' ? t('common.loading') : t('footer.subscribe')}
                                 </button>
                             </div>
                             {subMessage && (

@@ -1,6 +1,7 @@
 # Admin & Workspace Authorization Matrix
 
-Single-page reference for the W1-W2 authorization platform (38-role roster,
+Single-page reference for the W1-W2 authorization platform (40-role roster
+since TODO 21 `needs_viewer`,
 canonical permissions, per-user grants, row scopes, console parity, dashboard
 queue gating).
 Machine-readable sources that this document mirrors:
@@ -9,7 +10,7 @@ Machine-readable sources that this document mirrors:
 - `routes/web.php` (admin section) — server-side `role:` middleware gates for pages (the only page authority).
 - `Modules/Admin/Routes/api.php` + `Modules/*/Routes/api.php` — API gates (`can:` policies, `role:`, `permission:`).
 - `Modules/Admin/Policies/AdminPolicy.php` — Gate definitions for `can:` routes.
-- `database/seeders/PermissionSeeder.php` - `CATALOG` (184 canonical permissions) + `MATRIX` (39 roles).
+- `database/seeders/PermissionSeeder.php` - `CATALOG` (210 canonical permissions, counted 2026-10-16) + `MATRIX` (40 roles).
 - `resources/js/config/consoleNavigation.ts` — sidebar registry (UX only; visibility = `workspace.adminHrefs` ∩ optional per-entry `permission`).
 - Tests: `AdminAuthorizationMatrixTest` (35 role page allow/deny), `AdminRoleAuthorizationSuiteTest` (35 role API allow/deny, 27 probes),
   `AdminConsoleApiParityTest`, `ConsoleNavPermissionTest`, `PermissionMiddlewareTest`, `PermissionScopeTest`,
@@ -34,17 +35,17 @@ Four separate concerns, each with one authority:
   role-scanned from route middleware) and `auth` (`roles`, effective `permissions` = role matrix ∪
   per-user grants, `['*']` for `super_admin`) — see `HandleInertiaRequests`.
 
-## 2. Role catalog (39 roles, L0-L3) and landings
+## 2. Role catalog (40 roles, L0-L3) and landings
 
 Canonical set: `AdminRbacController::ROLES` == `AppRole::values()` == `PermissionSeeder::MATRIX`
-keys (asserted by `CanonicalRolesTest` + `AdminRoleAuthorizationSuiteTest::test_roster_has_35_roles`).
+keys (asserted by `CanonicalRolesTest` + `AdminRoleAuthorizationSuiteTest::test_roster_has_40_roles`).
 
 | Tier | Roles |
 |---|---|
 | L0 | `super_admin` |
 | L1 | `platform_ops`, `security_admin`, `finance_admin`, `customer_service`, `content_manager`, `analytics_admin`, `administrator` |
-| L2 | `marketplace_admin`, `orders_admin`, `vendor_admin`, `wallet_admin`, `support_admin`, `healthcare_admin`, `learning_admin`, `hotel_admin`, `food_admin`, `transport_admin`, `jobs_admin`, `real_estate_admin`, `building_admin`, `agriculture_admin`, `pharmacy_admin`, `needs_admin` |
-| L3 | `moderator`, `kyc_reviewer`, `payout_reviewer`, `refund_agent`, `inventory_manager`, `cms_editor`, `support_agent`, `auditor`, `analyst` |
+| L2 | `marketplace_admin`, `orders_admin`, `vendor_admin`, `wallet_admin`, `support_admin`, `healthcare_admin`, `learning_admin`, `hotel_admin`, `food_admin`, `transport_admin`, `jobs_admin`, `real_estate_admin`, `building_admin`, `agriculture_admin`, `pharmacy_admin`, `needs_admin`, `category_admin`, `vendor_manager`, `content_admin` |
+| L3 | `moderator`, `kyc_reviewer`, `payout_reviewer`, `refund_agent`, `inventory_manager`, `cms_editor`, `support_agent`, `auditor`, `analyst`, `learning_reviewer`, `needs_viewer` (TODO 21 read-only needs triage) |
 | Customer | `worker`, `user` |
 
 Landings (first match in `landing_priority` wins; full map in `config/workspace.php`):
@@ -61,7 +62,7 @@ Landings (first match in `landing_priority` wins; full map in `config/workspace.
 | `auditor` | `/admin/audit-logs` | | `vendor_admin` | `/vendor` |
 | `worker` | `/provider` | | `user` (no role) | `/dashboard` |
 
-Console membership: `admin_console_roles` (33 — all but `vendor_admin`, `worker`, `user`),
+Console membership: `admin_console_roles` (37 — all but `vendor_admin`, `worker`, `user`),
 `provider_console_roles` (`worker`), `vendor_console_roles` (`vendor_admin`).
 
 ## 3. Admin page route gates (`routes/web.php`)
@@ -70,7 +71,7 @@ Server middleware is the only authority. Every admin page sits under `role:` gro
 
 | Path(s) | Allowed roles |
 |---|---|
-| `/admin`, `/admin/dashboard` | the 33 `admin_console_roles` |
+| `/admin`, `/admin/dashboard` | the 37 `admin_console_roles` |
 | `/admin/approvals`, `/admin/categories` | `super_admin`, `administrator`, `marketplace_admin`, `platform_ops`, `moderator` |
 | `/admin/departments` | `super_admin`, `administrator`, `customer_service`, `support_agent`, `support_admin` |
 | `/admin/audit-logs` | `super_admin`, `security_admin`, `auditor` |
@@ -112,7 +113,7 @@ that list (`AdminDetailRoutesTest`).
 
 | Gate / middleware | Endpoints (examples) | Allowed roles |
 |---|---|---|
-| `can:viewDashboard` | `/api/admin/stats` | 33 console roles |
+| `can:viewDashboard` | `/api/admin/stats` | 37 console roles |
 | `can:manageUsers` | `/api/admin/users*`, `/api/admin/roles`, `/api/admin/permissions` | `super_admin`, `administrator`, `security_admin` — but `POST /api/admin/users` (W8 create) additionally requires `permission:users.users.create`, which only `super_admin` + `administrator` hold (security_admin can read/role/suspend, not provision) |
 | `can:manageVendors` | `/api/admin/vendors*` | `super_admin`, `administrator`, `vendor_admin`, `platform_ops` |
 | `can:manageOrders` | `/api/admin/orders*` | `super_admin`, `administrator`, `platform_ops`, `orders_admin`, `refund_agent` |
@@ -142,11 +143,11 @@ Note deliberate pins: `finance_admin` is **not** in `manageOrders` (403 on order
 
 ## 5. Permission model (canonical naming, grants, scopes)
 
-- **Catalog**: `PermissionSeeder::CATALOG` — 140 entries, `module.resource.action` (entity modules
+- **Catalog**: `PermissionSeeder::CATALOG` — 210 entries, `module.resource.action` (entity modules
   double: `orders.orders.view`; console-wide: `{module}.overview.{action}`; specials:
   `inventory.stock.*`, `support.tickets.*`, `kyc.applications.*`, `audit.logs.*`,
   `users.permissions.manage`).
-- **Role matrix**: `PermissionSeeder::MATRIX` (39 roles, prefix grants `orders.*` expanded at seed).
+- **Role matrix**: `PermissionSeeder::MATRIX` (40 roles, prefix grants `orders.*` expanded at seed).
   Idempotent `run()` (delete+insert per role) + `Cache::forget('rbac.matrix')`. Runtime grants/revokes
   via `/api/admin/rbac/*` (`PermissionService::grantRolePermission/revokeRolePermission`).
 - **Per-user grants (W1.5)**: `user_permissions` (uuid, user_id, permission, granted_by, note;
@@ -199,7 +200,7 @@ Pinned by `PermissionMiddlewareTest` (5 tests).
 ## 7. Console navigation (UX only)
 
 - `consoleNavigation.ts`: one entry per admin page route; every entry declares a canonical
-  `permission` (documented exemption: **Dashboard** — no single catalog permission spans all 33
+  `permission` (documented exemption: **Dashboard** — no single catalog permission spans all 37
   console roles). `ConsoleLayout` filters by `workspace.adminHrefs` ∩ `auth.permissions`
   (`*` bypasses). Contract test: `ConsoleNavPermissionTest` — permission ∈ CATALOG and every role on
   the route's `role:` list holds it in the seeded matrix (the UX filter can never hide a page its
@@ -246,8 +247,8 @@ Parity is test-enforced: `AppRole` == `AdminRbacController::ROLES` (35) == `Perm
 
 | Suite | Contract |
 |---|---|
-| `AdminRoleAuthorizationSuiteTest` (W1.8, roster now 39) | all 39 roles x 27 API probes: allow = not 401/403, deny = exactly 403 (35 -> 38 in Wave P §65, 38 -> 39 in Phase L-A with `learning_reviewer`) |
-| `AdminAuthorizationMatrixTest` (W1.8, roster now 39) | all 39 roles x pages: allow = 200, deny = 302 -> own landing + error flash; registry <-> route parity (extended 21 -> 35 -> 38 -> 39) |
+| `AdminRoleAuthorizationSuiteTest` (W1.8, roster now 40) | all 40 roles x 27 API probes: allow = not 401/403, deny = exactly 403 (35 -> 38 in Wave P §65, 38 -> 39 in Phase L-A with `learning_reviewer`, 39 -> 40 in TODO 21 with `needs_viewer`) |
+| `AdminAuthorizationMatrixTest` (W1.8, roster now 40) | all 40 roles x pages: allow = 200, deny = 302 -> own landing + error flash; registry <-> route parity (extended 21 -> 35 -> 38 -> 39 -> 40) |
 | `AdminConsoleApiParityTest` | each console role loads its console's primary API (no 401/403 leaks); `user` denied |
 | `PermissionScopeTest` (W1.6) | scope API contract, OWN/VENDOR/DOMAIN enforcement, deferred scopes no-op, super bypass, user-beats-role, upsert |
 | `PermissionMiddlewareTest` (W1.7) | exact / OR / AND / wildcard / guest / per-user grants through middleware |

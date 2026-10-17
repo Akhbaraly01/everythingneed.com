@@ -2,6 +2,7 @@ import AppLayout from '@/layouts/AppLayout';
 import { Head, Link } from '@inertiajs/react';
 import { api, errorMessage } from '@/lib/api';
 import { NEED_STATUS_LABELS, needStatusClasses } from '@/lib/needs';
+import { Button } from '@/components/shared/Button';
 import { ArrowLeft, Star } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { NeedRequestDetail } from '@/types';
@@ -11,6 +12,7 @@ interface ReviewRow {
     rating: number;
     comment?: string | null;
     created_at: string;
+    provider_response?: string | null;
 }
 
 /**
@@ -112,6 +114,12 @@ export default function MyNeedReview({ need_id }: { need_id: string }) {
                             </p>
                             {existing.comment && <p className="mt-2 whitespace-pre-line text-sm text-gray-700 dark:text-gray-200">{existing.comment}</p>}
                             <p className="mt-2 text-xs text-gray-500">Submitted {new Date(existing.created_at).toLocaleDateString()}</p>
+                            {existing.provider_response && (
+                                <div className="mt-3 rounded-md bg-white p-3 dark:bg-gray-800">
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Provider response</p>
+                                    <p className="mt-1 whitespace-pre-line text-sm text-gray-700 dark:text-gray-200">{existing.provider_response}</p>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -128,7 +136,7 @@ export default function MyNeedReview({ need_id }: { need_id: string }) {
                                 <span id="rating-label" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Your rating</span>
                                 <div className="mt-1 flex gap-1" role="radiogroup" aria-labelledby="rating-label">
                                     {[1, 2, 3, 4, 5].map((v) => (
-                                        <button
+                                        <Button
                                             key={v}
                                             type="button"
                                             role="radio"
@@ -137,10 +145,12 @@ export default function MyNeedReview({ need_id }: { need_id: string }) {
                                             onClick={() => setRating(v)}
                                             onMouseEnter={() => setHovered(v)}
                                             onMouseLeave={() => setHovered(0)}
-                                            className="p-1"
+                                            variant="icon"
+                                            iconOnly
+                                            size="sm"
                                         >
                                             <Star className={`h-7 w-7 ${v <= display ? 'fill-amber-400 text-amber-400' : 'text-gray-300 dark:text-gray-600'}`} />
-                                        </button>
+                                        </Button>
                                     ))}
                                 </div>
                             </div>
@@ -156,15 +166,16 @@ export default function MyNeedReview({ need_id }: { need_id: string }) {
                                     className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                 />
                             </div>
-                            <button
+                            <Button
                                 type="button"
                                 onClick={submit}
-                                disabled={busy}
+                                loading={busy}
                                 data-testid="review-submit"
-                                className="w-full rounded-lg bg-indigo-600 px-6 py-3 text-lg font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
+                                size="lg"
+                                fullWidth
                             >
-                                {busy ? 'Submitting...' : 'Submit review'}
-                            </button>
+                                Submit review
+                            </Button>
                         </div>
                     )}
                 </div>

@@ -30,7 +30,6 @@ class EnableTwoFactor
 
     private function generateQrCodeUrl(string $email, string $secret): string
     {
-        $otpauth = "otpauth://totp/EverythingNeed:{$email}?secret={$secret}&issuer=EverythingNeed";
-        return "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($otpauth);
+        return \Core\Support\TotpQrRenderer::dataUri($email, $secret);
     }
 }

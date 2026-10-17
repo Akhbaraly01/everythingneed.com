@@ -2,8 +2,11 @@ import AppLayout from '@/layouts/AppLayout';
 import {Head, Link} from '@inertiajs/react';
 import { api, errorMessage } from '@/lib/api';
 import { toast } from 'sonner';
-import {CheckCircle, PlayCircle, ArrowRight, Download, NotebookPen} from 'lucide-react';
+import {CheckCircle, PlayCircle, ArrowRight, Download, NotebookPen, Video} from 'lucide-react';
 import {useEffect, useState} from 'react';
+import VideoPlayer from '@/components/learn/VideoPlayer';
+import VideoRoom from '@/components/media/VideoRoom';
+import { resolvePlaybackSource, meetingRoomName } from '@/lib/video';
 
 interface Lesson {
     id: string;
@@ -38,12 +41,14 @@ function sanitizeHtml(html: string): string {
 }
 
 export default function CourseLesson({ course, lesson, nextLessonId, prevLessonId, progress, is_enrolled }: CourseLessonProps) {
+    const playback = resolvePlaybackSource(lesson.video_url);
     const [completing, setCompleting] = useState(false);
     const [completed, setCompleted] = useState(false);
     const [note, setNote] = useState('');
     const [noteSaved, setNoteSaved] = useState(false);
     const [noteError, setNoteError] = useState<string | null>(null);
     const [savingNote, setSavingNote] = useState(false);
+    const [classOpen, setClassOpen] = useState(false);
 
     useEffect(() => {
         if (!is_enrolled) return;
@@ -111,9 +116,79 @@ export default function CourseLesson({ course, lesson, nextLessonId, prevLessonI
                 {/* Video / Content */}
                 <div className="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
                     {lesson.video_url ? (
-                        <div className="aspect-video">
-                            <iframe src={lesson.video_url} className="h-full w-full rounded-lg" allowFullScreen />
-                        </div>
+                        playback?.provider === 'jitsi' ? (
+                            classOpen ? (
+                                <div className="space-y-3">
+                                    <VideoRoom
+                                        provider="jitsi"
+                                        room={meetingRoomName(playback.url)}
+                                        joinUrl={playback.url}
+                                    />
+                                    <button
+                                        onClick={() => setClassOpen(false)}
+                                        className="text-sm font-medium text-gray-500 hover:text-gray-700"
+                                    >
+                                        Leave class
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-lg bg-gray-100 p-6 text-center dark:bg-gray-800">
+                                    <Video className="h-8 w-8 text-red-500" />
+                                    <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                                        This lesson is a live class
+                                    </p>
+                                    <p className="max-w-md text-xs text-gray-500">
+                                        Join the room right here — the instructor runs this same session, and no link leaves
+                                        the app.
+                                    </p>
+                                    <button
+                                        onClick={() => setClassOpen(true)}
+                                        className="mt-1 rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+                                    >
+                                        Join live class
+                                    </button>
+                                </div>
+                            )
+                        ) : playback && !playback.playable && playback.provider !== 'udemy' ? (
+                            <div className="flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-lg bg-gray-100 p-6 text-center dark:bg-gray-800">
+                                <Video className="h-8 w-8 text-gray-400" />
+                                <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                                    This live class runs on {playback.provider === 'meet' ? 'Google Meet' : 'Zoom'}
+                                </p>
+                                <p className="max-w-md text-xs text-gray-500">
+                                    {playback.provider === 'meet' ? 'Google Meet' : 'Zoom'} does not allow embedding in other
+                                    apps, so it cannot play inside the app. Ask the instructor for a Jitsi link or a
+                                    recorded YouTube/Vimeo lesson.
+                                </p>
+                                <a
+                                    href={playback.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="mt-1 text-xs font-medium text-indigo-600 underline hover:text-indigo-500"
+                                >
+                                    Open on {playback.provider === 'meet' ? 'Google Meet' : 'Zoom'} (leaves the app)
+                                </a>
+                            </div>
+                        ) : playback ? (
+                            <VideoPlayer
+                                post={{
+                                    id: lesson.id,
+                                    video_url: playback.url,
+                                    video_provider: playback.provider,
+                                    provider_video_id: playback.videoId,
+                                }}
+                                autoplay={false}
+                                heartbeat={false}
+                            />
+                        ) : (
+                            <div className="flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-lg bg-gray-100 p-6 text-center dark:bg-gray-800">
+                                <PlayCircle className="h-8 w-8 text-gray-400" />
+                                <p className="text-sm text-gray-500">
+                                    This lesson's video link can't be embedded in the app. Ask the instructor for an
+                                    uploaded file or a YouTube/Vimeo link.
+                                </p>
+                            </div>
+                        )
                     ) : lesson.content ? (
                         <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: sanitizeHtml(lesson.content) }} />
                     ) : (

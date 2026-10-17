@@ -31,6 +31,20 @@ export default function Jobs({ jobs }: JobsProps) {
     return (
         <AppLayout title="Jobs">
             <Head title="Jobs" />
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Jobs</h1>
+                <div className="flex flex-wrap gap-2">
+                    <Link href="/jobs/search" className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
+                        Search
+                    </Link>
+                    <Link href="/jobs/profile" className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
+                        Employer profile
+                    </Link>
+                    <Link href="/jobs/create" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
+                        Post a job
+                    </Link>
+                </div>
+            </div>
             <div className="space-y-4">
                 {list.map((job) => (
                     <Link key={job.id} href={`/jobs/${job.id}`} className="block rounded-lg bg-white p-6 shadow hover:shadow-md dark:bg-gray-800">

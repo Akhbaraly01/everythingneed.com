@@ -8,6 +8,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Modules\Admin\Entities\HomePageSection;
 use Modules\BuildingServices\Entities\ServiceWorker;
 use Modules\Categories\Entities\Category;
 use Modules\Checkout\Entities\Cart;
@@ -62,12 +65,16 @@ class HomePageController extends Controller
      */
     private function marketplaceData(): array
     {
-        // Gap 5: denser discovery grid (24/page) with page-based load-more so
-        // the home feed surfaces more real inventory without a full reload.
+        // Home rebuild: first paint carries one batch (Super Admin owns the
+        // size via home.products_per_batch); InfiniteProductFeed continues
+        // from page 2 through /api/home/feed with the same per-page size so
+        // continuation pages never duplicate the first paint.
+        $perBatch = $this->productsPerBatch();
+
         $products = Product::with('vendor:id,store_name')
             ->where('is_active', true)
             ->orderByDesc('created_at')
-            ->paginate(24)
+            ->paginate($perBatch)
             ->withQueryString()
             ->through(fn (Product $product) => [
                 'id' => $product->id,
@@ -88,13 +95,67 @@ class HomePageController extends Controller
 
         return [
             'products' => $products,
+            'productsPerBatch' => $perBatch,
+            'homeSections' => $this->homeSections(),
             'categories' => $categories,
             'learning' => $this->learningCards(),
             'healthcareCards' => $this->healthcareCards(),
             'topExperts' => $this->topExperts(),
             'cartCount' => $this->cartCount(),
             'sections' => $this->sections(),
+            // Spec 88/17: crawlable head data (honest vertical list only).
+            'seo' => [
+                'title' => 'EverythingNeed — Products, Services, Learning & Healthcare',
+                'description' => 'Discover products, book services, learn new skills, and find healthcare providers on EverythingNeed.',
+                'canonical' => url('/'),
+                'robots' => 'index,follow',
+            ],
         ];
+    }
+
+    /**
+     * Storefront batch size (Super Admin setting, default 12). Missing table
+     * or value (fresh install before seeding) falls back to the default.
+     */
+    private function productsPerBatch(): int
+    {
+        try {
+            $value = Cache::remember('home_products_per_batch', 300, function () {
+                return DB::table('system_settings')
+                    ->where('key', 'home.products_per_batch')
+                    ->value('value');
+            });
+
+            $size = (int) ($value ?? 12);
+
+            return max(4, min(48, $size));
+        } catch (\Throwable) {
+            return 12;
+        }
+    }
+
+    /**
+     * Admin-ordered, active-only Home builder sections (Home rebuild).
+     * Unknown slugs are passed through — the frontend skips slugs it cannot
+     * resolve, so custom sections never fabricate content. Always a list.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function homeSections(): array
+    {
+        try {
+            return HomePageSection::active()->ordered()->get()
+                ->map(fn (HomePageSection $section) => [
+                    'id' => $section->id,
+                    'name' => $section->name,
+                    'slug' => $section->slug,
+                    'is_active' => (bool) $section->is_active,
+                    'order' => (int) $section->order,
+                ])
+                ->all();
+        } catch (\Throwable) {
+            return [];
+        }
     }
 
     /**

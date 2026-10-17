@@ -39,6 +39,7 @@ import {
     LayoutGrid,
     FormInput,
     HeartHandshake,
+    Flag,
     type LucideIcon,
 } from 'lucide-react';
 
@@ -96,6 +97,7 @@ export const adminNavigation: ConsoleNavItem[] = [
 
     // Content
     { label: 'CMS', href: '/admin/cms', icon: Building2, group: 'Content', permission: 'cms.pages.view' },
+    { label: 'Home Sections', href: '/admin/home-sections', icon: Home, group: 'Content', permission: 'cms.home.view' },
     { label: 'Navigation', href: '/admin/navigation', icon: Menu, group: 'Content', permission: 'cms.pages.view' },
     { label: 'Modules', href: '/admin/modules', icon: LayoutGrid, group: 'Content', permission: 'modules.view' },
     { label: 'Forms', href: '/admin/forms', icon: FormInput, group: 'Content', permission: 'forms.view' },
@@ -112,6 +114,7 @@ export const adminNavigation: ConsoleNavItem[] = [
     { label: 'Building Services', href: '/admin/building', icon: Building2, group: 'Operations', permission: 'building_services.overview.view' },
     { label: 'Services', href: '/admin/services', icon: Building2, group: 'Operations', permission: 'services.overview.view' },
     { label: 'Real Estate', href: '/admin/real-estate', icon: Home, group: 'Operations', permission: 'real_estate.overview.view' },
+    { label: 'Needs & Tasks', href: '/admin/needs', icon: Flag, group: 'Operations', permission: 'needs.overview.view' },
 
     // Support
     { label: 'Tickets', href: '/admin/support/tickets', icon: HelpCircle, group: 'Support', permission: 'support.tickets.view' },
@@ -146,6 +149,8 @@ export const providerNavigation: ConsoleNavItem[] = [
     { label: 'Workspace Overview', href: '/provider', icon: LayoutDashboard, group: 'Provider' },
     { label: 'Task Center', href: '/tasks', icon: ListChecks, group: 'Provider' },
     { label: 'My Applications', href: '/tasks/my-applications', icon: Briefcase, group: 'Provider' },
+    { label: 'Needs Work', href: '/provider/needs', icon: Handshake, group: 'Provider' },
+    { label: 'Provider Profile', href: '/provider/profile', icon: BadgeCheck, group: 'Provider' },
     { label: 'Jobs', href: '/jobs', icon: ShoppingBag, group: 'Discover' },
     { label: 'Needs & Services', href: '/needs', icon: Handshake, group: 'Discover' },
     { label: 'My Requests', href: '/requests', icon: Handshake, group: 'Discover' },

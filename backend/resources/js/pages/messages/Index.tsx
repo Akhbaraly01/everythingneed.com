@@ -3,6 +3,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/AppLayout';
 import { api, errorMessage } from '@/lib/api';
 import { formatDateTime } from '@/lib/utils';
+import { Button } from '@/components/shared/Button';
 import { toast } from 'sonner';
 import { MessageSquare, Plus, Search, X, UserSearch } from 'lucide-react';
 
@@ -89,12 +90,12 @@ export default function MessagesInbox({ conversations }: Props) {
                             <p className="text-sm text-gray-500">{conversations.length} conversation{conversations.length === 1 ? '' : 's'}</p>
                         </div>
                     </div>
-                    <button
+                    <Button
                         onClick={() => { setShowNew(true); setUserQuery(''); setResults([]); }}
-                        className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+                        className="flex items-center gap-1.5"
                     >
                         <Plus className="h-4 w-4" /> New conversation
-                    </button>
+                    </Button>
                 </div>
 
                 {/* Search */}
@@ -147,7 +148,7 @@ export default function MessagesInbox({ conversations }: Props) {
                         <div className="relative w-full max-w-md rounded-xl border border-gray-200 bg-white p-5 shadow-xl dark:border-gray-700 dark:bg-gray-800">
                             <div className="mb-4 flex items-center justify-between">
                                 <h2 className="flex items-center gap-2 font-bold text-gray-900 dark:text-white"><UserSearch className="h-5 w-5" /> Start a conversation</h2>
-                                <button onClick={() => setShowNew(false)}><X className="h-5 w-5 text-gray-400" /></button>
+                                <Button onClick={() => setShowNew(false)} variant="icon" iconOnly size="sm" aria-label="Close"><X className="h-5 w-5 text-gray-400" /></Button>
                             </div>
                             <input
                                 autoFocus
@@ -162,18 +163,19 @@ export default function MessagesInbox({ conversations }: Props) {
                                 ) : results.length === 0 ? (
                                     <p className="py-4 text-center text-sm text-gray-400">No users found — try another search.</p>
                                 ) : results.map((u) => (
-                                    <button
+                                    <Button
                                         key={u.id}
                                         disabled={starting === u.id}
                                         onClick={() => startConversation(u.id)}
-                                        className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left hover:bg-gray-50 disabled:opacity-50 dark:hover:bg-gray-700/60"
+                                        variant="ghost"
+                                        className="flex w-full items-center justify-between px-3 py-2.5 text-left"
                                     >
                                         <span>
                                             <span className="block text-sm font-medium text-gray-900 dark:text-white">{u.name}</span>
                                             <span className="block text-xs text-gray-400">{u.email}</span>
                                         </span>
                                         <Plus className="h-4 w-4 text-emerald-600" />
-                                    </button>
+                                    </Button>
                                 ))}
                             </div>
                         </div>

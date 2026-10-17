@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AdminLayout from '@/layouts/AdminLayout';
-import { api, errorMessage } from '@/lib/api';
+import { api, ApiError, errorMessage } from '@/lib/api';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 import { PromptDialog } from '@/components/shared/Ui';
 import { toast } from 'sonner';
@@ -74,6 +74,11 @@ export default function AdminApprovals({ pending, recentDecisions, requests }: P
     const [rows, setRows] = useState<ApprovalRequestRow[]>(requests);
     const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
     const [roles, setRoles] = useState<string[]>([]);
+    // The roles directory requires can:manageUsers - marketplace_admin,
+    // platform_ops and moderators reach this page but not that endpoint.
+    // The builder still works via "Any approver"; explain instead of a
+    // silently empty dropdown.
+    const [rolesBlocked, setRolesBlocked] = useState(false);
     const [createOpen, setCreateOpen] = useState(false);
     const [newType, setNewType] = useState('');
     const [newTitle, setNewTitle] = useState('');
@@ -94,11 +99,14 @@ export default function AdminApprovals({ pending, recentDecisions, requests }: P
     }, [tab, filter]);
 
     useEffect(() => {
-        if (tab !== 'requests' || roles.length > 0) return;
+        if (tab !== 'requests' || roles.length > 0 || rolesBlocked) return;
         api.get<{ data: { role: string }[] }>('/api/admin/roles')
             .then((res) => setRoles((res.data ?? []).map((r) => r.role)))
-            .catch(() => setRoles([]));
-    }, [tab, roles.length]);
+            .catch((e) => {
+                setRoles([]);
+                if (e instanceof ApiError && e.status === 403) setRolesBlocked(true);
+            });
+    }, [tab, roles.length, rolesBlocked]);
 
     const decide = async (id: string, action: 'approve' | 'reject', reason: string | null = null) => {
         setBusyId(id);
@@ -415,6 +423,11 @@ export default function AdminApprovals({ pending, recentDecisions, requests }: P
                                             Add
                                         </button>
                                     </div>
+                                    {rolesBlocked && (
+                                        <p className="mt-1 text-xs text-gray-500">
+                                            Role directory unavailable for your role — pick “Any approver” or ask an administrator to add steps.
+                                        </p>
+                                    )}
                                     {newSteps.length > 0 && (
                                         <ol className="mt-2 flex flex-wrap gap-1.5">
                                             {newSteps.map((s, i) => (

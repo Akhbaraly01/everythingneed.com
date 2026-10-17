@@ -248,15 +248,7 @@ class AuthService extends BaseService implements AuthServiceInterface
 
     private function generateQrUrl(User $user, string $secret): string
     {
-        $otpauth = sprintf(
-            'otpauth://totp/%s:%s?secret=%s&issuer=%s',
-            urlencode(config('app.name')),
-            urlencode($user->email),
-            $secret,
-            urlencode(config('app.name'))
-        );
-
-        return 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' . urlencode($otpauth);
+        return \Core\Support\TotpQrRenderer::dataUri($user->email, $secret);
     }
 
     public function disableTwoFactor(string $userId): bool

@@ -2,6 +2,7 @@ import AppLayout from '@/layouts/AppLayout';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { api, errorMessage } from '@/lib/api';
 import { NEED_STATUS_LABELS, needStatusClasses } from '@/lib/needs';
+import { Button, buttonClasses } from '@/components/shared/Button';
 import { ArrowRight, Plus } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { NeedRequestDetail, NeedStatus } from '@/types';
@@ -12,7 +13,17 @@ const TABS: { key: string; label: string; match: (s: NeedStatus) => boolean }[] 
     { key: 'attention', label: 'Needs attention', match: (s) => ['draft', 'accepted', 'payment_pending', 'in_progress', 'fulfilled'].includes(s) },
     { key: 'done', label: 'Completed', match: (s) => ['completed'].includes(s) },
     { key: 'closed', label: 'Closed', match: (s) => ['cancelled', 'rejected', 'expired', 'refunded'].includes(s) },
+    { key: 'saved', label: 'Saved', match: () => false },
 ];
+
+interface SavedRow {
+    id: string;
+    item_type: string;
+    item_id?: string | null;
+    query?: Record<string, unknown> | null;
+    created_at: string;
+    listing?: { id: string; name: string; price?: number | string | null; status: string; is_available?: boolean | null } | null;
+}
 
 /**
  * Spec S14 - /needs/my-needs. The requester's board over their own needs
@@ -24,6 +35,8 @@ export default function MyNeeds() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [tab, setTab] = useState('all');
+    // TODO 18 saved collection (§6.6).
+    const [saved, setSaved] = useState<SavedRow[]>([]);
 
     useEffect(() => {
         if (!auth?.user) {
@@ -34,8 +47,33 @@ export default function MyNeeds() {
             .then((res) => setNeeds(res.data ?? []))
             .catch((e) => setError(errorMessage(e, 'Could not load your needs')))
             .finally(() => setLoading(false));
+        api.get<{ data: SavedRow[] }>('/api/needs/saved')
+            .then((res) => setSaved(res.data ?? []))
+            .catch(() => setSaved([]));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    const unsave = async (id: string) => {
+        try {
+            await api.del(`/api/needs/saved/${id}`);
+            setSaved((prev) => prev.filter((s) => s.id !== id));
+        } catch (e) {
+            setError(errorMessage(e, 'Could not remove saved item'));
+        }
+    };
+
+    // TODO 18 dashboard counts (§6.1): every figure from the loaded records.
+    const counts = useMemo(() => {
+        const c = (pred: (s: NeedStatus) => boolean) => needs.filter((n) => pred(n.status)).length;
+        return {
+            drafts: c((s) => s === 'draft'),
+            awaitingOffers: c((s) => ['published', 'reviewing'].includes(s)),
+            deciding: c((s) => ['offered', 'negotiating'].includes(s)),
+            inProgress: c((s) => ['accepted', 'payment_pending', 'paid', 'in_progress'].includes(s)),
+            awaitingYou: c((s) => ['fulfilled'].includes(s)),
+            done: c((s) => s === 'completed'),
+        };
+    }, [needs]);
 
     const visible = useMemo(() => {
         const active = TABS.find((t) => t.key === tab) ?? TABS[0];
@@ -53,7 +91,7 @@ export default function MyNeeds() {
                     </div>
                     <Link
                         href="/needs/create"
-                        className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md bg-indigo-600 px-4 text-sm font-semibold text-white hover:bg-indigo-500"
+                        className={`${buttonClasses('primary', 'sm')} shrink-0 gap-2`}
                     >
                         <Plus className="h-4 w-4" /> New need
                     </Link>
@@ -61,22 +99,79 @@ export default function MyNeeds() {
 
                 <div className="flex flex-wrap gap-2" role="tablist" aria-label="Filter needs">
                     {TABS.map((t) => (
-                        <button
+                        <Button
                             key={t.key}
                             role="tab"
                             aria-selected={tab === t.key}
                             onClick={() => setTab(t.key)}
-                            className={`rounded-full px-3 py-1.5 text-sm font-medium ${
-                                tab === t.key
-                                    ? 'bg-indigo-600 text-white'
-                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
-                            }`}
+                            variant={tab === t.key ? 'primary' : 'outline'}
+                            size="sm"
+                            className="min-h-[44px] rounded-full px-3 py-1.5"
                         >
                             {t.label}
-                        </button>
+                        </Button>
                     ))}
                 </div>
 
+                {/* TODO 18 summary strip: counts from real records, never fabricated. */}
+                {!loading && !error && tab !== 'saved' && (
+                    <dl className="grid grid-cols-3 gap-2 text-center sm:grid-cols-6">
+                        {[
+                            ['Drafts', counts.drafts],
+                            ['Awaiting offers', counts.awaitingOffers],
+                            ['Deciding', counts.deciding],
+                            ['In progress', counts.inProgress],
+                            ['Awaiting you', counts.awaitingYou],
+                            ['Done', counts.done],
+                        ].map(([label, value]) => (
+                            <div key={label} className="rounded-lg border border-gray-200 bg-white px-2 py-2 dark:border-gray-700 dark:bg-gray-800">
+                                <dt className="text-[11px] text-gray-500">{label}</dt>
+                                <dd className="text-lg font-bold text-gray-900 dark:text-white">{value}</dd>
+                            </div>
+                        ))}
+                    </dl>
+                )}
+
+                {tab === 'saved' ? (
+                    <div className="space-y-3">
+                        {saved.length === 0 && (
+                            <div className="rounded-lg border border-gray-200 bg-white p-10 text-center dark:border-gray-700 dark:bg-gray-800">
+                                <h3 className="text-lg font-medium">Nothing saved yet</h3>
+                                <p className="mt-1 text-sm text-gray-500">Save service packages to compare them later.</p>
+                            </div>
+                        )}
+                        {saved.map((s) => (
+                            <div key={s.id} className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+                                <div className="min-w-0">
+                                    {s.item_type === 'listing' && s.listing ? (
+                                        <>
+                                            <p className="truncate font-medium text-gray-900 dark:text-white">{s.listing.name}</p>
+                                            <p className="text-xs text-gray-500">
+                                                {s.listing.price ?? 'Quoted'} · {s.listing.status}
+                                                {s.listing.is_available === false ? ' · unavailable' : ''}
+                                            </p>
+                                        </>
+                                    ) : (
+                                        <p className="truncate font-medium text-gray-900 dark:text-white">
+                                            Saved search: {JSON.stringify(s.query ?? {})}
+                                        </p>
+                                    )}
+                                </div>
+                                <div className="flex shrink-0 gap-2">
+                                    {s.item_type === 'listing' && s.listing && (
+                                        <Link href={`/deals/${s.listing.id}`} className="text-sm font-medium text-indigo-600 hover:underline">
+                                            View
+                                        </Link>
+                                    )}
+                                    <button onClick={() => unsave(s.id)} className="text-sm text-gray-500 hover:text-red-600">
+                                        Remove
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                <>
                 {loading && <p className="text-sm text-gray-500">Loading your needs...</p>}
                 {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
 
@@ -84,7 +179,7 @@ export default function MyNeeds() {
                     <div className="rounded-lg border border-gray-200 bg-white p-10 text-center dark:border-gray-700 dark:bg-gray-800">
                         <h3 className="text-lg font-medium">Nothing here yet</h3>
                         <p className="mt-1 text-sm text-gray-500">Submit a need and providers will start offering.</p>
-                        <Link href="/needs/create" className="mt-4 inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
+                        <Link href="/needs/create" className={`${buttonClasses('primary', 'sm')} mt-4 gap-2`}>
                             <Plus className="h-4 w-4" /> Submit a need
                         </Link>
                     </div>
@@ -116,6 +211,8 @@ export default function MyNeeds() {
                             </li>
                         ))}
                     </ul>
+                )}
+                </>
                 )}
             </div>
         </AppLayout>

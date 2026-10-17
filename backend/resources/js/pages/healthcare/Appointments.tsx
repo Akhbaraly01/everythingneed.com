@@ -2,6 +2,7 @@ import { statusTone } from '@/lib/lifecycle';
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link } from '@inertiajs/react';
 import { api, errorMessage } from '@/lib/api';
+import { Button, buttonClasses } from '@/components/shared/Button';
 import { Video, FileText, Calendar, Clock, RefreshCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -52,7 +53,7 @@ export default function AppointmentsPage() {
             <div className="space-y-6">
                 <div className="flex items-center justify-between">
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white">My Appointments</h1>
-                    <Link href="/healthcare/doctors" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
+                    <Link href="/healthcare/doctors" className={buttonClasses('primary', 'sm')}>
                         Book New
                     </Link>
                 </div>
@@ -62,12 +63,12 @@ export default function AppointmentsPage() {
                 </div>
 
                 <div className="flex gap-2">
-                    <button onClick={() => setTab('upcoming')} className={`rounded-lg px-4 py-2 text-sm font-medium ${tab === 'upcoming' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
+                    <Button onClick={() => setTab('upcoming')} variant={tab === 'upcoming' ? 'primary' : 'outline'} size="sm" className="rounded-lg px-4 py-2">
                         Upcoming
-                    </button>
-                    <button onClick={() => setTab('past')} className={`rounded-lg px-4 py-2 text-sm font-medium ${tab === 'past' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
+                    </Button>
+                    <Button onClick={() => setTab('past')} variant={tab === 'past' ? 'primary' : 'outline'} size="sm" className="rounded-lg px-4 py-2">
                         Past
-                    </button>
+                    </Button>
                 </div>
 
                 {loading ? (
@@ -75,9 +76,9 @@ export default function AppointmentsPage() {
                 ) : error ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
                         <p className="text-red-600 font-medium">{error}</p>
-                        <button onClick={load} className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-500">
-                            <RefreshCcw className="h-4 w-4" /> Retry
-                        </button>
+                        <Button onClick={load} variant="ghost" size="sm" className="mt-4 gap-2" iconLeft={<RefreshCcw className="h-4 w-4" />}>
+                            Retry
+                        </Button>
                     </div>
                 ) : filtered.length === 0 ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">

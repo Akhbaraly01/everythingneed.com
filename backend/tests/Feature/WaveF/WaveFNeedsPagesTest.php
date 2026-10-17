@@ -186,6 +186,13 @@ class WaveFNeedsPagesTest extends TestCase
         $need = $this->createNeedFor($owner, $category);
 
         $provider = $this->actingAsUser();
+        // TODO 14: request chats are bilateral — the provider bids first,
+        // which is what makes them a legitimate counterparty.
+        $this->postJson("/api/need-requests/{$need->id}/offers", [
+            'price' => 120,
+            'message' => 'Available tomorrow.',
+        ])->assertStatus(201);
+
         $conversation = $this->postJson('/api/chat/conversations', [
             'recipient_id' => $owner->id,
             'booking_id' => $need->id,

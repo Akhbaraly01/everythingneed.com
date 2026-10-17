@@ -52,7 +52,13 @@ const buildParams = (f: Filters, p: number, pp: number) => {
 export default function AdminAuditLogs() {
     const permissions =
         (usePage().props.auth as { permissions?: string[] } | null)?.permissions ?? [];
-    const canExport = permissions.includes('*') || permissions.includes('audit.logs.export');
+    const roles =
+        (usePage().props.auth as { roles?: string[] } | null)?.roles ?? [];
+    // The export endpoint also requires can:viewAuditLogs (super_admin,
+    // security_admin, auditor) - administrators hold the permission string
+    // but the server refuses them, so hide the button instead of 403ing.
+    const canView = roles.some((r) => ['super_admin', 'security_admin', 'auditor'].includes(r));
+    const canExport = canView && (permissions.includes('*') || permissions.includes('audit.logs.export'));
 
     const [logs, setLogs] = useState<AuditLog[]>([]);
     const [meta, setMeta] = useState<Meta>({ total: 0, page: 1, per_page: 25 });

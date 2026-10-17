@@ -45,6 +45,30 @@
     --brand-violet: 280 87% 65%;
     --brand-amber: 43 96% 56%;
 
+    /* --- Action color stops (light / base / dark / glow) ---
+       Every action color is a 3-stop gradient plus a tinted shadow.
+       Light mode defaults; .dark remaps the base stops for legibility. */
+    --blue-light: 217 91% 72%;
+    --blue: 217 91% 60%;
+    --blue-dark: 217 91% 49%;
+    --blue-glow: 217 91% 60%;
+    --violet-light: 280 87% 74%;
+    --violet: 280 87% 65%;
+    --violet-dark: 280 80% 54%;
+    --violet-glow: 280 87% 65%;
+    --rose-light: 0 84% 70%;
+    --rose: 0 84% 60%;
+    --rose-dark: 0 78% 48%;
+    --rose-glow: 0 84% 60%;
+    --green-light: 142 70% 46%;
+    --green: 142 76% 36%;
+    --green-dark: 142 76% 28%;
+    --green-glow: 142 76% 36%;
+    --amber-light: 43 96% 64%;
+    --amber: 43 96% 56%;
+    --amber-dark: 38 92% 46%;
+    --amber-glow: 43 96% 56%;
+
     /* --- Surface levels (solid, opaque) --- */
     --surface-1: 0 0% 100%;
     --surface-2: 216 33% 97%;
@@ -105,16 +129,37 @@
     --safe-left: env(safe-area-inset-left, 0px);
     --safe-right: env(safe-area-inset-right, 0px);
 
-    /* --- Fixed chrome geometry (single source for all bottom offsets) --- */
-    --dock-h: 56px;
-    --dock-clearance: calc(var(--dock-h) + var(--safe-bottom) + 24px);
+    /* --- Fixed chrome geometry (single source for all bottom offsets) ---
+       Dock height and icon/label sizes scale by viewport width per the
+       iOS HIG table (320-359 / 360-429 / 430-767). Clearance reserves
+       dock + safe area + 16px so nothing hides behind the dock. */
+    --dock-h: 64px;
+    --dock-icon: 22px;
+    --dock-label: 9.5px;
+    --dock-clearance: calc(var(--dock-h) + var(--safe-bottom) + 16px);
 
-    /* --- Aurora (ambient brand light) --- */
-    --aurora-opacity: 0.5;
-    --aurora-blur: 90px;
-    --aurora-1: 217 91% 60%;
-    --aurora-2: 280 87% 65%;
-    --aurora-3: 43 96% 56%;
+    /* --- Ambient background blobs (the light behind the glass) ---
+       4 large blurred blobs: brand blue, violet, pink, mint. They drift
+       on 60-90s loops so glass always has something colorful to refract.
+       --aurora-* kept as aliases so older references don't break. */
+    --blob-opacity: 0.55;
+    --blob-blur: 90px;
+    --blob-1: 217 91% 62%;
+    --blob-2: 30 90% 58%;
+    --blob-3: 330 85% 60%;
+    --blob-4: 160 70% 45%;
+    --blob-a-1: 0.3;
+    --blob-a-2: 0.24;
+    --blob-a-3: 0.18;
+    --blob-a-4: 0.14;
+    --aurora-opacity: var(--blob-opacity);
+    --aurora-blur: var(--blob-blur);
+    --aurora-1: var(--blob-1);
+    --aurora-2: var(--blob-2);
+    --aurora-3: var(--blob-3);
+
+    /* --- Glass colored-shadow accent (overridable per surface) --- */
+    --glass-accent: 217 91% 60%;
   }
 
   .dark {
@@ -151,14 +196,37 @@
     --surface-3: 218 28% 19%;
     --surface-inverse: 216 33% 98%;
 
-    /* --- Glass levels --- */
+    /* --- Action color stops (lightened for dark surfaces) --- */
+    --blue-light: 217 91% 78%;
+    --blue: 217 91% 66%;
+    --blue-dark: 217 85% 52%;
+    --blue-glow: 217 91% 66%;
+    --violet-light: 280 87% 80%;
+    --violet: 280 87% 70%;
+    --violet-dark: 280 78% 56%;
+    --violet-glow: 280 87% 70%;
+    --rose-light: 0 86% 76%;
+    --rose: 0 84% 66%;
+    --rose-dark: 0 76% 52%;
+    --rose-glow: 0 84% 66%;
+    --green-light: 142 66% 56%;
+    --green: 142 72% 46%;
+    --green-dark: 142 70% 34%;
+    --green-glow: 142 72% 46%;
+    --amber-light: 40 96% 70%;
+    --amber: 38 92% 58%;
+    --amber-dark: 38 90% 46%;
+    --amber-glow: 38 92% 58%;
+
+    /* --- Glass levels (smokier, brighter rim on near-black) --- */
     --glass-a1: 0.42;
     --glass-a2: 0.55;
     --glass-a3: 0.68;
     --glass-tint: 219 40% 16%;
     --glass-edge: 216 60% 70%;
-    --glass-edge-alpha: 0.28;
+    --glass-edge-alpha: 0.32;
     --glass-highlight: 216 100% 88%;
+    --glass-accent: 217 91% 66%;
 
     /* --- Elevation (near-black shadows so depth reads on near-black) --- */
     --shadow-tint: 0 0% 0%;
@@ -169,15 +237,63 @@
     --shadow-alpha-xl: 0.55;
     --shadow-alpha-glow: 0.5;
 
-    /* --- Aurora glows brighter on near-black --- */
-    --aurora-opacity: 0.42;
-    --aurora-blur: 110px;
+    /* --- Ambient blobs glow brighter on near-black (pastels recede) --- */
+    --blob-opacity: 0.45;
+    --blob-blur: 110px;
+    --blob-1: 217 91% 60%;
+    --blob-2: 280 87% 65%;
+    --blob-3: 330 80% 55%;
+    --blob-4: 175 70% 45%;
+    --blob-a-1: 0.3;
+    --blob-a-2: 0.26;
+    --blob-a-3: 0.18;
+    --blob-a-4: 0.16;
+    --aurora-opacity: var(--blob-opacity);
+    --aurora-blur: var(--blob-blur);
+  }
+}
+
+/* Dock/icon/label scale by viewport width (spec table):
+   320-359 = base (64px / 22px / 9.5px)
+   360-429 = 68 / 24 / 10
+   430-767 = 72 / 26 / 11 */
+@media (min-width: 360px) {
+  :root {
+    --dock-h: 68px;
+    --dock-icon: 24px;
+    --dock-label: 10px;
+  }
+}
+
+@media (min-width: 430px) {
+  :root {
+    --dock-h: 72px;
+    --dock-icon: 26px;
+    --dock-label: 11px;
+  }
+}
+
+/* Category tile size: clamp(52px, 15vw, 72px) on phones, up to 88px on
+   large desktops. Glyph = 50% of tile, radius = ~28%. */
+:root {
+  --tile-size: clamp(52px, 15vw, 72px);
+  --tile-min: calc(var(--tile-size) + 20px);
+  --tile-glyph: calc(var(--tile-size) * 0.5);
+  --tile-radius: calc(var(--tile-size) * 0.28);
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --tile-size: 88px;
   }
 }
 
 /* ============================================================
-   Ambient aurora: slow brand-colored light behind all content.
-   Painted via body::before with z-index:-1 over the html canvas.
+   Ambient background: 4 large pastel/brand blobs drifting very
+   slowly behind everything (60-90s loops). This is what the glass
+   refracts — one shared layer for the whole app, no per-page glows.
+   Painted via two fixed pseudo-elements with counter-drifting
+   transforms (transform-only animation, compositor-friendly).
    ============================================================ */
 html {
   background-color: hsl(var(--background));
@@ -188,27 +304,49 @@ body {
   background-color: transparent;
 }
 
-body::before {
+body::before,
+body::after {
   content: '';
   position: fixed;
-  inset: 0;
+  inset: -12%;
   z-index: -1;
   pointer-events: none;
-  opacity: var(--aurora-opacity);
-  background:
-    radial-gradient(60% 45% at 12% 0%, hsl(var(--aurora-1) / 0.28), transparent 62%),
-    radial-gradient(52% 42% at 88% 6%, hsl(var(--aurora-2) / 0.24), transparent 64%),
-    radial-gradient(46% 38% at 50% 100%, hsl(var(--aurora-3) / 0.16), transparent 66%);
-  filter: blur(var(--aurora-blur)) saturate(140%);
-  animation: aurora-drift 26s var(--ease-in-out) infinite alternate;
+  opacity: var(--blob-opacity);
+  filter: blur(var(--blob-blur)) saturate(145%);
+  will-change: transform;
 }
 
-@keyframes aurora-drift {
+/* Blobs 1 + 2: brand blue (top-left), peach/pink (top-right) */
+body::before {
+  background:
+    radial-gradient(42% 38% at 14% 8%, hsl(var(--blob-1) / var(--blob-a-1)), transparent 66%),
+    radial-gradient(40% 36% at 86% 14%, hsl(var(--blob-2) / var(--blob-a-2)), transparent 64%);
+  animation: blob-drift-a 72s var(--ease-in-out) infinite alternate;
+}
+
+/* Blobs 3 + 4: pink (bottom-left), mint/teal (bottom-right) */
+body::after {
+  background:
+    radial-gradient(46% 40% at 18% 92%, hsl(var(--blob-3) / var(--blob-a-3)), transparent 66%),
+    radial-gradient(44% 38% at 82% 88%, hsl(var(--blob-4) / var(--blob-a-4)), transparent 64%);
+  animation: blob-drift-b 88s var(--ease-in-out) infinite alternate;
+}
+
+@keyframes blob-drift-a {
   from {
-    transform: translate3d(-1.5%, -1%, 0) scale(1);
+    transform: translate3d(-2%, -1.5%, 0) scale(1);
   }
   to {
-    transform: translate3d(1.5%, 1%, 0) scale(1.06);
+    transform: translate3d(2.5%, 2%, 0) scale(1.08);
+  }
+}
+
+@keyframes blob-drift-b {
+  from {
+    transform: translate3d(2%, 1.5%, 0) scale(1.05);
+  }
+  to {
+    transform: translate3d(-2.5%, -2%, 0) scale(1);
   }
 }
 
@@ -216,10 +354,22 @@ body::before {
    Quality tiers (Full / Balanced / Lite)
    data-tier is set pre-paint by the inline blade script and kept
    in sync by lib/quality.ts (user override + live signals).
+   Full: 4 animated blobs + full blur. Balanced: 2 blobs (pink/mint
+   dropped), lower blur, slower drift. Lite: static gradient only.
    ============================================================ */
 [data-tier='balanced'] {
   --blur-3: 24px;
-  --aurora-opacity: 0.3;
+  --blob-opacity: 0.34;
+  --blob-blur: 80px;
+  --blob-a-3: 0;
+  --blob-a-4: 0;
+  --aurora-opacity: var(--blob-opacity);
+  --aurora-blur: var(--blob-blur);
+}
+
+[data-tier='balanced'] body::after {
+  animation: none;
+  opacity: 0;
 }
 
 [data-tier='lite'] {
@@ -229,18 +379,39 @@ body::before {
   --glass-a1: 0.96;
   --glass-a2: 0.98;
   --glass-a3: 1;
+  --blob-opacity: 0;
   --aurora-opacity: 0;
 }
 
-[data-tier='lite'] body::before {
+/* Lite keeps a cheap static gradient so the page is not flat gray */
+[data-tier='lite'] body {
+  background:
+    linear-gradient(
+      165deg,
+      hsl(var(--blob-1) / 0.05),
+      transparent 34%,
+      hsl(var(--blob-3) / 0.04) 72%,
+      transparent
+    );
+}
+
+[data-tier='lite'] body::before,
+[data-tier='lite'] body::after {
   display: none;
 }
 
 [data-tier='lite'] .glass-1,
 [data-tier='lite'] .glass-2,
-[data-tier='lite'] .glass-3 {
+[data-tier='lite'] .glass-3,
+[data-tier='lite'] .icon-glass-3d,
+[data-tier='lite'] .search-capsule {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+}
+
+[data-tier='lite'] .icon-glass-3d,
+[data-tier='lite'] .search-capsule {
+  background: hsl(var(--surface-2));
 }
 
 @media (prefers-reduced-transparency: reduce) {
@@ -248,9 +419,11 @@ body::before {
     --glass-a1: 1;
     --glass-a2: 1;
     --glass-a3: 1;
+    --blob-opacity: 0;
     --aurora-opacity: 0;
   }
-  body::before {
+  body::before,
+  body::after {
     display: none;
   }
   .glass-1,
@@ -274,34 +447,368 @@ body::before {
 }
 
 /* ============================================================
+   Candy 3D button recipe (C1 foundation for C2 Button)
+   Anatomy: 3-stop gradient body + inset gloss highlight + solid
+   bottom rim + tinted glow shadow + press "sink". The color is
+   driven by --c-light/--c-base/--c-dark/--c-glow which variant
+   classes (or inline style) set. Transform/opacity only on press.
+   ============================================================ */
+@layer components {
+  .btn-3d {
+    --c-light: hsl(var(--blue-light));
+    --c-base: hsl(var(--blue));
+    --c-dark: hsl(var(--blue-dark));
+    --c-glow: hsl(var(--blue-glow));
+    position: relative;
+    isolation: isolate;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 44px;
+    padding: 0 1.25rem;
+    border-radius: 9999px;
+    font-weight: 600;
+    line-height: 1;
+    color: #fff;
+    background: linear-gradient(180deg, var(--c-light) 0%, var(--c-base) 48%, var(--c-dark) 100%);
+    box-shadow:
+      inset 0 1.5px 0 0 rgb(255 255 255 / 0.45),
+      inset 0 -3px 0 0 rgb(0 0 0 / 0.18),
+      0 10px 22px -8px var(--c-glow),
+      0 2px 4px -1px rgb(0 0 0 / 0.18);
+    transition:
+      transform var(--duration-instant) var(--ease-out),
+      box-shadow var(--duration-instant) var(--ease-out),
+      filter var(--duration-instant) var(--ease-out);
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+
+  /* Gloss streak across the upper third */
+  .btn-3d::before {
+    content: '';
+    position: absolute;
+    inset: 1px 8px auto;
+    height: 42%;
+    border-radius: 9999px 9999px 60% 60%;
+    background: linear-gradient(180deg, rgb(255 255 255 / 0.4), rgb(255 255 255 / 0));
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .btn-3d:hover {
+    filter: brightness(1.05);
+    transform: translateY(-1px);
+    box-shadow:
+      inset 0 1.5px 0 0 rgb(255 255 255 / 0.5),
+      inset 0 -3px 0 0 rgb(0 0 0 / 0.18),
+      0 14px 28px -8px var(--c-glow),
+      0 3px 6px -1px rgb(0 0 0 / 0.2);
+  }
+
+  .btn-3d:active {
+    transform: translateY(1px) scale(0.97);
+    filter: brightness(0.97);
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.35),
+      inset 0 -1px 0 0 rgb(0 0 0 / 0.16),
+      0 4px 10px -6px var(--c-glow);
+  }
+
+  .btn-3d:disabled {
+    opacity: 0.55;
+    filter: saturate(0.3);
+    pointer-events: none;
+  }
+
+  .btn-3d.is-loading {
+    pointer-events: none;
+  }
+
+  /* --- Variant color stops (map to existing semantic tokens) --- */
+  .btn-violet {
+    --c-light: hsl(var(--violet-light));
+    --c-base: hsl(var(--violet));
+    --c-dark: hsl(var(--violet-dark));
+    --c-glow: hsl(var(--violet-glow));
+  }
+  .btn-danger {
+    --c-light: hsl(var(--rose-light));
+    --c-base: hsl(var(--rose));
+    --c-dark: hsl(var(--rose-dark));
+    --c-glow: hsl(var(--rose-glow));
+  }
+  .btn-success {
+    --c-light: hsl(var(--green-light));
+    --c-base: hsl(var(--green));
+    --c-dark: hsl(var(--green-dark));
+    --c-glow: hsl(var(--green-glow));
+  }
+  .btn-amber {
+    --c-light: hsl(var(--amber-light));
+    --c-base: hsl(var(--amber));
+    --c-dark: hsl(var(--amber-dark));
+    --c-glow: hsl(var(--amber-glow));
+  }
+
+  /* Secondary = glass capsule with a candy rim instead of a fill */
+  .btn-glass {
+    --c-glow: hsl(var(--glass-accent));
+    color: hsl(var(--foreground));
+    background: linear-gradient(
+      160deg,
+      hsl(var(--glass-tint) / var(--glass-a2)),
+      hsl(var(--glass-tint) / calc(var(--glass-a2) * 0.7))
+    );
+    -webkit-backdrop-filter: blur(var(--blur-2)) saturate(var(--glass-saturate));
+    backdrop-filter: blur(var(--blur-2)) saturate(var(--glass-saturate));
+    box-shadow:
+      inset 0 1.5px 0 0 rgb(255 255 255 / 0.35),
+      inset 0 0 0 1px hsl(var(--glass-edge) / var(--glass-edge-alpha)),
+      0 8px 20px -10px hsl(var(--glass-accent) / 0.3);
+  }
+
+  .dark .btn-glass {
+    box-shadow:
+      inset 0 1.5px 0 0 rgb(255 255 255 / 0.12),
+      inset 0 0 0 1px hsl(var(--glass-edge) / var(--glass-edge-alpha)),
+      0 8px 20px -10px hsl(var(--glass-accent) / 0.4);
+  }
+
+  .btn-glass::before {
+    background: linear-gradient(180deg, rgb(255 255 255 / 0.22), rgb(255 255 255 / 0));
+  }
+
+  /* Round icon-only candy button */
+  .btn-icon-3d {
+    padding: 0;
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+    flex-shrink: 0;
+  }
+
+  /* Glass round icon button (header/FAB chrome): press-sink candy physics
+     on a frost capsule. */
+  .icon-glass-3d {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 9999px;
+    color: hsl(var(--foreground));
+    background: linear-gradient(
+      160deg,
+      hsl(var(--glass-tint) / var(--glass-a2)),
+      hsl(var(--glass-tint) / calc(var(--glass-a2) * 0.68))
+    );
+    -webkit-backdrop-filter: blur(var(--blur-2)) saturate(var(--glass-saturate));
+    backdrop-filter: blur(var(--blur-2)) saturate(var(--glass-saturate));
+    box-shadow:
+      inset 0 1.5px 0 0 rgb(255 255 255 / 0.35),
+      inset 0 0 0 1px hsl(var(--glass-edge) / var(--glass-edge-alpha)),
+      0 6px 16px -8px hsl(var(--glass-accent) / 0.35);
+    transition:
+      transform var(--duration-instant) var(--ease-out),
+      box-shadow var(--duration-instant) var(--ease-out),
+      filter var(--duration-instant) var(--ease-out);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .dark .icon-glass-3d {
+    box-shadow:
+      inset 0 1.5px 0 0 rgb(255 255 255 / 0.1),
+      inset 0 0 0 1px hsl(var(--glass-edge) / var(--glass-edge-alpha)),
+      0 6px 16px -8px hsl(var(--glass-accent) / 0.45);
+  }
+
+  .icon-glass-3d:hover {
+    filter: brightness(1.06);
+    transform: translateY(-1px);
+  }
+
+  .icon-glass-3d:active {
+    transform: translateY(1px) scale(0.94);
+    filter: brightness(0.96);
+  }
+
+  /* Search capsule: full glass pill with focus glow ring. */
+  .search-capsule {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 40px;
+    padding: 0 0.375rem 0 0.875rem;
+    border-radius: 9999px;
+    color: hsl(var(--foreground));
+    background: linear-gradient(
+      160deg,
+      hsl(var(--glass-tint) / var(--glass-a2)),
+      hsl(var(--glass-tint) / calc(var(--glass-a2) * 0.7))
+    );
+    -webkit-backdrop-filter: blur(var(--blur-2)) saturate(var(--glass-saturate));
+    backdrop-filter: blur(var(--blur-2)) saturate(var(--glass-saturate));
+    box-shadow:
+      inset 0 1.5px 0 0 rgb(255 255 255 / 0.32),
+      inset 0 0 0 1px hsl(var(--glass-edge) / var(--glass-edge-alpha)),
+      0 6px 18px -10px hsl(var(--glass-accent) / 0.3);
+    transition: box-shadow var(--duration-fast) var(--ease-out);
+  }
+
+  .dark .search-capsule {
+    box-shadow:
+      inset 0 1.5px 0 0 rgb(255 255 255 / 0.1),
+      inset 0 0 0 1px hsl(var(--glass-edge) / var(--glass-edge-alpha)),
+      0 6px 18px -10px hsl(var(--glass-accent) / 0.4);
+  }
+
+  .search-capsule:focus-within {
+    box-shadow:
+      inset 0 1.5px 0 0 rgb(255 255 255 / 0.35),
+      inset 0 0 0 1px hsl(var(--glass-edge) / var(--glass-edge-alpha)),
+      0 0 0 3px hsl(var(--blue-glow) / 0.28),
+      0 8px 22px -10px hsl(var(--glass-accent) / 0.45);
+  }
+
+  .search-capsule input[type='search'] {
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: 0.875rem;
+    color: hsl(var(--foreground));
+  }
+
+  .search-capsule input[type='search']::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+  }
+
+  /* Raised candy bubble behind the active dock item. Slides with a
+     spring. Lifted 10px above the dock line so the icon reads as a
+     physical button poking out of the bar (iOS pattern). */
+  .dock-bubble {
+    position: absolute;
+    top: -10px;
+    left: 0;
+    width: 54px;
+    height: 54px;
+    border-radius: 9999px;
+    background: linear-gradient(
+      180deg,
+      hsl(var(--blue-light)) 0%,
+      hsl(var(--blue)) 48%,
+      hsl(var(--blue-dark)) 100%
+    );
+    box-shadow:
+      inset 0 1.5px 0 0 rgb(255 255 255 / 0.5),
+      inset 0 -3px 0 0 rgb(0 0 0 / 0.18),
+      0 12px 24px -8px hsl(var(--blue-glow) / 0.8),
+      0 2px 4px -1px rgb(0 0 0 / 0.22);
+    transition: transform 350ms var(--ease-spring);
+    pointer-events: none;
+  }
+
+  .dock-bubble::before {
+    content: '';
+    position: absolute;
+    inset: 2px 6px auto;
+    height: 40%;
+    border-radius: 9999px 9999px 60% 60%;
+    background: linear-gradient(180deg, rgb(255 255 255 / 0.45), rgb(255 255 255 / 0));
+    pointer-events: none;
+  }
+
+  /* Candy cart/chat badge with pop-in */
+  .badge-pop {
+    animation: badge-pop 350ms var(--ease-spring);
+  }
+}
+
+@keyframes badge-pop {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .icon-glass-3d,
+  .search-capsule {
+    background: hsl(var(--surface-2));
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .btn-glass {
+    background: hsl(var(--surface-2));
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+[data-tier='lite'] .btn-glass {
+  background: hsl(var(--surface-2));
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* ============================================================
    Glass surfaces (B1 foundation; B2/B3 consume these)
+   Light = pearl (two-stop white fill, iridescent pastel rim).
+   Dark  = smoky (two-stop slate fill, bright top rim).
    ============================================================ */
 @layer components {
   .glass-1,
   .glass-2,
   .glass-3 {
     position: relative;
-    background: hsl(var(--glass-tint) / var(--glass-a1));
+    background: linear-gradient(
+      160deg,
+      hsl(var(--glass-tint) / var(--glass-a1)),
+      hsl(var(--glass-tint) / calc(var(--glass-a1) * 0.82))
+    );
     -webkit-backdrop-filter: blur(var(--blur-1)) saturate(var(--glass-saturate));
     backdrop-filter: blur(var(--blur-1)) saturate(var(--glass-saturate));
     box-shadow:
       0 1px 0 0 hsl(var(--glass-highlight) / 0.35) inset,
-      0 10px 30px -12px hsl(var(--shadow-tint) / var(--shadow-alpha-lg));
+      0 12px 32px -14px hsl(var(--glass-accent) / 0.22),
+      0 4px 12px -6px hsl(var(--shadow-tint) / var(--shadow-alpha-md));
   }
 
   .glass-2 {
-    background: hsl(var(--glass-tint) / var(--glass-a2));
+    background: linear-gradient(
+      160deg,
+      hsl(var(--glass-tint) / var(--glass-a2)),
+      hsl(var(--glass-tint) / calc(var(--glass-a2) * 0.8))
+    );
     -webkit-backdrop-filter: blur(var(--blur-2)) saturate(var(--glass-saturate));
     backdrop-filter: blur(var(--blur-2)) saturate(var(--glass-saturate));
   }
 
   .glass-3 {
-    background: hsl(var(--glass-tint) / var(--glass-a3));
+    background: linear-gradient(
+      160deg,
+      hsl(var(--glass-tint) / var(--glass-a3)),
+      hsl(var(--glass-tint) / calc(var(--glass-a3) * 0.78))
+    );
     -webkit-backdrop-filter: blur(var(--blur-3)) saturate(var(--glass-saturate));
     backdrop-filter: blur(var(--blur-3)) saturate(var(--glass-saturate));
   }
 
-  /* Refractive 1px edge: gradient border painted with a masked pseudo-element */
+  /* Refractive 1px edge: iridescent pastel gradient in light, brighter
+     rim in dark, painted with a masked pseudo-element. */
   .glass-edge::after {
     content: '';
     position: absolute;
@@ -312,9 +819,10 @@ body::before {
     background: linear-gradient(
       140deg,
       hsl(var(--glass-edge) / var(--glass-edge-alpha)),
-      hsl(var(--glass-edge) / 0.08) 38%,
-      hsl(var(--brand-violet) / 0.22) 62%,
-      hsl(var(--glass-edge) / 0.14)
+      hsl(var(--blob-4) / 0.28) 30%,
+      hsl(var(--blob-3) / 0.22) 55%,
+      hsl(var(--blob-1) / 0.24) 78%,
+      hsl(var(--glass-edge) / 0.1)
     );
     -webkit-mask:
       linear-gradient(#000 0 0) content-box,
@@ -324,6 +832,16 @@ body::before {
       linear-gradient(#000 0 0) content-box,
       linear-gradient(#000 0 0);
     mask-composite: exclude;
+  }
+
+  .dark .glass-edge::after {
+    background: linear-gradient(
+      140deg,
+      hsl(var(--glass-edge) / var(--glass-edge-alpha)) 0%,
+      hsl(var(--glass-edge) / 0.06) 42%,
+      hsl(var(--glass-accent) / 0.18) 70%,
+      hsl(var(--glass-edge) / 0.2)
+    );
   }
 }
 
@@ -395,7 +913,8 @@ body::before {
       transition-duration: 0.001ms !important;
       scroll-behavior: auto !important;
     }
-    body::before {
+    body::before,
+    body::after {
       display: none;
     }
   }

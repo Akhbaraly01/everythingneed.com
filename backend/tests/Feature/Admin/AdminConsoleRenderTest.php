@@ -53,6 +53,7 @@ class AdminConsoleRenderTest extends TestCase
             '/admin/pharmacy' => ['/admin/pharmacy', 'admin/Pharmacy'],
             '/admin/building' => ['/admin/building', 'admin/Building'],
             '/admin/real-estate' => ['/admin/real-estate', 'admin/RealEstate'],
+            '/admin/needs' => ['/admin/needs', 'admin/Needs'],
             '/admin/returns' => ['/admin/returns', 'admin/Returns'],
             '/admin/reviews' => ['/admin/reviews', 'admin/Reviews'],
             '/admin/subscriptions' => ['/admin/subscriptions', 'admin/Subscriptions'],

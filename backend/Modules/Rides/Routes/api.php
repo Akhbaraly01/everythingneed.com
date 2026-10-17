@@ -2,8 +2,13 @@
 
 use Illuminate\Support\Facades\Route;
 use Modules\Rides\Http\Controllers\DriverController;
+use Modules\Rides\Http\Controllers\DriverEarningsController;
 use Modules\Rides\Http\Controllers\RideController;
 use Modules\Rides\Http\Controllers\FlightController;
+
+// N-38 fare estimate: registered BEFORE the auth group so GET /rides/{id}
+// (same verb+prefix) cannot swallow it as a ride identifier.
+Route::get('/api/rides/estimate', [RideController::class, 'estimate']);
 
 Route::prefix('api')->middleware('auth:sanctum')->group(function () {
     Route::post('/rides/request', [RideController::class, 'requestRide']);
@@ -18,6 +23,9 @@ Route::prefix('api')->middleware('auth:sanctum')->group(function () {
     Route::post('/drivers', [DriverController::class, 'register']);
     Route::get('/drivers/me', [DriverController::class, 'me']);
     Route::put('/drivers/me/availability', [DriverController::class, 'setAvailability']);
+    // N-39 driver earnings view + driver-scoped ride history
+    Route::get('/drivers/earnings', [DriverEarningsController::class, 'earnings']);
+    Route::get('/drivers/rides', [DriverEarningsController::class, 'rides']);
     Route::get('/my-rides', [RideController::class, 'myRides']);
     Route::get('/rides/{id}', [RideController::class, 'show']);
 

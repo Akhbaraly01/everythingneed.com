@@ -348,7 +348,11 @@ class ReportingService extends BaseService implements ReportingServiceInterface
 
     public function paymentTransactions(array $filters = []): array
     {
-        $query = DB::table('payments')->orderByDesc('created_at');
+        // Ciphertext never ships to clients: gateway_response/metadata stay
+        // server-side (decryptable only through the model casts).
+        $query = DB::table('payments')
+            ->select(['id', 'order_id', 'user_id', 'amount', 'currency', 'status', 'method', 'reference', 'purpose', 'idempotency_key', 'provider', 'provider_payment_id', 'created_at', 'updated_at'])
+            ->orderByDesc('created_at');
 
         // Real columns only: payments has method + status, no `type`.
         if (is_string($filters['method'] ?? null) && $filters['method'] !== '') {

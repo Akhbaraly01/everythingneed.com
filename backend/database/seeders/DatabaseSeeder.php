@@ -384,5 +384,9 @@ class DatabaseSeeder extends Seeder
         // Placeholder artwork for every other vertical (runs last so it
         // covers hotels/courses/needs/... created by the demo seeders above).
         $this->call(PlaceholderImageSeeder::class);
+
+        // Home page builder (Home rebuild): admin-ordered storefront
+        // sections + the products-per-batch setting. Idempotent.
+        $this->call(HomePageSectionsSeeder::class);
     }
 }

@@ -65,6 +65,44 @@ class ProductCrudTest extends TestCase
             ->assertJsonStructure(['data']);
     }
 
+    public function test_product_detail_exposes_video_fields_for_in_app_playback(): void
+    {
+        $vendorUser = $this->createUser();
+        $vendor = $this->createVendor($vendorUser);
+        $product = Product::factory()->create([
+            'vendor_id' => $vendor->id,
+            'video_url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+            'production_video_url' => 'https://cdn.example.com/factory-tour.mp4',
+        ]);
+
+        $this->getJson("/api/products/{$product->id}")
+            ->assertOk()
+            ->assertJsonPath('data.video_url', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+            ->assertJsonPath('data.production_video_url', 'https://cdn.example.com/factory-tour.mp4');
+    }
+
+    public function test_vendor_can_set_product_video_url_and_bad_urls_are_rejected(): void
+    {
+        $vendorUser = $this->createUser();
+        $vendor = $this->createVendor($vendorUser);
+        $product = Product::factory()->create(['vendor_id' => $vendor->id]);
+
+        $this->actingAs($vendorUser, 'sanctum')
+            ->putJson("/api/products/{$product->id}", [
+                'video_url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+            ])
+            ->assertOk();
+
+        $this->getJson("/api/products/{$product->id}")
+            ->assertOk()
+            ->assertJsonPath('data.video_url', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+
+        $this->actingAs($vendorUser, 'sanctum')
+            ->putJson("/api/products/{$product->id}", ['video_url' => 'not-a-url'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('video_url');
+    }
+
     public function test_authenticated_vendor_can_create_product(): void
     {
         $vendorUser = $this->createUser();

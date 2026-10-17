@@ -5,6 +5,7 @@ import { api, errorMessage, rows } from '@/lib/api';
 import { formatPrice } from '@/lib/currency';
 import { toast } from 'sonner';
 import PaySheet from '@/components/shared/PaySheet';
+import { Button } from '@/components/shared/Button';
 import {
     HardHat, Star, Briefcase, CalendarClock,
     MapPin, Wrench, ClipboardList,
@@ -228,12 +229,13 @@ export default function BuildingServicesIndex({ services, myBookings }: Props) {
                                     <span>{w.experience_years ?? 0} yrs exp</span>
                                     <span>{w.completed_jobs ?? 0} jobs</span>
                                 </div>
-                                <button
+                                <Button
+                                    fullWidth
+                                    className="mt-4"
                                     onClick={() => openBooking(w)}
-                                    className="mt-4 w-full rounded-lg bg-orange-600 px-3 py-2 text-sm font-medium text-white hover:bg-orange-700"
                                 >
                                     Request this provider
-                                </button>
+                                </Button>
                             </div>
                         ))}
                     </div>
@@ -271,12 +273,12 @@ export default function BuildingServicesIndex({ services, myBookings }: Props) {
                                         {formatPrice(Number(svc.base_price))}
                                         <span className="text-xs font-normal text-gray-400"> / {svc.pricing_mode}</span>
                                     </span>
-                                    <button
+                                    <Button
+                                        size="sm"
                                         onClick={() => openServiceBooking(svc)}
-                                        className="rounded-lg bg-orange-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-orange-700"
                                     >
                                         Book service
-                                    </button>
+                                    </Button>
                                 </div>
                             </div>
                         ))}
@@ -323,20 +325,21 @@ export default function BuildingServicesIndex({ services, myBookings }: Props) {
                                         <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${bookingStatusStyles[b.status] ?? ''}`}>{b.status}</span>
                                         <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">{b.payment_status}</span>
                                         {b.payment_status === 'unpaid' && Number(b.amount) > 0 && b.status !== 'cancelled' && (
-                                            <button
+                                            <Button
+                                                size="sm"
                                                 onClick={() => setPayTarget(b)}
-                                                className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-500"
                                             >
                                                 Pay now
-                                            </button>
+                                            </Button>
                                         )}
                                         {(b.status === 'pending' || b.status === 'confirmed') && (
-                                            <button
+                                            <Button
+                                                variant="danger"
+                                                size="sm"
                                                 onClick={() => void cancelServiceBooking(b)}
-                                                className="rounded-lg border border-red-200 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 dark:border-red-800"
                                             >
                                                 Cancel
-                                            </button>
+                                            </Button>
                                         )}
                                     </div>
                                 </div>
@@ -358,10 +361,10 @@ export default function BuildingServicesIndex({ services, myBookings }: Props) {
                             <textarea required rows={2} value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} placeholder="Site address" className="w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
                             <textarea rows={2} value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Describe the work…" className="w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
                             <div className="flex justify-end gap-2 pt-1">
-                                <button type="button" onClick={() => setSelected(null)} className="rounded-lg px-4 py-2 text-sm text-gray-500">Cancel</button>
-                                <button type="submit" disabled={busy} className="rounded-lg bg-orange-600 px-5 py-2 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-60">
+                                <Button type="button" variant="ghost" size="sm" onClick={() => setSelected(null)}>Cancel</Button>
+                                <Button type="submit" size="sm" disabled={busy}>
                                     {busy ? 'Sending…' : 'Send request'}
-                                </button>
+                                </Button>
                             </div>
                         </form>
                     </div>
@@ -377,7 +380,7 @@ export default function BuildingServicesIndex({ services, myBookings }: Props) {
                                     <ClipboardList className="h-5 w-5 text-orange-600" />
                                     {bookStep === 'form' ? `Book ${bookTarget.name}` : 'Complete payment'}
                                 </h2>
-                                <button type="button" onClick={() => setBookTarget(null)} aria-label="Close" className="text-gray-400 hover:text-gray-600">✕</button>
+                                <Button type="button" variant="icon" iconOnly size="sm" onClick={() => setBookTarget(null)} aria-label="Close">✕</Button>
                             </div>
 
                             {bookStep === 'form' ? (
@@ -405,15 +408,15 @@ export default function BuildingServicesIndex({ services, myBookings }: Props) {
                                         className="w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                     />
                                     <div className="flex justify-end gap-2 pt-1">
-                                        <button type="button" onClick={() => setBookTarget(null)} className="rounded-lg px-4 py-2 text-sm text-gray-500">Cancel</button>
-                                        <button
+                                        <Button type="button" variant="ghost" size="sm" onClick={() => setBookTarget(null)}>Cancel</Button>
+                                        <Button
                                             type="button"
+                                            size="sm"
                                             onClick={() => void submitServiceBooking()}
                                             disabled={serviceBusy}
-                                            className="rounded-lg bg-orange-600 px-5 py-2 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-60"
                                         >
                                             {serviceBusy ? 'Booking…' : 'Book'}
-                                        </button>
+                                        </Button>
                                     </div>
                                 </div>
                             ) : createdBooking ? (

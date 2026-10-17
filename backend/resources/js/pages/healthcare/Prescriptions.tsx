@@ -4,6 +4,7 @@ import AppLayout from '@/layouts/AppLayout';
 import { formatDate } from '@/lib/utils';
 import { api, errorMessage } from '@/lib/api';
 import { toast } from 'sonner';
+import { Button } from '@/components/shared/Button';
 import { Pill, CalendarClock, Stethoscope, FileText, Send, CheckCircle2 } from 'lucide-react';
 
 interface PrescriptionItem {
@@ -142,14 +143,16 @@ export default function HealthcarePrescriptions({ prescriptions }: Props) {
                                     )}
 
                                     {p.status === 'active' && !p.is_expired && (
-                                        <button
+                                        <Button
                                             onClick={() => sendToPharmacy(p)}
-                                            disabled={ordering === p.id}
-                                            className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50"
+                                            loading={ordering === p.id}
+                                            variant="success"
+                                            size="sm"
+                                            className="mt-4 gap-1.5"
+                                            iconLeft={<Send className="h-4 w-4" />}
                                         >
-                                            <Send className="h-4 w-4" />
-                                            {ordering === p.id ? 'Ordering…' : 'Send to pharmacy'}
-                                        </button>
+                                            Send to pharmacy
+                                        </Button>
                                     )}
                                 </div>
                             </div>

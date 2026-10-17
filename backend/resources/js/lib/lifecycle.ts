@@ -18,6 +18,7 @@ const TONES: Record<string, string> = {
     assigned: 'bg-blue-100 text-blue-800',
     checked_in: 'bg-blue-100 text-blue-800',
     in_review: 'bg-amber-100 text-amber-800',
+    trial: 'bg-amber-100 text-amber-800',
     reviewing: 'bg-sky-100 text-sky-800',
     contacted: 'bg-sky-100 text-sky-800',
     scheduled: 'bg-teal-100 text-teal-800',
@@ -59,6 +60,7 @@ const TONES: Record<string, string> = {
     // negative
     cancelled: 'bg-red-100 text-red-700',
     rejected: 'bg-red-100 text-red-700',
+    suspended: 'bg-red-100 text-red-700',
     failed: 'bg-red-100 text-red-800',
     disputed: 'bg-rose-100 text-rose-800',
     requires_action: 'bg-orange-100 text-orange-800',

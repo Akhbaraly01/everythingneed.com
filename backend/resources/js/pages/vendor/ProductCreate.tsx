@@ -3,9 +3,10 @@ import { Head, router } from '@inertiajs/react';
 import { api, errorMessage } from '@/lib/api';
 import { useState } from 'react';
 import { Package, ArrowRight } from 'lucide-react';
+import ImageUploadField from '@/components/shared/ImageUploadField';
 
 export default function VendorProductCreate() {
-    const [form, setForm] = useState({ name: '', description: '', category: '', price: '', stock_quantity: '', image_url: '' });
+    const [form, setForm] = useState({ name: '', description: '', category: '', price: '', stock_quantity: '', image_url: '', video_url: '' });
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
 
@@ -33,8 +34,17 @@ export default function VendorProductCreate() {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div><label className="block text-sm font-medium mb-1 dark:text-gray-300">Stock Quantity</label><input type="number" required value={form.stock_quantity} onChange={(e) => setForm({ ...form, stock_quantity: e.target.value })} className="w-full rounded-lg border px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></div>
-                        <div><label className="block text-sm font-medium mb-1 dark:text-gray-300">Image URL</label><input value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} className="w-full rounded-lg border px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></div>
+                        <div><label className="block text-sm font-medium mb-1 dark:text-gray-300">Image URL</label><input value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} placeholder="https://… or upload below" className="w-full rounded-lg border px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></div>
                     </div>
+                    <div><label className="block text-sm font-medium mb-1 dark:text-gray-300">Video URL (plays in-app on your product page)</label><input value={form.video_url} onChange={(e) => setForm({ ...form, video_url: e.target.value })} placeholder="https://www.youtube.com/watch?v=… or MP4 link" className="w-full rounded-lg border px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></div>
+                    <ImageUploadField
+                        value={form.image_url ? [form.image_url] : []}
+                        onChange={(urls) => setForm({ ...form, image_url: urls[0] ?? '' })}
+                        folder="products"
+                        max={1}
+                        label="Product photo or video (upload)"
+                        hint="Upload fills the Image URL above. JPG, PNG, GIF, MP4, WebM up to 10MB."
+                    />
                 </div>
                 <button type="submit" disabled={submitting} className="w-full rounded-lg bg-blue-600 px-4 py-3 text-white hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2">
                     {submitting ? 'Creating...' : 'Create Product'} <ArrowRight className="h-4 w-4" />

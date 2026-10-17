@@ -17,6 +17,24 @@ const dealCategories = [
     { name: 'Needs & Services', href: '/needs', icon: Handshake, color: 'text-indigo-600', desc: 'Submit service requests' },
 ];
 
+// Gold vertical landings (deals/{slug}): same destinations, editorial guides.
+const dealLandings = [
+    { name: 'Food deals guide', href: '/deals/food' },
+    { name: 'Jobs deals guide', href: '/deals/jobs' },
+    { name: 'Hotels deals guide', href: '/deals/hotels' },
+    { name: 'Real-estate deals guide', href: '/deals/real-estate' },
+    { name: 'Tasks deals guide', href: '/deals/tasks' },
+    { name: 'Transport deals guide', href: '/deals/transportation' },
+    { name: 'Agriculture deals guide', href: '/deals/agriculture' },
+    { name: 'Booking deals guide', href: '/deals/booking' },
+];
+
+interface NeedCategory {
+    id: string;
+    name: string;
+    slug: string;
+}
+
 export default function DealsIndex() {
     const [live, setLive] = useState<Array<{ id: string; slug?: string | null; name: string; price?: number | null }>>([]);
 
@@ -25,6 +43,14 @@ export default function DealsIndex() {
         api.get<{ data: Array<{ id: string; slug?: string | null; name: string; price?: number | null }> }>('/api/deals?per_page=6')
             .then((res) => setLive(Array.isArray(res.data) ? res.data : []))
             .catch(() => setLive([]));
+    }, []);
+
+    // Deal-category taxonomy (same NeedCategory tree the request form uses).
+    const [cats, setCats] = useState<NeedCategory[]>([]);
+    useEffect(() => {
+        api.get<{ data: NeedCategory[] }>('/api/need-categories')
+            .then((res) => setCats(Array.isArray(res.data) ? res.data : []))
+            .catch(() => setCats([]));
     }, []);
 
     return (
@@ -63,6 +89,39 @@ export default function DealsIndex() {
                         </div>
                     </div>
                 )}
+
+                {cats.length > 0 && (
+                    <div>
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Shop by category</h2>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                            {cats.map((c) => (
+                                <Link
+                                    key={c.id}
+                                    href={`/deals/category/${c.slug}`}
+                                    className="rounded-full border border-gray-200 bg-white px-4 py-1.5 text-sm font-medium text-gray-700 hover:border-indigo-300 hover:text-indigo-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                                >
+                                    {c.name}
+                                </Link>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                <div>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Deal guides</h2>
+                    <p className="mt-1 text-sm text-gray-500">Editorial walkthroughs for each vertical</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                        {dealLandings.map((l) => (
+                            <Link
+                                key={l.href}
+                                href={l.href}
+                                className="rounded-full border border-gray-200 bg-white px-4 py-1.5 text-sm font-medium text-gray-700 hover:border-indigo-300 hover:text-indigo-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                            >
+                                {l.name}
+                            </Link>
+                        ))}
+                    </div>
+                </div>
             </div>
         </AppLayout>
     );

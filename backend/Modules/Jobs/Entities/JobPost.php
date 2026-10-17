@@ -11,6 +11,7 @@ class JobPost extends Model
         'title',
         'description',
         'company',
+        'company_id',
         'location',
         'job_type',
         'salary_min',
@@ -34,6 +35,16 @@ class JobPost extends Model
     public function user()
     {
         return $this->belongsTo(\App\Models\User::class);
+    }
+
+    /**
+     * N-32: named companyProfile (not `company`) so the relation never
+     * shadows the legacy `company` string attribute in JSON payloads —
+     * it serializes as `company_profile`.
+     */
+    public function companyProfile()
+    {
+        return $this->belongsTo(Company::class, 'company_id');
     }
 
     public function applications()

@@ -6,6 +6,7 @@ import { formatPrice } from '@/lib/currency';
 import { CheckCircle, XCircle, CreditCard, ArrowRight, ArrowLeft, ShoppingCart, RefreshCcw } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import Image from '@/components/shared/Image';
+import { Button, buttonClasses } from '@/components/shared/Button';
 
 interface CartItem {
     id: string;
@@ -184,18 +185,20 @@ export default function CheckoutPage({ paymentMode = 'sandbox' }: CheckoutProps)
                 ) : cartError ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
                         <p className="text-red-600 font-medium">{cartError}</p>
-                        <button
+                        <Button
+                            variant="outline"
+                            size="sm"
                             onClick={loadCart}
-                            className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-500"
+                            className="mt-4"
                         >
                             <RefreshCcw className="h-4 w-4" /> Retry
-                        </button>
+                        </Button>
                     </div>
                 ) : itemCount === 0 && step !== 'done' ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
                         <ShoppingCart className="mx-auto h-12 w-12 text-gray-400" />
                         <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">Your cart is empty</h3>
-                        <Link href="/products" className="mt-4 inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
+                        <Link href="/products" className={`mt-4 ${buttonClasses('primary', 'md')}`}>
                             Browse Products
                         </Link>
                     </div>
@@ -235,13 +238,15 @@ export default function CheckoutPage({ paymentMode = 'sandbox' }: CheckoutProps)
                                                 className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700" />
                                         </div>
                                     </div>
-                                    <button
+                                    <Button
+                                        variant="primary"
+                                        fullWidth
+                                        className="mt-6"
                                         onClick={() => address.trim() && setStep('payment')}
                                         disabled={!address.trim()}
-                                        className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-6 py-3 text-lg font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
                                     >
                                         Continue to Payment <ArrowRight className="h-5 w-5" />
-                                    </button>
+                                    </Button>
                                 </div>
                             )}
 
@@ -273,19 +278,20 @@ export default function CheckoutPage({ paymentMode = 'sandbox' }: CheckoutProps)
                                             : 'Sandbox mode — no real funds will be charged on this environment.'}
                                     </p>
                                     <div className="mt-6 flex gap-3">
-                                        <button onClick={() => setStep('details')} className="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50 dark:border-gray-600">
+                                        <Button variant="ghost" size="sm" onClick={() => setStep('details')}>
                                             <ArrowLeft className="h-4 w-4" /> Back
-                                        </button>
-                                        <button
+                                        </Button>
+                                        <Button
+                                            variant="primary"
+                                            className="flex-1"
                                             onClick={placeOrder}
                                             disabled={submitting}
-                                            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-indigo-600 px-6 py-3 text-lg font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
                                         >
                                             <CreditCard className="h-5 w-5" />
                                             {submitting
                                                 ? 'Placing Order...'
                                                 : `Pay ${cart ? formatPrice(parseFloat(cart.total)) : ''}`}
-                                        </button>
+                                        </Button>
                                     </div>
                                 </div>
                             )}
@@ -317,23 +323,25 @@ export default function CheckoutPage({ paymentMode = 'sandbox' }: CheckoutProps)
                                             <p className="mt-2">
                                                 Your card has not been charged. Retry the payment, or contact support if the problem persists.
                                             </p>
-                                            <button
+                                            <Button
                                                 type="button"
+                                                variant="primary"
+                                                size="sm"
+                                                className="mt-3"
                                                 onClick={() => order && chargeForOrder(order)}
-                                                className="mt-3 rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-60"
                                             >
                                                 Retry payment
-                                            </button>
+                                            </Button>
                                         </div>
                                     )}
                                     <div className="mt-8 flex flex-wrap justify-center gap-4">
-                                        <Link href={`/orders/${order?.id}`} className="rounded-lg bg-indigo-600 px-6 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
+                                        <Link href={`/orders/${order?.id}`} className={buttonClasses('primary', 'md')}>
                                             Track Order
                                         </Link>
-                                        <Link href="/orders" className="rounded-lg border border-gray-300 px-6 py-2 text-sm font-medium hover:bg-gray-50 dark:border-gray-600">
+                                        <Link href="/orders" className={buttonClasses('outline', 'md')}>
                                             View All Orders
                                         </Link>
-                                        <Link href="/products" className="rounded-lg border border-gray-300 px-6 py-2 text-sm font-medium hover:bg-gray-50 dark:border-gray-600">
+                                        <Link href="/products" className={buttonClasses('outline', 'md')}>
                                             Continue Shopping
                                         </Link>
                                     </div>

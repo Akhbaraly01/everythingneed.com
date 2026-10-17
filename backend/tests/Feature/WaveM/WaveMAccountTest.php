@@ -43,7 +43,6 @@ class WaveMAccountTest extends TestCase
         $order = $this->makeOrder($user);
 
         $public = [
-            '/account/security',
             "/account/orders/{$order->id}",
             '/account/bookings/anything',
             '/account/needs',
@@ -52,8 +51,6 @@ class WaveMAccountTest extends TestCase
             '/account/messages',
             '/account/wallet',
             '/account/wallet/transactions',
-            '/account/wallet/deposit',
-            '/account/wallet/withdraw',
             '/account/kyc',
             '/account/payment-methods',
             '/account/financial-services',
@@ -70,6 +67,17 @@ class WaveMAccountTest extends TestCase
         foreach ($public as $path) {
             $this->actingAs($user, 'web')->get($path)->assertOk();
         }
+    }
+
+    public function test_consolidated_account_routes_redirect_to_canonical_pages(): void
+    {
+        $this->get('/account/security')->assertRedirect(route('login'));
+
+        $user = $this->createUser();
+
+        $this->actingAs($user, 'web')->get('/account/security')->assertRedirect('/settings');
+        $this->actingAs($user, 'web')->get('/account/wallet/deposit')->assertRedirect('/account/wallet');
+        $this->actingAs($user, 'web')->get('/account/wallet/withdraw')->assertRedirect('/account/wallet');
     }
 
     public function test_account_order_detail_is_owner_scoped(): void

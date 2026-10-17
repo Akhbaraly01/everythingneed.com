@@ -15,12 +15,14 @@ class FoodOrder extends Model
         'status',
         'delivery_fee',
         'estimated_delivery_time',
+        'scheduled_for',
     ];
 
     protected $casts = [
         'total_amount' => 'decimal:2',
         'delivery_fee' => 'decimal:2',
         'estimated_delivery_time' => 'datetime',
+        'scheduled_for' => 'datetime',
     ];
 
     const STATUS_PENDING = 'pending';

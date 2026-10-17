@@ -1,6 +1,7 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link } from '@inertiajs/react';
 import { api, errorMessage } from '@/lib/api';
+import { Button } from '@/components/shared/Button';
 import { useEffect, useState } from 'react';
 import {FileText, RefreshCcw} from 'lucide-react';
 
@@ -39,9 +40,9 @@ export default function NeedHistory() {
                 {loading ? <p className="text-gray-500">Loading...</p> : error ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
                         <p className="text-red-600 font-medium">{error}</p>
-                        <button onClick={load} className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-500">
-                            <RefreshCcw className="h-4 w-4" /> Retry
-                        </button>
+                        <Button onClick={load} variant="ghost" size="sm" className="mt-4 gap-2" iconLeft={<RefreshCcw className="h-4 w-4" />}>
+                            Retry
+                        </Button>
                     </div>
                 ) : needs.length === 0 ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">

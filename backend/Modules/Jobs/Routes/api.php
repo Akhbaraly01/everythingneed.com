@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Modules\Jobs\Http\Controllers\CompanyController;
 use Modules\Jobs\Http\Controllers\JobController;
 
 Route::prefix('api')->group(function () {
@@ -14,11 +15,19 @@ Route::prefix('api')->group(function () {
         Route::get('/jobs/applications/{id}', [JobController::class, 'showApplication']);
         Route::patch('/jobs/applications/{id}', [JobController::class, 'updateApplication']);
         Route::get('/jobs/profile', [JobController::class, 'profile']);
+
+        // N-32 own company profile (one per owner in v1)
+        Route::get('/company', [CompanyController::class, 'showOwn']);
+        Route::post('/company', [CompanyController::class, 'store']);
+        Route::put('/company', [CompanyController::class, 'update']);
+        Route::delete('/company', [CompanyController::class, 'destroy']);
     });
 
     // Public reads
     Route::get('/jobs', [JobController::class, 'index']);
     Route::get('/jobs/search', [JobController::class, 'index']);
+    // N-32 public company page (before /jobs/{id} is irrelevant — other prefix)
+    Route::get('/companies/{slug}', [CompanyController::class, 'publicProfile']);
 
     // Admin console (all posts incl. inactive/expired)
     Route::get('/admin/jobs', [JobController::class, 'adminIndex'])

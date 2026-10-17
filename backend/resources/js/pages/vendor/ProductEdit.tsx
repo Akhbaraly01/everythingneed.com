@@ -6,15 +6,15 @@ import { useEffect, useState } from 'react';
 import { Package, ArrowRight } from 'lucide-react';
 
 export default function VendorProductEdit({ product_id }: { product_id?: string }) {
-    const [form, setForm] = useState({ name: '', description: '', category: '', price: '', stock_quantity: '', image_url: '', is_active: true });
+    const [form, setForm] = useState({ name: '', description: '', category: '', price: '', stock_quantity: '', image_url: '', video_url: '', is_active: true });
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
         const id = product_id || window.location.pathname.split('/').pop();
         if (id) {
-            api.get<{ data: { name: string; description?: string | null; category: string; price: number | string; stock_quantity: number | string; image_url?: string | null; is_active: boolean } }>(`/api/products/${id}`)
-                .then((res) => setForm({ name: res.data.name, description: res.data.description || '', category: res.data.category, price: String(res.data.price), stock_quantity: String(res.data.stock_quantity), image_url: res.data.image_url || '', is_active: res.data.is_active }))
+            api.get<{ data: { name: string; description?: string | null; category: string; price: number | string; stock_quantity: number | string; image_url?: string | null; video_url?: string | null; is_active: boolean } }>(`/api/products/${id}`)
+                .then((res) => setForm({ name: res.data.name, description: res.data.description || '', category: res.data.category, price: String(res.data.price), stock_quantity: String(res.data.stock_quantity), image_url: res.data.image_url || '', video_url: res.data.video_url || '', is_active: res.data.is_active }))
                 .catch(() => {})
                 .finally(() => setLoading(false));
         } else setLoading(false);
@@ -51,6 +51,7 @@ export default function VendorProductEdit({ product_id }: { product_id?: string 
                         <div><label className="block text-sm font-medium mb-1 dark:text-gray-300">Stock</label><input type="number" required value={form.stock_quantity} onChange={(e) => setForm({ ...form, stock_quantity: e.target.value })} className="w-full rounded-lg border px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></div>
                         <div><label className="block text-sm font-medium mb-1 dark:text-gray-300">Image URL</label><input value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} className="w-full rounded-lg border px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></div>
                     </div>
+                    <div><label className="block text-sm font-medium mb-1 dark:text-gray-300">Video URL (plays in-app on your product page)</label><input value={form.video_url} onChange={(e) => setForm({ ...form, video_url: e.target.value })} className="w-full rounded-lg border px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></div>
                     <label className="flex items-center gap-2"><input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} /> Active</label>
                 </div>
                 <button type="submit" disabled={submitting} className="w-full rounded-lg bg-blue-600 px-4 py-3 text-white hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2">

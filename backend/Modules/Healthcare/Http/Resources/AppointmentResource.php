@@ -21,6 +21,7 @@ class AppointmentResource extends JsonResource
             'status' => $this->status,
             'payment_status' => $this->payment_status ?? 'unpaid',
             'paid_at' => $this->paid_at,
+            'images' => $this->images ?? [],
             'doctor' => [
                 'id' => $this->doctor?->id,
                 'full_name' => $this->doctor?->full_name,

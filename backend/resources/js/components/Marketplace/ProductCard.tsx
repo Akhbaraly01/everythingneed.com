@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { formatPrice } from '@/lib/currency';
 import { useWishlist } from '@/hooks/useWishlist';
+import { useLanguage } from '@/lib/use-language';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -43,6 +44,7 @@ function getTypeColor(type: MarketplaceProduct['type']): string {
 
 export default function ProductCard({ product }: { product: MarketplaceProduct }) {
     const { props } = usePage();
+    const { t } = useLanguage();
     const auth = (props.auth ?? null) as { user?: { id: string } } | null;
     const { has: wishlistHas, toggle: toggleWishlistState } = useWishlist();
     const inWishlist = wishlistHas(product.id);
@@ -65,12 +67,12 @@ export default function ProductCard({ product }: { product: MarketplaceProduct }
         setWishPending(true);
         try {
             const saved = await toggleWishlistState(product.id);
-            toast.success(saved ? 'Saved to wishlist' : 'Removed from wishlist');
+            toast.success(saved ? t('toast.wishlistSaved') : t('toast.wishlistRemoved'));
         } catch (err) {
             if (err instanceof ApiError && err.status === 401) {
                 router.visit('/login');
             } else {
-                toast.error(errorMessage(err, 'Could not update wishlist'));
+                toast.error(errorMessage(err, t('toast.updateFail')));
             }
         } finally {
             setWishPending(false);
@@ -95,7 +97,7 @@ export default function ProductCard({ product }: { product: MarketplaceProduct }
         try {
             await api.post('/api/cart/items', { product_id: String(product.id), quantity: 1 });
             setCartAdded(true);
-            toast.success('Added to cart');
+            toast.success(t('toast.addedToCart'));
             router.reload({ only: ['cartCount'] });
         } catch {
             router.visit(product.link ?? `/products/${product.slug ?? product.id}`);
@@ -106,8 +108,8 @@ export default function ProductCard({ product }: { product: MarketplaceProduct }
 
     return (
         <Link href={product.link ?? `/products/${product.slug ?? product.id}`}>
-            <div className="overflow-hidden hover:shadow-lg transition-all duration-300 group h-full rounded-lg border border-border bg-card flex flex-col">
-                <div className="aspect-square overflow-hidden bg-muted relative">
+            <div className="glass-1 overflow-hidden hover:shadow-lg transition-all duration-300 group h-full rounded-xl border border-border bg-card flex flex-col">
+                <div className="relative h-[110px] w-full overflow-hidden bg-muted md:h-[150px]">
                     {product.image || product.image_url || product.images?.[0] ? (
                         <img
                             src={product.image || product.image_url || product.images?.[0]}
@@ -117,7 +119,7 @@ export default function ProductCard({ product }: { product: MarketplaceProduct }
                         />
                     ) : (
                         <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                            <ShoppingCart className="h-8 w-8" />
+                            <ShoppingCart className="h-6 w-6" />
                         </div>
                     )}
                     <button
@@ -146,44 +148,44 @@ export default function ProductCard({ product }: { product: MarketplaceProduct }
                         </div>
                     )}
                 </div>
-                <div className="p-3 flex-1">
+                <div className="p-2 flex-1">
                     {product.category && (
-                        <p className="text-[10px] text-muted-foreground mb-0.5 uppercase tracking-wide">
+                        <p className="text-[10px] text-muted-foreground opacity-60 mb-0.5 uppercase tracking-wide">
                             {product.category}
                         </p>
                     )}
-                    <h3 className="font-medium text-sm line-clamp-2 mb-1 h-10">{product.name}</h3>
+                    <h3 className="font-medium text-[12px] leading-tight line-clamp-2 mb-1 min-h-8 md:text-sm">{product.name}</h3>
                     <div className="flex items-center gap-1 mb-1">
                         <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
                         {product.rating != null ? (
-                            <span className="text-xs font-medium">{product.rating.toFixed(1)}</span>
+                            <span className="text-[11px] font-medium">{product.rating.toFixed(1)}</span>
                         ) : (
-                            <span className="text-[10px] text-muted-foreground">No reviews yet</span>
+                            <span className="text-[10px] text-muted-foreground">{t('card.noReviews')}</span>
                         )}
                         {product.vendor && (
-                            <span className="text-[10px] text-muted-foreground">({product.vendor})</span>
+                            <span className="text-[10px] text-muted-foreground truncate">({product.vendor})</span>
                         )}
                     </div>
-                    <div className="flex items-center gap-2">
-                        <p className="text-base font-bold text-primary">{formatPrice(product.price)}</p>
+                    <div className="flex items-center gap-1.5">
+                        <p className="text-[13px] font-bold text-blue-400 md:text-sm">{formatPrice(product.price)}</p>
                         {product.originalPrice && product.originalPrice > product.price && (
-                            <p className="text-xs text-muted-foreground line-through">
+                            <p className="text-[10px] text-muted-foreground line-through">
                                 {formatPrice(product.originalPrice)}
                             </p>
                         )}
                     </div>
                 </div>
-                <div className="p-3 pt-0 flex items-center justify-between">
+                <div className="p-2 pt-0 flex items-center justify-between">
                     <button
                         type="button"
                         onClick={(e) => void addToCart(e)}
                         disabled={cartPending}
-                        className="inline-flex h-8 flex-1 items-center justify-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60"
+                        className="btn-3d inline-flex h-7 flex-1 items-center justify-center !rounded-md bg-primary px-2 !text-[11px] font-medium text-primary-foreground !min-h-0 hover:opacity-90 disabled:opacity-60"
                     >
                         <ShoppingCart className="h-3 w-3 mr-1" />
-                        {cartAdded ? 'Added ✓' : cartPending ? 'Adding…' : 'Add to Cart'}
+                        {cartAdded ? t('card.added') : cartPending ? t('card.adding') : t('card.addToCart')}
                     </button>
-                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground ml-2" />
+                    <ChevronRight className="h-3 w-3 text-muted-foreground ml-1.5" />
                 </div>
             </div>
         </Link>

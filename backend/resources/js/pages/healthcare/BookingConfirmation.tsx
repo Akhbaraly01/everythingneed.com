@@ -1,6 +1,7 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, router } from '@inertiajs/react';
 import { api } from '@/lib/api';
+import { Button } from '@/components/shared/Button';
 import { useEffect, useState } from 'react';
 import {CheckCircle, Calendar, Clock, MapPin, CreditCard} from 'lucide-react';
 
@@ -87,18 +88,19 @@ export default function BookingConfirmation() {
                 )}
 
                 <div className="flex gap-4">
-                    <button
+                    <Button
                         onClick={() => router.visit('/healthcare/appointments')}
-                        className="flex-1 rounded-lg bg-blue-600 px-4 py-3 text-center text-white hover:bg-blue-700"
+                        className="flex-1"
                     >
                         View My Appointments
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                         onClick={() => router.visit('/healthcare')}
-                        className="flex-1 rounded-lg border px-4 py-3 text-center text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                        variant="outline"
+                        className="flex-1"
                     >
                         Back to Healthcare
-                    </button>
+                    </Button>
                 </div>
             </div>
         </AppLayout>

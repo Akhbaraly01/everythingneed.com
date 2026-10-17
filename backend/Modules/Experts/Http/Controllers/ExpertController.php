@@ -73,9 +73,29 @@ class ExpertController extends Controller
         return response()->json(['data' => $expert, 'reviews' => $reviews]);
     }
 
-    public function storeReview(Request $request, string $id): JsonResponse
+    /** Public review list for an expert profile (newest first, paginated). */
+    public function reviews(Request $request, string $id): JsonResponse
     {
-        $request->validate([
+        $reviews = DB::table('expert_reviews as er')
+            ->leftJoin('users as u', 'u.id', '=', 'er.user_id')
+            ->where('er.expert_id', $id)
+            ->orderByDesc('er.created_at')
+            ->select(['er.id', 'er.rating', 'er.comment', 'er.created_at', 'u.name as user_name'])
+            ->paginate(min((int) $request->get('per_page', 10), 30));
+
+        return response()->json([
+            'data' => $reviews->items(),
+            'meta' => [
+                'current_page' => $reviews->currentPage(),
+                'last_page' => $reviews->lastPage(),
+                'per_page' => $reviews->perPage(),
+                'total' => $reviews->total(),
+            ],
+        ]);
+    }
+
+    public function storeReview(Request $request, string $id): JsonResponse
+    {        $request->validate([
             'rating' => 'required|integer|min:1|max:5',
             'comment' => 'nullable|string|max:1000',
         ]);

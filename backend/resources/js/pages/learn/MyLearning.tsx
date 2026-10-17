@@ -81,7 +81,10 @@ export default function MyLearning() {
             <div className="space-y-6">
                 <div className="flex items-center justify-between">
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white">My Learning</h1>
-                    <Link href="/learn" className="text-sm text-indigo-600 hover:text-indigo-500">Browse more courses &rarr;</Link>
+                    <div className="flex items-center gap-4">
+                        <Link href="/learn/quiz-results" className="text-sm text-indigo-600 hover:text-indigo-500">Quiz results</Link>
+                        <Link href="/learn" className="text-sm text-indigo-600 hover:text-indigo-500">Browse more courses &rarr;</Link>
+                    </div>
                 </div>
 
                 {loading ? (

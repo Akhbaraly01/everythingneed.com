@@ -40,7 +40,27 @@ class TaskController extends Controller
             });
         }
 
-        $tasks = $query->orderByDesc('created_at')
+        // TODO 10 discovery filters (validated, allowlisted sort).
+        $validated = $request->validate([
+            'budget_min' => ['nullable', 'numeric', 'min:0'],
+            'budget_max' => ['nullable', 'numeric', 'min:0'],
+            'sort' => ['nullable', 'string', \Illuminate\Validation\Rule::in(['newest', 'budget_asc', 'budget_desc', 'deadline'])],
+        ]);
+
+        if (! empty($validated['budget_min'])) {
+            $query->where('budget', '>=', $validated['budget_min']);
+        }
+        if (! empty($validated['budget_max'])) {
+            $query->where('budget', '<=', $validated['budget_max']);
+        }
+
+        $order = match ($validated['sort'] ?? 'newest') {
+            'budget_asc' => ['budget', 'asc'],
+            'budget_desc' => ['budget', 'desc'],
+            'deadline' => ['deadline', 'asc'],
+            default => ['created_at', 'desc'],
+        };
+        $tasks = $query->orderBy($order[0], $order[1])
             ->paginate($request->get('per_page', 15));
 
         return response()->json([

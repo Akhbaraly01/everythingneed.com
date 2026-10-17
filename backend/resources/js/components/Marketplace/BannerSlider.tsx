@@ -60,7 +60,10 @@ function CampaignIcon({ icon }: { icon: Campaign['icon'] }) {
     }
 }
 
+import { useLanguage } from '@/lib/use-language';
+
 export default function BannerSlider() {
+    const { t } = useLanguage();
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isAutoPlaying, setIsAutoPlaying] = useState(true);
     const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -103,9 +106,12 @@ export default function BannerSlider() {
 
     if (campaigns.length === 0) {
         return (
-            <div className="rounded-xl bg-gradient-to-r from-primary/90 to-primary p-4 text-primary-foreground">
-                <p className="text-sm font-semibold">Welcome to EverythingNeed</p>
-                <p className="text-xs opacity-80">Explore products, learning, healthcare and services.</p>
+            <div
+                data-testid="home-banners"
+                className="rounded-xl bg-gradient-to-r from-primary/90 to-primary p-4 text-primary-foreground"
+            >
+                <p className="text-sm font-semibold">{t('banner.welcomeTitle')}</p>
+                <p className="text-xs opacity-80">{t('banner.welcomeText')}</p>
             </div>
         );
     }
@@ -115,7 +121,9 @@ export default function BannerSlider() {
         setCurrentIndex((prev) => (prev - 1 + campaigns.length) % campaigns.length);
 
     return (
+        <>
         <div
+            data-testid="home-banners"
             className="relative overflow-hidden rounded-xl"
             onMouseEnter={() => setIsAutoPlaying(false)}
             onMouseLeave={() => setIsAutoPlaying(true)}
@@ -172,20 +180,20 @@ export default function BannerSlider() {
                 type="button"
                 onClick={goPrev}
                 aria-label="Previous banner"
-                className="absolute left-1 top-1/2 -translate-y-1/2 h-7 w-7 bg-black/30 hover:bg-black/50 text-white rounded-full flex items-center justify-center"
+                className="tap-safe absolute left-1 top-1/2 z-10 h-7 w-7 -translate-y-1/2 rounded-full bg-black/35 text-white backdrop-blur-sm transition-transform duration-fast hover:bg-black/50 active:scale-90"
             >
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft className="mx-auto h-4 w-4" />
             </button>
             <button
                 type="button"
                 onClick={goNext}
                 aria-label="Next banner"
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 bg-black/30 hover:bg-black/50 text-white rounded-full flex items-center justify-center"
+                className="tap-safe absolute right-1 top-1/2 z-10 h-7 w-7 -translate-y-1/2 rounded-full bg-black/35 text-white backdrop-blur-sm transition-transform duration-fast hover:bg-black/50 active:scale-90"
             >
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="mx-auto h-4 w-4" />
             </button>
 
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+            <div className="absolute bottom-2 left-1/2 z-10 flex -translate-x-1/2 justify-center gap-1">
                 {campaigns.map((_, idx) => (
                     <button
                         key={idx}
@@ -199,5 +207,6 @@ export default function BannerSlider() {
                 ))}
             </div>
         </div>
+        </>
     );
 }

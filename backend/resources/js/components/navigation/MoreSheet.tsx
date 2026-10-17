@@ -89,12 +89,18 @@ export default function MoreSheet({ open, onClose }: MoreSheetProps) {
                     const Icon = ICONS[item.icon ?? ''] ?? LayoutGrid;
                     const active = isActive(item.url);
                     const external = /^https?:\/\//i.test(item.url);
-                    const className = `tap-safe flex flex-col items-center gap-1.5 rounded-2xl px-2 py-3 text-center transition-colors duration-fast ${
-                        active ? 'bg-primary/[0.12] text-primary' : 'text-foreground hover:bg-muted/70'
+                    const className = `tap-safe flex flex-col items-center gap-1.5 rounded-2xl px-2 py-3 text-center transition-transform duration-fast active:scale-95 ${
+                        active ? 'text-primary' : 'text-foreground'
                     }`;
                     const content = (
                         <>
-                            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/[0.12] text-primary">
+                            <span
+                                className={`glass-2 flex h-11 w-11 items-center justify-center rounded-2xl ${
+                                    active
+                                        ? 'bg-primary/[0.14] text-primary shadow-[0_0_18px_-6px_hsl(var(--blue-glow)/0.55)]'
+                                        : 'text-foreground'
+                                }`}
+                            >
                                 <Icon className="h-5 w-5" aria-hidden="true" />
                             </span>
                             <span className="w-full truncate text-xs font-medium">{item.title}</span>

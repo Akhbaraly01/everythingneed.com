@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import AuthLayout from '@/layouts/AuthLayout';
+import TurnstileWidget from '@/components/auth/TurnstileWidget';
 import { api } from '@/lib/api';
-import { Mail, Lock, User, Shield, Loader2, ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/shared/Button';
+import { Mail, Lock, User, Shield, ArrowLeft } from 'lucide-react';
 
 type Tab = 'login' | 'signup' | 'otp';
 
@@ -23,8 +25,8 @@ export default function Login() {
     const [otpLoading, setOtpLoading] = useState(false);
     const [otpError, setOtpError] = useState('');
 
-    const loginForm = useForm({ email: '', password: '', remember: false });
-    const signupForm = useForm({ name: '', email: '', password: '', password_confirmation: '' });
+    const loginForm = useForm({ email: '', password: '', remember: false, 'cf-turnstile-response': '' });
+    const signupForm = useForm({ name: '', email: '', password: '', password_confirmation: '', 'cf-turnstile-response': '' });
 
     const requestOtp = async (target: string) => {
         const trimmed = target.trim();
@@ -98,16 +100,16 @@ export default function Login() {
 
             <div className="mb-6 grid w-full grid-cols-3 rounded-lg bg-muted p-1">
                 {(['login', 'signup', 'otp'] as Tab[]).map((t) => (
-                    <button
+                    <Button
                         key={t}
                         type="button"
                         onClick={() => setActiveTab(t)}
-                        className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                            activeTab === t ? 'bg-card text-foreground shadow' : 'text-muted-foreground'
-                        }`}
+                        variant={activeTab === t ? 'primary' : 'ghost'}
+                        size="sm"
+                        className="rounded-md px-3 py-2"
                     >
                         {t === 'login' ? 'Sign In' : t === 'signup' ? 'Sign Up' : 'OTP'}
-                    </button>
+                    </Button>
                 ))}
             </div>
 
@@ -161,14 +163,14 @@ export default function Login() {
                         </label>
                         <Link href="/forgot-password" className="text-primary hover:underline">Forgot password?</Link>
                     </div>
-                    <button
+                    <TurnstileWidget onToken={(token) => loginForm.setData('cf-turnstile-response', token ?? '')} />
+                    <Button
                         type="submit"
-                        disabled={loginForm.processing}
-                        className="flex h-10 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                        loading={loginForm.processing}
+                        fullWidth
                     >
-                        {loginForm.processing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                         Sign In
-                    </button>
+                    </Button>
                 </form>
             )}
 
@@ -222,13 +224,14 @@ export default function Login() {
                             />
                         </div>
                     </div>
-                    <button
+                    <TurnstileWidget onToken={(token) => signupForm.setData('cf-turnstile-response', token ?? '')} />
+                    <Button
                         type="submit"
-                        disabled={signupForm.processing}
-                        className="flex h-10 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                        loading={signupForm.processing}
+                        fullWidth
                     >
                         Sign Up
-                    </button>
+                    </Button>
                 </form>
             )}
 
@@ -238,19 +241,19 @@ export default function Login() {
                         <>
                             <div className="grid w-full grid-cols-2 rounded-lg bg-muted p-1">
                                 {(['phone', 'email'] as const).map((c) => (
-                                    <button
+                                    <Button
                                         key={c}
                                         type="button"
                                         onClick={() => {
                                             setOtpChannel(c);
                                             setOtpError('');
                                         }}
-                                        className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                                            otpChannel === c ? 'bg-card text-foreground shadow' : 'text-muted-foreground'
-                                        }`}
+                                        variant={otpChannel === c ? 'primary' : 'ghost'}
+                                        size="sm"
+                                        className="rounded-md px-3 py-1.5 text-xs"
                                     >
                                         {c === 'phone' ? 'Phone' : 'Email'}
-                                    </button>
+                                    </Button>
                                 ))}
                             </div>
                             <p className="text-xs text-muted-foreground">
@@ -272,15 +275,14 @@ export default function Login() {
                                     />
                                 </div>
                             </div>
-                            <button
+                            <Button
                                 type="button"
-                                disabled={otpLoading}
+                                loading={otpLoading}
                                 onClick={() => void requestOtp(otpInput)}
-                                className="flex h-10 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                                fullWidth
                             >
-                                {otpLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                                 Send OTP
-                            </button>
+                            </Button>
                         </>
                     ) : (
                         <>
@@ -298,22 +300,25 @@ export default function Login() {
                                     />
                                 ))}
                             </div>
-                            <button
+                            <Button
                                 type="button"
                                 disabled={otpLoading}
                                 onClick={() => void verifyOtp()}
-                                className="flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                                fullWidth
+                                iconLeft={<Shield className="h-4 w-4" />}
                             >
-                                <Shield className="h-4 w-4" />
                                 Verify OTP
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                                 type="button"
                                 onClick={() => setOtpSent(false)}
-                                className="w-full text-center text-xs text-muted-foreground hover:text-foreground"
+                                variant="ghost"
+                                size="sm"
+                                fullWidth
+                                className="text-center text-xs"
                             >
                                 Resend code (60s)
-                            </button>
+                            </Button>
                         </>
                     )}
                     {otpError && <p className="text-sm text-destructive">{otpError}</p>}

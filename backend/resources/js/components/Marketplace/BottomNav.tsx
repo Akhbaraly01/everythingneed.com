@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import {
     Home,
@@ -6,85 +5,51 @@ import {
     GraduationCap,
     Heart,
     User,
-    Package,
-    ShoppingCart,
-    Hotel,
-    Briefcase,
-    Plane,
-    Car,
-    Tractor,
-    Building2,
-    Stethoscope,
-    LayoutGrid,
-    MoreHorizontal,
     type LucideIcon,
 } from 'lucide-react';
-import type { SiteNav, SiteNavItem } from '@/types';
 import { useLanguage } from '@/lib/use-language';
-import MoreSheet from '@/components/navigation/MoreSheet';
 
-// Shown until an admin publishes a mobile menu (navigations table).
-const FALLBACK_ITEMS: SiteNavItem[] = [
-    { id: 'fallback-home', title: 'Home', url: '/', icon: 'home' },
-    { id: 'fallback-needs', title: 'Needs', url: '/needs', icon: 'file-text' },
-    { id: 'fallback-learn', title: 'Learn', url: '/learn', icon: 'graduation-cap' },
-    { id: 'fallback-health', title: 'Health', url: '/healthcare', icon: 'heart' },
-    { id: 'fallback-account', title: 'Account', url: '/account', icon: 'user' },
+interface DockTab {
+    id: string;
+    labelKey: 'nav.home' | 'nav.needs' | 'nav.learn' | 'nav.healthcare' | 'nav.account';
+    fallbackLabel: string;
+    url: string;
+    Icon: LucideIcon;
+    /** Signature 3D orb gradient (active state). */
+    orb: string;
+    /** Matching glow shadow (active state). */
+    glow: string;
+    /** Icon tint on the frost orb (inactive state). */
+    tint: string;
+}
+
+// Fixed bottom bar (mobile): 5 tabs only — Home, Needs, Learn, Health,
+// Account. Always visible while scrolling; hidden on md+ (desktop uses the
+// fixed header nav). Each tab owns a signature candy orb color; the active
+// orb pops with gloss + glow. Extra destinations live on Account.
+const TABS: DockTab[] = [
+    { id: 'home', labelKey: 'nav.home', fallbackLabel: 'Home', url: '/', Icon: Home,
+      orb: 'from-sky-400 via-blue-500 to-indigo-600', glow: 'shadow-blue-500/50', tint: 'text-sky-300' },
+    { id: 'needs', labelKey: 'nav.needs', fallbackLabel: 'Needs', url: '/needs', Icon: FileText,
+      orb: 'from-violet-400 via-purple-500 to-fuchsia-600', glow: 'shadow-purple-500/50', tint: 'text-violet-300' },
+    { id: 'learn', labelKey: 'nav.learn', fallbackLabel: 'Learn', url: '/learn', Icon: GraduationCap,
+      orb: 'from-amber-400 via-orange-500 to-red-500', glow: 'shadow-orange-500/50', tint: 'text-amber-300' },
+    { id: 'healthcare', labelKey: 'nav.healthcare', fallbackLabel: 'Health', url: '/healthcare', Icon: Heart,
+      orb: 'from-rose-400 via-pink-500 to-rose-600', glow: 'shadow-rose-500/50', tint: 'text-rose-300' },
+    { id: 'account', labelKey: 'nav.account', fallbackLabel: 'Account', url: '/account', Icon: User,
+      orb: 'from-cyan-400 via-teal-500 to-emerald-600', glow: 'shadow-teal-500/50', tint: 'text-teal-300' },
 ];
 
-const ICONS: Record<string, LucideIcon> = {
-    home: Home,
-    'file-text': FileText,
-    'graduation-cap': GraduationCap,
-    heart: Heart,
-    user: User,
-    package: Package,
-    'shopping-cart': ShoppingCart,
-    hotel: Hotel,
-    briefcase: Briefcase,
-    plane: Plane,
-    car: Car,
-    tractor: Tractor,
-    building: Building2,
-    stethoscope: Stethoscope,
-    'layout-grid': LayoutGrid,
-};
-
-export default function BottomNav({ cartCount: _cartCount = 0 }: { cartCount?: number }) {
-    const { props, url } = usePage();
+export default function BottomNav() {
+    const { url } = usePage();
     const { t } = useLanguage();
-    const siteNav = (props.siteNav ?? {}) as SiteNav;
     const currentPath = url.split('?')[0];
-    const [moreOpen, setMoreOpen] = useState(false);
-
-    // Admin-published titles render as authored (never machine-translated);
-    // only the built-in fallbacks are localized.
-    const fallbackTitle = (id: string, fallback: string): string => {
-        switch (id) {
-            case 'fallback-home':
-                return t('nav.home');
-            case 'fallback-needs':
-                return t('nav.needs');
-            case 'fallback-learn':
-                return t('nav.learn');
-            case 'fallback-health':
-                return t('nav.healthcare');
-            case 'fallback-account':
-                return t('nav.account');
-            default:
-                return fallback;
-        }
-    };
-
-    const mobileItems = (siteNav.mobile?.length ? siteNav.mobile : FALLBACK_ITEMS).filter(
-        (item) => !item.devices || item.devices.length === 0 || item.devices.includes('mobile'),
-    );
 
     const isActive = (path: string): boolean => {
-        if (path === '/' || path === '/dashboard' || path === '/home') {
+        if (path === '/') {
             return currentPath === '/' || currentPath === '/dashboard' || currentPath === '/home';
         }
-        if (path === '/login' || path === '/account') {
+        if (path === '/account') {
             return currentPath === '/account' || currentPath.startsWith('/account/') || currentPath === '/login';
         }
         return currentPath === path || currentPath.startsWith(`${path}/`);
@@ -92,53 +57,55 @@ export default function BottomNav({ cartCount: _cartCount = 0 }: { cartCount?: n
 
     return (
         <nav
-            className="fixed bottom-[calc(var(--safe-bottom)+8px)] left-3 right-3 z-dock md:hidden"
+            className="fixed bottom-0 left-0 right-0 z-50 md:hidden"
             data-testid="site-nav-mobile"
+            aria-label="Mobile navigation"
         >
-            <div className="glass-3 glass-edge flex h-[var(--dock-h)] items-center justify-around rounded-2xl px-1">
-                {mobileItems.map((item) => {
-                    const Icon = ICONS[item.icon ?? ''] ?? LayoutGrid;
-                    const active = isActive(item.url);
+            <div className="flex h-[78px] items-stretch justify-around rounded-t-2xl border-t border-white/10 bg-[#0f172a]/90 px-1 backdrop-blur-xl dark:bg-gray-900/90">
+                {TABS.map((tab) => {
+                    const active = isActive(tab.url);
                     return (
                         <Link
-                            key={item.id}
-                            href={item.url}
+                            key={tab.id}
+                            href={tab.url}
                             aria-current={active ? 'page' : undefined}
-                            className={`tap-safe flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl py-1.5 transition-colors duration-fast ${
-                                active
-                                    ? 'text-primary'
-                                    : 'text-muted-foreground hover:text-foreground'
+                            className={`tap-safe group flex min-w-0 flex-1 flex-col items-center justify-center gap-1 py-1.5 transition-all duration-300 active:scale-95 ${
+                                active ? 'text-white' : 'text-gray-400 hover:text-gray-200'
                             }`}
                         >
                             <span
-                                className={`flex h-7 w-12 items-center justify-center rounded-full transition-colors duration-fast ${
-                                    active ? 'bg-primary/15' : ''
+                                aria-hidden="true"
+                                className={`relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border backdrop-blur-md transition-all duration-300 max-[399px]:h-9 max-[399px]:w-9 ${
+                                    active
+                                        ? `scale-110 border-white/40 bg-gradient-to-br ${tab.orb} shadow-lg ${tab.glow}`
+                                        : 'border-white/10 bg-white/10 shadow-inner'
                                 }`}
                             >
-                                <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
+                                {/* Gloss reflection across the upper half. */}
+                                <span
+                                    aria-hidden="true"
+                                    className={`pointer-events-none absolute inset-x-1 top-0 h-1/2 rounded-t-full bg-gradient-to-b to-transparent ${
+                                        active ? 'from-white/50' : 'from-white/15'
+                                    }`}
+                                />
+                                <tab.Icon
+                                    className={`relative z-10 h-[18px] w-[18px] shrink-0 max-[399px]:h-4 max-[399px]:w-4 ${
+                                        active ? 'text-white' : tab.tint
+                                    }`}
+                                    strokeWidth={active ? 2.25 : 1.75}
+                                />
                             </span>
-                            <span className="w-full truncate px-0.5 text-center text-[10px] font-medium leading-none">
-                                {fallbackTitle(item.id, item.title)}
+                            <span
+                                className={`max-w-full truncate text-center text-[10px] font-medium leading-none max-[399px]:text-[9px] ${
+                                    active ? 'font-bold text-white' : ''
+                                }`}
+                            >
+                                {t(tab.labelKey) || tab.fallbackLabel}
                             </span>
                         </Link>
                     );
                 })}
-                <button
-                    type="button"
-                    onClick={() => setMoreOpen(true)}
-                    aria-label="More destinations"
-                    aria-haspopup="dialog"
-                    className="tap-safe flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl py-1.5 text-muted-foreground transition-colors duration-fast hover:text-foreground"
-                >
-                    <span className="flex h-7 w-12 items-center justify-center rounded-full">
-                        <MoreHorizontal className="h-[18px] w-[18px]" aria-hidden="true" />
-                    </span>
-                    <span className="w-full truncate px-0.5 text-center text-[10px] font-medium leading-none">
-                        {t('nav.more')}
-                    </span>
-                </button>
             </div>
-            <MoreSheet open={moreOpen} onClose={() => setMoreOpen(false)} />
         </nav>
     );
 }

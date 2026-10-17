@@ -4,6 +4,7 @@ import { Star } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api, errorMessage } from '@/lib/api';
 import { formatDateTime } from '@/lib/utils';
+import { Button } from '@/components/shared/Button';
 
 interface Doctor {
     id: string;
@@ -116,9 +117,9 @@ export default function DoctorReviews({ doctor_id }: ReviewsProps) {
                             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Leave a review</h2>
                             <div className="mt-4 flex items-center gap-2">
                                 {[1, 2, 3, 4, 5].map((star) => (
-                                    <button key={star} onClick={() => setRating(star)} className={`text-2xl ${star <= rating ? 'text-amber-500' : 'text-gray-300'}`}>
+                                    <Button key={star} onClick={() => setRating(star)} variant="icon" iconOnly size="sm" className={star <= rating ? 'text-amber-500' : 'text-gray-300'}>
                                         ★
-                                    </button>
+                                    </Button>
                                 ))}
                             </div>
                             <textarea
@@ -129,13 +130,13 @@ export default function DoctorReviews({ doctor_id }: ReviewsProps) {
                                 className="mt-3 block w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700"
                             />
                             {formError && <p className="mt-2 text-sm text-red-600">{formError}</p>}
-                            <button
+                            <Button
                                 onClick={submit}
-                                disabled={submitting}
-                                className="mt-4 rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
+                                loading={submitting}
+                                className="mt-4"
                             >
-                                {submitting ? 'Submitting...' : 'Submit review'}
-                            </button>
+                                Submit review
+                            </Button>
                         </div>
                     </>
                 )}

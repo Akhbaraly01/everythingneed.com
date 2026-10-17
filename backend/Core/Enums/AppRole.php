@@ -37,6 +37,8 @@ enum AppRole: string
     case SUPPORT_ADMIN     = 'support_admin';
     case REAL_ESTATE_ADMIN = 'real_estate_admin';
     case NEEDS_ADMIN       = 'needs_admin';
+    // TODO 21 — read-only needs triage (queues visible, nothing mutable).
+    case NEEDS_VIEWER      = 'needs_viewer';
 
     // L3 — review/verification roles (limited grants, no console management).
     case PAYOUT_REVIEWER   = 'payout_reviewer';
@@ -87,6 +89,7 @@ enum AppRole: string
             self::SUPPORT_ADMIN     => 'Support Admin',
             self::REAL_ESTATE_ADMIN => 'Real Estate Admin',
             self::NEEDS_ADMIN       => 'Needs Admin',
+            self::NEEDS_VIEWER      => 'Needs Viewer',
             self::PAYOUT_REVIEWER   => 'Payout Reviewer',
             self::REFUND_AGENT      => 'Refund Agent',
             self::INVENTORY_MANAGER => 'Inventory Manager',
@@ -139,6 +142,7 @@ enum AppRole: string
             self::SUPPORT_ADMIN->value     => 4,
             self::REAL_ESTATE_ADMIN->value => 4,
             self::NEEDS_ADMIN->value       => 4,
+            self::NEEDS_VIEWER->value      => 2,
             self::PAYOUT_REVIEWER->value   => 3,
             self::REFUND_AGENT->value      => 3,
             self::INVENTORY_MANAGER->value => 3,

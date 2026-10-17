@@ -135,7 +135,7 @@ class HandleInertiaRequests
                 }
 
                 $savedLanguage = strtolower((string) ($stored['general.language'] ?? ''));
-                if (in_array($savedLanguage, ['en', 'es', 'fr'], true)) {
+                if (in_array($savedLanguage, ['en', 'es', 'fr', 'pt', 'de', 'ar', 'zh', 'sw'], true)) {
                     $language = $savedLanguage;
                 }
             } catch (\Throwable) {

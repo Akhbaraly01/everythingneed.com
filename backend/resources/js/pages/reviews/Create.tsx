@@ -10,7 +10,7 @@ export default function ReviewCreate() {
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
 
-    const TYPES = ['product', 'vendor', 'doctor', 'hotel', 'worker', 'restaurant', 'course', 'property', 'need_request'];
+    const TYPES = ['product', 'vendor', 'doctor', 'hotel', 'worker', 'restaurant', 'course', 'property', 'need_request', 'task_post'];
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/AppLayout';
 import { formatPrice } from '@/lib/currency';
-import { Search as SearchIcon, Sprout, Tractor, GraduationCap, Users, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search as SearchIcon, Sprout, Store, Tractor, GraduationCap, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import Image from '@/components/shared/Image';
 
 interface AgriProduct {
@@ -42,8 +42,9 @@ export default function AgricultureIndex({ products, filters }: Props) {
                         Farm inputs, equipment, produce and hands — everything that keeps the fields moving.
                     </p>
                     <div className="mt-5 flex flex-wrap gap-2">
-                        <Pill icon={<Tractor className="h-4 w-4" />} label="Products & equipment" href="/agriculture/products" />
-                        <Pill icon={<Users className="h-4 w-4" />} label="Farm workers" href="/job-seekers?category=Agriculture" />
+            <Pill icon={<Tractor className="h-4 w-4" />} label="Products & equipment" href="/agriculture/products" />
+            <Pill icon={<Users className="h-4 w-4" />} label="Farm workers" href="/job-seekers?category=Agriculture" />
+            <Pill icon={<Store className="h-4 w-4" />} label="Farmers" href="/agriculture/farmers" />
                         <Pill icon={<GraduationCap className="h-4 w-4" />} label="Training tasks" href="/tasks" />
                     </div>
                 </div>

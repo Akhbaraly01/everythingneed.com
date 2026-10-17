@@ -1,5 +1,6 @@
 import AppLayout from '@/layouts/AppLayout';
 import VideoPlayer from '@/components/learn/VideoPlayer';
+import { Button } from '@/components/shared/Button';
 import { PromptDialog } from '@/components/shared/Ui';
 import { ApiError, api, errorMessage, rows } from '@/lib/api';
 import { Head, Link, usePage } from '@inertiajs/react';
@@ -295,18 +296,16 @@ export default function LearnWatch({ post_id }: { post_id: string }) {
                                 </p>
                             </div>
                             {post.user && authed && (
-                                <button
+                                <Button
                                     type="button"
                                     onClick={() => void toggleFollow()}
-                                    className={`flex items-center gap-1 rounded-full border px-3 py-1.5 text-sm font-medium ${
-                                        post.viewer?.following
-                                            ? 'border-indigo-600 text-indigo-600'
-                                            : 'border-gray-300 text-gray-600 hover:border-indigo-400 dark:border-gray-600 dark:text-gray-300'
-                                    }`}
+                                    variant={post.viewer?.following ? 'secondary' : 'outline'}
+                                    size="sm"
+                                    className="flex items-center gap-1 rounded-full px-3 py-1.5"
                                 >
                                     {post.viewer?.following && <CheckCircle2 className="h-4 w-4" />}
                                     {post.viewer?.following ? 'Following' : 'Follow'}
-                                </button>
+                                </Button>
                             )}
                         </div>
 
@@ -347,43 +346,53 @@ export default function LearnWatch({ post_id }: { post_id: string }) {
                         </p>
 
                         <div className="mt-5 flex flex-wrap items-center gap-4 border-t border-gray-200 pt-4 text-sm text-gray-600 dark:border-gray-700 dark:text-gray-400">
-                            <button
+                            <Button
                                 type="button"
                                 onClick={() => void toggleLike()}
-                                className={`flex items-center gap-1 ${post.viewer?.liked ? 'text-indigo-600' : 'hover:text-indigo-600'}`}
+                                variant="ghost"
+                                size="sm"
+                                className="flex items-center gap-1 px-0"
                                 aria-label={`Like ${post.title}`}
+                                aria-pressed={post.viewer?.liked}
                             >
                                 <Heart className={`h-4 w-4 ${post.viewer?.liked ? 'fill-current' : ''}`} /> {post.likes_count}
-                            </button>
+                            </Button>
                             <span className="flex items-center gap-1">
                                 <MessageCircle className="h-4 w-4" /> {commentsTotal}
                             </span>
-                            <button
+                            <Button
                                 type="button"
                                 onClick={() => void sharePost()}
-                                className="flex items-center gap-1 hover:text-indigo-600"
+                                variant="ghost"
+                                size="sm"
+                                className="flex items-center gap-1 px-0"
                                 aria-label={`Share ${post.title}`}
                             >
                                 <Share2 className="h-4 w-4" /> {post.shares_count}
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                                 type="button"
                                 onClick={() => void toggleSave()}
-                                className={`flex items-center gap-1 ${post.viewer?.saved ? 'text-amber-500' : 'hover:text-amber-500'}`}
+                                variant="ghost"
+                                size="sm"
+                                className="flex items-center gap-1 px-0"
                                 aria-label={`Save ${post.title}`}
+                                aria-pressed={post.viewer?.saved}
                             >
                                 <Bookmark className={`h-4 w-4 ${post.viewer?.saved ? 'fill-current' : ''}`} />
                                 {post.viewer?.saved ? 'Saved' : 'Save'}
-                            </button>
+                            </Button>
                             {authed && (
-                                <button
+                                <Button
                                     type="button"
                                     onClick={() => setReportOpen(true)}
-                                    className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="flex items-center gap-1 px-0 text-xs"
                                     aria-label={`Report ${post.title}`}
                                 >
                                     <Flag className="h-3.5 w-3.5" /> Report
-                                </button>
+                                </Button>
                             )}
                         </div>
 
@@ -407,21 +416,26 @@ export default function LearnWatch({ post_id }: { post_id: string }) {
                                             <span className="text-xs text-gray-400">
                                                 {new Date(c.created_at).toLocaleDateString()}
                                             </span>
-                                            <button
+                                            <Button
                                                 type="button"
                                                 onClick={() => void likeComment(c.id)}
-                                                className={`flex items-center gap-1 text-xs ${c.liked ? 'text-indigo-600' : 'text-gray-400 hover:text-indigo-600'}`}
+                                                variant="ghost"
+                                                size="sm"
+                                                className="flex items-center gap-1 px-0 text-xs"
+                                                aria-pressed={c.liked}
                                             >
                                                 <Heart className="h-3 w-3" /> {c.likes_count ?? 0}
-                                            </button>
+                                            </Button>
                                             {authed && (
-                                                <button
+                                                <Button
                                                     type="button"
                                                     onClick={() => setReplyTo(replyTo === c.id ? null : c.id)}
-                                                    className="text-xs text-gray-400 hover:text-indigo-600"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="px-0 text-xs"
                                                 >
                                                     Reply
-                                                </button>
+                                                </Button>
                                             )}
                                         </div>
                                         <p className="mt-0.5 text-gray-700 dark:text-gray-300">{c.content}</p>
@@ -432,13 +446,16 @@ export default function LearnWatch({ post_id }: { post_id: string }) {
                                                     {r.user?.name ?? 'Learner'}
                                                 </span>{' '}
                                                 <span className="text-gray-600 dark:text-gray-300">{r.content}</span>
-                                                <button
+                                                <Button
                                                     type="button"
                                                     onClick={() => void likeComment(r.id)}
-                                                    className={`ml-2 text-xs ${r.liked ? 'text-indigo-600' : 'text-gray-400 hover:text-indigo-600'}`}
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="ml-2 px-0 text-xs"
+                                                    aria-pressed={r.liked}
                                                 >
                                                     <Heart className="inline h-3 w-3" /> {r.likes_count ?? 0}
-                                                </button>
+                                                </Button>
                                             </div>
                                         ))}
 
@@ -454,14 +471,16 @@ export default function LearnWatch({ post_id }: { post_id: string }) {
                                                     maxLength={2000}
                                                     className="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                                 />
-                                                <button
+                                                <Button
                                                     type="button"
                                                     onClick={() => void sendComment(c.id)}
-                                                    className="rounded-lg bg-indigo-600 px-3 py-1.5 text-white hover:bg-indigo-500"
+                                                    variant="icon"
+                                                    iconOnly
+                                                    size="sm"
                                                     aria-label="Send reply"
                                                 >
                                                     <Send className="h-4 w-4" />
-                                                </button>
+                                                </Button>
                                             </div>
                                         )}
                                     </div>
@@ -478,13 +497,12 @@ export default function LearnWatch({ post_id }: { post_id: string }) {
                                         maxLength={2000}
                                         className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                     />
-                                    <button
+                                    <Button
                                         type="button"
                                         onClick={() => void sendComment()}
-                                        className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
                                     >
                                         Post
-                                    </button>
+                                    </Button>
                                 </div>
                             ) : (
                                 <p className="mt-4 rounded-xl bg-gray-50 p-4 text-sm text-gray-600 dark:bg-gray-800 dark:text-gray-300">

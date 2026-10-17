@@ -58,6 +58,8 @@ class RestaurantController extends Controller
             'delivery_address' => 'nullable|string|max:500',
             'phone' => 'nullable|string|max:50',
             'notes' => 'nullable|string|max:1000',
+            // N-42 scheduled orders: future slot, max 7 days out.
+            'scheduled_for' => 'nullable|date|after:now|before:' . now()->addDays(7)->toIso8601String(),
         ]);
 
         $order = app(\Modules\Food\Actions\PlaceFoodOrder::class)->execute(
@@ -68,6 +70,7 @@ class RestaurantController extends Controller
                 'delivery_address' => $validated['delivery_address'] ?? null,
                 'phone' => $validated['phone'] ?? null,
                 'notes' => $validated['notes'] ?? null,
+                'scheduled_for' => $validated['scheduled_for'] ?? null,
             ]
         );
 

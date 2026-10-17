@@ -60,6 +60,17 @@ class ChatController extends Controller
             return response()->json(['message' => 'You cannot start a conversation with yourself'], 422);
         }
 
+        // TODO 14 needs-scoping: when the thread links a need request, both
+        // sides must belong to it (owner ↔ bidding provider). Strangers
+        // cannot cold-message request owners; other modules keep existing
+        // behavior.
+        if ($bookingId && $this->isNeedRequest($bookingId)) {
+            $guard = $this->needsCounterpartyCheck($user, $recipientId, $bookingId);
+            if ($guard !== null) {
+                return $guard;
+            }
+        }
+
         $query = ChatConversation::where(function ($q) use ($user, $recipientId, $bookingId) {
             $q->where('customer_id', $user->id)->where('worker_id', $recipientId);
             if ($bookingId) {
@@ -169,5 +180,51 @@ class ChatController extends Controller
             || $user->hasRole('super_admin')
             || $user->hasRole('administrator')
             || $user->hasRole('customer_service');
+    }
+
+    private function isNeedRequest(string $id): bool
+    {
+        return \Modules\Needs\Entities\NeedRequest::where('id', $id)->exists();
+    }
+
+    /**
+     * Returns null when the pair may talk, else the refusal response.
+     * Admins/support read threads via isParticipant; they never need to
+     * initiate needs chats, so creation stays strictly bilateral.
+     */
+    private function needsCounterpartyCheck($user, ?string $recipientId, string $requestId): ?JsonResponse
+    {
+        $needRequest = \Modules\Needs\Entities\NeedRequest::with(['offers'])->find($requestId);
+
+        if (! $needRequest) {
+            return response()->json(['message' => 'Request not found'], 404);
+        }
+
+        $userId = (string) $user->id;
+        $isOwner = $userId === (string) $needRequest->user_id;
+        $bidderIds = $needRequest->offers
+            ->pluck('provider_id')
+            ->map(fn ($v) => (string) $v)
+            ->all();
+        $isBidder = in_array($userId, $bidderIds, true);
+
+        if (! $isOwner && ! $isBidder) {
+            return response()->json(['message' => 'Only the owner and bidding providers can message about this request'], 403);
+        }
+
+        if ($recipientId === null) {
+            return response()->json(['message' => 'A recipient is required for request chats'], 422);
+        }
+
+        $recipient = (string) $recipientId;
+        $allowed = $isOwner
+            ? $bidderIds
+            : [(string) $needRequest->user_id];
+
+        if (! in_array($recipient, $allowed, true)) {
+            return response()->json(['message' => 'You can only message your counterparty on this request'], 403);
+        }
+
+        return null;
     }
 }

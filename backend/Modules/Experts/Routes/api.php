@@ -21,4 +21,5 @@ Route::prefix('api')->group(function () {
 
     Route::get('/experts/{id}', [ExpertController::class, 'show']);
     Route::get('/experts/{id}/availability', [ExpertController::class, 'availability']);
+    Route::get('/experts/{id}/reviews', [ExpertController::class, 'reviews']);
 });

@@ -41,4 +41,10 @@ class TaskPost extends Model
     {
         return $this->belongsTo(\App\Models\User::class, 'created_by');
     }
+
+    /** P0 needs console: the currently assigned application, if any. */
+    public function assignedApplication()
+    {
+        return $this->belongsTo(TaskApplication::class, 'assigned_application_id');
+    }
 }

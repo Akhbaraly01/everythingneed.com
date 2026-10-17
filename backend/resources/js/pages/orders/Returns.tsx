@@ -7,6 +7,7 @@ import { formatDateTime } from '@/lib/utils';
 import { formatPrice } from '@/lib/currency';
 import { RotateCcw, ArrowLeft, Plus, X, RefreshCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { Button } from '@/components/shared/Button';
 
 interface ReturnRequest {
     id: string;
@@ -75,12 +76,13 @@ export default function ReturnsPage() {
                     <Link href="/orders" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700">
                         <ArrowLeft className="h-4 w-4" /> Back to Orders
                     </Link>
-                    <button
+                    <Button
+                        variant="primary"
+                        size="sm"
                         onClick={() => setShowForm(true)}
-                        className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
                     >
                         <Plus className="h-4 w-4" /> Request Return
-                    </button>
+                    </Button>
                 </div>
 
                 {/* Create return modal */}
@@ -89,7 +91,7 @@ export default function ReturnsPage() {
                         <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-gray-800">
                             <div className="flex items-center justify-between">
                                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Request Return</h3>
-                                <button onClick={() => setShowForm(false)}><X className="h-5 w-5" /></button>
+                                <Button variant="icon" iconOnly size="sm" aria-label="Close" onClick={() => setShowForm(false)}><X className="h-5 w-5" /></Button>
                             </div>
                             <div className="mt-4 space-y-4">
                                 <div>
@@ -119,11 +121,10 @@ export default function ReturnsPage() {
                                 </div>
                             </div>
                             <div className="mt-6 flex gap-3">
-                                <button onClick={() => setShowForm(false)} className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50">Cancel</button>
-                                <button onClick={createReturn} disabled={submitting || !orderId.trim() || !reason.trim()}
-                                    className="flex-1 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50">
+                                <Button variant="ghost" size="sm" className="flex-1" onClick={() => setShowForm(false)}>Cancel</Button>
+                                <Button variant="primary" size="sm" className="flex-1" onClick={createReturn} disabled={submitting || !orderId.trim() || !reason.trim()}>
                                     {submitting ? 'Submitting...' : 'Submit Request'}
-                                </button>
+                                </Button>
                             </div>
                         </div>
                     </div>
@@ -134,9 +135,9 @@ export default function ReturnsPage() {
                 ) : error ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
                         <p className="text-red-600 font-medium">{error}</p>
-                        <button onClick={fetchReturns} className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-500">
+                        <Button variant="outline" size="sm" onClick={fetchReturns} className="mt-4">
                             <RefreshCcw className="h-4 w-4" /> Retry
-                        </button>
+                        </Button>
                     </div>
                 ) : returns.length === 0 ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">

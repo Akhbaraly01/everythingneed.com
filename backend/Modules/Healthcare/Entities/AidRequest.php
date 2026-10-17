@@ -19,12 +19,14 @@ class AidRequest extends Model
         'reviewed_at',
         'rejection_reason',
         'idempotency_key',
+        'images',
     ];
 
     protected $casts = [
         'goal_amount' => 'decimal:2',
         'raised_amount' => 'decimal:2',
         'reviewed_at' => 'datetime',
+        'images' => 'array',
     ];
 
     const STATUS_PENDING = 'pending';

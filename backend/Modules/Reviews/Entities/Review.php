@@ -36,6 +36,8 @@ class Review extends Model
         'moderated_by',
         'moderated_at',
         'moderation_reason',
+        'provider_response',
+        'responded_at',
     ];
 
     protected $casts = [

@@ -22,20 +22,17 @@ Route::get('/up', function () {
     try {
         \Illuminate\Support\Facades\DB::connection()->getPdo();
     } catch (\Exception $e) {
-        $db = 'error: ' . $e->getMessage();
+        // Redacted: driver messages carry host/user/table detail.
+        \Illuminate\Support\Facades\Log::warning('Health probe database failure', [
+            'error' => $e->getMessage(),
+        ]);
+        $db = 'error';
     }
 
+    // Minimal probe: no version/php/env/driver fingerprinting.
     return response()->json([
         'status' => 'operational',
-        'service' => config('app.name'),
-        'version' => app()->version(),
-        'php' => phpversion(),
-        'environment' => config('app.env'),
         'database' => $db,
-        'cache' => config('cache.default'),
-        'session' => config('session.driver'),
-        'queue' => config('queue.default'),
-        'app_url' => config('app.frontend_url', 'http://127.0.0.1:8000'),
         'timestamp' => now()->toIso8601String(),
     ]);
 });
@@ -75,7 +72,7 @@ use App\Http\Controllers\Web\ProviderPageController;
 
 Route::middleware('guest')->group(function () {
 Route::get('/login', [WebAuthController::class, 'showLogin'])->name('login');
-Route::post('/login', [WebAuthController::class, 'login'])->middleware('throttle:10,1');
+Route::post('/login', [WebAuthController::class, 'login'])->middleware(['throttle:10,1', 'turnstile']);
 // Authenticator-app challenge (web guard enforces 2FA like the API does).
 Route::get('/2fa/challenge', [WebAuthController::class, 'showChallenge'])->name('2fa.challenge');
 Route::post('/2fa/challenge', [WebAuthController::class, 'challenge'])->middleware('throttle:10,1');
@@ -84,11 +81,11 @@ Route::get('/suspended', function () {
     return inertia('auth/Suspended');
 })->name('suspended');
     Route::get('/register', [WebAuthController::class, 'showRegister'])->name('register');
-    Route::post('/register', [WebAuthController::class, 'register'])->middleware('throttle:10,1');
+    Route::post('/register', [WebAuthController::class, 'register'])->middleware(['throttle:10,1', 'turnstile']);
     Route::get('/forgot-password', function () {
         return inertia('auth/ForgotPassword');
     })->name('password.request');
-    Route::post('/forgot-password', [WebAuthController::class, 'sendResetLink'])->middleware('throttle:6,1');
+    Route::post('/forgot-password', [WebAuthController::class, 'sendResetLink'])->middleware(['throttle:6,1', 'turnstile']);
     Route::get('/reset-password/{token}', function (string $token) {
         $email = request()->query('email');
         return inertia('auth/ResetPassword', ['token' => $token, 'email' => $email]);
@@ -129,13 +126,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
             return redirect()->route('account.profile');
         })->name('settings.profile');
 
-        Route::get('/settings/security', function () {
-            return inertia('settings/Security');
-        })->name('settings.security');
+        // Consolidated into settings/Index tabs (notifications + security).
+        Route::redirect('/settings/security', '/settings', 301)->name('settings.security');
 
-        Route::get('/settings/notifications', function () {
-            return inertia('settings/Notifications');
-        })->name('settings.notifications');
+        Route::redirect('/settings/notifications', '/settings', 301)->name('settings.notifications');
     });
 
     Route::get('/account/profile', function () {
@@ -162,9 +156,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/account/orders/{id}', [OrdersPageController::class, 'show'])->name('account.orders.show');
 
-    Route::get('/account/security', function () {
-        return inertia('settings/Security');
-    })->name('account.security');
+    Route::redirect('/account/security', '/settings', 301)->name('account.security');
 
     Route::get('/account/privacy', function () {
         return inertia('account/Privacy');
@@ -198,13 +190,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/account/wallet/transactions', [WalletPageController::class, 'index'])->name('account.wallet-transactions');
 
-    Route::get('/account/wallet/deposit', function () {
-        return inertia('wallet/Deposit');
-    })->name('account.wallet-deposit');
+    // Deposit/withdraw live in the wallet page modals.
+    Route::redirect('/account/wallet/deposit', '/account/wallet', 301)->name('account.wallet-deposit');
 
-    Route::get('/account/wallet/withdraw', function () {
-        return inertia('wallet/Withdraw');
-    })->name('account.wallet-withdraw');
+    Route::redirect('/account/wallet/withdraw', '/account/wallet', 301)->name('account.wallet-withdraw');
 
     Route::get('/account/kyc', function () {
         return inertia('kyc/Submit');
@@ -338,12 +327,21 @@ Route::get('/home', [HomePageController::class, 'index'])->name('home.index');
 Route::get('/products/compare', function () {
     return inertia('products/Compare');
 })->name('products.compare');
+// Recently Viewed trail (Home rebuild): localStorage-backed public page.
+Route::get('/recently-viewed', function () {
+    return inertia('products/RecentlyViewed');
+})->name('recently-viewed.index');
 Route::get('/products', [ProductsPageController::class, 'index'])->name('products.index');
 Route::get('/products/{slug}/reviews', [ProductsPageController::class, 'reviews'])->name('products.reviews');
 Route::get('/products/{slug}/vendor', [ProductsPageController::class, 'vendor'])->name('products.vendor');
 Route::get('/products/{slug}', [ProductsPageController::class, 'show'])->name('products.show');
 
 Route::get('/jobs', [JobsPageController::class, 'index'])->name('jobs.index');
+
+// N-32 public company profile (literal segment, no /jobs/{id} conflict)
+Route::get('/companies/{slug}', function (string $slug) {
+    return inertia('companies/Show', ['company_slug' => $slug]);
+})->name('companies.show');
 
 Route::middleware('auth')->group(function () {
     Route::get('/jobs/applications', function () {
@@ -362,11 +360,21 @@ Route::middleware('auth')->group(function () {
         return inertia('jobs/MyJobs');
     })->name('jobs.my-jobs');
 
+    // N-32 manage your own company profile
+    Route::get('/jobs/company', function () {
+        return inertia('jobs/Company');
+    })->name('jobs.company');
+
     Route::get('/jobs/profile', function () {
         return inertia('jobs/Profile');
     })->name('jobs.profile');
 
     Route::get('/jobs/{id}/apply', [JobsPageController::class, 'apply'])->name('jobs.apply');
+
+    // N-33 poster-facing applicant pipeline (before /jobs/{id})
+    Route::get('/jobs/{id}/applicants', function (string $id) {
+        return inertia('jobs/JobApplicants', ['job_id' => $id]);
+    })->name('jobs.applicants');
 });
 
 Route::get('/jobs/search', function () {
@@ -380,9 +388,8 @@ Route::middleware('auth')->group(function () {
         return inertia('food/OrderTracking');
     })->name('food.order-tracking');
 
-    Route::get('/pharmacy/checkout', function () {
-        return inertia('pharmacy/Checkout');
-    })->name('pharmacy.checkout');
+    // Checkout is completed inline from the pharmacy cart.
+    Route::redirect('/pharmacy/checkout', '/pharmacy/cart', 301)->name('pharmacy.checkout');
 
     Route::get('/pharmacy/orders/{id}', function () {
         return inertia('pharmacy/OrderTracking');
@@ -438,6 +445,14 @@ Route::get('/needs/requests/{id}', function ($id) {
     return inertia('needs/Show', ['need_id' => $id]);
 })->name('needs.show')->middleware('auth');
 Route::get('/needs', [\App\Http\Controllers\Web\NeedsPageController::class, 'index'])->name('needs.index');
+
+// N-29 cost guides (public discovery content)
+Route::get('/needs/cost-guides', function () {
+    return inertia('needs/CostGuides');
+})->name('needs.cost-guides');
+Route::get('/needs/cost-guides/{slug}', function (string $slug) {
+    return inertia('needs/CostGuide', ['slug' => $slug]);
+})->name('needs.cost-guides.show');
 
 Route::middleware('auth')->group(function () {
     Route::get('/needs/request', function () {
@@ -717,9 +732,7 @@ Route::get('/healthcare/search', function () {
     return inertia('healthcare/Search');
 })->name('healthcare.search');
 
-Route::get('/healthcare/specialty/{specialty}', function ($specialty) {
-    return inertia('healthcare/Specialty', ['specialty' => $specialty]);
-})->name('healthcare.specialty');
+Route::redirect('/healthcare/specialty/{specialty}', '/healthcare/doctors', 301)->name('healthcare.specialty');
 
 // H-C: Aid / Charity - public listing + detail + requester surfaces.
 // "mine" must precede /{id} so it is not swallowed by the uuid route.
@@ -830,9 +843,8 @@ Route::get('/analytics', function () {
     return inertia('analytics/Index');
 })->name('analytics.index')->middleware('auth');
 
-Route::get('/permissions', function () {
-    return inertia('permissions/Index');
-})->name('permissions.index')->middleware('role:super_admin,administrator');
+// Legacy standalone viewer - the matrix lives in the admin console now.
+Route::redirect('/permissions', '/admin/rbac', 301)->name('permissions.index')->middleware('role:super_admin,administrator');
 
 Route::get('/deliveries', function () {
     return inertia('deliveries/Index');
@@ -878,9 +890,8 @@ Route::middleware('auth')->group(function () {
 // ─── Task Center (Inertia deep pages) ─────────────────────────────────────────
 Route::get('/tasks/create', [TasksPageController::class, 'create'])->name('tasks.create')->middleware('auth');
 Route::get('/tasks/my-applications', [TasksPageController::class, 'myApplications'])->name('tasks.my-applications')->middleware('auth');
-Route::get('/tasks/{id}/submit', function ($id) {
-    return inertia('tasks/Submission', ['task_id' => $id]);
-})->name('tasks.submit')->middleware('auth');
+// Evidence is submitted inline on the task page now.
+Route::redirect('/tasks/{id}/submit', '/tasks/{id}', 301)->name('tasks.submit')->middleware('auth');
 Route::get('/tasks', [TasksPageController::class, 'index'])->name('tasks.index');
 Route::get('/tasks/{id}', [TasksPageController::class, 'show'])->name('tasks.show');
 
@@ -952,8 +963,12 @@ Route::get('/transportation', function () {
     return inertia('transportation/Index');
 })->name('transportation.index');
 Route::get('/transportation/ride-booking', function () {
-    return inertia('transportation/RideBooking');
+return inertia('transportation/RideBooking');
 })->name('transportation.ride-booking')->middleware('auth');
+// N-39 driver earnings view
+Route::get('/transportation/driver/earnings', function () {
+return inertia('transportation/DriverEarnings');
+})->name('transportation.driver.earnings')->middleware('auth');
 Route::get('/transportation/tracking/{id}', function ($id) {
     return inertia('transportation/RideTracking', ['ride_id' => $id]);
 })->name('transportation.tracking')->middleware('auth');
@@ -965,9 +980,8 @@ Route::get('/transportation/custom-request', function () {
 Route::get('/building-services/book', function () {
     return inertia('building-services/Booking', ['worker_id' => request()->query('worker')]);
 })->name('building-services.book')->middleware('auth');
-Route::get('/building-services/bookings', function () {
-    return inertia('building-services/Bookings');
-})->name('building-services.bookings')->middleware('auth');
+// Booking management lives on the building-services index page.
+Route::redirect('/building-services/bookings', '/building-services', 301)->name('building-services.bookings')->middleware('auth');
 Route::get('/building-services/bookings/{id}', function ($id) {
     return inertia('building-services/BookingDetails', ['booking_id' => $id]);
 })->name('building-services.booking-details')->middleware('auth');
@@ -1008,6 +1022,7 @@ $adminConsoleRoles = implode(',', [
     'hotel_admin', 'food_admin', 'transport_admin', 'jobs_admin', 'pharmacy_admin',
     'agriculture_admin', 'building_admin', 'kyc_reviewer',
     'orders_admin', 'wallet_admin', 'support_admin', 'real_estate_admin', 'needs_admin',
+    'needs_viewer',
     'payout_reviewer', 'refund_agent', 'inventory_manager', 'cms_editor', 'auditor', 'analyst',
     'category_admin', 'vendor_manager', 'content_admin',
 ]);
@@ -1106,6 +1121,12 @@ Route::middleware('role:super_admin,administrator,content_manager,cms_editor,con
     Route::get('/cms', function () {
         return inertia('admin/Cms');
     })->name('admin.cms');
+    // Home page builder (Home rebuild): order/visibility console for the
+    // storefront sections. Same content roles as CMS; create/delete stay
+    // Super Admin-only on the API.
+    Route::get('/home-sections', function () {
+        return inertia('admin/HomeSections');
+    })->name('admin.home-sections');
     Route::get('/newsletter', function () {
         return inertia('admin/Newsletter');
     })->name('admin.newsletter');
@@ -1253,6 +1274,12 @@ Route::middleware('role:super_admin,administrator,building_admin,real_estate_adm
     })->name('admin.real-estate');
 });
 
+Route::middleware('role:super_admin,administrator,needs_admin,needs_viewer,platform_ops')->prefix('admin')->group(function () {
+    Route::get('/needs', function () {
+        return inertia('admin/Needs');
+    })->name('admin.needs');
+});
+
 Route::middleware('role:super_admin,administrator,moderator,finance_admin,platform_ops,orders_admin,refund_agent')->prefix('admin')->group(function () {
     Route::get('/returns', function () {
         return inertia('admin/Returns');
@@ -1290,6 +1317,25 @@ Route::middleware('role:super_admin,administrator,transport_admin,platform_ops,o
 Route::middleware('role:worker')->group(function () {
     Route::get('/provider', [ProviderPageController::class, 'dashboard'])->name('provider.dashboard');
 });
+
+// TODO 19 provider needs hub + onboarding: auth-only (needs providers are
+// ordinary users, not necessarily `worker` role).
+Route::middleware('auth')->group(function () {
+    Route::get('/provider/needs', function () {
+        return inertia('provider/NeedsHub');
+    })->name('provider.needs');
+    Route::get('/provider/profile', function () {
+        return inertia('provider/Profile');
+    })->name('provider.profile');
+});
+
+// ─── Signed-URL private attachments (backlog #2) ─────────────────────────────
+// Signed stream endpoint for private files (dispute evidence, KYC docs).
+// Registered before the catch-all so the signed path never 404s; the
+// `signed` middleware rejects expired/foreign signatures up front.
+Route::get('/signed-storage/stream', [\App\Http\Controllers\SignedStorageController::class, 'stream'])
+    ->middleware('signed')
+    ->name('signed.storage.stream');
 
 // ─── Public no-code CMS pages (Wave C - spec S99: /p/{slug}) ─────────────────
 // Registered BEFORE the catch-all so /p/{...} never falls through to 404.

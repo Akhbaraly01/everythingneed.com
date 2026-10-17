@@ -127,7 +127,10 @@ class PropertyController extends Controller
             'email' => 'required|email',
             'phone' => 'required|string|max:30',
             'message' => 'required|string|max:2000',
-            'viewing_date' => 'nullable|date',
+            // N-43 tour slots: date must be today-or-later when given; the
+            // time slot is optional so loose inquiries keep working.
+            'viewing_date' => 'nullable|date|after_or_equal:today',
+            'viewing_time' => 'nullable|date_format:H:i',
         ]);
 
         $prop = \Modules\RealEstate\Entities\Property::find($id);
@@ -143,9 +146,123 @@ class PropertyController extends Controller
             'phone' => $validated['phone'],
             'message' => $validated['message'],
             'viewing_date' => $validated['viewing_date'] ?? null,
+            'viewing_time' => $validated['viewing_time'] ?? null,
             'status' => 'pending',
         ]);
 
         return response()->json(['data' => $inquiry], 201);
+    }
+
+    /**
+     * N-43: property owner lists viewing requests for one listing.
+     */
+    public function viewingRequests(Request $request, string $id): JsonResponse
+    {
+        $prop = \Modules\RealEstate\Entities\Property::find($id);
+        if (!$prop) {
+            return response()->json(['message' => 'Property not found'], 404);
+        }
+        if ((string) $prop->user_id !== (string) $request->user()->id) {
+            return response()->json(['message' => 'Only the listing owner can manage viewing requests'], 403);
+        }
+
+        $rows = \Modules\RealEstate\Entities\ViewingRequest::with('user:id,name,email')
+            ->where('property_id', $id)
+            ->orderByDesc('created_at')
+            ->paginate($request->get('per_page', 20));
+
+        return response()->json([
+            'data' => $rows->items(),
+            'meta' => [
+                'current_page' => $rows->currentPage(),
+                'last_page' => $rows->lastPage(),
+                'per_page' => $rows->perPage(),
+                'total' => $rows->total(),
+            ],
+        ]);
+    }
+
+    /**
+     * N-43: owner approves a pending request. Slot conflicts (same
+     * property, date, and time already approved) are rejected — one tour
+     * per slot.
+     */
+    public function approveViewing(Request $request, string $viewingId): JsonResponse
+    {
+        $viewing = \Modules\RealEstate\Entities\ViewingRequest::find($viewingId);
+        if (!$viewing) {
+            return response()->json(['message' => 'Viewing request not found'], 404);
+        }
+
+        $prop = \Modules\RealEstate\Entities\Property::find($viewing->property_id);
+        if ((string) $prop?->user_id !== (string) $request->user()->id) {
+            return response()->json(['message' => 'Only the listing owner can manage viewing requests'], 403);
+        }
+
+        if ($viewing->status !== \Modules\RealEstate\Entities\ViewingRequest::STATUS_PENDING) {
+            return response()->json(['message' => "Cannot approve a {$viewing->status} request"], 422);
+        }
+
+        if ($viewing->viewing_date && $viewing->viewing_time) {
+            $conflict = \Modules\RealEstate\Entities\ViewingRequest::where('property_id', $viewing->property_id)
+                ->where('id', '!=', $viewing->id)
+                ->where('status', \Modules\RealEstate\Entities\ViewingRequest::STATUS_APPROVED)
+                ->whereDate('viewing_date', $viewing->viewing_date->toDateString())
+                ->where('viewing_time', $viewing->viewing_time)
+                ->exists();
+
+            if ($conflict) {
+                return response()->json(['message' => 'That date and time slot already has an approved viewing'], 409);
+            }
+        }
+
+        $viewing->update(['status' => \Modules\RealEstate\Entities\ViewingRequest::STATUS_APPROVED]);
+
+        return response()->json(['message' => 'Viewing approved', 'data' => $viewing->fresh()]);
+    }
+
+    /**
+     * N-43: owner rejects a pending request.
+     */
+    public function rejectViewing(Request $request, string $viewingId): JsonResponse
+    {
+        $viewing = \Modules\RealEstate\Entities\ViewingRequest::find($viewingId);
+        if (!$viewing) {
+            return response()->json(['message' => 'Viewing request not found'], 404);
+        }
+
+        $prop = \Modules\RealEstate\Entities\Property::find($viewing->property_id);
+        if ((string) $prop?->user_id !== (string) $request->user()->id) {
+            return response()->json(['message' => 'Only the listing owner can manage viewing requests'], 403);
+        }
+
+        if ($viewing->status !== \Modules\RealEstate\Entities\ViewingRequest::STATUS_PENDING) {
+            return response()->json(['message' => "Cannot reject a {$viewing->status} request"], 422);
+        }
+
+        $viewing->update(['status' => \Modules\RealEstate\Entities\ViewingRequest::STATUS_REJECTED]);
+
+        return response()->json(['message' => 'Viewing rejected', 'data' => $viewing->fresh()]);
+    }
+
+    /**
+     * N-43: requester sees their own viewing-request statuses.
+     */
+    public function myViewings(Request $request): JsonResponse
+    {
+        $rows = \Modules\RealEstate\Entities\ViewingRequest::with('property:id,title,address,city')
+            ->where('user_id', $request->user()->id)
+            ->orderByDesc('created_at')
+            ->paginate($request->get('per_page', 20));
+
+        return response()->json([
+            'data' => $rows->items(),
+            'meta' => [
+                'current_page' => $rows->currentPage(),
+                'last_page' => $rows->lastPage(),
+                'per_page' => $rows->perPage(),
+                'total' => $rows->total(),
+            ],
+        ]);
     }
 }

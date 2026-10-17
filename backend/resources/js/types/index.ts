@@ -72,6 +72,14 @@ export type NeedStatus =
     | 'disputed'
     | 'refunded';
 
+export interface NeedCategoryFormField {
+    key: string;
+    label: string;
+    type: 'text' | 'textarea' | 'number' | 'select' | 'date' | 'boolean';
+    required: boolean;
+    options?: string[];
+}
+
 export interface NeedCategory {
     id: string;
     name: string;
@@ -79,6 +87,11 @@ export interface NeedCategory {
     description?: string | null;
     icon?: string | null;
     color?: string | null;
+    parent_id?: string | null;
+    is_active?: boolean;
+    form_schema?: NeedCategoryFormField[] | null;
+    form_schema_version?: number | null;
+    children?: NeedCategory[];
 }
 
 export interface NeedOffer {
@@ -87,7 +100,9 @@ export interface NeedOffer {
     provider?: { id: string; name: string } | null;
     price: number | string;
     message?: string | null;
-    status: 'pending' | 'accepted' | 'rejected' | 'withdrawn';
+    status: 'pending' | 'accepted' | 'rejected' | 'withdrawn' | 'expired';
+    provider_is_available?: boolean | null;
+    provider_profile_status?: string | null;
     created_at: string;
 }
 
@@ -130,6 +145,17 @@ export interface NeedRequestDetail {
     service_requirements?: string | null;
     delivery_requirements?: string | null;
     notes?: string | null;
+    answers?: Record<string, unknown> | null;
+    form_schema_snapshot?: NeedCategoryFormField[] | null;
+    pricing_basis?: string | null;
+    is_remote?: boolean | null;
+    state?: string | null;
+    lga?: string | null;
+    city?: string | null;
+    is_asap?: boolean | null;
+    preferred_time_window?: string | null;
+    visibility?: string | null;
+    invited_provider_ids?: string[] | null;
     status: NeedStatus;
     category?: NeedCategory | null;
     user?: { id: string; name: string } | null;
@@ -171,7 +197,8 @@ export interface Product {
     compare_price?: number;
     image_url?: string;
     images?: string[];
-    video_url?: string;
+    video_url?: string | null;
+    production_video_url?: string | null;
     stock_quantity: number;
     is_active: boolean;
     rating?: number;
@@ -458,6 +485,16 @@ export interface JobPost {
     title: string;
     description?: string;
     company: string;
+    /** N-32 attached company profile (serializes from companyProfile()). */
+    company_profile?: {
+        id?: string;
+        name?: string;
+        slug?: string;
+        industry?: string | null;
+        location?: string | null;
+        website?: string | null;
+        logo_path?: string | null;
+    } | null;
     location: string;
     job_type: string;
     salary_min?: number;

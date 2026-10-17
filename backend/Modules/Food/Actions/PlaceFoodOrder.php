@@ -67,6 +67,8 @@ class PlaceFoodOrder
                 'notes' => $meta['notes'] ?? null,
                 'total_amount' => $total,
                 'status' => 'pending',
+                // N-42: customer-chosen future delivery slot (nullable).
+                'scheduled_for' => $meta['scheduled_for'] ?? null,
             ]);
 
             foreach ($lines as $line) {

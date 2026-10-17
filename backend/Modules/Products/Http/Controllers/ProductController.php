@@ -118,6 +118,8 @@ class ProductController extends Controller
             'shipping' => 'sometimes|nullable|array',
             'image_url' => 'sometimes|nullable|url|max:500',
             'images' => 'sometimes|nullable|array',
+            'video_url' => 'sometimes|nullable|url|max:500',
+            'production_video_url' => 'sometimes|nullable|url|max:500',
             'stock_quantity' => 'sometimes|integer|min:0',
             'is_active' => 'sometimes|boolean',
             'variants' => 'sometimes|nullable|array',
@@ -134,7 +136,8 @@ class ProductController extends Controller
                 'name', 'slug', 'description', 'category', 'subcategory', 'sku',
                 'price', 'compare_price', 'currency', 'tax_rate', 'discount_percent',
                 'featured', 'publication_state', 'specifications', 'attributes',
-                'shipping', 'image_url', 'images', 'stock_quantity', 'is_active',
+                'shipping', 'image_url', 'images', 'video_url', 'production_video_url',
+                'stock_quantity', 'is_active',
                 'variants',
             ])
             ->filter(fn ($v) => $v !== null)
@@ -221,5 +224,43 @@ class ProductController extends Controller
         $products = \Modules\Products\Entities\Product::whereIn('id', $ids)->get();
 
         return response()->json(['data' => $products]);
+    }
+
+    /**
+     * Home infinite feed (Home rebuild): lightweight marketplace card shape
+     * (same contract as HomePageController::marketplaceData products) so the
+     * storefront can append pages without a client-side adapter.
+     */
+    public function homeFeed(Request $request): JsonResponse
+    {
+        $perPage = max(1, min(48, (int) $request->get('per_page', 12)));
+
+        $products = $this->productService->getActiveProducts(
+            max(1, (int) $request->get('page', 1)),
+            $perPage
+        );
+
+        $cards = collect($products->items())->map(fn ($product) => [
+            'id' => $product->id,
+            'name' => $product->name,
+            'price' => (float) $product->price,
+            'originalPrice' => $product->compare_price !== null ? (float) $product->compare_price : null,
+            'rating' => $product->rating !== null ? (float) $product->rating : null,
+            'image' => $product->image_url ?? ($product->images[0] ?? null),
+            'category' => $product->category,
+            'vendor' => $product->vendor->store_name ?? null,
+            'type' => 'product',
+            'link' => "/products/{$product->id}",
+        ])->all();
+
+        return response()->json([
+            'data' => $cards,
+            'meta' => [
+                'current_page' => $products->currentPage(),
+                'last_page' => $products->lastPage(),
+                'per_page' => $products->perPage(),
+                'total' => $products->total(),
+            ],
+        ]);
     }
 }

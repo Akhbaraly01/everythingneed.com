@@ -6,7 +6,10 @@ import { useEffect, useState } from 'react';
 import { api, errorMessage } from '@/lib/api';
 import { toast } from 'sonner';
 import Image from '@/components/shared/Image';
+import { Button } from '@/components/shared/Button';
 import SeoMeta, { type LearnSeo } from '@/components/learn/SeoMeta';
+import VideoPlayer from '@/components/learn/VideoPlayer';
+import { resolvePlaybackSource } from '@/lib/video';
 
 interface CourseShowProps {
     course: Course & { lessons?: CourseLesson[] };
@@ -46,6 +49,10 @@ export default function CourseShow({ course, quizzes = [], enrollment = null, ce
 
     // Quizzes gate the certificate alongside lessons (spec 19 completion).
     const pendingQuizzes = enrollment ? quizzes.filter((quiz) => !quiz.passed).length : 0;
+
+    // Course intro video (when the course has one) plays in-app in the
+    // header media pane; otherwise the thumbnail stands in.
+    const introPlayback = resolvePlaybackSource(course.video_url);
 
     const handleEnroll = () => {
         if (!auth?.user) {
@@ -104,7 +111,18 @@ export default function CourseShow({ course, quizzes = [], enrollment = null, ce
                 <div className="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
                     <div className="flex flex-col gap-6 lg:flex-row">
                         <div className="aspect-video w-full overflow-hidden rounded-lg bg-gray-100 lg:w-1/2">
-                            {course.thumbnail_url ? (
+                                    {introPlayback && introPlayback.provider !== 'jitsi' && (introPlayback.playable || introPlayback.provider === 'udemy') ? (
+                                <VideoPlayer
+                                    post={{
+                                        id: course.id,
+                                        video_url: introPlayback.url,
+                                        video_provider: introPlayback.provider,
+                                        provider_video_id: introPlayback.videoId,
+                                    }}
+                                    autoplay={false}
+                                    heartbeat={false}
+                                />
+                            ) : course.thumbnail_url ? (
                                 <Image src={course.thumbnail_url} alt={course.title} className="h-full w-full object-cover" />
                             ) : (
                                 <div className="flex h-full items-center justify-center text-gray-400">
@@ -139,12 +157,12 @@ export default function CourseShow({ course, quizzes = [], enrollment = null, ce
                                 <span className="text-3xl font-bold text-gray-900 dark:text-white">
                                     {course.type === 'free' ? 'Free' : `$${course.price}`}
                                 </span>
-                                <button
+                                <Button
                                     onClick={handleEnroll}
-                                    className="rounded-lg bg-indigo-600 px-6 py-3 text-lg font-semibold text-white hover:bg-indigo-500"
+                                    size="lg"
                                 >
                                     Enroll Now
-                                </button>
+                                </Button>
                             </div>
                         </div>
                     </div>
@@ -179,10 +197,9 @@ export default function CourseShow({ course, quizzes = [], enrollment = null, ce
                             <div className="mt-4 flex items-center gap-3 rounded-lg bg-green-50 p-3 text-sm text-green-800 dark:bg-green-900/20 dark:text-green-300">
                                 <BadgeCheck className="h-5 w-5 shrink-0" />
                                 <span className="flex-1">You finished this course — claim your certificate.</span>
-                                <button onClick={claimCertificate} disabled={claiming}
-                                    className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-500 disabled:opacity-50">
-                                    {claiming ? 'Claiming...' : 'Claim certificate'}
-                                </button>
+                                <Button onClick={claimCertificate} loading={claiming} variant="success" size="sm">
+                                    Claim certificate
+                                </Button>
                             </div>
                         ) : (
                             <p className="mt-3 text-sm text-gray-500">
@@ -305,19 +322,19 @@ export default function CourseShow({ course, quizzes = [], enrollment = null, ce
                                     </p>
                                     <div className="mt-4 flex items-center gap-2">
                                         {[1, 2, 3, 4, 5].map((star) => (
-                                            <button key={star} onClick={() => setRating(star)} className={`text-2xl ${star <= rating ? 'text-amber-500' : 'text-gray-300'}`}>
+                                            <Button key={star} type="button" onClick={() => setRating(star)} variant="icon" iconOnly size="sm" className={star <= rating ? 'text-amber-500' : 'text-gray-300'}>
                                                 ★
-                                            </button>
+                                            </Button>
                                         ))}
                                     </div>
                                     <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={2}
                                         placeholder="Share your experience (optional)"
                                         className="mt-2 block w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700" />
                                     {reviewError && <p className="mt-2 text-sm text-red-600">{reviewError}</p>}
-                                    <button onClick={submitReview}
-                                        className="mt-3 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
+                                    <Button onClick={submitReview}
+                                        className="mt-3">
                                         Update review
-                                    </button>
+                                    </Button>
                                 </>
                             ) : !enrollment ? (
                                 <p className="mt-4 rounded-lg bg-gray-50 p-3 text-sm text-gray-600 dark:bg-gray-700/50 dark:text-gray-300">
@@ -327,19 +344,19 @@ export default function CourseShow({ course, quizzes = [], enrollment = null, ce
                                 <>
                                     <div className="mt-4 flex items-center gap-2">
                                         {[1, 2, 3, 4, 5].map((star) => (
-                                            <button key={star} onClick={() => setRating(star)} className={`text-2xl ${star <= rating ? 'text-amber-500' : 'text-gray-300'}`}>
+                                            <Button key={star} type="button" onClick={() => setRating(star)} variant="icon" iconOnly size="sm" className={star <= rating ? 'text-amber-500' : 'text-gray-300'}>
                                                 ★
-                                            </button>
+                                            </Button>
                                         ))}
                                     </div>
                                     <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={2}
                                         placeholder="Share your experience (optional)"
                                         className="mt-2 block w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700" />
                                     {reviewError && <p className="mt-2 text-sm text-red-600">{reviewError}</p>}
-                                    <button onClick={submitReview}
-                                        className="mt-3 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
+                                    <Button onClick={submitReview}
+                                        className="mt-3">
                                         Submit review
-                                    </button>
+                                    </Button>
                                 </>
                             )}
                         </>

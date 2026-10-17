@@ -3,6 +3,8 @@ import { Head, Link, router } from '@inertiajs/react';
 import {  api, errorMessage } from '@/lib/api';
 import { toast } from 'sonner';
 import { formatPrice } from '@/lib/currency';
+import { Button } from '@/components/shared/Button';
+import ImageUploadField from '@/components/shared/ImageUploadField';
 import {ArrowLeft} from 'lucide-react';
 import {useState} from 'react';
 import Image from '@/components/shared/Image';
@@ -33,6 +35,7 @@ export default function DoctorBooking({ doctor, availability }: DoctorBookingPro
     const [selectedDate, setSelectedDate] = useState('');
     const [selectedTime, setSelectedTime] = useState('');
     const [reason, setReason] = useState('');
+    const [images, setImages] = useState<string[]>([]);
     const [submitting, setSubmitting] = useState(false);
     // Spec 97 workflow: Book -> Pay -> Appointment. After booking, the page
     // switches to a payment step instead of jumping straight to the list.
@@ -54,6 +57,7 @@ export default function DoctorBooking({ doctor, availability }: DoctorBookingPro
                 symptoms: reason.trim() || 'Consultation request',
                 description: reason.trim() || undefined,
                 consultation_type: 'in_person',
+                images: images.length > 0 ? images : undefined,
             });
             setBooked(res.data);
         } catch (e) {
@@ -97,12 +101,14 @@ export default function DoctorBooking({ doctor, availability }: DoctorBookingPro
                             title="Pay consultation fee"
                             onPaid={() => router.visit('/healthcare/appointments')}
                         />
-                        <button
+                        <Button
                             onClick={() => router.visit('/healthcare/appointments')}
-                            className="w-full rounded-lg border border-gray-300 px-6 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                            variant="outline"
+                            size="lg"
+                            fullWidth
                         >
                             Pay later - manage from Appointments
-                        </button>
+                        </Button>
                     </>
                 ) : (
                 <div className="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
@@ -114,26 +120,36 @@ export default function DoctorBooking({ doctor, availability }: DoctorBookingPro
                             className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700" />
                     </div>
 
+                    <div className="mt-4">
+                        <ImageUploadField
+                            value={images}
+                            onChange={setImages}
+                            folder="appointments"
+                            label="Injury photos / prescription screenshots (optional)"
+                            hint="Attach photos of the affected area or a previous prescription to help the doctor prepare."
+                        />
+                    </div>
+
                     <div className="mt-4 grid grid-cols-7 gap-2">
                         {dates.map((d) => (
-                            <button key={d} onClick={() => { setSelectedDate(d); setSelectedTime(''); }}
-                                className={`rounded-lg p-2 text-center text-xs font-medium ${
-                                    selectedDate === d ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700'
-                                }`}>
+                            <Button key={d} onClick={() => { setSelectedDate(d); setSelectedTime(''); }}
+                                variant={selectedDate === d ? 'primary' : 'outline'}
+                                size="sm"
+                                className="rounded-lg p-2 text-center text-xs">
                                 {new Date(d + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                            </button>
+                            </Button>
                         ))}
                     </div>
 
                     {selectedDate && (
                         <div className="mt-4 grid grid-cols-4 gap-2">
                             {slots.filter((s) => s.available).map((slot) => (
-                                <button key={slot.time} onClick={() => setSelectedTime(slot.time)}
-                                    className={`rounded-lg px-3 py-2 text-sm font-medium ${
-                                        selectedTime === slot.time ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700'
-                                    }`}>
+                                <Button key={slot.time} onClick={() => setSelectedTime(slot.time)}
+                                    variant={selectedTime === slot.time ? 'primary' : 'outline'}
+                                    size="sm"
+                                    className="rounded-lg px-3 py-2 text-sm">
                                     {slot.time}
-                                </button>
+                                </Button>
                             ))}
                             {slots.filter((s) => s.available).length === 0 && (
                                 <p className="col-span-4 text-sm text-gray-500">No available slots</p>
@@ -141,10 +157,12 @@ export default function DoctorBooking({ doctor, availability }: DoctorBookingPro
                         </div>
                     )}
 
-                    <button onClick={handleBook} disabled={submitting || !selectedDate || !selectedTime}
-                        className="mt-6 w-full rounded-lg bg-indigo-600 px-6 py-3 text-lg font-semibold text-white hover:bg-indigo-500 disabled:opacity-50">
-                        {submitting ? 'Booking...' : 'Book Appointment'}
-                    </button>
+                    <Button onClick={handleBook} loading={submitting} disabled={!selectedDate || !selectedTime}
+                        size="lg"
+                        className="mt-6"
+                        fullWidth>
+                        Book Appointment
+                    </Button>
                 </div>
                 )}
             </div>

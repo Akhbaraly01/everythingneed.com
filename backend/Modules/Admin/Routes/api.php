@@ -20,8 +20,10 @@ use Modules\Admin\Http\Controllers\AdminSupportController;
 use Modules\Admin\Http\Controllers\AdminRbacController;
 use Modules\Admin\Http\Controllers\AdminProductApprovalController;
 use Modules\Admin\Http\Controllers\AdminDepartmentController;
+use Modules\Admin\Http\Controllers\AdminHomeSectionController;
 use Modules\Admin\Http\Controllers\AdminBrandController;
 use Modules\Admin\Http\Controllers\AdminKycController;
+use Modules\Admin\Http\Controllers\AdminNeedsController;
 use App\Http\Controllers\Api\AdminDomainController;
 use App\Http\Middleware\EnsureAccountActive;
 
@@ -144,6 +146,24 @@ Route::prefix('api/admin')->middleware(['api', 'auth:sanctum', EnsureAccountActi
     Route::put('/cms/banners/{id}', [AdminCmsController::class, 'updateBanner'])
         ->can('manageCms');
     Route::delete('/cms/banners/{id}', [AdminCmsController::class, 'deleteBanner'])
+        ->can('manageCms');
+
+    // Home page builder (Home rebuild): admins reorder + toggle storefront
+    // sections; create/delete stay Super Admin-only (role gate below).
+    Route::get('/home-sections', [AdminHomeSectionController::class, 'index'])
+        ->middleware('permission:cms.home.view')
+        ->can('manageCms');
+    Route::post('/home-sections', [AdminHomeSectionController::class, 'store'])
+        ->middleware(['role:super_admin', 'permission:cms.home.manage'])
+        ->can('manageCms');
+    Route::put('/home-sections/reorder', [AdminHomeSectionController::class, 'reorder'])
+        ->middleware('permission:cms.home.manage')
+        ->can('manageCms');
+    Route::put('/home-sections/{id}', [AdminHomeSectionController::class, 'update'])
+        ->middleware('permission:cms.home.manage')
+        ->can('manageCms');
+    Route::delete('/home-sections/{id}', [AdminHomeSectionController::class, 'destroy'])
+        ->middleware(['role:super_admin', 'permission:cms.home.manage'])
         ->can('manageCms');
     Route::get('/cms/announcements', [AdminCmsController::class, 'announcements'])
         ->can('manageCms');
@@ -366,6 +386,98 @@ Route::prefix('api/admin')->middleware(['api', 'auth:sanctum', EnsureAccountActi
         ->middleware('role:super_admin,administrator,moderator,finance_admin,platform_ops,orders_admin,refund_agent');
     Route::put('/returns/{id}', [\Modules\Orders\Http\Controllers\ReturnRequestController::class, 'decide'])
         ->middleware('role:super_admin,administrator,moderator,finance_admin,platform_ops,orders_admin,refund_agent');
+
+
+    // Needs moderation console (P0 admin needs console)
+    Route::prefix('needs')->middleware('permission:needs.overview.view')->group(function () {
+        // Overview (§28 operational metrics).
+        Route::get('/overview', [AdminNeedsController::class, 'overview']);
+
+        // Reports (§35) + audited export.
+        Route::get('/reports/requests', [AdminNeedsController::class, 'reportsRequests'])
+            ->middleware('permission:needs.reports.view');
+        Route::get('/reports/requests/export', [AdminNeedsController::class, 'exportRequests'])
+            ->middleware('permission:needs.reports.export');
+
+        // Requests
+        Route::get('/requests', [AdminNeedsController::class, 'requestsIndex'])
+            ->middleware('permission:needs.requests.view');
+        Route::get('/requests/{id}', [AdminNeedsController::class, 'requestsShow'])
+            ->middleware('permission:needs.requests.view');
+        Route::post('/requests/{id}/moderate', [AdminNeedsController::class, 'requestsModerate'])
+            ->middleware('permission:needs.requests.moderate');
+
+        // Offers
+        Route::get('/offers', [AdminNeedsController::class, 'offersIndex'])
+            ->middleware('permission:needs.offers.view');
+        Route::delete('/offers/{id}', [AdminNeedsController::class, 'offersDestroy'])
+            ->middleware('permission:needs.offers.moderate');
+
+        // Tasks
+        Route::get('/tasks', [AdminNeedsController::class, 'tasksIndex'])
+            ->middleware('permission:needs.tasks.view');
+        Route::post('/tasks/{id}/cancel', [AdminNeedsController::class, 'tasksCancel'])
+            ->middleware('permission:needs.tasks.manage');
+        Route::post('/tasks/{id}/restore', [AdminNeedsController::class, 'tasksRestore'])
+            ->middleware('permission:needs.tasks.manage');
+        Route::get('/tasks/{id}/applications', [AdminNeedsController::class, 'tasksApplications'])
+            ->middleware('permission:needs.tasks.view');
+
+        // Providers (TODO 08: approval / suspension review queue)
+        Route::get('/providers', [AdminNeedsController::class, 'providersIndex'])
+            ->middleware('permission:needs.providers.view');
+        Route::get('/providers/{id}', [AdminNeedsController::class, 'providersShow'])
+            ->middleware('permission:needs.providers.view');
+        Route::post('/providers/{id}/review', [AdminNeedsController::class, 'providersReview'])
+            ->middleware('permission:needs.providers.review');
+        Route::post('/providers/{id}/suspend', [AdminNeedsController::class, 'providersSuspend'])
+            ->middleware('permission:needs.providers.manage');
+        Route::post('/providers/{id}/reinstate', [AdminNeedsController::class, 'providersReinstate'])
+            ->middleware('permission:needs.providers.manage');
+
+        // Listings (TODO 09: approval → publication moderation)
+        Route::get('/listings', [AdminNeedsController::class, 'listingsIndex'])
+            ->middleware('permission:needs.listings.view');
+        Route::post('/listings/{id}/moderate', [AdminNeedsController::class, 'listingsModerate'])
+            ->middleware('permission:needs.listings.review');
+
+        // Categories (TODO 05: hierarchy + visibility + question schemas)
+        Route::get('/categories', [AdminNeedsController::class, 'categoriesIndex']);
+        Route::post('/categories', [AdminNeedsController::class, 'categoriesStore'])
+            ->middleware('permission:needs.overview.manage');
+        Route::put('/categories/{id}', [AdminNeedsController::class, 'categoriesUpdate'])
+            ->middleware('permission:needs.overview.manage');
+        Route::delete('/categories/{id}', [AdminNeedsController::class, 'categoriesDestroy'])
+            ->middleware('permission:needs.overview.manage');
+
+        // N-29 cost guides (admin CRUD; reuse needs.listings.* permissions)
+        Route::get('/cost-guides', [\Modules\Admin\Http\Controllers\AdminCostGuideController::class, 'index'])
+            ->middleware('permission:needs.listings.view');
+        Route::post('/cost-guides', [\Modules\Admin\Http\Controllers\AdminCostGuideController::class, 'store'])
+            ->middleware('permission:needs.listings.manage');
+        Route::put('/cost-guides/{id}', [\Modules\Admin\Http\Controllers\AdminCostGuideController::class, 'update'])
+            ->middleware('permission:needs.listings.manage');
+        Route::delete('/cost-guides/{id}', [\Modules\Admin\Http\Controllers\AdminCostGuideController::class, 'destroy'])
+            ->middleware('permission:needs.listings.manage');
+
+        // Disputes (needs-scoped)
+        Route::get('/disputes', [AdminNeedsController::class, 'disputesIndex'])
+            ->middleware('permission:needs.disputes.view');
+        Route::get('/disputes/{id}', [AdminNeedsController::class, 'disputesShow'])
+            ->middleware('permission:needs.disputes.view');
+        Route::post('/disputes/{id}/assign', [AdminNeedsController::class, 'disputesAssign'])
+            ->middleware('permission:needs.disputes.manage');
+        Route::post('/disputes/{id}/resolve', [AdminNeedsController::class, 'disputesResolve'])
+            ->middleware('permission:needs.disputes.manage');
+
+        // Fraud flags
+        Route::get('/fraud-flags', [AdminNeedsController::class, 'fraudFlagsIndex'])
+            ->middleware('permission:needs.fraud.view');
+        Route::post('/fraud-flags/{id}/decide', [AdminNeedsController::class, 'fraudFlagsDecide'])
+            ->middleware('permission:needs.fraud.manage');
+        Route::post('/fraud-scan', [AdminNeedsController::class, 'fraudScan'])
+            ->middleware('permission:needs.fraud.manage');
+    });
 
     // Generic approval engine (W4) — gate mirrors the /admin/approvals page
     // role group; per-step approver roles are enforced inside the engine.

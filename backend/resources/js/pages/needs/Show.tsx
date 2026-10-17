@@ -7,12 +7,23 @@ import {
     MapPin, MessageSquare, Paperclip, User,
 } from 'lucide-react';
 import Image from '@/components/shared/Image';
+import { Button } from '@/components/shared/Button';
 import { useCallback, useEffect, useState } from 'react';
 import type { NeedOffer, NeedRequestDetail, NeedStatus } from '@/types';
 
 interface ShowProps {
     need_id?: string;
     category_slug?: string;
+}
+
+interface WorkroomFile {
+    id: string;
+    original_name: string;
+    size: number | null;
+    mime?: string | null;
+    created_at: string;
+    uploaded_by: { id: string; name: string | null };
+    can_delete: boolean;
 }
 
 const OPEN_FOR_OFFERS: NeedStatus[] = ['pending', 'published', 'reviewing', 'offered', 'negotiating'];
@@ -37,6 +48,10 @@ export default function NeedShow({ need_id, category_slug }: ShowProps) {
     const [offerPrice, setOfferPrice] = useState('');
     const [offerMessage, setOfferMessage] = useState('');
     const [offerFlash, setOfferFlash] = useState<string | null>(null);
+
+    // N-24 workroom: shared files for engaged parties only.
+    const [workFiles, setWorkFiles] = useState<WorkroomFile[]>([]);
+    const [workUploading, setWorkUploading] = useState(false);
 
     const load = useCallback(async () => {
         if (!id) {
@@ -70,6 +85,58 @@ export default function NeedShow({ need_id, category_slug }: ShowProps) {
     const isProvider = !!need && !!me && (offer?.provider_id === me || offers.some((o) => o.provider_id === me));
     const isModerator = ['super_admin', 'administrator', 'needs_admin', 'platform_ops'].some((r) => (auth?.roles ?? []).includes(r));
     const s = need?.status;
+
+    // N-24: the room opens for the owner, moderators, and the ACCEPTED
+    // provider — pending bidders never see the section at all.
+    const isWorkroomParty = isOwner || isModerator || (!!offer && offer.provider_id === me);
+
+    const loadFiles = useCallback(async () => {
+        if (!id || !isWorkroomParty) return;
+        try {
+            const res = await api.get<{ data: WorkroomFile[] }>(`/api/need-requests/${id}/files`);
+            setWorkFiles(res.data ?? []);
+        } catch {
+            setWorkFiles([]);
+        }
+    }, [id, isWorkroomParty]);
+
+    useEffect(() => {
+        if (need) loadFiles();
+    }, [need, loadFiles]);
+
+    const uploadWorkFile = async (f: File | null | undefined) => {
+        if (!f || !id) return;
+        setWorkUploading(true);
+        setError(null);
+        try {
+            const fd = new FormData();
+            fd.append('file', f);
+            await api.post(`/api/need-requests/${id}/files`, fd);
+            await loadFiles();
+        } catch (e) {
+            setError(errorMessage(e, 'Upload failed'));
+        } finally {
+            setWorkUploading(false);
+        }
+    };
+
+    const downloadWorkFile = async (f: WorkroomFile) => {
+        try {
+            const res = await api.get<{ data: { url: string } }>(`/api/need-requests/${id}/files/${f.id}/url`);
+            window.open(res.data.url, '_blank', 'noopener');
+        } catch (e) {
+            setError(errorMessage(e, 'Could not open the file'));
+        }
+    };
+
+    const removeWorkFile = async (f: WorkroomFile) => {
+        try {
+            await api.del(`/api/need-requests/${id}/files/${f.id}`);
+            await loadFiles();
+        } catch (e) {
+            setError(errorMessage(e, 'Could not remove the file'));
+        }
+    };
 
     const decide = async (offerId: string, action: 'accept' | 'reject') => {
         setBusy(true);
@@ -220,11 +287,15 @@ export default function NeedShow({ need_id, category_slug }: ShowProps) {
                         )}
                         <div className="rounded bg-gray-50 p-3 dark:bg-gray-700">
                             <dt className="flex items-center gap-1 text-gray-500"><MapPin className="h-3 w-3" /> Location</dt>
-                            <dd className="font-semibold dark:text-white">{need.location || 'Anywhere'}</dd>
+                            <dd className="font-semibold dark:text-white">
+                                {need.is_remote
+                                    ? 'Remote / online'
+                                    : [need.city, need.lga, need.state, need.country].filter(Boolean).join(', ') || need.location || 'Anywhere'}
+                            </dd>
                         </div>
                         <div className="rounded bg-gray-50 p-3 dark:bg-gray-700">
                             <dt className="flex items-center gap-1 text-gray-500"><Calendar className="h-3 w-3" /> Deadline</dt>
-                            <dd className="font-semibold dark:text-white">{need.deadline ? new Date(need.deadline).toLocaleDateString() : 'Flexible'}</dd>
+                            <dd className="font-semibold dark:text-white">{need.is_asap ? 'ASAP' : need.deadline ? new Date(need.deadline).toLocaleDateString() : 'Flexible'}</dd>
                         </div>
                         {need.quantity != null && (
                             <div className="rounded bg-gray-50 p-3 dark:bg-gray-700">
@@ -245,6 +316,23 @@ export default function NeedShow({ need_id, category_slug }: ShowProps) {
                             {need.notes && (
                                 <div><span className="font-semibold text-gray-700 dark:text-gray-300">Notes: </span><span className="text-gray-600 dark:text-gray-400">{need.notes}</span></div>
                             )}
+                        </div>
+                    )}
+
+                    {/* Category answers (TODO 05): labels come from the submitted snapshot */}
+                    {!!need.answers && Object.keys(need.answers).length > 0 && (
+                        <div className="mt-4 space-y-2 text-sm">
+                            <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400">Request details</h2>
+                            {(need.form_schema_snapshot ?? []).map((field) => {
+                                const value = (need.answers as Record<string, unknown>)[field.key];
+                                if (value === undefined || value === null || value === '') return null;
+                                return (
+                                    <div key={field.key}>
+                                        <span className="font-semibold text-gray-700 dark:text-gray-300">{field.label}: </span>
+                                        <span className="text-gray-600 dark:text-gray-400">{String(value)}</span>
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
 
@@ -295,20 +383,16 @@ export default function NeedShow({ need_id, category_slug }: ShowProps) {
                         <h2 className="text-sm font-bold text-gray-900 dark:text-white">Actions</h2>
                         <div className="mt-3 flex flex-wrap gap-2">
                             {allActions.map((a) => (
-                                <button
+                                <Button
                                     key={a.path}
                                     type="button"
                                     disabled={busy}
                                     data-testid={`need-action-${a.path}`}
                                     onClick={() => act(a.path)}
-                                    className={
-                                        a.primary
-                                            ? 'rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50'
-                                            : 'rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:text-gray-200'
-                                    }
+                                    variant={a.primary ? 'primary' : 'outline'}
                                 >
                                     {a.label}
-                                </button>
+                                </Button>
                             ))}
                         </div>
                     </section>
@@ -344,15 +428,15 @@ export default function NeedShow({ need_id, category_slug }: ShowProps) {
                                 />
                             </div>
                         </div>
-                        <button
+                        <Button
                             type="button"
                             onClick={submitOffer}
-                            disabled={busy}
+                            loading={busy}
                             data-testid="offer-submit"
-                            className="mt-3 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
+                            className="mt-3"
                         >
-                            {busy ? 'Submitting...' : 'Submit offer'}
-                        </button>
+                            Submit offer
+                        </Button>
                         {canCounter && (
                             <p className="mt-2 text-xs text-gray-500">Re-submitting updates your standing offer - the request enters Negotiation.</p>
                         )}
@@ -374,6 +458,19 @@ export default function NeedShow({ need_id, category_slug }: ShowProps) {
                                     <span className="font-semibold text-gray-800 dark:text-white">{o.provider?.name ?? 'Provider'}</span>
                                     <span className="font-bold text-green-600">{need.currency} {o.price}</span>
                                 </div>
+                                {/* N-27: applicant availability + vetting flags */}
+                                {(o.provider_is_available !== null && o.provider_is_available !== undefined) && (
+                                    <span
+                                        data-testid={`offer-availability-${o.id}`}
+                                        className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${
+                                            o.provider_is_available
+                                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                                                : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+                                        }`}
+                                    >
+                                        {o.provider_is_available ? 'Available now' : 'Paused'}
+                                    </span>
+                                )}
                                 {o.message && <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{o.message}</p>}
                                 <div className="mt-2 flex flex-wrap items-center gap-2">
                                     <span className={`rounded-full px-2 py-1 text-xs font-semibold ${
@@ -385,24 +482,26 @@ export default function NeedShow({ need_id, category_slug }: ShowProps) {
                                     </span>
                                     {isOwner && o.status === 'pending' && OPEN_FOR_OFFERS.includes(s ?? 'draft') && (
                                         <span className="inline-flex gap-2">
-                                            <button
+                                            <Button
                                                 type="button"
                                                 disabled={busy}
                                                 data-testid={`offer-accept-${o.id}`}
                                                 onClick={() => decide(o.id, 'accept')}
-                                                className="rounded bg-green-600 px-3 py-1 text-xs font-semibold text-white hover:bg-green-700 disabled:opacity-50"
+                                                variant="success"
+                                                size="sm"
                                             >
                                                 Accept Offer
-                                            </button>
-                                            <button
+                                            </Button>
+                                            <Button
                                                 type="button"
                                                 disabled={busy}
                                                 data-testid={`offer-reject-${o.id}`}
                                                 onClick={() => decide(o.id, 'reject')}
-                                                className="rounded border px-3 py-1 text-xs hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600"
+                                                variant="outline"
+                                                size="sm"
                                             >
                                                 Reject
-                                            </button>
+                                            </Button>
                                         </span>
                                     )}
                                 </div>
@@ -410,6 +509,63 @@ export default function NeedShow({ need_id, category_slug }: ShowProps) {
                         ))}
                     </div>
                 </section>
+
+                {/* N-24 workroom — parties only; URLs are minted per download */}
+                {isWorkroomParty && (
+                    <section className="rounded-lg bg-white p-5 shadow dark:bg-gray-800" data-testid="workroom">
+                        <h2 className="flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white">
+                            <Paperclip className="h-4 w-4" /> Workroom ({workFiles.length})
+                        </h2>
+                        <p className="mt-1 text-xs text-gray-500">
+                            Shared files for this request — visible only to the owner, the accepted provider, and moderators.
+                        </p>
+
+                        <div className="mt-3 space-y-2">
+                            {workFiles.length === 0 && (
+                                <p className="text-sm text-gray-500">No files yet.</p>
+                            )}
+                            {workFiles.map((f) => (
+                                <div
+                                    key={f.id}
+                                    data-testid={`workroom-file-${f.id}`}
+                                    className="flex flex-wrap items-center justify-between gap-2 rounded border px-3 py-2 dark:border-gray-600"
+                                >
+                                    <div className="min-w-0">
+                                        <p className="truncate text-sm font-medium text-gray-800 dark:text-gray-200">{f.original_name}</p>
+                                        <p className="text-xs text-gray-500">
+                                            {f.size != null ? `${Math.max(1, Math.round(f.size / 1024))} KB · ` : ''}
+                                            {f.uploaded_by?.name ?? 'Unknown'} · {new Date(f.created_at).toLocaleDateString()}
+                                        </p>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <Button type="button" size="sm" variant="outline" onClick={() => downloadWorkFile(f)}>
+                                            Download
+                                        </Button>
+                                        {f.can_delete && (
+                                            <Button type="button" size="sm" variant="danger" onClick={() => removeWorkFile(f)}>
+                                                Remove
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
+                            <input
+                                type="file"
+                                className="hidden"
+                                data-testid="workroom-upload"
+                                disabled={workUploading}
+                                onChange={(e) => {
+                                    void uploadWorkFile(e.target.files?.[0]);
+                                    e.target.value = '';
+                                }}
+                            />
+                            {workUploading ? 'Uploading…' : 'Upload file'}
+                        </label>
+                    </section>
+                )}
 
                 {/* Payment state (owner/admin only per server) */}
                 {need.payment && (

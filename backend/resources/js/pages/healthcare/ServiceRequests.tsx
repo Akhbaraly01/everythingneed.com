@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useCallback, useEffect, useState } from 'react';
 import { ArrowLeft, ClipboardList, Plus } from 'lucide-react';
 import EmptyState from '@/components/shared/EmptyState';
+import { Button } from '@/components/shared/Button';
 
 interface ServiceRequest {
     id: string;
@@ -103,12 +104,12 @@ export default function ServiceRequests() {
                         </h1>
                         <p className="mt-1 text-sm text-gray-500">Describe exactly what you need. The healthcare team reviews every request.</p>
                     </div>
-                    <button
+                    <Button
                         onClick={() => setShowForm((v) => !v)}
-                        className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+                        className="shrink-0 gap-1"
                     >
                         <Plus className="h-4 w-4" /> New request
-                    </button>
+                    </Button>
                 </div>
 
                 {showForm && (
@@ -150,10 +151,9 @@ export default function ServiceRequests() {
                                     className="mt-1 w-full rounded-lg border px-3 py-2 dark:border-gray-600 dark:bg-gray-700" />
                             </label>
                         </div>
-                        <button onClick={submit} disabled={submitting}
-                            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50">
-                            {submitting ? 'Submitting…' : 'Submit request'}
-                        </button>
+                        <Button onClick={submit} loading={submitting}>
+                            Submit request
+                        </Button>
                     </div>
                 )}
 
@@ -162,7 +162,7 @@ export default function ServiceRequests() {
                 ) : error ? (
                     <div className="rounded-lg bg-white p-8 text-center shadow dark:bg-gray-800">
                         <p className="font-medium text-red-600">{error}</p>
-                        <button onClick={() => setAttempt((t) => t + 1)} className="mt-3 text-sm font-medium text-indigo-600 hover:underline">Retry</button>
+                        <Button onClick={() => setAttempt((t) => t + 1)} variant="ghost" size="sm" className="mt-3 text-sm underline">Retry</Button>
                     </div>
                 ) : requests.length === 0 ? (
                     <EmptyState title="No custom requests yet" hint="File your first request above and track its progress here." />

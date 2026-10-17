@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Home, ArrowRight } from 'lucide-react';
 
 export default function PropertyInquiry({ property_id }: { property_id?: string }) {
-    const [form, setForm] = useState({ name: '', email: '', phone: '', message: '', viewing_date: '' });
+    const [form, setForm] = useState({ name: '', email: '', phone: '', message: '', viewing_date: '', viewing_time: '' });
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
     const id = property_id || (typeof window !== 'undefined' ? window.location.pathname.split('/')[2] : undefined);
@@ -31,7 +31,10 @@ export default function PropertyInquiry({ property_id }: { property_id?: string 
                         <div><label className="block text-sm font-medium mb-1 dark:text-gray-300">Phone</label><input required value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="w-full rounded-lg border px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></div>
                     </div>
                     <div><label className="block text-sm font-medium mb-1 dark:text-gray-300">Email</label><input type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="w-full rounded-lg border px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></div>
-                    <div><label className="block text-sm font-medium mb-1 dark:text-gray-300">Preferred Viewing Date</label><input type="date" value={form.viewing_date} onChange={(e) => setForm({ ...form, viewing_date: e.target.value })} className="w-full rounded-lg border px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div><label className="block text-sm font-medium mb-1 dark:text-gray-300">Preferred Viewing Date</label><input type="date" min={new Date().toISOString().slice(0, 16)} value={form.viewing_date} onChange={(e) => setForm({ ...form, viewing_date: e.target.value })} className="w-full rounded-lg border px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></div>
+                        <div><label className="block text-sm font-medium mb-1 dark:text-gray-300">Preferred Time (optional)</label><input type="time" value={form.viewing_time} onChange={(e) => setForm({ ...form, viewing_time: e.target.value })} className="w-full rounded-lg border px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></div>
+                    </div>
                     <div><label className="block text-sm font-medium mb-1 dark:text-gray-300">Message</label><textarea required value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} rows={4} placeholder="Tell us about your interest..." className="w-full rounded-lg border px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></div>
                 </div>
                 <button type="submit" disabled={submitting} className="w-full rounded-lg bg-blue-600 px-4 py-3 text-white hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2">

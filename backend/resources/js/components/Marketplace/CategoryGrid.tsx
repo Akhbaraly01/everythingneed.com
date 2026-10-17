@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
+import { useLanguage } from '@/lib/use-language';
 import type { SiteNav } from '@/types';
 import {
     Smartphone,
@@ -100,6 +101,7 @@ function iconFor(name: string | null | undefined, fallback: LucideIcon): LucideI
 }
 
 export default function CategoryGrid({ categories = [] }: { categories?: CategoryOption[] }) {
+    const { t } = useLanguage();
     const [showAll, setShowAll] = useState(false);
     const rootRef = useRef<HTMLDivElement>(null);
     const { siteNav } = usePage().props as { siteNav?: SiteNav };
@@ -162,14 +164,14 @@ export default function CategoryGrid({ categories = [] }: { categories?: Categor
                         <MoreHorizontal className="h-5 w-5 md:h-6 md:w-6 text-white" />
                     </span>
                     <span className="text-xs font-medium text-center text-muted-foreground group-hover:text-foreground transition-colors">
-                        {showAll ? 'Less' : 'More'}
+                        {showAll ? t('home.less') : t('home.more')}
                     </span>
                 </button>
             </div>
 
             {showAll && (
                 <div className="mt-4 rounded-xl border border-border bg-card p-4">
-                    <h3 className="mb-3 text-sm font-semibold">All Categories</h3>
+                        <h3 className="mb-3 text-sm font-semibold">{t('home.allCategories')}</h3>
                     <div className="grid grid-cols-4 md:grid-cols-6 gap-4 mt-6 overflow-y-auto">
                         {all.map((category) => (
                             <Link

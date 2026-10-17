@@ -12,7 +12,7 @@ use Tests\TestCase;
 /**
  * W1.8 (§75) — per-role allow/deny authorization suite.
  *
- * Every role in AdminRbacController::ROLES (39) is exercised against a
+ * Every role in AdminRbacController::ROLES (40 since TODO 21) is exercised against a
  * probe catalog of admin API endpoints whose exact gates are read from
  * Modules/Admin/Routes/api.php + AdminPolicy. For each role:
  *   - allow probes must NOT return 401/403 (page/API parity),
@@ -102,6 +102,11 @@ class AdminRoleAuthorizationSuiteTest extends TestCase
             '/api/admin/building/bookings' => ['super_admin', 'administrator', 'building_admin'],
             // Inventory stock — permission:inventory.stock.view.
             '/api/stock' => ['super_admin', 'administrator', 'platform_ops', 'inventory_manager', 'vendor_admin'],
+            // TODO 21 needs console reads — permission-gated; needs_viewer
+            // is read-only triage (every queue visible, all writes denied).
+            '/api/admin/needs/overview' => ['super_admin', 'administrator', 'needs_admin', 'needs_viewer', 'platform_ops'],
+            '/api/admin/needs/requests' => ['super_admin', 'administrator', 'needs_admin', 'needs_viewer', 'platform_ops'],
+            '/api/admin/needs/fraud-flags' => ['super_admin', 'administrator', 'needs_admin', 'needs_viewer', 'platform_ops'],
             // Analytics CSV export — analytics.overview.export (analyst is view-only).
             '/api/admin/analytics/export' => ['super_admin', 'administrator', 'analytics_admin'],
             // Reports — reports.reports.view to read (auditor/analyst hold view;
@@ -134,10 +139,10 @@ class AdminRoleAuthorizationSuiteTest extends TestCase
     }
 
     #[Test]
-    public function test_roster_has_39_roles(): void
+    public function test_roster_has_40_roles(): void
     {
-        $this->assertCount(39, AdminRbacController::ROLES);
-        $this->assertCount(39, array_unique(AdminRbacController::ROLES));
+        $this->assertCount(40, AdminRbacController::ROLES);
+        $this->assertCount(40, array_unique(AdminRbacController::ROLES));
     }
 
     #[Test]

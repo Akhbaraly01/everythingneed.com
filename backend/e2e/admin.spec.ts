@@ -32,6 +32,52 @@ test('guest hitting the admin console lands on login', async ({ page }) => {
     await expect(page.locator('#login-email')).toBeVisible();
 });
 
+test('super admin reorders and toggles home sections', async ({ page }) => {
+    await webLogin(page, SUPER, '/admin/dashboard');
+    await page.goto('/admin/home-sections', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByTestId('home-admin-section-featured')).toBeVisible();
+    await expect(page.getByTestId('home-admin-section-deals')).toBeVisible();
+
+    // Toggle off then back on (persists through the API).
+    const toggle = page.getByTestId('home-admin-toggle-deals');
+    const wasOn = (await toggle.getAttribute('aria-checked')) === 'true';
+    await toggle.click();
+    await expect(toggle).toHaveAttribute(
+        'aria-checked',
+        wasOn ? 'false' : 'true',
+        { timeout: 10_000 },
+    );
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-checked', wasOn ? 'true' : 'false', {
+        timeout: 10_000,
+    });
+});
+
+test('super admin manages course lessons from the Learning console', async ({ page }) => {
+    await webLogin(page, SUPER, '/admin/dashboard');
+    await page.goto('/admin/learning/courses', { waitUntil: 'domcontentloaded' });
+
+    // Open the lesson manager on the first course row (real API rows).
+    const manage = page.getByTestId('manage-lessons').first();
+    await expect(manage).toBeVisible({ timeout: 20_000 });
+    await manage.click();
+    await expect(page.getByTestId('lesson-manager')).toBeVisible();
+
+    // Add a lesson with a YouTube URL - the learner page plays it in-app.
+    const title = `E2E lesson ${Date.now()}`;
+    await page.getByTestId('lesson-title').fill(title);
+    await page.getByTestId('lesson-video-url').fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+    await page.getByTestId('lesson-save').click();
+
+    const list = page.getByTestId('lesson-list');
+    await expect(list.getByText(title)).toBeVisible({ timeout: 15_000 });
+
+    // Remove it again: row trash -> confirm dialog -> gone.
+    await list.getByText(title).locator('xpath=ancestor::li').getByTitle('Delete lesson').click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click();
+    await expect(list.getByText(title)).toHaveCount(0, { timeout: 15_000 });
+});
+
 test('customer files a return and the super admin sees it in the Returns tab', async ({
     page,
     request,

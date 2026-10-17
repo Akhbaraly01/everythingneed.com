@@ -15,6 +15,9 @@ interface WishlistRow {
  * the app must read and write THAT store. Module-level cache keeps a single
  * GET per page load no matter how many cards render, and all subscribers
  * re-render together on change.
+ *
+ * `entityType` defaults to 'product' (ProductCard behaviour unchanged);
+ * pass 'job' on job detail pages. Keys are namespaced per type.
  */
 let cache: Map<string, string> | null = null; // product_id -> wishlist row id
 let inflight: Promise<void> | null = null;
@@ -25,7 +28,7 @@ const notify = () => listeners.forEach((l) => l());
 async function load(): Promise<void> {
     try {
         const res = await api.get<{ data: WishlistRow[] }>('/api/wishlist');
-        cache = new Map((res.data ?? []).map((row) => [String(row.product_id), row.id]));
+        cache = new Map((res.data ?? []).map((row) => [`${row.entity_type ?? 'product'}:${row.product_id}`, row.id]));
     } catch (e) {
         // Guest / network failure: treat as "nothing saved" - cards guard
         // auth before calling toggle, so an empty cache is safe.
@@ -49,7 +52,7 @@ export function invalidateWishlist(): void {
     ensureLoaded();
 }
 
-export function useWishlist(): {
+export function useWishlist(entityType = 'product'): {
     has: (productId: string | number) => boolean;
     toggle: (productId: string | number) => Promise<boolean>;
     ready: boolean;
@@ -65,20 +68,22 @@ export function useWishlist(): {
         };
     }, []);
 
+    const keyFor = useCallback((productId: string | number) => `${entityType}:${productId}`, [entityType]);
+
     const toggle = useCallback(async (productId: string | number): Promise<boolean> => {
         const key = String(productId);
         ensureLoaded();
         if (!cache) await (inflight ?? load());
 
-        const existing = cache?.get(key);
+        const existing = cache?.get(keyFor(productId));
         if (existing) {
             await api.del(`/api/wishlist/${existing}`);
-            cache?.delete(key);
+            cache?.delete(keyFor(productId));
             notify();
             return false;
         }
         try {
-            await api.post('/api/wishlist', { product_id: key });
+            await api.post('/api/wishlist', { product_id: key, entity_type: entityType });
         } catch (e) {
             // 409 = already saved (concurrent tab) -> fall through to refresh
             if (!(e instanceof ApiError && e.status === 409)) throw e;
@@ -86,10 +91,10 @@ export function useWishlist(): {
         // addToWishlist does not return the row id - refresh the map once.
         await load();
         return true;
-    }, []);
+    }, [entityType, keyFor]);
 
     return {
-        has: (productId) => cache?.has(String(productId)) ?? false,
+        has: (productId) => cache?.has(keyFor(productId)) ?? false,
         toggle,
         ready: cache !== null,
     };

@@ -57,13 +57,16 @@ class AdminDetailPageController extends Controller
         $payments = DB::table('payments')
             ->whereIn('order_id', $orderIds)
             ->orderByDesc('created_at')
+            // Ciphertext never ships to clients: gateway_response/metadata
+            // stay server-side (decryptable only through the model casts).
+            ->select(['id', 'order_id', 'user_id', 'amount', 'currency', 'status', 'method', 'reference', 'purpose', 'idempotency_key', 'provider', 'provider_payment_id', 'created_at', 'updated_at'])
             ->get();
 
         $refunds = DB::table('refunds')
             ->join('payments', 'payments.id', '=', 'refunds.payment_id')
             ->whereIn('payments.order_id', $orderIds)
             ->orderByDesc('refunds.created_at')
-            ->select('refunds.*')
+            ->select(['refunds.id', 'refunds.payment_id', 'refunds.amount', 'refunds.reason', 'refunds.status', 'refunds.method', 'refunds.requested_by', 'refunds.reviewed_by', 'refunds.requested_at', 'refunds.reviewed_at', 'refunds.rejection_reason', 'refunds.cancellation_id', 'refunds.created_at', 'refunds.updated_at'])
             ->get();
 
         return Inertia::render('admin/OrderDetail', [

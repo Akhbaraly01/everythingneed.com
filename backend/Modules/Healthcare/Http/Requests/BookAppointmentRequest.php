@@ -22,6 +22,18 @@ class BookAppointmentRequest extends FormRequest
             'appointment_time' => 'nullable|string',
             'home_address' => 'nullable|string|max:500',
             'is_random_assignment' => 'boolean',
+            // Optional injury/prescription evidence: uploader-produced URLs
+            // under the patient's own scope, never raw client strings.
+            'images' => 'nullable|array|max:5',
+            'images.*' => [
+                'nullable', 'url', 'max:2048',
+                function (string $attribute, mixed $value, \Closure $fail) {
+                    $scope = 'uploads/u/'.auth()->id().'/';
+                    if (!str_contains((string) $value, $scope)) {
+                        $fail('Each image must be uploaded to your own library first.');
+                    }
+                },
+            ],
         ];
     }
 }

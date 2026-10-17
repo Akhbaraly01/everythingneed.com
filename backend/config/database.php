@@ -24,7 +24,15 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'search_path' => 'public',
-            'sslmode' => 'prefer',
+            // Improvement cycle (TODO 13 finding): the server default zone
+            // is box-dependent (observed America/Los_Angeles) while APP_TZ
+            // is UTC. Pin the session so timestamptz reads/writes and
+            // week-bucketing stay in UTC. Naive timestamp columns (the
+            // entire current schema) are unaffected by this setting.
+            'timezone' => env('DB_TIMEZONE', 'UTC'),
+            // Production must set DB_SSLMODE=require with the CA deployed;
+            // prefer keeps local/test PostgreSQL working without TLS.
+            'sslmode' => env('DB_SSLMODE', 'prefer'),
         ],
         'mysql' => [
             'driver' => 'mysql',

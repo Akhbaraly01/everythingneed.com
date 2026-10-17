@@ -20,6 +20,7 @@ interface AidRow {
     requester?: { id?: string; name?: string } | null;
     reviewer?: { id?: string; name?: string } | null;
     reviewed_at?: string | null;
+    images?: string[] | null;
     created_at: string;
 }
 
@@ -153,6 +154,20 @@ export default function HealthcareAid() {
                                             <p className="font-medium text-gray-900 dark:text-white">{r.title}</p>
                                             {r.category && (
                                                 <p className="text-xs capitalize text-gray-500">{r.category}</p>
+                                            )}
+                                            {r.images && r.images.length > 0 && (
+                                                <div className="mt-1.5 flex flex-wrap gap-1">
+                                                    {r.images.map((url, i) => (
+                                                        <a key={`${r.id}-img-${i}`} href={url} target="_blank" rel="noreferrer">
+                                                            <img
+                                                                src={url}
+                                                                alt=""
+                                                                loading="lazy"
+                                                                className="h-9 w-9 rounded border border-border object-cover"
+                                                            />
+                                                        </a>
+                                                    ))}
+                                                </div>
                                             )}
                                             {r.status === 'rejected' && r.rejection_reason && (
                                                 <p className="mt-0.5 text-xs text-red-600 dark:text-red-400">

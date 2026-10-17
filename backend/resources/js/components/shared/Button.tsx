@@ -31,54 +31,37 @@ export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement
     children?: ReactNode;
 }
 
+// The candy body/rim/gloss/press anatomy lives in the .btn-3d recipe in
+// app.css; here we only add sizing, focus and non-candy variants on top.
 const BASE =
-    'relative isolate inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-lg font-medium ' +
-    'transition-[transform,box-shadow,background-color,color,opacity] duration-fast ease-out-spring ' +
-    'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ' +
-    'disabled:pointer-events-none disabled:opacity-55 ' +
-    // 3D body: specular top highlight + bevel. `-z-10` keeps the overlay
-    // above the button background but below the label.
-    'before:pointer-events-none before:absolute before:inset-x-2.5 before:top-0 before:h-1/2 before:-z-10 before:rounded-t-lg ' +
-    'before:bg-gradient-to-b before:from-white/28 before:via-white/8 before:to-transparent ' +
-    'active:translate-y-px active:before:opacity-40';
+    'btn-3d tap-safe focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring';
 
 const SIZES: Record<ButtonSize, string> = {
-    // Visual heights stay compact; .tap-safe expands the hit area to 44px.
-    sm: 'h-9 px-3 text-sm before:rounded-t-md',
-    md: 'h-10 px-4 text-sm',
-    lg: 'h-12 px-6 text-base',
+    // .btn-3d already enforces a 44px minimum via min-height.
+    sm: 'min-h-9 px-3.5 text-sm',
+    md: 'min-h-11 px-5 text-sm',
+    lg: 'min-h-12 px-6 text-base',
 };
 
 const ICON_SIZES: Record<ButtonSize, string> = {
-    sm: 'h-9 w-9 p-0',
-    md: 'h-10 w-10 p-0',
-    lg: 'h-12 w-12 p-0',
+    sm: 'btn-icon-3d !w-9 !h-9 !min-h-9',
+    md: 'btn-icon-3d',
+    lg: 'btn-icon-3d !w-12 !h-12 !min-h-12',
 };
 
+// primary uses the recipe's default stops (blue). secondary recolors to
+// violet via .btn-violet; outline/ghost are flat by design.
 const VARIANTS: Record<ButtonVariant, string> = {
-    primary:
-        'bg-gradient-to-b from-[hsl(var(--brand-blue))] to-[hsl(217_91%_52%)] text-white ' +
-        'shadow-md shadow-[hsl(var(--brand-blue)/0.32)] hover:shadow-lg hover:shadow-glow-primary hover:-translate-y-0.5 ' +
-        'active:shadow-sm active:translate-y-px',
-    secondary:
-        'bg-gradient-to-b from-[hsl(var(--brand-violet))] to-[hsl(280_87%_58%)] text-white ' +
-        'shadow-md shadow-[hsl(var(--brand-violet)/0.32)] hover:shadow-lg hover:shadow-glow-secondary hover:-translate-y-0.5 ' +
-        'active:shadow-sm active:translate-y-px',
+    primary: '',
+    secondary: 'btn-violet',
     outline:
         'border border-border bg-card/80 text-foreground backdrop-blur-sm ' +
         'shadow-xs hover:border-primary/50 hover:bg-card hover:text-primary hover:shadow-md ' +
         'active:translate-y-px',
     ghost: 'bg-transparent text-foreground hover:bg-muted hover:text-foreground',
-    danger:
-        'bg-gradient-to-b from-[hsl(var(--destructive))] to-[hsl(0_84%_52%)] text-white ' +
-        'shadow-md shadow-[hsl(var(--destructive)/0.3)] hover:shadow-lg hover:shadow-glow-danger hover:-translate-y-0.5 ' +
-        'active:shadow-sm active:translate-y-px',
-    success:
-        'bg-gradient-to-b from-[hsl(var(--success))] to-[hsl(142_76%_30%)] text-white ' +
-        'shadow-md shadow-[hsl(var(--success)/0.3)] hover:shadow-lg hover:shadow-glow-success hover:-translate-y-0.5 ' +
-        'active:shadow-sm active:translate-y-px',
-    icon: 'bg-card/85 text-foreground border border-border backdrop-blur-sm shadow-xs ' +
-        'hover:border-primary/40 hover:text-primary hover:shadow-md active:translate-y-px',
+    danger: 'btn-danger',
+    success: 'btn-success',
+    icon: 'btn-glass btn-icon-3d text-foreground',
 };
 
 function buzz(enabled: boolean | undefined): void {
@@ -118,7 +101,13 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
         onClick?.(event);
     };
 
-    const sizeClass = iconOnly ? ICON_SIZES[size] : SIZES[size];
+    // outline/ghost keep the .btn-3d min-height only; solid candy variants
+    // get the full size ramp. icon variant already carries btn-icon-3d.
+    const sizeClass = iconOnly
+        ? ICON_SIZES[size]
+        : variant === 'outline' || variant === 'ghost'
+          ? SIZES[size]
+          : SIZES[size];
 
     return (
         <button
@@ -131,8 +120,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
                 BASE,
                 sizeClass,
                 VARIANTS[variant],
-                'tap-safe',
-                iconOnly && 'rounded-full before:rounded-full',
+                // outline/ghost must not paint the candy body.
+                (variant === 'outline' || variant === 'ghost') && '!bg-none',
+                loading && 'is-loading',
                 fullWidth && 'w-full',
                 className,
             )}
@@ -167,4 +157,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
 
 /** Class helper so existing <Link className="..."> buttons can migrate. */
 export const buttonClasses = (variant: ButtonVariant = 'primary', size: ButtonSize = 'md') =>
-    cn(BASE, SIZES[size], VARIANTS[variant], 'tap-safe');
+    cn(
+        BASE,
+        SIZES[size],
+        VARIANTS[variant],
+        (variant === 'outline' || variant === 'ghost') && '!bg-none',
+    );

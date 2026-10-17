@@ -40,6 +40,7 @@ class JobController extends Controller
         }
 
         $jobs = $query->withCount('applications')
+            ->with('companyProfile:id,name,slug')
             ->orderBy('created_at', 'desc')
             ->paginate($request->get('per_page', 15));
 
@@ -56,7 +57,9 @@ class JobController extends Controller
 
     public function show(string $id): JsonResponse
     {
-        $job = JobPost::withCount('applications')->find($id);
+        $job = JobPost::withCount('applications')
+            ->with('companyProfile:id,name,slug,industry,location,website,logo_path')
+            ->find($id);
 
         if (!$job) {
             return response()->json(['message' => 'Job not found'], 404);
@@ -81,8 +84,16 @@ class JobController extends Controller
             'expires_at' => 'nullable|date|after:now',
         ]);
 
+        // N-32: attach the poster's company profile automatically so every
+        // post links back to /companies/{slug}; the typed company string
+        // remains what search and older clients read.
+        $companyId = \Modules\Jobs\Entities\Company::where('user_id', $request->user()->id)
+            ->where('is_active', true)
+            ->value('id');
+
         $job = JobPost::create(array_merge($validated, [
             'user_id' => $request->user()->id,
+            'company_id' => $companyId,
             'is_active' => true,
         ]));
 
@@ -198,7 +209,7 @@ class JobController extends Controller
             ->paginate($request->get('per_page', 15));
 
         return response()->json([
-            'data' => $applications->items(),
+            'data' => array_map(fn ($a) => $this->applicationPayload($a), $applications->items()),
             'meta' => [
                 'current_page' => $applications->currentPage(),
                 'last_page' => $applications->lastPage(),
@@ -216,7 +227,7 @@ class JobController extends Controller
             ->paginate($request->get('per_page', 15));
 
         return response()->json([
-            'data' => $applications->items(),
+            'data' => array_map(fn ($a) => $this->applicationPayload($a), $applications->items()),
             'meta' => [
                 'current_page' => $applications->currentPage(),
                 'last_page' => $applications->lastPage(),
@@ -243,7 +254,7 @@ class JobController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        return response()->json(['data' => $application]);
+        return response()->json(['data' => $this->applicationPayload($application)]);
     }
 
     /** Job owners move their applicants through the hiring pipeline. */
@@ -267,8 +278,25 @@ class JobController extends Controller
 
         return response()->json([
             'message' => 'Application updated',
-            'data' => $application->fresh(),
+            'data' => $this->applicationPayload($application->fresh()->load('jobPost')),
         ]);
+    }
+
+    /**
+     * N-33: every application payload exposes the job under the codebase's
+     * snake_case convention (frontend reads job_post, Eloquent emits
+     * jobPost) — one mapper, all endpoints agree.
+     */
+    private function applicationPayload(object $application): array
+    {
+        $data = $application->toArray();
+
+        if (array_key_exists('jobPost', $data)) {
+            $data['job_post'] = $data['jobPost'];
+            unset($data['jobPost']);
+        }
+
+        return $data;
     }
 
     /** Employer dashboard: own posts plus received-application counts. */
@@ -297,7 +325,7 @@ class JobController extends Controller
             ->paginate($request->get('per_page', 25));
 
         return response()->json([
-            'data' => $applications->items(),
+            'data' => array_map(fn ($a) => $this->applicationPayload($a), $applications->items()),
             'meta' => [
                 'current_page' => $applications->currentPage(),
                 'last_page' => $applications->lastPage(),

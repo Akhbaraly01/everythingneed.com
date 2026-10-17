@@ -186,10 +186,13 @@ Route::post('/webhooks/payments/paystack', [\App\Http\Controllers\Api\PaymentWeb
 Route::middleware('auth:sanctum')->prefix('kyc')->group(function () {
     Route::get('/', [\App\Http\Controllers\Api\KycController::class, 'show']);
     Route::get('/documents/{side}', [\App\Http\Controllers\Api\KycController::class, 'document']);
+    Route::get('/documents/{side}/signed-url', [\App\Http\Controllers\Api\KycController::class, 'documentSignedUrl']);
     Route::post('/submit', [\App\Http\Controllers\Api\KycController::class, 'submit'])
         ->middleware('throttle:10,1');
     Route::post('/{id}/review', [\App\Http\Controllers\Api\KycController::class, 'review'])
         ->middleware('role:super_admin,administrator,kyc_reviewer,security_admin');
     Route::get('/{id}/documents/{side}', [\App\Http\Controllers\Api\KycController::class, 'reviewDocument'])
+        ->middleware('role:super_admin,administrator,kyc_reviewer,security_admin');
+    Route::get('/{id}/documents/{side}/signed-url', [\App\Http\Controllers\Api\KycController::class, 'reviewDocumentSignedUrl'])
         ->middleware('role:super_admin,administrator,kyc_reviewer,security_admin');
 });

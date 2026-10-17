@@ -2,6 +2,7 @@ import AppLayout from '@/layouts/AppLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { api, errorMessage } from '@/lib/api';
 import { formatPrice } from '@/lib/currency';
+import { Button } from '@/components/shared/Button';
 import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, Home, User, ArrowRight } from 'lucide-react';
@@ -92,21 +93,18 @@ export default function HomeVisit() {
                 {!selected ? (
                     <>
                         <div className="flex flex-wrap gap-2">
-                            <button onClick={() => setProfessionFilter('')} className={`rounded-full px-4 py-1.5 text-sm font-medium ${
-                                !professionFilter ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
-                            }`}>All Professions</button>
+                            <Button onClick={() => setProfessionFilter('')} variant={!professionFilter ? 'primary' : 'outline'} size="sm" className="rounded-full px-4 py-1.5">All Professions</Button>
                             {professions.map((p) => (
-                                <button key={p} onClick={() => setProfessionFilter(p)} className={`rounded-full px-4 py-1.5 text-sm font-medium ${
-                                    professionFilter === p ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
-                                }`}>{p.charAt(0).toUpperCase() + p.slice(1).replace('_', ' ')}</button>
+                                <Button key={p} onClick={() => setProfessionFilter(p)} variant={professionFilter === p ? 'primary' : 'outline'} size="sm" className="rounded-full px-4 py-1.5">{p.charAt(0).toUpperCase() + p.slice(1).replace('_', ' ')}</Button>
                             ))}
                         </div>
                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                             {professionals.map((p) => (
-                                <button
+                                <Button
                                     key={p.id}
                                     onClick={() => setSelected(p)}
-                                    className="rounded-lg bg-white p-4 text-left shadow hover:ring-2 hover:ring-rose-500 dark:bg-gray-800"
+                                    variant="outline"
+                                    className="rounded-lg p-4 text-left"
                                 >
                                     <div className="flex items-center gap-3">
                                         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-rose-100">
@@ -121,7 +119,7 @@ export default function HomeVisit() {
                                         <span className="text-yellow-500">★ {p.rating || 'New'}</span>
                                         <span className="font-semibold text-green-600">{formatPrice(feeOf(p))} <span className="font-normal text-gray-400">/ visit</span></span>
                                     </div>
-                                </button>
+                                </Button>
                             ))}
                             {professionals.length === 0 && (
                                 <div className="col-span-full rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
@@ -136,7 +134,7 @@ export default function HomeVisit() {
                         <div className="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
                             <div className="mb-4 flex items-center justify-between">
                                 <h2 className="font-semibold text-gray-900 dark:text-white">Selected Professional</h2>
-                                <button type="button" onClick={() => setSelected(null)} className="text-sm text-blue-600 hover:underline">Change</button>
+                                <Button type="button" onClick={() => setSelected(null)} variant="ghost" size="sm" className="text-sm underline">Change</Button>
                             </div>
                             <div className="flex items-center justify-between gap-3">
                                 <div className="flex items-center gap-3">
@@ -206,13 +204,14 @@ export default function HomeVisit() {
                                     className="w-full rounded-lg border px-3 py-2 dark:border-gray-600 dark:bg-gray-700"
                                 />
                             </div>
-                            <button
+                            <Button
                                 type="submit"
-                                disabled={submitting}
-                                className="flex w-full items-center justify-center gap-2 rounded-lg bg-rose-600 px-4 py-3 text-white hover:bg-rose-500 disabled:opacity-50"
+                                loading={submitting}
+                                fullWidth
+                                iconRight={<ArrowRight className="h-4 w-4" />}
                             >
-                                {submitting ? 'Booking...' : `Book Home Visit — ${formatPrice(feeOf(selected))}`} <ArrowRight className="h-4 w-4" />
-                            </button>
+                                {`Book Home Visit — ${formatPrice(feeOf(selected))}`}
+                            </Button>
                         </div>
                     </form>
                 )}

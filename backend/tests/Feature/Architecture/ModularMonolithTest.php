@@ -23,8 +23,10 @@ class ModularMonolithTest extends TestCase
      */
     private const OWNERSHIP = [
         // Admin owns the CMS tables; `jobs` is the queue-infrastructure table
-        // (health check only) — not the Jobs domain (job_posts).
-        'Admin'            => ['cms_announcements', 'cms_banners', 'cms_blog_posts', 'cms_pages', 'jobs', 'cms_blocks', 'cms_revisions', 'navigations', 'navigation_items', 'cms_forms', 'cms_form_submissions', 'media_library', 'dynamic_modules', 'dynamic_module_entries'],
+        // (health check only) — not the Jobs domain (job_posts). P0 needs
+        // console: the admin layer is the privileged cross-domain reader
+        // (fraud scan enriches with KYC + provider-profile data).
+        'Admin'            => ['cms_announcements', 'cms_banners', 'cms_blog_posts', 'cms_pages', 'jobs', 'cms_blocks', 'cms_revisions', 'navigations', 'navigation_items', 'cms_forms', 'cms_form_submissions', 'media_library', 'dynamic_modules', 'dynamic_module_entries', 'kyc_verifications', 'need_provider_profiles'],
         'Analytics'        => ['analytics_events'],
         'Authentication'   => ['password_reset_tokens'],
         'BuildingServices' => ['building_service_bookings', 'service_workers'],
@@ -32,9 +34,15 @@ class ModularMonolithTest extends TestCase
         'Experts'          => ['expert_availability', 'expert_bookings', 'expert_reviews'],
         'Healthcare'       => ['doctors'],
         'Messaging'        => ['departments', 'support_tickets', 'tickets'],
-        'Needs'            => ['need_categories', 'need_items'],
+        // P0 needs console: the Needs module owns its whole workflow domain
+        // (requests, offers, tasks, saved items, provider profiles). `users`
+        // and `kyc_verifications` are identity reads for provider matching
+        // — they stay here until a Core identity contract replaces them.
+        'Needs'            => ['need_categories', 'need_items', 'need_requests', 'need_offers', 'need_saved_items', 'need_provider_profiles', 'need_cost_guides', 'task_applications', 'task_posts', 'users', 'kyc_verifications'],
         'Orders'           => ['vendor_orders'],
         'Products'         => ['rejected_products'],
+        // P0 trust: moderation spans marketplace + expert reviews.
+        'Reviews'          => ['expert_reviews'],
         'Rides'            => ['flights'],
         'Settings'         => ['feature_flags', 'system_settings'],
         'Vendors'          => ['vendor_commissions', 'vendor_withdrawals', 'vendors'],

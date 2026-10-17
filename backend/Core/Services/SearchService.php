@@ -151,29 +151,37 @@ class SearchService extends BaseService implements SearchServiceInterface
         if ($type === 'all' || $type === 'services') {
             $results['services'] = $this->rows(
                 DB::table('need_items')
-                    ->where('is_available', true)
+                    ->join('need_categories', 'need_items.category_id', '=', 'need_categories.id')
+                    ->where('need_items.status', 'published')
+                    ->where('need_items.is_available', true)
+                    ->where('need_categories.is_active', true)
                     ->where(function ($q) use ($like) {
-                        $q->where('name', 'ILIKE', $like)
-                            ->orWhere('description', 'ILIKE', $like);
+                        $q->where('need_items.name', 'ILIKE', $like)
+                            ->orWhere('need_items.description', 'ILIKE', $like);
                     })
                     ->limit(10)
-                    ->get(['id', 'name', 'description', 'price', 'price as budget', 'category_id']),
+                    ->select(['need_items.id', 'need_items.name', 'need_items.description', 'need_items.price', 'need_items.price as budget', 'need_items.category_id'])
+                    ->get(),
                 'service',
                 fn () => '/needs',
             );
         }
 
         if ($type === 'all' || $type === 'needs') {
+            // TODO 10: public search only sees published, public requests —
+            // drafts, in-flight work, and invitation-only rows never leak.
             $results['needs'] = $this->rows(
                 DB::table('need_requests')
-                    ->whereNull('deleted_at')
+                    ->whereNull('need_requests.deleted_at')
+                    ->where('need_requests.status', 'published')
+                    ->where('need_requests.visibility', 'public')
                     ->where(function ($q) use ($like) {
-                        $q->where('title', 'ILIKE', $like)
-                            ->orWhere('description', 'ILIKE', $like)
-                            ->orWhere('subcategory', 'ILIKE', $like);
+                        $q->where('need_requests.title', 'ILIKE', $like)
+                            ->orWhere('need_requests.description', 'ILIKE', $like)
+                            ->orWhere('need_requests.subcategory', 'ILIKE', $like);
                     })
                     ->limit(10)
-                    ->get(['id', 'request_number', 'title', 'description', 'budget_min', 'budget_max', 'location', 'status']),
+                    ->get(['need_requests.id', 'need_requests.request_number', 'need_requests.title', 'need_requests.description', 'need_requests.budget_min', 'need_requests.budget_max', 'need_requests.location', 'need_requests.status']),
                 'need',
                 fn (object $r) => '/needs/requests/'.$r->id,
             );

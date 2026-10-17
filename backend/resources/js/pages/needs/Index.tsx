@@ -101,6 +101,9 @@ export default function NeedsIndex({ categories = [], nearbyCity = null, section
                 <section data-testid="need-section-browse-categories" className="space-y-3">
                     <div className="flex items-center justify-between gap-2">
                         <h2 className="text-base font-bold text-foreground md:text-lg">Browse categories</h2>
+                        <a href="/needs/cost-guides" className="text-sm font-medium text-primary hover:underline">
+                            Cost guides
+                        </a>
                     </div>
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

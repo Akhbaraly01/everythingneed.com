@@ -2,6 +2,7 @@ import AppLayout from '@/layouts/AppLayout';
 import { Head, Link } from '@inertiajs/react';
 import { api, errorMessage } from '@/lib/api';
 import { formatDateTime } from '@/lib/utils';
+import { Button, buttonClasses } from '@/components/shared/Button';
 import { Calendar, Clock, User, AlertCircle, Video, MapPin, RotateCw, Stethoscope, RefreshCcw } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -90,7 +91,7 @@ export default function MyHealthTickets() {
                     <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Health Tickets</h2>
                     <Link
                         href="/healthcare/doctors"
-                        className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+                        className={buttonClasses('primary', 'sm')}
                     >
                         Book Appointment
                     </Link>
@@ -98,18 +99,16 @@ export default function MyHealthTickets() {
 
                 <div className="flex flex-wrap gap-2">
                     {(['upcoming', 'past', 'cancelled'] as TicketFilter[]).map((f) => (
-                        <button
+                        <Button
                             key={f}
                             type="button"
                             onClick={() => setFilter(f)}
-                            className={`rounded-lg px-4 py-2 text-sm font-medium capitalize ${
-                                filter === f
-                                    ? 'bg-indigo-600 text-white'
-                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300'
-                            }`}
+                            variant={filter === f ? 'primary' : 'outline'}
+                            size="sm"
+                            className="rounded-lg px-4 py-2 capitalize"
                         >
                             {f} ({f === 'upcoming' ? upcoming.length : f === 'past' ? past.length : cancelled.length})
-                        </button>
+                        </Button>
                     ))}
                 </div>
 
@@ -120,9 +119,9 @@ export default function MyHealthTickets() {
                 ) : error ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
                         <p className="text-red-600 font-medium">{error}</p>
-                        <button onClick={load} className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-500">
-                            <RefreshCcw className="h-4 w-4" /> Retry
-                        </button>
+                        <Button onClick={load} variant="ghost" size="sm" className="mt-4 gap-2" iconLeft={<RefreshCcw className="h-4 w-4" />}>
+                            Retry
+                        </Button>
                     </div>
                 ) : visible.length === 0 ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">

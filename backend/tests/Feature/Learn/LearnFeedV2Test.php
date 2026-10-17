@@ -96,6 +96,38 @@ class LearnFeedV2Test extends TestCase
         ]))->assertStatus(422);
     }
 
+    public function test_video_submission_accepts_tiktok_and_direct_files(): void
+    {
+        $author = $this->createUser();
+        $this->actingAs($author, 'sanctum');
+
+        // TikTok links embed through the official /embed/v2 player.
+        $ttId = $this->postJson('/api/learn/posts', $this->payload([
+            'media_type' => 'video',
+            'video_url' => 'https://www.tiktok.com/@everythingneed/video/7441671234567890123',
+        ]))->assertStatus(201)->json('data.id');
+
+        $tiktok = LearnPost::find($ttId);
+        $this->assertSame('tiktok', $tiktok->video_provider);
+        $this->assertSame('7441671234567890123', $tiktok->provider_video_id);
+
+        // Direct media files play natively in-app (no third-party embed).
+        $fileId = $this->postJson('/api/learn/posts', $this->payload([
+            'media_type' => 'video',
+            'video_url' => 'https://cdn.example.com/clips/lesson.mp4',
+        ]))->assertStatus(201)->json('data.id');
+
+        $file = LearnPost::find($fileId);
+        $this->assertSame('file', $file->video_provider);
+        $this->assertSame('https://cdn.example.com/clips/lesson.mp4', $file->video_url);
+
+        // A TikTok profile page without a video id is still rejected.
+        $this->postJson('/api/learn/posts', $this->payload([
+            'media_type' => 'video',
+            'video_url' => 'https://www.tiktok.com/@everythingneed',
+        ]))->assertStatus(422);
+    }
+
     public function test_cursor_pagination_walks_latest_without_gaps_or_repeats(): void
     {
         $ids = [];

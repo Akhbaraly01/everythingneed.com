@@ -2,20 +2,33 @@ import AppLayout from '@/layouts/AppLayout';
 import { Head, Link } from '@inertiajs/react';
 import { api, errorMessage } from '@/lib/api';
 import { toast } from 'sonner';
-import {formatCurrency} from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
+import { Button, buttonClasses } from '@/components/shared/Button';
 import { Heart, Trash2, RefreshCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { invalidateWishlist } from '@/hooks/useWishlist';
 import Image from '@/components/shared/Image';
 
+interface WishlistSnapshot {
+    title?: string | null;
+    subtitle?: string | null;
+    image_url?: string | null;
+    price?: number | null;
+    link?: string | null;
+}
+
 interface WishlistItem {
     id: string;
+    entity_type?: string | null;
+    entity_id?: string | null;
+    // Legacy product-shaped rows (kept for backwards compatibility).
     product_id: string;
     name: string;
     price: number;
     image_url?: string;
     vendor_name?: string;
     created_at: string;
+    snapshot?: WishlistSnapshot | null;
 }
 
 export default function WishlistPage() {
@@ -51,6 +64,28 @@ export default function WishlistPage() {
         }
     };
 
+    const viewFor = (item: WishlistItem): { title: string; subtitle?: string | null; image?: string | null; price?: number | null; link: string } | null => {
+        if (item.snapshot) {
+            if (!item.snapshot.title && !item.snapshot.link) return null;
+            return {
+                title: item.snapshot.title ?? 'Saved item',
+                subtitle: item.snapshot.subtitle,
+                image: item.snapshot.image_url,
+                price: item.snapshot.price,
+                link: item.snapshot.link ?? '#',
+            };
+        }
+        // Legacy product rows carried the snapshot flat.
+        if (!item.name) return null;
+        return {
+            title: item.name,
+            subtitle: item.vendor_name ? `by ${item.vendor_name}` : null,
+            image: item.image_url,
+            price: item.price,
+            link: `/products/${item.product_id}`,
+        };
+    };
+
     return (
         <AppLayout title="Wishlist">
             <Head title="Wishlist" />
@@ -63,37 +98,55 @@ export default function WishlistPage() {
                 ) : error ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
                         <p className="text-red-600 font-medium">{error}</p>
-                        <button onClick={load} className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-500">
-                            <RefreshCcw className="h-4 w-4" /> Retry
-                        </button>
+                        <Button onClick={load} variant="ghost" size="sm" className="mt-4 gap-2" iconLeft={<RefreshCcw className="h-4 w-4" />}>
+                            Retry
+                        </Button>
                     </div>
                 ) : items.length === 0 ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
                         <Heart className="mx-auto h-12 w-12 text-gray-400" />
                         <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">Your wishlist is empty</h3>
-                        <Link href="/products" className="mt-4 inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
+                        <Link href="/products" className={cn('mt-4 inline-flex', buttonClasses('primary', 'sm'))}>
                             Browse Products
                         </Link>
                     </div>
                 ) : (
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        {items.map((item) => (
-                            <div key={item.id} className="rounded-lg bg-white p-4 shadow dark:bg-gray-800">
-                                <Link href={`/products/${item.product_id}`}>
-                                    <div className="h-40 overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-700">
-                                        {item.image_url ? <Image src={item.image_url} alt="" className="h-full w-full object-cover" /> : null}
+                        {items.map((item) => {
+                            const view = viewFor(item);
+                            if (!view) {
+                                return (
+                                    <div key={item.id} className="rounded-lg bg-white p-4 shadow dark:bg-gray-800">
+                                        <p className="font-semibold text-gray-900 dark:text-white">No longer available</p>
+                                        <p className="text-xs text-gray-500">This saved item was removed.</p>
+                                        <div className="mt-2 flex justify-end">
+                                            <Button onClick={() => removeItem(item.id)} variant="icon" iconOnly size="sm" className="text-red-500">
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
                                     </div>
-                                    <p className="mt-2 font-semibold text-gray-900 hover:text-indigo-600 dark:text-white">{item.name}</p>
-                                </Link>
-                                <div className="mt-2 flex items-center justify-between">
-                                    <span className="text-lg font-bold text-gray-900 dark:text-white">{formatCurrency(item.price)}</span>
-                                    <button onClick={() => removeItem(item.id)} className="rounded-lg p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20">
-                                        <Trash2 className="h-4 w-4" />
-                                    </button>
+                                );
+                            }
+                            return (
+                                <div key={item.id} className="rounded-lg bg-white p-4 shadow dark:bg-gray-800">
+                                    <Link href={view.link}>
+                                        <div className="h-40 overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-700">
+                                            {view.image ? <Image src={view.image} alt="" className="h-full w-full object-cover" /> : null}
+                                        </div>
+                                        <p className="mt-2 font-semibold text-gray-900 hover:text-indigo-600 dark:text-white">{view.title}</p>
+                                    </Link>
+                                    <div className="mt-2 flex items-center justify-between">
+                                        {view.price != null
+                                            ? <span className="text-lg font-bold text-gray-900 dark:text-white">{formatCurrency(view.price)}</span>
+                                            : <span className="text-xs capitalize text-gray-500">{item.entity_type ?? 'saved'}</span>}
+                                        <Button onClick={() => removeItem(item.id)} variant="icon" iconOnly size="sm" className="text-red-500">
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                    {view.subtitle && <p className="text-xs text-gray-500">{view.subtitle}</p>}
                                 </div>
-                                {item.vendor_name && <p className="text-xs text-gray-500">by {item.vendor_name}</p>}
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
             </div>

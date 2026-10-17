@@ -22,6 +22,7 @@ class HealthTicket extends Model
         'payment_status',
         'payment_id',
         'paid_at',
+        'images',
     ];
 
     protected $casts = [
@@ -29,6 +30,7 @@ class HealthTicket extends Model
         'appointment_date' => 'date',
         'is_random_assignment' => 'boolean',
         'paid_at' => 'datetime',
+        'images' => 'array',
     ];
 
     const STATUS_PENDING = 'pending';

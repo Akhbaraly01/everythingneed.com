@@ -28,6 +28,8 @@ class ProductResource extends JsonResource
             'shipping' => $this->shipping,
             'image_url' => $this->image_url,
             'images' => $this->images,
+            'video_url' => $this->video_url,
+            'production_video_url' => $this->production_video_url,
             'stock_quantity' => $this->stock_quantity,
             'is_active' => $this->is_active,
             'approved_at' => $this->approved_at,

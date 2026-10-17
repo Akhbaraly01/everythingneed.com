@@ -2,6 +2,8 @@ import AppLayout from '@/layouts/AppLayout';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { api, errorMessage } from '@/lib/api';
 import { NEED_STATUS_LABELS, acceptedOffer, needDetailUrl, needStatusClasses } from '@/lib/needs';
+import { Button } from '@/components/shared/Button';
+import { useConfirm } from '@/lib/confirm';
 import {
     ArrowLeft, ArrowRight, CreditCard, Eye, MapPin, MessageSquare,
     Navigation, Star, Users, ClipboardList,
@@ -16,6 +18,7 @@ import type { NeedRequestDetail } from '@/types';
  */
 export default function MyNeedOverview({ need_id }: { need_id: string }) {
     const { auth } = usePage().props as { auth?: { user?: { id: string; name?: string } } };
+    const ask = useConfirm();
     const [need, setNeed] = useState<NeedRequestDetail | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
@@ -38,6 +41,34 @@ export default function MyNeedOverview({ need_id }: { need_id: string }) {
             load();
         } catch (e) {
             setError(errorMessage(e, 'Action failed'));
+        }
+        setBusy(false);
+    };
+
+    // TODO 18 duplicate-as-draft (server copies the brief, never history).
+    const duplicate = async () => {
+        setBusy(true);
+        setError(null);
+        try {
+            const res = await api.post<{ data: { id: string } }>(`/api/need-requests/${need_id}/duplicate`);
+            window.location.href = `/needs/my-needs/${res.data.id}`;
+        } catch (e) {
+            setError(errorMessage(e, 'Could not duplicate'));
+        }
+        setBusy(false);
+    };
+
+    // TODO 18 visibility: going public always works; invite-only is
+    // server-gated on invitees.
+    const makePublic = async () => {
+        if (!(await ask({ title: 'Make this request visible to all eligible providers?' }))) return;
+        setBusy(true);
+        setError(null);
+        try {
+            await api.post(`/api/need-requests/${need_id}/visibility`, { visibility: 'public' });
+            load();
+        } catch (e) {
+            setError(errorMessage(e, 'Could not change visibility'));
         }
         setBusy(false);
     };
@@ -137,21 +168,51 @@ export default function MyNeedOverview({ need_id }: { need_id: string }) {
                     {allActions.length > 0 && (
                         <div className="mt-5 flex flex-wrap gap-2">
                             {allActions.map((a) => (
-                                <button
+                                <Button
                                     key={a.action}
                                     type="button"
                                     disabled={busy}
                                     data-testid={`need-action-${a.action}`}
                                     onClick={() => act(a.action)}
-                                    className={
-                                        a.primary
-                                            ? 'rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50'
-                                            : 'rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:text-gray-200'
-                                    }
+                                    variant={a.primary ? 'primary' : 'outline'}
+                                    className="rounded-md px-4 py-2"
                                 >
                                     {a.label}
-                                </button>
+                                </Button>
                             ))}
+                            {isOwner && ['draft', 'pending'].includes(s) && (
+                                <Link
+                                    href={`/needs/request?edit=${need.id}`}
+                                    className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50 dark:border-gray-600"
+                                >
+                                    Edit
+                                </Link>
+                            )}
+                            {isOwner && (
+                                <Button
+                                    type="button"
+                                    disabled={busy}
+                                    onClick={duplicate}
+                                    variant="outline"
+                                    className="rounded-md px-4 py-2"
+                                >
+                                    Duplicate as draft
+                                </Button>
+                            )}
+                        </div>
+                    )}
+                    {isOwner && need.visibility === 'invite_only' && (
+                        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm dark:border-amber-800 dark:bg-amber-900/20">
+                            <p className="font-medium text-amber-800 dark:text-amber-200">
+                                Invitation-only — visible to {need.invited_provider_ids?.length ?? 0} invited provider(s).
+                            </p>
+                            <button
+                                onClick={makePublic}
+                                disabled={busy}
+                                className="mt-2 rounded border border-amber-300 px-3 py-1 text-xs font-medium hover:bg-amber-100 dark:border-amber-700"
+                            >
+                                Make public
+                            </button>
                         </div>
                     )}
                 </div>

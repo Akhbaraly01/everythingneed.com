@@ -55,6 +55,7 @@ class BookAppointment
                     'home_address' => $data['home_address'] ?? null,
                     'is_random_assignment' => $data['is_random_assignment'] ?? false,
                     'status' => isset($data['doctor_id']) ? 'assigned' : 'pending',
+                    'images' => array_values($data['images'] ?? []),
                 ]));
             } catch (QueryException $e) {
                 if ((string) ($e->errorInfo[0] ?? '') === '23505') {

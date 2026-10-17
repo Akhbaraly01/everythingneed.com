@@ -4,6 +4,7 @@ import { Search } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 import { api, errorMessage, rows } from '@/lib/api';
 import { formatPrice } from '@/lib/currency';
+import { Button } from '@/components/shared/Button';
 
 interface Doctor {
     id: string;
@@ -76,10 +77,9 @@ export default function HealthcareSearch() {
                             className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 dark:border-gray-600 dark:bg-gray-700"
                         />
                     </div>
-                    <button type="submit" disabled={loading}
-                        className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50">
-                        {loading ? 'Searching...' : 'Search'}
-                    </button>
+                    <Button type="submit" loading={loading}>
+                        Search
+                    </Button>
                 </form>
 
                 {error && <p className="text-sm text-red-600">{error}</p>}

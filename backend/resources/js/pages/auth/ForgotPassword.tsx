@@ -1,10 +1,12 @@
 import { Head, Link, usePage, useForm } from '@inertiajs/react';
 import AuthLayout from '@/layouts/AuthLayout';
+import TurnstileWidget from '@/components/auth/TurnstileWidget';
 import type { SharedData } from '@/hooks/use-app';
 
 export default function ForgotPassword() {
     const { data, setData, post, processing, errors } = useForm({
         email: '',
+        'cf-turnstile-response': '',
     });
     const status = (usePage<SharedData>().props.flash as { status?: string } | undefined)?.status;
 
@@ -43,6 +45,8 @@ export default function ForgotPassword() {
                     />
                     {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
                 </div>
+
+                <TurnstileWidget onToken={(token) => setData('cf-turnstile-response', token ?? '')} />
 
                 <button
                     type="submit"

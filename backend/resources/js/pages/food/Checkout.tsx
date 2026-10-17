@@ -38,7 +38,7 @@ export default function FoodCheckout() {
     const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
-    const [form, setForm] = useState({ delivery_address: '', phone: '', notes: '' });
+    const [form, setForm] = useState({ delivery_address: '', phone: '', notes: '', scheduled_for: '' });
 
     useEffect(() => {
         // The food cart lives client-side (localStorage), same store Cart.tsx uses.
@@ -81,6 +81,7 @@ export default function FoodCheckout() {
                 restaurant_id: restaurant?.id,
                 items: cartItems.map((i) => ({ menu_item_id: i.menu_item.id || i.id, quantity: i.quantity, special_instructions: i.special_instructions })),
                 ...form,
+                scheduled_for: form.scheduled_for ? new Date(form.scheduled_for).toISOString() : undefined,
             });
             localStorage.removeItem('food_cart');
             router.visit(`/food/orders/${res.data.id}`);
@@ -130,6 +131,17 @@ export default function FoodCheckout() {
                             className="w-full rounded-lg border px-3 py-2 dark:border-gray-600 dark:bg-gray-700"
                             placeholder="Any special instructions for delivery..."
                         />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Schedule delivery (optional)</label>
+                        <input
+                            type="datetime-local"
+                            value={form.scheduled_for}
+                            min={new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16)}
+                            onChange={(e) => setForm({ ...form, scheduled_for: e.target.value })}
+                            className="w-full rounded-lg border px-3 py-2 dark:border-gray-600 dark:bg-gray-700"
+                        />
+                        <p className="mt-1 text-xs text-gray-500">Leave empty for the earliest delivery. Scheduled slots must be at least 1 hour out (max 7 days).</p>
                     </div>
                 </div>
 

@@ -4,8 +4,10 @@ import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
 import { ThemeProvider } from '@/components/ThemeProvider';
+import { ConfirmProvider } from '@/components/shared/ConfirmProvider';
 import { LanguageProvider } from '@/lib/i18n';
 import { persistCurrency, isDisplayCurrency } from '@/lib/currency';
+import BootScrollTop from '@/components/BootScrollTop';
 import { Toaster } from '@/components/ui/sonner';
 
 const appName = import.meta.env.VITE_APP_NAME || 'EverythingNeed';
@@ -44,7 +46,10 @@ createInertiaApp({
         root.render(
             <ThemeProvider defaultTheme="system" storageKey="everythingneed-theme">
                 <LanguageProvider initialLanguage={boot.language}>
-                    <App {...props} />
+                    <ConfirmProvider>
+                        <BootScrollTop />
+                        <App {...props} />
+                    </ConfirmProvider>
                     <Toaster />
                 </LanguageProvider>
             </ThemeProvider>

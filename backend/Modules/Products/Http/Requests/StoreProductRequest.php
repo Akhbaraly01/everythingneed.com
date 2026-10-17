@@ -60,6 +60,8 @@ class StoreProductRequest extends FormRequest
             'shipping' => 'nullable|array',
             'image_url' => 'nullable|url|max:500',
             'images' => 'nullable|array',
+            'video_url' => 'nullable|url|max:500',
+            'production_video_url' => 'nullable|url|max:500',
             'stock_quantity' => 'required|integer|min:0',
             // Spec 37 variants: managed alongside the product (product_variants).
             'variants' => 'nullable|array',

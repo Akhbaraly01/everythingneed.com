@@ -1,5 +1,6 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import AuthLayout from '@/layouts/AuthLayout';
+import TurnstileWidget from '@/components/auth/TurnstileWidget';
 
 export default function Register() {
     const { data, setData, post, processing, errors } = useForm({
@@ -8,6 +9,7 @@ export default function Register() {
         phone: '',
         password: '',
         password_confirmation: '',
+        'cf-turnstile-response': '',
     });
 
     const submit = (e: React.FormEvent) => {
@@ -92,6 +94,8 @@ export default function Register() {
                         required
                     />
                 </div>
+
+                <TurnstileWidget onToken={(token) => setData('cf-turnstile-response', token ?? '')} />
 
                 <button
                     type="submit"

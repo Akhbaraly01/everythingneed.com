@@ -405,6 +405,148 @@ class CourseController extends Controller
         return response()->json(['message' => 'Course deleted']);
     }
 
+    /**
+     * Admin console: list lessons of a course in curriculum order.
+     *
+     * GET /api/admin/courses/{id}/lessons
+     */
+    public function adminLessons(Request $request, string $id): JsonResponse
+    {
+        $course = $this->findOrFailCourse($id);
+
+        return response()->json([
+            'data' => $course->lessons()->orderBy('lesson_order')->get(),
+        ]);
+    }
+
+    /**
+     * Admin console: add a lesson to a course. Appended to the end of the
+     * curriculum unless an explicit lesson_order is given.
+     *
+     * POST /api/admin/courses/{id}/lessons
+     */
+    public function adminStoreLesson(Request $request, string $id): JsonResponse
+    {
+        $course = $this->findOrFailCourse($id);
+
+        $data = $this->validateLesson($request);
+
+        if (!isset($data['lesson_order'])) {
+            $data['lesson_order'] = (int) \Modules\Learn\Entities\CourseLesson::where('course_id', $course->id)
+                ->max('lesson_order') + 1;
+        }
+
+        $lesson = \Modules\Learn\Entities\CourseLesson::create(array_merge($data, [
+            'course_id' => $course->id,
+        ]));
+
+        $this->auditLesson('lesson.create', $request, $course, $lesson);
+
+        return response()->json([
+            'message' => 'Lesson created',
+            'data' => $lesson,
+        ], 201);
+    }
+
+    /**
+     * Admin console: edit a lesson (curriculum order included).
+     *
+     * PUT /api/admin/courses/{id}/lessons/{lessonId}
+     */
+    public function adminUpdateLesson(Request $request, string $id, string $lessonId): JsonResponse
+    {
+        $course = $this->findOrFailCourse($id);
+        $lesson = $this->findOrFailLesson($course, $lessonId);
+
+        $data = $this->validateLesson($request, updating: true);
+
+        // Reordering: make room at the requested position by shifting the
+        // lessons that currently sit there (and after) one step down.
+        if (isset($data['lesson_order'])) {
+            \Modules\Learn\Entities\CourseLesson::where('course_id', $course->id)
+                ->where('id', '!=', $lesson->id)
+                ->where('lesson_order', '>=', $data['lesson_order'])
+                ->increment('lesson_order');
+        }
+
+        $lesson->update($data);
+
+        $this->auditLesson('lesson.update', $request, $course, $lesson->fresh());
+
+        return response()->json([
+            'message' => 'Lesson updated',
+            'data' => $lesson->fresh(),
+        ]);
+    }
+
+    /**
+     * Admin console: remove a lesson from a course.
+     *
+     * DELETE /api/admin/courses/{id}/lessons/{lessonId}
+     */
+    public function adminDestroyLesson(Request $request, string $id, string $lessonId): JsonResponse
+    {
+        $course = $this->findOrFailCourse($id);
+        $lesson = $this->findOrFailLesson($course, $lessonId);
+
+        $lesson->delete();
+
+        $this->auditLesson('lesson.delete', $request, $course, $lesson);
+
+        return response()->json(['message' => 'Lesson deleted']);
+    }
+
+    private function validateLesson(Request $request, bool $updating = false): array
+    {
+        $required = $updating ? ['sometimes', 'required'] : ['required'];
+
+        return $request->validate([
+            'title' => [...$required, 'string', 'max:255'],
+            'content' => ['nullable', 'string', 'max:20000'],
+            'video_url' => ['nullable', 'url', 'max:500'],
+            'duration_minutes' => ['nullable', 'integer', 'min:0', 'max:100000'],
+            'lesson_order' => ['nullable', 'integer', 'min:1', 'max:100000'],
+            'resources' => ['nullable', 'array'],
+            'resources.*.title' => ['required_with:resources', 'string', 'max:255'],
+            'resources.*.url' => ['required_with:resources', 'url', 'max:500'],
+            'is_free_preview' => ['nullable', 'boolean'],
+        ]);
+    }
+
+    private function findOrFailLesson(\Modules\Learn\Entities\Course $course, string $lessonId): \Modules\Learn\Entities\CourseLesson
+    {
+        if (!\Illuminate\Support\Str::isUuid($lessonId)) {
+            abort(404, 'Lesson not found');
+        }
+
+        $lesson = \Modules\Learn\Entities\CourseLesson::where('course_id', $course->id)->find($lessonId);
+        if (!$lesson) {
+            abort(404, 'Lesson not found');
+        }
+
+        return $lesson;
+    }
+
+    private function auditLesson(string $action, Request $request, \Modules\Learn\Entities\Course $course, \Modules\Learn\Entities\CourseLesson $lesson): void
+    {
+        try {
+            app(\Core\Services\Contracts\AuditServiceInterface::class)->log([
+                'action' => $action,
+                'entity_type' => 'course_lesson',
+                'entity_id' => $lesson->id,
+                'performed_by' => $request->user()?->id,
+                'new_values' => [
+                    'course_id' => $course->id,
+                    'title' => $lesson->title,
+                    'video_url' => $lesson->video_url,
+                    'lesson_order' => $lesson->lesson_order,
+                ],
+            ]);
+        } catch (\Throwable) {
+            // Audit failures must not break content management.
+        }
+    }
+
     private function findOrFailCourse(string $id): \Modules\Learn\Entities\Course
     {
         if (!\Illuminate\Support\Str::isUuid($id)) {

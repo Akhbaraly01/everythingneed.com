@@ -24,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => \App\Http\Middleware\EnsureUserHasPermission::class,
             'verified.custom' => \App\Http\Middleware\EnsureEmailIsVerified::class,
             'audit' => \App\Http\Middleware\AuditLog::class,
+            'turnstile' => \App\Http\Middleware\VerifyTurnstile::class,
         ]);
 
         $middleware->web(append: [
@@ -49,6 +50,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // route-independent limiter guarantees full coverage.
         $middleware->use([
             \App\Http\Middleware\GlobalRateLimit::class,
+            // Phase 5: tighter per-actor window for POST/PUT/PATCH/DELETE
+            // under /api/* (reads keep the generous buckets).
+            \App\Http\Middleware\MutatingRateLimit::class,
             \App\Http\Middleware\SecurityHeaders::class,
             // W16 (R-06/N-01): route-independent audit coverage for every
             // authenticated mutating request (admin + API). The middleware
@@ -57,6 +61,25 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
+        // Backlog #2: private-attachment streams are browser fetches, not
+        // Inertia navigations — a bad/expired signature must be a plain 403,
+        // never the global web-context forbidden redirect.
+        $exceptions->renderable(function (\Illuminate\Routing\Exceptions\InvalidSignatureException $e, $request) {
+            if ($request->is('signed-storage/*')) {
+                return response('Invalid signature.', 403);
+            }
+
+            return null;
+        });
+
+        $exceptions->renderable(function (\Symfony\Component\HttpKernel\Exception\NotFoundHttpException $e, $request) {
+            if ($request->is('signed-storage/*')) {
+                return response('Not Found.', 404);
+            }
+
+            return null;
+        });
+
         $exceptions->renderable(function (\Illuminate\Database\QueryException $e, $request) {
             if (str_contains($e->getMessage(), 'invalid input syntax for type uuid')) {
                 return response()->json([
@@ -133,7 +156,9 @@ return Application::configure(basePath: dirname(__DIR__))
 
                 return response()->json([
                     'message' => 'Forbidden',
-                    'error' => $e->getMessage() ?: 'You do not have permission to perform this action.',
+                    'error' => (config('app.debug') && !app()->isProduction()) && $e->getMessage()
+                        ? $e->getMessage()
+                        : 'You do not have permission to perform this action.',
                 ], 403);
             }
 
@@ -143,9 +168,11 @@ return Application::configure(basePath: dirname(__DIR__))
                     return redirect()->back()->with('error', 'The requested resource was not found.');
                 }
 
+                $disclose = config('app.debug') && !app()->isProduction();
+
                 return response()->json([
                     'message' => 'Not Found',
-                    'error' => config('app.debug')
+                    'error' => $disclose
                         ? $e->getMessage() ?: "The route {$request->path()} could not be found."
                         : 'The requested resource was not found.',
                     'path' => $request->path(),
@@ -174,7 +201,9 @@ return Application::configure(basePath: dirname(__DIR__))
 
             return response()->json([
                 'message' => 'Server Error',
-                'error' => config('app.debug') ? $e->getMessage() : 'An unexpected error occurred.',
+                'error' => (config('app.debug') && !app()->isProduction())
+                    ? $e->getMessage()
+                    : 'An unexpected error occurred.',
             ], $status);
         });
     })->create();

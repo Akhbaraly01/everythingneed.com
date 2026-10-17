@@ -23,7 +23,8 @@ class AdminRbacRoster38Test extends TestCase
 
     public function test_canonical_role_count_is_39(): void
     {
-        $this->assertSame(39, count(AppRole::cases()));
+        // TODO 21 adds needs_viewer (read-only needs triage): 39 → 40.
+        $this->assertSame(40, count(AppRole::cases()));
     }
 
     public function test_workspace_landings_cover_every_role(): void

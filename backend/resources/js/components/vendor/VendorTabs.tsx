@@ -7,6 +7,7 @@ const TABS = [
     { label: 'Services', href: '/vendor/services' },
     { label: 'Bookings', href: '/vendor/bookings' },
     { label: 'Reviews', href: '/vendor/reviews' },
+    { label: 'Analytics', href: '/vendor/analytics' },
     { label: 'Profile', href: '/vendor/profile' },
     { label: 'Earnings', href: '/vendor/earnings' },
     { label: 'Payouts', href: '/vendor/payouts' },

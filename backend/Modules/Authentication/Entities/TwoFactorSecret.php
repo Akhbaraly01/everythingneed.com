@@ -18,6 +18,9 @@ class TwoFactorSecret extends Model
     protected $casts = [
         'enabled' => 'boolean',
         'verified_at' => 'datetime',
+        // AES-256-GCM at rest (APP_KEY); security:encrypt-pii backfills rows
+        // written before this cast existed.
+        'secret' => 'encrypted',
     ];
 
     public function user()

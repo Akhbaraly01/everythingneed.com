@@ -20,6 +20,7 @@ class Ride extends Model
         'currency',
         'distance_km',
         'duration_minutes',
+        'scheduled_for',
         'started_at',
         'completed_at',
     ];
@@ -32,6 +33,7 @@ class Ride extends Model
         'fare' => 'decimal:2',
         'distance_km' => 'decimal:2',
         'duration_minutes' => 'integer',
+        'scheduled_for' => 'datetime',
         'started_at' => 'datetime',
         'completed_at' => 'datetime',
     ];

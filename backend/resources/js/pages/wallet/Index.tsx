@@ -6,6 +6,7 @@ import { formatPrice } from '@/lib/currency';
 import { CreditCard, ArrowUpRight, ArrowDownLeft, Plus, Minus, X } from 'lucide-react';
 import { useState } from 'react';
 import { ApiError, api, errorMessage } from '@/lib/api';
+import { Button } from '@/components/shared/Button';
 
 interface WalletProps {
     wallet: Wallet;
@@ -101,20 +102,20 @@ export default function WalletPage({ wallet, available, pending, typeFilter, tra
                         <CreditCard className="h-12 w-12 text-indigo-200" />
                     </div>
                     <div className="mt-6 flex gap-3">
-                        <button
+                        <Button
+                            size="sm"
                             onClick={() => { setShowDeposit(true); setAmount(''); }}
-                            className="flex items-center gap-2 rounded-lg bg-white/20 px-4 py-2 text-sm font-medium hover:bg-white/30"
                         >
                             <Plus className="h-4 w-4" />
                             Deposit
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                            size="sm"
                             onClick={() => { setShowWithdraw(true); setAmount(''); }}
-                            className="flex items-center gap-2 rounded-lg bg-white/20 px-4 py-2 text-sm font-medium hover:bg-white/30"
                         >
                             <Minus className="h-4 w-4" />
                             Withdraw
-                        </button>
+                        </Button>
                     </div>
                 </div>
 
@@ -124,7 +125,7 @@ export default function WalletPage({ wallet, available, pending, typeFilter, tra
                         <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-gray-800">
                             <div className="flex items-center justify-between">
                                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Deposit Funds</h3>
-                                <button onClick={() => setShowDeposit(false)}><X className="h-5 w-5" /></button>
+                                <Button variant="icon" iconOnly size="sm" aria-label="Close" onClick={() => setShowDeposit(false)}><X className="h-5 w-5" /></Button>
                             </div>
                             <div className="mt-4">
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Amount</label>
@@ -144,14 +145,16 @@ export default function WalletPage({ wallet, available, pending, typeFilter, tra
                                 </div>
                             )}
                             <div className="mt-6 flex gap-3">
-                                <button onClick={() => setShowDeposit(false)} className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50">Cancel</button>
-                                <button
+                                <Button variant="ghost" size="sm" className="flex-1" onClick={() => setShowDeposit(false)}>Cancel</Button>
+                                <Button
+                                    variant="primary"
+                                    size="sm"
+                                    className="flex-1"
                                     onClick={handleDeposit}
                                     disabled={processing || !amount || parseFloat(amount) <= 0}
-                                    className="flex-1 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
                                 >
                                     {processing ? 'Processing...' : 'Deposit'}
-                                </button>
+                                </Button>
                             </div>
                         </div>
                     </div>
@@ -163,7 +166,7 @@ export default function WalletPage({ wallet, available, pending, typeFilter, tra
                         <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-gray-800">
                             <div className="flex items-center justify-between">
                                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Withdraw Funds</h3>
-                                <button onClick={() => setShowWithdraw(false)}><X className="h-5 w-5" /></button>
+                                <Button variant="icon" iconOnly size="sm" aria-label="Close" onClick={() => setShowWithdraw(false)}><X className="h-5 w-5" /></Button>
                             </div>
                             <p className="mt-1 text-sm text-gray-500">Available: {formatPrice(available)}</p>
                             <div className="mt-4">
@@ -190,14 +193,16 @@ export default function WalletPage({ wallet, available, pending, typeFilter, tra
                                 </div>
                             )}
                             <div className="mt-6 flex gap-3">
-                                <button onClick={() => setShowWithdraw(false)} className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50">Cancel</button>
-                                <button
+                                <Button variant="ghost" size="sm" className="flex-1" onClick={() => setShowWithdraw(false)}>Cancel</Button>
+                                <Button
+                                    variant="primary"
+                                    size="sm"
+                                    className="flex-1"
                                     onClick={handleWithdraw}
                                     disabled={processing || !amount || parseFloat(amount) <= 0 || parseFloat(amount) > available}
-                                    className="flex-1 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-500 disabled:opacity-50"
                                 >
                                     {processing ? 'Processing...' : 'Withdraw'}
-                                </button>
+                                </Button>
                             </div>
                         </div>
                     </div>

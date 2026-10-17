@@ -13,10 +13,12 @@ class AidDonation extends Model
         'currency',
         'payment_id',
         'status',
+        'is_anonymous',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
+        'is_anonymous' => 'boolean',
     ];
 
     const STATUS_COMPLETED = 'completed';

@@ -51,7 +51,10 @@ interface NeedCategory {
     description?: string | null;
 }
 
+import { useLanguage } from '@/lib/use-language';
+
 export default function NeedCarousel() {
+    const { t } = useLanguage();
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isAutoPlaying, setIsAutoPlaying] = useState(true);
     const [itemsPerView, setItemsPerView] = useState(2);
@@ -118,6 +121,7 @@ export default function NeedCarousel() {
 
     return (
         <section
+            data-testid="home-need-carousel"
             className="py-4"
             onMouseEnter={() => setIsAutoPlaying(false)}
             onMouseLeave={() => setIsAutoPlaying(true)}
@@ -127,7 +131,7 @@ export default function NeedCarousel() {
             <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                     <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                        Submit Your Need
+                        {t('home.submitNeed')}
                     </h3>
                     <div
                         className={`h-2 w-2 rounded-full transition-colors ${
@@ -138,8 +142,8 @@ export default function NeedCarousel() {
                 <div className="flex gap-1">
                     <button
                         type="button"
-                        aria-label="Previous needs"
-                        className="flex h-6 w-6 items-center justify-center rounded-md text-foreground hover:bg-muted"
+                        aria-label={t('common.previous')}
+                        className="icon-glass-3d !h-7 !w-7"
                         onClick={() => {
                             setIsAutoPlaying(false);
                             goPrev();
@@ -149,8 +153,8 @@ export default function NeedCarousel() {
                     </button>
                     <button
                         type="button"
-                        aria-label="Next needs"
-                        className="flex h-6 w-6 items-center justify-center rounded-md text-foreground hover:bg-muted"
+                        aria-label={t('common.next')}
+                        className="icon-glass-3d !h-7 !w-7"
                         onClick={() => {
                             setIsAutoPlaying(false);
                             goNext();

@@ -74,12 +74,12 @@ export default function Products({ products, filters }: ProductsProps) {
                             Search
                         </button>
                     </form>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 overflow-x-auto pb-1 max-w-full" style={{ scrollbarWidth: 'none' }}>
                         {['All', 'Electronics', 'Clothing', 'Home', 'Beauty'].map((cat) => (
                             <Link
                                 key={cat}
                                 href={cat === 'All' ? '/products' : `/products?category=${cat.toLowerCase()}${search ? `&search=${search}` : ''}`}
-                                className={`rounded-lg px-4 py-2 text-sm font-medium ${
+                                className={`flex-shrink-0 rounded-lg px-4 py-2 text-sm font-medium ${
                                     (filters?.category ?? 'all') === cat.toLowerCase() || (cat === 'All' && !filters?.category)
                                         ? 'bg-indigo-600 text-white'
                                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'

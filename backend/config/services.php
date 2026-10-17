@@ -25,4 +25,11 @@ return [
         'api_key' => env('AI_API_KEY', ''),
         'model' => env('AI_MODEL', ''),
     ],
+
+    // Phase 5: Cloudflare Turnstile bot defence on auth endpoints. Unset
+    // secret = verification skipped (logged); production MUST set both keys.
+    'turnstile' => [
+        'secret' => env('TURNSTILE_SECRET', ''),
+        'site_key' => env('TURNSTILE_SITE_KEY', ''),
+    ],
 ];

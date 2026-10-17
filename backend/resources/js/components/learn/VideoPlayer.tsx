@@ -1,5 +1,5 @@
 import { api } from '@/lib/api';
-import { embedUrlFor, isKnownProvider, type VideoProvider } from '@/lib/video';
+import { embedUrlFor, isPlaybackProvider, type PlaybackProvider } from '@/lib/video';
 import { useEffect, useRef, useState } from 'react';
 
 /**
@@ -33,6 +33,8 @@ interface Props {
     post: PlayerPost;
     /** Muted autoplay once the player is in the viewport (feed default). */
     autoplay?: boolean;
+    /** Report watch time to the learn feed. Off for lesson/product players. */
+    heartbeat?: boolean;
     className?: string;
     onProgress?: (progress: WatchProgress) => void;
 }
@@ -119,7 +121,7 @@ function loadVimeo(): Promise<VimeoApi> {
 
 const CHUNK_SECONDS = 15;
 
-export default function VideoPlayer({ post, autoplay = true, className = '', onProgress }: Props) {
+export default function VideoPlayer({ post, autoplay = true, heartbeat = true, className = '', onProgress }: Props) {
     const mountRef = useRef<HTMLDivElement>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
     const ytHandleRef = useRef<YTPlayerHandle | null>(null);
@@ -131,7 +133,7 @@ export default function VideoPlayer({ post, autoplay = true, className = '', onP
     progressCbRef.current = onProgress;
 
     const [sdkFailed, setSdkFailed] = useState(false);
-    const provider: VideoProvider = isKnownProvider(post.video_provider) ? post.video_provider : 'upload';
+    const provider: PlaybackProvider = isPlaybackProvider(post.video_provider) ? post.video_provider : 'upload';
     const embedId = post.provider_video_id ?? '';
 
     const setActive = (active: boolean) => {
@@ -153,6 +155,7 @@ export default function VideoPlayer({ post, autoplay = true, className = '', onP
 
     /* Accumulator: one heartbeat per 15 active seconds. */
     useEffect(() => {
+        if (!heartbeat) return;
         const timer = window.setInterval(() => {
             if (!activeRef.current) return;
             secondsRef.current += 1;
@@ -163,7 +166,7 @@ export default function VideoPlayer({ post, autoplay = true, className = '', onP
             flush();
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [post.id]);
+    }, [post.id, heartbeat]);
 
     /* Viewport tracking: autoplay in view, pause counting when scrolled away. */
     useEffect(() => {
@@ -252,7 +255,7 @@ export default function VideoPlayer({ post, autoplay = true, className = '', onP
         };
     }, [provider, embedId, autoplay]);
 
-    if (provider === 'upload' && post.video_url) {
+    if ((provider === 'upload' || provider === 'file') && post.video_url) {
         return (
             <div className={className}>
                 <video
@@ -288,24 +291,73 @@ export default function VideoPlayer({ post, autoplay = true, className = '', onP
         );
     }
 
-    if (sdkFailed) {
-        // Honest fallback: show the provider page rather than pretend to play.
-        const external =
-            provider === 'youtube' && embedId
-                ? `https://www.youtube.com/watch?v=${embedId}`
-                : provider === 'vimeo' && embedId
-                  ? `https://vimeo.com/${embedId}`
-                  : post.video_url;
+    if (provider === 'tiktok' && embedId) {
         return (
             <div className={className}>
-                <a
-                    href={external ?? '#'}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex aspect-video w-full items-center justify-center rounded-lg bg-gray-100 text-sm text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300"
-                >
-                    Play on {provider === 'youtube' ? 'YouTube' : 'Vimeo'} (player unavailable)
-                </a>
+                <div className="aspect-video w-full overflow-hidden rounded-lg bg-black">
+                    <iframe
+                        src={embedUrlFor('tiktok', embedId) ?? ''}
+                        className="h-full w-full border-0"
+                        allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                        allowFullScreen
+                        title="TikTok video"
+                    />
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                    Watch time for TikTok embeds is not measured (the player runs on tiktok.com).
+                </p>
+            </div>
+        );
+    }
+
+    if (provider === 'udemy') {
+        return (
+            <div className={className}>
+                <div className="flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-lg bg-gray-100 p-6 text-center dark:bg-gray-800">
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-200">This video lives on Udemy</p>
+                    <p className="max-w-md text-xs text-gray-500">
+                        Udemy does not allow its lectures to be embedded, so it cannot play inside the app. Ask the author
+                        for an uploaded file or a YouTube/Vimeo link.
+                    </p>
+                    {post.video_url && (
+                        <a
+                            href={post.video_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-1 text-xs font-medium text-indigo-600 underline hover:text-indigo-500"
+                        >
+                            Open on Udemy (leaves the app)
+                        </a>
+                    )}
+                </div>
+            </div>
+        );
+    }
+
+    if (sdkFailed) {
+        // The provider SDK failed (offline or a blocked script). Fall back to
+        // the provider's plain embed iframe so playback still happens inside
+        // the app - never bounce the learner to an external site.
+        const embed = embedId ? embedUrlFor(provider === 'vimeo' ? 'vimeo' : 'youtube', embedId) : null;
+        if (embed) {
+            return (
+                <div className={className}>
+                    <iframe
+                        src={embed}
+                        className="aspect-video w-full rounded-lg border-0 bg-black"
+                        allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                        allowFullScreen
+                        title={provider === 'vimeo' ? 'Vimeo video' : 'YouTube video'}
+                    />
+                    <p className="mt-1 text-xs text-gray-500">Basic mode - watch time is not measured for this video.</p>
+                </div>
+            );
+        }
+        return (
+            <div className={className}>
+                <div className="flex aspect-video w-full items-center justify-center rounded-lg bg-gray-100 text-sm text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                    This video can't start right now - reload the page to try again.
+                </div>
             </div>
         );
     }

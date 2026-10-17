@@ -7,6 +7,7 @@ import { api, errorMessage } from '@/lib/api';
 import { formatPrice } from '@/lib/currency';
 import { CARD_FALLBACK, listPaymentMethods, PaymentMethodOption } from '@/lib/payments';
 import LoadingState, { ErrorState } from '@/components/shared/LoadingState';
+import { Button } from '@/components/shared/Button';
 
 interface AidDonation {
     id: string;
@@ -28,6 +29,7 @@ interface AidRequest {
     status: string;
     requester?: { id?: string; name?: string } | null;
     donations?: AidDonation[];
+    images?: string[] | null;
     created_at: string;
 }
 
@@ -39,6 +41,7 @@ export default function AidDetail({ aid_id }: { aid_id: string }) {
     const [methods, setMethods] = useState<PaymentMethodOption[]>([]);
     const [method, setMethod] = useState('card');
     const [amount, setAmount] = useState('');
+    const [anonymous, setAnonymous] = useState(false);
     const [donating, setDonating] = useState(false);
 
     const load = useCallback(() => {
@@ -68,9 +71,10 @@ export default function AidDetail({ aid_id }: { aid_id: string }) {
         }
         setDonating(true);
         try {
-            await api.post(`/api/health/aid/${aid_id}/donate`, { amount: value, method });
+            await api.post(`/api/health/aid/${aid_id}/donate`, { amount: value, method, anonymous });
             toast.success('Donation received - thank you');
             setAmount('');
+            setAnonymous(false);
             load();
         } catch (e) {
             toast.error(errorMessage(e, 'Donation failed'));
@@ -122,6 +126,25 @@ export default function AidDetail({ aid_id }: { aid_id: string }) {
                             <p className="mt-4 whitespace-pre-line text-sm text-gray-700 dark:text-gray-300">
                                 {aid.description}
                             </p>
+                            {aid.images && aid.images.length > 0 && (
+                                <div className="mt-4">
+                                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                        Evidence photos
+                                    </p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {aid.images.map((url, i) => (
+                                            <a key={`${aid.id}-img-${i}`} href={url} target="_blank" rel="noreferrer">
+                                                <img
+                                                    src={url}
+                                                    alt=""
+                                                    loading="lazy"
+                                                    className="h-20 w-20 rounded-lg border border-border object-cover hover:opacity-90"
+                                                />
+                                            </a>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                             <div className="mt-5">
                                 <div className="h-3 w-full rounded-full bg-gray-100 dark:bg-gray-700">
                                     <div className="h-3 rounded-full bg-indigo-600" style={{ width: `${pct}%` }} />
@@ -185,13 +208,24 @@ export default function AidDetail({ aid_id }: { aid_id: string }) {
                                         </label>
                                     ))}
                                 </div>
-                                <button
+                                <Button
                                     onClick={donate}
-                                    disabled={donating}
-                                    className="mt-4 w-full rounded-lg bg-indigo-600 px-6 py-3 text-lg font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
+                                    loading={donating}
+                                    size="lg"
+                                    className="mt-4"
+                                    fullWidth
                                 >
-                                    {donating ? 'Processing...' : 'Donate'}
-                                </button>
+                                    Donate
+                                </Button>
+                                <label className="mt-3 flex cursor-pointer items-center justify-center gap-2 text-xs text-gray-500">
+                                    <input
+                                        type="checkbox"
+                                        checked={anonymous}
+                                        onChange={(e) => setAnonymous(e.target.checked)}
+                                        className="h-3.5 w-3.5 rounded"
+                                    />
+                                    Donate anonymously (name hidden publicly)
+                                </label>
                                 <p className="mt-2 text-center text-xs text-gray-500">
                                     One donation per person per request. Sandbox - no real funds move.
                                 </p>

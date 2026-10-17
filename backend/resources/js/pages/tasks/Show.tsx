@@ -6,6 +6,7 @@ import { formatDate } from '@/lib/utils';
 import { formatPrice } from '@/lib/currency';
 import { toast } from 'sonner';
 import {ArrowLeft, CheckCircle2, FileText, ClipboardList, BadgeCheck, Send} from 'lucide-react';
+import { Button } from '@/components/shared/Button';
 
 interface TaskApplication {
     id: string;
@@ -142,14 +143,13 @@ export default function TaskShow({ task, isOwner, myApplication, applications }:
                                     placeholder="Tell the owner why you're a good fit (optional)…"
                                     className="mb-3 w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                 />
-                                <button
+                                <Button
                                     disabled={busy === 'apply'}
                                     onClick={() => act('Application', () =>
                                         api.post(`/api/tasks/${task.id}/apply`, { message: applyMessage || null }))}
-                                    className="flex items-center gap-2 rounded-lg bg-violet-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-60"
                                 >
                                     <Send className="h-4 w-4" /> {busy === 'apply' ? 'Submitting…' : 'Apply for this task'}
-                                </button>
+                                </Button>
                             </div>
                         ) : (
                             <p className="text-sm text-gray-500">This task is no longer open for new applicants.</p>
@@ -182,41 +182,45 @@ export default function TaskShow({ task, isOwner, myApplication, applications }:
                                         <div className="flex flex-wrap gap-2">
                                             {a.status === 'pending' && (
                                                 <>
-                                                    <button
+                                                    <Button
+                                                        variant="success"
+                                                        size="sm"
                                                         disabled={!!busy}
                                                         onClick={() => act('Approval', () => api.post(`/api/task-applications/${a.id}/approve`))}
-                                                        className="rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700"
                                                     >
                                                         Approve & assign
-                                                    </button>
-                                                    <button
+                                                    </Button>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
                                                         disabled={!!busy}
                                                         onClick={() => act('Rejection', () => api.post(`/api/task-applications/${a.id}/reject`))}
-                                                        className="rounded-md border border-gray-300 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300"
                                                     >
                                                         Reject
-                                                    </button>
+                                                    </Button>
                                                 </>
                                             )}
                                             {a.status === 'submitted' && (
                                                 <>
-                                                    <button
+                                                    <Button
+                                                        variant="success"
+                                                        size="sm"
                                                         disabled={!!busy}
                                                         onClick={() => act('Verification', () => api.post(`/api/task-applications/${a.id}/verify`))}
-                                                        className="flex items-center gap-1 rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700"
                                                     >
                                                         <CheckCircle2 className="h-3.5 w-3.5" /> Verify work
-                                                    </button>
+                                                    </Button>
                                                 </>
                                             )}
                                             {a.status === 'verified' && (
-                                                <button
+                                                <Button
+                                                    variant="primary"
+                                                    size="sm"
                                                     disabled={!!busy}
                                                     onClick={() => act('Payment', () => api.post(`/api/task-applications/${a.id}/mark-paid`))}
-                                                    className="rounded-md bg-purple-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-700"
                                                 >
                                                     Release payment ({formatPrice(Number(task.budget))})
-                                                </button>
+                                                </Button>
                                             )}
                                             {a.status === 'paid' && <span className="text-xs text-purple-600 font-medium">✓ Completed & paid</span>}
                                         </div>
@@ -252,13 +256,13 @@ function SubmitEvidence({ evidenceUrl, setEvidenceUrl, evidenceNote, setEvidence
                 placeholder="Notes for the reviewer (what was done, how to verify)…"
                 className="mb-3 w-full rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
             />
-            <button
+            <Button
+                size="sm"
                 onClick={onSubmit}
                 disabled={busy || (!evidenceUrl && !evidenceNote)}
-                className="flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-xs font-medium text-white hover:bg-violet-700 disabled:opacity-50"
             >
                 <Send className="h-3.5 w-3.5" /> {busy ? 'Submitting…' : 'Submit evidence'}
-            </button>
+            </Button>
         </div>
     );
 }

@@ -2,9 +2,11 @@ import AppLayout from '@/layouts/AppLayout';
 import { toast } from 'sonner';
 import {Head, router} from '@inertiajs/react';
 import type { JobPost } from '@/types';
-import { MapPin, Briefcase, DollarSign, Clock, Building2, CheckCircle } from 'lucide-react';
+import { MapPin, Briefcase, DollarSign, Clock, Building2, CheckCircle, Bookmark } from 'lucide-react';
 import { formatPrice } from '@/lib/currency';
 import { usePage } from '@inertiajs/react';
+import { useWishlist } from '@/hooks/useWishlist';
+import { errorMessage } from '@/lib/api';
 
 interface JobShowProps {
     job: JobPost;
@@ -13,6 +15,21 @@ interface JobShowProps {
 export default function JobShow({ job }: JobShowProps) {
     const { auth } = usePage().props as { auth?: { user?: { id: string } } };
     const isOwner = auth?.user?.id === job.user_id;
+    const { has: isSaved, toggle: toggleSaved } = useWishlist('job');
+    const saved = isSaved(job.id);
+
+    const handleSave = async () => {
+        if (!auth?.user) {
+            router.visit('/login');
+            return;
+        }
+        try {
+            const nowSaved = await toggleSaved(job.id);
+            toast.success(nowSaved ? 'Job saved' : 'Removed from saved jobs');
+        } catch (e) {
+            toast.error(errorMessage(e, 'Could not save job'));
+        }
+    };
 
     const handleApply = () => {
         if (!auth?.user) {
@@ -42,6 +59,11 @@ export default function JobShow({ job }: JobShowProps) {
                             <div className="mt-2 flex items-center gap-2 text-lg text-indigo-600">
                                 <Building2 className="h-5 w-5" />
                                 {job.company}
+                                {job.company_profile?.slug && (
+                                    <a href={`/companies/${job.company_profile.slug}`} className="text-sm font-medium text-indigo-500 hover:underline">
+                                        View company →
+                                    </a>
+                                )}
                             </div>
                             <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-gray-500">
                                 <span className="flex items-center gap-1"><MapPin className="h-4 w-4" />{job.location}</span>
@@ -56,12 +78,26 @@ export default function JobShow({ job }: JobShowProps) {
                             </div>
                         </div>
                         {!isOwner && (
-                            <button
-                                onClick={handleApply}
-                                className="rounded-lg bg-indigo-600 px-6 py-3 text-lg font-semibold text-white hover:bg-indigo-500"
-                            >
-                                Apply Now
-                            </button>
+                            <div className="flex shrink-0 flex-col gap-2">
+                                <button
+                                    onClick={handleApply}
+                                    className="rounded-lg bg-indigo-600 px-6 py-3 text-lg font-semibold text-white hover:bg-indigo-500"
+                                >
+                                    Apply Now
+                                </button>
+                                <button
+                                    onClick={() => void handleSave()}
+                                    aria-pressed={saved}
+                                    className={`inline-flex items-center justify-center gap-1.5 rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
+                                        saved
+                                            ? 'border-indigo-600 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
+                                            : 'border-gray-300 text-gray-600 hover:border-indigo-400 hover:text-indigo-600 dark:border-gray-600 dark:text-gray-300'
+                                    }`}
+                                >
+                                    <Bookmark className={`h-4 w-4 ${saved ? 'fill-current' : ''}`} />
+                                    {saved ? 'Saved' : 'Save job'}
+                                </button>
+                            </div>
                         )}
                         {isOwner && (
                             <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800">Your listing</span>

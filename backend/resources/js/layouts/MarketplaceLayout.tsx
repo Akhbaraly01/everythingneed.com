@@ -65,7 +65,7 @@ function MarketplaceShell({
             {/* Clearance for the mobile dock + action cluster (tokenized). */}
             <main className="flex-1 pb-[var(--dock-clearance)] md:pb-6">{children}</main>
             <Footer socialLinks={{ ...sharedSocials, ...socialLinks }} appLinks={{ ...sharedApps, ...appLinks }} />
-            <BottomNav cartCount={effectiveCartCount} />
+            <BottomNav />
             <FloatingChat />
             <FloatingCart count={effectiveCartCount} />
             <GlobalCartDrawer />

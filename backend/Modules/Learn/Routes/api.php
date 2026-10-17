@@ -127,6 +127,10 @@ Route::prefix('api')->group(function () {
     Route::get('/course-categories', [CourseController::class, 'categories']);
     Route::get('/courses/{id}', [CourseController::class, 'show']);
 
+    // Admin console: course + lesson management. Guarded with auth:sanctum so
+    // both the browser console (stateful cookies) and bearer-token clients
+    // (console parity tests, e2e) authenticate against the same guard.
+    Route::middleware('auth:sanctum')->group(function () {
         // Admin console: create courses (spec 47 — live everywhere immediately)
         Route::post('/admin/courses', [CourseController::class, 'adminStore'])
             ->middleware('role:super_admin,administrator,learning_admin')
@@ -146,6 +150,22 @@ Route::prefix('api')->group(function () {
         Route::delete('/admin/courses/{id}', [CourseController::class, 'adminDestroy'])
             ->middleware('role:super_admin,administrator,learning_admin')
             ->middleware('permission:learn.courses.manage');
+
+        // Admin console: lesson management (master directive - Learn admin
+        // owns curriculum: add/edit/remove lessons, order + video + resources).
+        Route::get('/admin/courses/{id}/lessons', [CourseController::class, 'adminLessons'])
+            ->middleware('role:super_admin,administrator,learning_admin')
+            ->middleware('permission:learn.courses.manage');
+        Route::post('/admin/courses/{id}/lessons', [CourseController::class, 'adminStoreLesson'])
+            ->middleware('role:super_admin,administrator,learning_admin')
+            ->middleware('permission:learn.courses.manage');
+        Route::put('/admin/courses/{id}/lessons/{lessonId}', [CourseController::class, 'adminUpdateLesson'])
+            ->middleware('role:super_admin,administrator,learning_admin')
+            ->middleware('permission:learn.courses.manage');
+        Route::delete('/admin/courses/{id}/lessons/{lessonId}', [CourseController::class, 'adminDestroyLesson'])
+            ->middleware('role:super_admin,administrator,learning_admin')
+            ->middleware('permission:learn.courses.manage');
+    });
     Route::get('/learn/instructors', [CourseController::class, 'instructors']);
     Route::get('/learn/instructors/{id}', [CourseController::class, 'instructor']);
     Route::get('/learn/certificates/verify/{code}', [LessonProgressController::class, 'verifyCertificate']);

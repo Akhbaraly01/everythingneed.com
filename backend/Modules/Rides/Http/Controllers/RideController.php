@@ -11,17 +11,51 @@ use Illuminate\Http\Request;
 
 class RideController extends Controller
 {
+    /**
+     * N-38: public fare estimate before booking. Stateless — computes a
+     * ±band range from coordinates; never persists and never binds the
+     * final fare (drivers confirm that on completion).
+     */
+    public function estimate(\Illuminate\Http\Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'pickup_lat' => ['required', 'numeric', 'between:-90,90'],
+            'pickup_lng' => ['required', 'numeric', 'between:-180,180'],
+            'dropoff_lat' => ['required', 'numeric', 'between:-90,90'],
+            'dropoff_lng' => ['required', 'numeric', 'between:-180,180'],
+            'ride_type' => ['nullable', 'string', 'in:economy,comfort,premium'],
+        ]);
+
+        $estimate = \Modules\Rides\Services\FareEstimator::estimate(
+            (float) $validated['pickup_lat'],
+            (float) $validated['pickup_lng'],
+            (float) $validated['dropoff_lat'],
+            (float) $validated['dropoff_lng'],
+            $validated['ride_type'] ?? 'economy',
+        );
+
+        return response()->json([
+            'data' => $estimate + [
+                'note' => 'Estimate only — the final fare is confirmed by the driver.',
+            ],
+        ]);
+    }
+
     public function requestRide(Request $request): JsonResponse
     {
-        $ride = Ride::create(array_merge($request->validate([
+        $validated = $request->validate([
             'pickup_address' => 'required|string|max:500',
-            'pickup_lat' => 'required|numeric',
-            'pickup_lng' => 'required|numeric',
+            'pickup_lat' => 'required|numeric|between:-90,90',
+            'pickup_lng' => 'required|numeric|between:-180,180',
             'dropoff_address' => 'required|string|max:500',
-            'dropoff_lat' => 'required|numeric',
-            'dropoff_lng' => 'required|numeric',
+            'dropoff_lat' => 'required|numeric|between:-90,90',
+            'dropoff_lng' => 'required|numeric|between:-180,180',
             'ride_type' => 'required|string|in:economy,comfort,premium',
-        ]), [
+            // N-37 scheduled rides: optional future timestamp, max 30 days out.
+            'scheduled_for' => 'nullable|date|after:now|before:' . now()->addDays(30)->toIso8601String(),
+        ]);
+
+        $ride = Ride::create(array_merge($validated, [
             'user_id' => $request->user()->id,
             'status' => 'requested',
         ]));

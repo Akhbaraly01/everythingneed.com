@@ -1,17 +1,20 @@
-import { useMemo, useState } from 'react';
-import { Link, router, usePage } from '@inertiajs/react';
-import { Gift, GraduationCap, Send } from 'lucide-react';
+import { useMemo, useState, type ReactNode } from 'react';
+import { usePage } from '@inertiajs/react';
+import { Gift, Send } from 'lucide-react';
 import MarketplaceLayout from '@/layouts/MarketplaceLayout';
 import BannerSlider from '@/components/Marketplace/BannerSlider';
 import CategoryGrid from '@/components/Marketplace/CategoryGrid';
 import NeedCarousel from '@/components/Marketplace/NeedCarousel';
 import TripleBanner from '@/components/Marketplace/TripleBanner';
-import SearchTabs, { type ContentTab, type SortOption } from '@/components/Marketplace/SearchTabs';
-import ProductCard, { type MarketplaceProduct } from '@/components/Marketplace/ProductCard';
+import SearchTabs, { type ContentTab } from '@/components/Marketplace/SearchTabs';
+import type { MarketplaceProduct } from '@/components/Marketplace/ProductCard';
 import ExpertsShowcase from '@/components/experts/ExpertsShowcase';
 import RecentlyViewedSection from '@/components/home/RecentlyViewedSection';
 import SectionRail from '@/components/home/SectionRail';
+import InfiniteProductFeed from '@/components/home/InfiniteProductFeed';
 import PromoCard from '@/components/home/PromoCard';
+import SeoMeta, { type LearnSeo } from '@/components/learn/SeoMeta';
+import { useLanguage } from '@/lib/use-language';
 import type { HomeSectionItem } from '@/types';
 
 interface TopExpert {
@@ -36,6 +39,15 @@ export interface HomeSections {
     buildingServices?: HomeSectionItem[];
 }
 
+/** Admin-owned builder row (home_page_sections, active + ordered). */
+export interface HomeSectionConfig {
+    id: string | number;
+    name: string;
+    slug: string;
+    is_active?: boolean;
+    order?: number;
+}
+
 interface HomeProps {
     products?: {
         data: MarketplaceProduct[];
@@ -43,13 +55,36 @@ interface HomeProps {
         last_page?: number;
         total?: number;
     };
+    /** Storefront batch size (home.products_per_batch, default 12). */
+    productsPerBatch?: number;
+    /** Admin-ordered active sections; empty on a fresh DB (fallback order). */
+    homeSections?: HomeSectionConfig[];
     categories?: { id: string | number; name: string; slug?: string; icon?: string | null }[];
     learning?: MarketplaceProduct[];
     healthcareCards?: MarketplaceProduct[];
     topExperts?: TopExpert[];
     cartCount?: number;
     sections?: HomeSections;
+    seo?: LearnSeo | null;
 }
+
+/** Fallback scroll order (mirrors HomePageSectionsSeeder) when unseeded. */
+const FALLBACK_ORDER = [
+    'featured',
+    'deals',
+    'services',
+    'healthcare',
+    'jobs',
+    'hotels',
+    'transportation',
+    'food',
+    'agriculture',
+    'real-estate',
+    'building-services',
+    'learn',
+    'daily-deals',
+    'recently-added',
+];
 
 const toSectionItem = (product: MarketplaceProduct): HomeSectionItem => ({
     id: product.id,
@@ -64,76 +99,32 @@ const toSectionItem = (product: MarketplaceProduct): HomeSectionItem => ({
 
 export default function HomeIndex({
     products,
+    productsPerBatch = 12,
+    homeSections = [],
     categories = [],
     learning = [],
     healthcareCards = [],
     topExperts = [],
     cartCount = 0,
     sections = {},
+    seo = null,
 }: HomeProps) {
     const { props } = usePage();
     const uiTexts = (props.uiTexts ?? {}) as {
         ui?: Record<string, { value?: string }>;
     };
     const auth = (props.auth ?? null) as { user?: { id: string } } | null;
+    const { t } = useLanguage();
     const ui = uiTexts.ui ?? {};
     const uiValue = (key: string, fallback: string): string => ui[key]?.value || fallback;
 
     const [activeTab, setActiveTab] = useState<ContentTab>('all');
-    const [search, setSearch] = useState('');
-    const [sortBy, setSortBy] = useState<SortOption>('default');
-    const [loadingMore, setLoadingMore] = useState(false);
-
-    // Gap 5: denser discovery grid (24/page) with page-based load-more.
-    const productPage = products?.current_page ?? 1;
-    const productLastPage = products?.last_page ?? 1;
-    const hasMoreProducts = productPage < productLastPage;
-
-    const loadMoreProducts = () => {
-        if (!hasMoreProducts || loadingMore) return;
-        setLoadingMore(true);
-        router.get(
-            '/',
-            { page: productPage + 1 },
-            {
-                preserveState: true,
-                preserveScroll: true,
-                onFinish: () => setLoadingMore(false),
-            },
-        );
-    };
 
     const realProducts = useMemo(() => products?.data ?? [], [products]);
     const spotlight = useMemo(
         () => [...realProducts, ...learning, ...healthcareCards],
         [realProducts, learning, healthcareCards],
     );
-    const pool: MarketplaceProduct[] = useMemo(() => {
-        const merged = [...realProducts, ...learning, ...healthcareCards];
-        if (activeTab === 'all') return merged;
-        if (activeTab === 'products') return realProducts;
-        if (activeTab === 'learning') return learning;
-        if (activeTab === 'healthcare') return healthcareCards;
-        return merged.filter((p) => (p.type ?? 'product') === (activeTab === 'needs' ? 'need' : 'service'));
-    }, [realProducts, learning, healthcareCards, activeTab]);
-
-    const filtered = useMemo(() => {
-        let list = [...pool];
-        if (search.trim()) {
-            const q = search.toLowerCase();
-            list = list.filter(
-                (p) =>
-                    p.name.toLowerCase().includes(q) ||
-                    (p.category ?? '').toLowerCase().includes(q) ||
-                    (p.vendor ?? '').toLowerCase().includes(q),
-            );
-        }
-        if (sortBy === 'price_low') list.sort((a, b) => a.price - b.price);
-        if (sortBy === 'price_high') list.sort((a, b) => b.price - a.price);
-        if (sortBy === 'rating') list.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
-        if (sortBy === 'name') list.sort((a, b) => a.name.localeCompare(b.name));
-        return list;
-    }, [pool, search, sortBy]);
 
     const healthcareItems = useMemo(() => healthcareCards.map(toSectionItem), [healthcareCards]);
     const learnItems = useMemo(() => learning.map(toSectionItem), [learning]);
@@ -142,22 +133,139 @@ export default function HomeIndex({
         [realProducts],
     );
 
+    // Slug → rail (title, items, See-all). Unknown slugs resolve to null and
+    // are skipped — custom sections never fabricate content. Titles render
+    // through the global language so one selection translates every rail.
+    const resolveSection = (slug: string): ReactNode | null => {
+        const rail = (
+            titleKey: string,
+            items: HomeSectionItem[] | undefined,
+            seeAllHref: string,
+        ): ReactNode => (
+            <SectionRail
+                testId={`home-section-${slug}`}
+                title={t(titleKey)}
+                items={items}
+                seeAllHref={seeAllHref}
+                seeAllLabel={`${t('nav.seeAll')} >`}
+            />
+        );
+
+        switch (slug) {
+            case 'daily-deals':
+                return rail('home.dailyDeals', sections.dailyDeals, '/products');
+            case 'featured':
+                // No /featured page exists — See-all lands on the catalogue,
+                // matching the long-standing storefront behaviour.
+                return rail('home.featured', sections.featured, '/products');
+            case 'deals':
+                return rail('home.deals', sections.deals, '/deals');
+            case 'services':
+                return rail('home.services', sections.services, '/tasks');
+            case 'healthcare':
+                return rail('home.healthcare', healthcareItems, '/healthcare');
+            case 'jobs':
+                return rail('home.jobs', sections.jobs, '/jobs');
+            case 'hotels':
+                return rail('home.hotels', sections.hotels, '/hotels');
+            case 'transportation':
+                return rail('home.transportation', sections.transportation, '/flights');
+            case 'food':
+                return rail('home.food', sections.food, '/food');
+            case 'agriculture':
+                return rail('home.agriculture', sections.agriculture, '/agriculture');
+            case 'real-estate':
+                return rail('home.realEstate', sections.realEstate, '/properties');
+            case 'building-services':
+                return rail('home.buildingServices', sections.buildingServices, '/building-services');
+            case 'learn':
+                return rail('home.learn', learnItems, '/learn');
+            case 'recently-added':
+                return rail('home.recentlyAdded', recentlyAddedItems, '/products');
+            default:
+                return null;
+        }
+    };
+
+    const orderedSlugs = useMemo(() => {
+        const active = (homeSections ?? []).filter((s) => s.is_active !== false);
+        if (active.length === 0) return FALLBACK_ORDER;
+        return [...active]
+            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+            .map((s) => s.slug);
+    }, [homeSections]);
+
+    const feedSections = useMemo(
+        () =>
+            orderedSlugs
+                .map((slug) => resolveSection(slug))
+                .filter((node): node is ReactNode => node !== null),
+        // t() included: rail titles must re-render on language switch.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [orderedSlugs, sections, healthcareItems, learnItems, recentlyAddedItems, t],
+    );
+
     return (
         <MarketplaceLayout title="Home" cartCount={cartCount}>
-            <div className="min-h-screen pb-20 bg-background">
-                <div className="container mx-auto px-3 py-4 space-y-6">
-                    {/* 3. Hero/sliding banners (admin CMS banners). */}
+            <SeoMeta seo={seo} />
+            <div className="min-h-screen pb-6 bg-background">
+                <div className="container mx-auto px-3 py-4 space-y-5">
+                    {/* Sliding banners first — immediately after the fixed header. */}
                     <BannerSlider />
 
-                    {/* 4. Daily Deals */}
-                    <SectionRail
-                        testId="home-section-daily-deals"
-                        title="Daily Deals"
-                        items={sections.dailyDeals}
-                        seeAllHref="/products"
+                    {/* Category icons: 4 + 4 with SeeMore for the rest. */}
+                    <section data-testid="home-section-categories">
+                        <CategoryGrid categories={categories} />
+                    </section>
+
+                    {/* Submit-Your-Need carousel (instance 1 of 2 — both render
+                        the same component over /api/need-categories, so admin
+                        manages them as one surface). */}
+                    <NeedCarousel />
+
+                    {/* Need-something banner. */}
+                    <PromoCard
+                        testId="home-section-submit-need"
+                        title={uiValue('home_need_title', 'Need something?')}
+                        text={uiValue(
+                            'home_need_text',
+                            'Post a request and receive offers from providers across every category.',
+                        )}
+                        cta={uiValue('home_need_cta', 'Submit your need')}
+                        href="/needs/request"
+                        icon={Send}
                     />
 
-                    {/* 5. New User Bonus (guests only; copy from uiTexts). */}
+                    {/* Discovery tabs (pills only — search lives in the fixed
+                        header). They filter the product feed below. */}
+                    <SearchTabs
+                        activeTab={activeTab}
+                        onTabChange={setActiveTab}
+                        hideSearchBar
+                    />
+
+                    {/* Products: batches interleaved between the
+                        admin-ordered category sections. */}
+                    <InfiniteProductFeed
+                        initial={realProducts}
+                        initialPage={products?.current_page ?? 1}
+                        lastPage={products?.last_page ?? 1}
+                        extras={[...learning, ...healthcareCards]}
+                        tab={activeTab}
+                        sections={feedSections}
+                        perBatch={productsPerBatch}
+                        loadMoreLabel={t('home.loadMore')}
+                        emptyTitle={t('home.nothingHere')}
+                        emptyText={t('home.nothingHereText')}
+                        browseProductsLabel={t('home.browseProducts')}
+                        browseCoursesLabel={t('home.browseCourses')}
+                        findDoctorsLabel={t('home.findDoctors')}
+                    />
+
+                    {/* Recently Viewed — highly visible. */}
+                    <RecentlyViewedSection />
+
+                    {/* More to explore (kept features, stable test hooks). */}
                     {!auth && (
                         <PromoCard
                             testId="home-section-new-user-bonus"
@@ -172,208 +280,29 @@ export default function HomeIndex({
                         />
                     )}
 
-                    {/* 6. Find Your Need */}
+                    {/* Submit-Your-Need carousel (instance 2 of 2 — same
+                        single component/source as instance 1). */}
                     <NeedCarousel />
 
-                    {/* 7. Learning promotion */}
-                    <PromoCard
-                        testId="home-section-learn-promo"
-                        title={uiValue('home_learn_title', 'Grow your skills')}
-                        text={uiValue(
-                            'home_learn_text',
-                            'Courses, instructors and certificates across every field - start learning today.',
-                        )}
-                        cta={uiValue('home_learn_cta', 'Explore courses')}
-                        href="/learn"
-                        icon={GraduationCap}
+                    {/* Trending Items sliding banners. */}
+                    <TripleBanner
+                        trending={[...spotlight]
+                            .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
+                            .slice(0, 4)
+                            .map((p) => ({
+                                id: p.id,
+                                name: p.name,
+                                price: p.price,
+                                originalPrice: p.originalPrice ?? p.price,
+                                image: p.image ?? '',
+                                rating: p.rating ?? 0,
+                                link: p.link ?? `/products/${p.id}`,
+                            }))}
                     />
 
-                    {/* 8+9. Quick categories + More categories */}
-                    <section data-testid="home-section-categories">
-                        <CategoryGrid categories={categories} />
-                    </section>
-
-                    {/* 10. Submit Your Need */}
-                    <PromoCard
-                        testId="home-section-submit-need"
-                        title={uiValue('home_need_title', 'Need something?')}
-                        text={uiValue(
-                            'home_need_text',
-                            'Post a request and receive offers from providers across every category.',
-                        )}
-                        cta={uiValue('home_need_cta', 'Submit your need')}
-                        href="/needs/request"
-                        icon={Send}
-                    />
-
-                    {/* 11. Featured products */}
-                    <SectionRail
-                        testId="home-section-featured"
-                        title="Featured products"
-                        items={sections.featured}
-                        seeAllHref="/products"
-                    />
-
-                    {/* 12. Deals */}
-                    <SectionRail
-                        testId="home-section-deals"
-                        title="Deals"
-                        items={sections.deals}
-                        seeAllHref="/deals"
-                    />
-
-                    {/* 13. Services (open tasks & gigs) */}
-                    <SectionRail
-                        testId="home-section-services"
-                        title="Services"
-                        items={sections.services}
-                        seeAllHref="/tasks"
-                    />
-
-                    {/* 14. Healthcare */}
-                    <SectionRail
-                        testId="home-section-healthcare"
-                        title="Healthcare"
-                        items={healthcareItems}
-                        seeAllHref="/healthcare"
-                    />
-
-                    {/* 15. Experts */}
                     <section data-testid="home-section-experts">
-                        <ExpertsShowcase experts={topExperts} title="Top Experts" limit={8} />
+                        <ExpertsShowcase experts={topExperts} title={t('home.topExperts')} limit={8} />
                     </section>
-
-                    {/* 16. Jobs */}
-                    <SectionRail
-                        testId="home-section-jobs"
-                        title="Jobs"
-                        items={sections.jobs}
-                        seeAllHref="/jobs"
-                    />
-
-                    {/* 17. Hotels */}
-                    <SectionRail
-                        testId="home-section-hotels"
-                        title="Hotels"
-                        items={sections.hotels}
-                        seeAllHref="/hotels"
-                    />
-
-                    {/* 18. Transportation */}
-                    <SectionRail
-                        testId="home-section-transportation"
-                        title="Transportation"
-                        items={sections.transportation}
-                        seeAllHref="/flights"
-                    />
-
-                    {/* 19. Food */}
-                    <SectionRail
-                        testId="home-section-food"
-                        title="Food"
-                        items={sections.food}
-                        seeAllHref="/food"
-                    />
-
-                    {/* 20. Agriculture */}
-                    <SectionRail
-                        testId="home-section-agriculture"
-                        title="Agriculture"
-                        items={sections.agriculture}
-                        seeAllHref="/agriculture"
-                    />
-
-                    {/* 21. Real estate */}
-                    <SectionRail
-                        testId="home-section-real-estate"
-                        title="Real estate"
-                        items={sections.realEstate}
-                        seeAllHref="/properties"
-                    />
-
-                    {/* 22. Building services */}
-                    <SectionRail
-                        testId="home-section-building-services"
-                        title="Building services"
-                        items={sections.buildingServices}
-                        seeAllHref="/building-services"
-                    />
-
-                    {/* 23. Learn */}
-                    <SectionRail
-                        testId="home-section-learn"
-                        title="Learn"
-                        items={learnItems}
-                        seeAllHref="/learn"
-                    />
-
-                    {/* 24. Recently added */}
-                    <SectionRail
-                        testId="home-section-recently-added"
-                        title="Recently added"
-                        items={recentlyAddedItems}
-                        seeAllHref="/products"
-                    />
-
-                    {/* 25. Recommended / discovery content */}
-                    <div data-testid="home-section-recommended" className="space-y-6">
-                        <section id="product-grid" className="space-y-4 scroll-mt-24 outline-none">
-                            <SearchTabs
-                                activeTab={activeTab}
-                                onTabChange={setActiveTab}
-                                search={search}
-                                onSearchChange={setSearch}
-                                sortBy={sortBy}
-                                onSortChange={setSortBy}
-                            />
-                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2 auto-rows-min">
-                                {filtered.map((product) => (
-                                    <ProductCard key={product.id} product={product} />
-                                ))}
-                            </div>
-                            {filtered.length === 0 && (
-                                <div className="py-10 text-center text-sm text-muted-foreground">
-                                    <p className="font-medium">Nothing here yet</p>
-                                    <p className="mt-1">Products, courses and doctors will appear once available.</p>
-                                    <div className="mt-3 flex flex-wrap justify-center gap-2">
-                                        <Link href="/products" className="rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground">Browse products</Link>
-                                        <Link href="/learn/courses" className="rounded-md border px-3 py-1.5 text-xs">Browse courses</Link>
-                                        <Link href="/healthcare/doctors" className="rounded-md border px-3 py-1.5 text-xs">Find doctors</Link>
-                                    </div>
-                                </div>
-                            )}
-                            {hasMoreProducts && filtered.length > 0 && (
-                                <div className="flex justify-center pt-2">
-                                    <button
-                                        type="button"
-                                        data-testid="home-load-more"
-                                        onClick={loadMoreProducts}
-                                        disabled={loadingMore}
-                                        className="rounded-md border px-6 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-50"
-                                    >
-                                        {loadingMore ? 'Loading…' : 'Load more'}
-                                    </button>
-                                </div>
-                            )}
-                        </section>
-
-                        <TripleBanner
-                            trending={[...spotlight]
-                                .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
-                                .slice(0, 4)
-                                .map((p) => ({
-                                    id: p.id,
-                                    name: p.name,
-                                    price: p.price,
-                                    originalPrice: p.originalPrice ?? p.price,
-                                    image: p.image ?? '',
-                                    rating: p.rating ?? 0,
-                                    link: p.link ?? `/products/${p.id}`,
-                                }))}
-                        />
-
-                        <RecentlyViewedSection />
-                    </div>
                 </div>
             </div>
         </MarketplaceLayout>

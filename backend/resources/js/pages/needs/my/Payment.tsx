@@ -2,6 +2,7 @@ import AppLayout from '@/layouts/AppLayout';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { api, errorMessage } from '@/lib/api';
 import { NEED_STATUS_LABELS, acceptedOffer, needStatusClasses } from '@/lib/needs';
+import { Button } from '@/components/shared/Button';
 import { AlertTriangle, ArrowLeft, CreditCard, Receipt } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import type { NeedRequestDetail } from '@/types';
@@ -95,15 +96,16 @@ export default function MyNeedPayment({ need_id }: { need_id: string }) {
                             </div>
 
                             {canPay && (
-                                <button
+                                <Button
                                     type="button"
                                     onClick={pay}
-                                    disabled={busy}
+                                    loading={busy}
                                     data-testid="need-pay-button"
-                                    className="w-full rounded-lg bg-indigo-600 px-6 py-3 text-lg font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
+                                    size="lg"
+                                    fullWidth
                                 >
-                                    {busy ? 'Processing payment...' : `Pay ${need.currency} ${offer?.price}`}
-                                </button>
+                                    {`Pay ${need.currency} ${offer?.price}`}
+                                </Button>
                             )}
 
                             {need.payment && (

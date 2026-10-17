@@ -18,6 +18,7 @@ class EventServiceProvider extends ServiceProvider
         // Payments Events
         \Modules\Payments\Events\PaymentCompleted::class => [
             \Modules\Payments\Listeners\UpdateOrderStatus::class,
+            \Modules\Needs\Listeners\SyncNeedRequestPayment::class,
         ],
         \Modules\Payments\Events\RefundProcessed::class => [
             \Modules\Payments\Listeners\ProcessRefundNotification::class,

@@ -28,6 +28,7 @@ interface Product {
     shipping?: Record<string, unknown> | null;
     image_url?: string | null;
     images?: string[] | null;
+    video_url?: string | null;
     stock_quantity: number;
     is_active?: boolean;
     status?: string;
@@ -67,6 +68,7 @@ interface ProductForm {
     featured: boolean;
     publication_state: string;
     image_url: string;
+    video_url: string;
     imagesText: string;
     specificationsText: string;
     attributesText: string;
@@ -96,6 +98,7 @@ const emptyForm: ProductForm = {
     featured: false,
     publication_state: 'published',
     image_url: '',
+    video_url: '',
     imagesText: '',
     specificationsText: '',
     attributesText: '',
@@ -229,6 +232,7 @@ export default function AdminProducts() {
             featured: p.featured === true,
             publication_state: p.publication_state ?? 'published',
             image_url: p.image_url ?? '',
+            video_url: p.video_url ?? '',
             imagesText: (p.images ?? []).join('\n'),
             specificationsText: keyValuesToText(p.specifications),
             attributesText: keyValuesToText(p.attributes),
@@ -303,6 +307,7 @@ export default function AdminProducts() {
             attributes,
             shipping,
             image_url: form.image_url.trim() || undefined,
+            video_url: form.video_url.trim() || undefined,
             images,
             stock_quantity: Number(form.stock_quantity) || 0,
             variants: variants.length ? variants : [],
@@ -597,6 +602,10 @@ export default function AdminProducts() {
                                 <div>
                                     <label htmlFor="product-gallery" className="mb-1 block text-xs font-medium text-gray-500">Gallery URLs (one per line)</label>
                                     <textarea id="product-gallery" rows={2} value={form.imagesText} onChange={(e) => setForm({ ...form, imagesText: e.target.value })} className={field} />
+                                </div>
+                                <div>
+                                    <label htmlFor="product-video" className="mb-1 block text-xs font-medium text-gray-500">Product video URL (plays in-app on the product page)</label>
+                                    <input id="product-video" type="url" value={form.video_url} onChange={(e) => setForm({ ...form, video_url: e.target.value })} placeholder="https://www.youtube.com/watch?v=… or MP4 link" className={field} />
                                 </div>
 
                                 {/* Specifications + attributes */}

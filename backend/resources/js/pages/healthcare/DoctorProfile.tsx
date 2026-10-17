@@ -34,6 +34,14 @@ export default function DoctorProfile({ doctor, availability }: DoctorProfilePro
                                 <Link href={`/healthcare/doctors/${doctor.id}/book`} className="mt-4 inline-flex rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500">
                         Book Appointment
                     </Link>
+                    <div className="mt-3 flex flex-wrap gap-3 text-sm">
+                        <Link href={`/healthcare/doctors/${doctor.id}/reviews`} className="font-medium text-indigo-600 hover:text-indigo-500">
+                            Read reviews
+                        </Link>
+                        <Link href={`/healthcare/doctors/${doctor.id}/availability`} className="font-medium text-indigo-600 hover:text-indigo-500">
+                            Full availability
+                        </Link>
+                    </div>
                 </div>
 
                 <div className="rounded-lg bg-white p-6 shadow dark:bg-gray-800">

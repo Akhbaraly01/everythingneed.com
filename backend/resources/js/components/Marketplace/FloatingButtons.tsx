@@ -46,7 +46,7 @@ export function FloatingChat() {
                 type="button"
                 onClick={() => setIsOpen((v) => !v)}
                 aria-label="Open chat"
-                className="glass-3 glass-edge tap-safe fixed bottom-[calc(var(--dock-clearance)+8px)] right-4 z-cluster flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform duration-fast ease-out-spring hover:scale-105 active:scale-95"
+                className="btn-3d tap-safe fixed bottom-[calc(var(--dock-clearance)+8px)] right-4 z-cluster !h-12 !w-12 !min-h-12 !p-0"
             >
                 {isOpen ? <X className="h-5 w-5" /> : <MessageCircle className="h-5 w-5" />}
             </button>
@@ -91,13 +91,13 @@ export function FloatingChat() {
                             }}
                             placeholder="Type a message..."
                             aria-label="Type a message"
-                            className="h-9 flex-1 rounded-full border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                            className="h-9 flex-1 rounded-full border border-input bg-background/80 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                         />
                         <button
                             type="button"
                             onClick={() => void sendMessage()}
                             aria-label="Send message"
-                            className="tap-safe flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground"
+                            className="btn-3d tap-safe !h-9 !w-9 !min-h-9 !p-0"
                         >
                             <Send className="h-4 w-4" />
                         </button>
@@ -115,12 +115,12 @@ export function FloatingCart({ count = 0 }: { count?: number }) {
             type="button"
             onClick={openCart}
             aria-label="Open cart"
-            className="glass-3 glass-edge tap-safe fixed bottom-[calc(var(--dock-clearance)+8px)] left-4 z-cluster flex h-12 w-12 items-center justify-center rounded-full bg-card text-foreground shadow-lg transition-transform duration-fast ease-out-spring hover:scale-105 active:scale-95"
+            className="icon-glass-3d tap-safe fixed bottom-[calc(var(--dock-clearance)+8px)] left-4 z-cluster !h-12 !w-12"
         >
             <span className="relative">
                 <ShoppingCart className="h-5 w-5" />
                 {count > 0 && (
-                    <span className="absolute -top-2 -right-2 animate-dock-bubble h-5 w-5 p-0 text-[10px] bg-destructive text-destructive-foreground rounded-full flex items-center justify-center">
+                    <span className="badge-pop absolute -top-2 -right-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive p-0 text-[10px] font-medium text-destructive-foreground">
                         {count > 9 ? '9+' : count}
                     </span>
                 )}

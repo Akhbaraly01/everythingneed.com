@@ -49,7 +49,7 @@ class ReviewController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-                'reviewable_type' => 'required|string|in:product,vendor,doctor,hotel,worker,restaurant,course,property,need_request',
+                'reviewable_type' => 'required|string|in:product,vendor,doctor,hotel,worker,restaurant,course,property,need_request,task_post',
             'reviewable_id' => 'required|uuid',
             'rating' => 'required|integer|min:1|max:5',
             'comment' => 'nullable|string|max:2000',
@@ -80,6 +80,29 @@ class ReviewController extends Controller
             $verifiedPurchase = true;
         }
 
+        // Task posts (TODO 17): only the task owner may review, only once,
+        // and only after the task completed.
+        if ($validated['reviewable_type'] === 'task_post') {
+            $task = \Modules\Needs\Entities\TaskPost::find($validated['reviewable_id']);
+            if (!$task) {
+                return response()->json(['message' => 'Task not found'], 404);
+            }
+            if ((string) $task->created_by !== (string) $request->user()->id) {
+                return response()->json(['message' => 'Only the task owner can review this task'], 403);
+            }
+            if ($task->status !== \Modules\Needs\Entities\TaskPost::STATUS_COMPLETED) {
+                return response()->json(['message' => 'You can review once the task is completed'], 422);
+            }
+            $already = Review::where('user_id', $request->user()->id)
+                ->where('reviewable_type', 'task_post')
+                ->where('reviewable_id', $task->id)
+                ->exists();
+            if ($already) {
+                return response()->json(['message' => 'You already reviewed this task'], 422);
+            }
+            $verifiedPurchase = true;
+        }
+
         // Courses (L-B.5): only an enrolled learner may review, only once,
         // and the course has to exist. Enrollment is the transaction that
         // makes the review trustworthy - it also earns the verified badge.
@@ -104,6 +127,31 @@ class ReviewController extends Controller
             $verifiedPurchase = true;
         }
 
+        // Hotels (N-40): the hotel must exist and each guest reviews once.
+        // The verified-guest badge is computed server-side from a completed
+        // stay — guests without an on-platform booking may still review
+        // (they simply carry no badge), never the other way around.
+        if ($validated['reviewable_type'] === 'hotel') {
+            $hotel = \Modules\Hotels\Entities\Hotel::find($validated['reviewable_id']);
+            if (!$hotel) {
+                return response()->json(['message' => 'Hotel not found'], 404);
+            }
+            $already = Review::where('user_id', $request->user()->id)
+                ->where('reviewable_type', 'hotel')
+                ->where('reviewable_id', $hotel->id)
+                ->exists();
+            if ($already) {
+                return response()->json(['message' => 'You already reviewed this hotel'], 422);
+            }
+            $verifiedPurchase = \Modules\Hotels\Entities\HotelReservation::where('user_id', $request->user()->id)
+                ->where('hotel_id', $hotel->id)
+                ->whereIn('status', [
+                    \Modules\Hotels\Entities\HotelReservation::STATUS_CHECKED_OUT,
+                    \Modules\Hotels\Entities\HotelReservation::STATUS_COMPLETED,
+                ])
+                ->exists();
+        }
+
         // Products (master-plan phase 22): the verified-purchase badge is
         // computed server-side from delivered/completed orders - never
         // trusted from the request payload.
@@ -119,18 +167,25 @@ class ReviewController extends Controller
 
         $review = null;
         try {
-            $review = Review::create(array_merge($validated, [
-                'user_id' => $request->user()->id,
-                'is_verified_purchase' => $verifiedPurchase,
-                'status' => Review::STATUS_APPROVED,
-            ]));
+            // Savepoint: a 23505 race-collapse must not poison an outer
+            // transaction (pgsql 25P02) — same pattern as the webhook intake.
+            $review = \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $request, $verifiedPurchase) {
+                return Review::create(array_merge($validated, [
+                    'user_id' => $request->user()->id,
+                    'is_verified_purchase' => $verifiedPurchase,
+                    'status' => Review::STATUS_APPROVED,
+                ]));
+            });
         } catch (\Illuminate\Database\QueryException $e) {
             // Concurrent double-submit: the unique indexes collapse the race
             // - report the duplicate honestly for the type being reviewed.
             if ((string) ($e->errorInfo[0] ?? '') === '23505') {
-                $message = $validated['reviewable_type'] === 'course'
-                    ? 'You already reviewed this course'
-                    : 'You already reviewed this request';
+                $message = match ($validated['reviewable_type']) {
+                    'course' => 'You already reviewed this course',
+                    'task_post' => 'You already reviewed this task',
+                    'hotel' => 'You already reviewed this hotel',
+                    default => 'You already reviewed this request',
+                };
 
                 return response()->json(['message' => $message], 422);
             }
@@ -146,6 +201,101 @@ class ReviewController extends Controller
             'message' => 'Review submitted successfully',
             'data' => $review,
         ], 201);
+    }
+
+    /**
+     * TODO 17 reporting: any signed-in user may flag a review once.
+     * Reports queue for moderators; the review itself is untouched until a
+     * moderator decides (no public shaming by report volume).
+     */
+    public function report(Request $request, string $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'reason' => ['required', 'string', 'max:500'],
+        ]);
+
+        $review = Review::find($id);
+        if (! $review) {
+            return response()->json(['message' => 'Review not found'], 404);
+        }
+
+        if ((string) $review->user_id === (string) $request->user()->id) {
+            return response()->json(['message' => 'You cannot report your own review'], 422);
+        }
+
+        try {
+            // Savepoint: a duplicate report must not poison an outer
+            // transaction (pgsql 25P02).
+            $report = \Illuminate\Support\Facades\DB::transaction(function () use ($review, $request, $validated) {
+                return \Modules\Reviews\Entities\ReviewReport::create([
+                    'review_id' => $review->id,
+                    'reporter_id' => $request->user()->id,
+                    'reason' => $validated['reason'],
+                    'status' => 'open',
+                ]);
+            });
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ((string) ($e->errorInfo[0] ?? '') === '23505') {
+                return response()->json(['message' => 'You already reported this review'], 422);
+            }
+
+            throw $e;
+        }
+
+        return response()->json(['message' => 'Report submitted', 'data' => $report], 201);
+    }
+
+    /**
+     * TODO 17 provider response: the reviewed counterparty answers once,
+     * visibly attached to the review. Needs tasks/requests resolve the
+     * counterparty from the engagement; other types stay closed.
+     */
+    public function respond(Request $request, string $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'response' => ['required', 'string', 'max:2000'],
+        ]);
+
+        $review = Review::find($id);
+        if (! $review) {
+            return response()->json(['message' => 'Review not found'], 404);
+        }
+
+        if ($review->provider_response !== null) {
+            return response()->json(['message' => 'This review already has a response'], 422);
+        }
+
+        if (! $this->isReviewCounterparty($request, $review)) {
+            return response()->json(['message' => 'Only the reviewed provider can respond'], 403);
+        }
+
+        $review->update([
+            'provider_response' => $validated['response'],
+            'responded_at' => now(),
+        ]);
+
+        return response()->json(['message' => 'Response posted', 'data' => $review->fresh()]);
+    }
+
+    private function isReviewCounterparty(Request $request, Review $review): bool
+    {
+        $userId = (string) $request->user()->id;
+
+        if ($review->reviewable_type === 'need_request') {
+            $need = \Modules\Needs\Entities\NeedRequest::find($review->reviewable_id);
+
+            return $need && $need->acceptedOffer
+                && (string) $need->acceptedOffer->provider_id === $userId;
+        }
+
+        if ($review->reviewable_type === 'task_post') {
+            $task = \Modules\Needs\Entities\TaskPost::with('assignedApplication')->find($review->reviewable_id);
+
+            return $task && $task->assignedApplication
+                && (string) $task->assignedApplication->user_id === $userId;
+        }
+
+        return false;
     }
 
     public function update(Request $request, string $id): JsonResponse

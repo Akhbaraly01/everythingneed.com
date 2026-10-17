@@ -18,6 +18,7 @@ interface Reservation {
     total_amount: number;
     status: string;
     payment_status?: string;
+    hotel_id?: string;
     hotel?: { name: string; city: string };
     room?: { room_type: string; price_per_night: number };
     checked_in_at?: string;
@@ -102,6 +103,14 @@ export default function ReservationsPage() {
                                             <span>Check-out: {r.check_out_date}</span>
                                         </div>
                                         <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white">{formatPrice(r.total_amount)}</p>
+                                        {['completed', 'checked_out'].includes(r.status) && r.hotel_id && (
+                                            <Link
+                                                href={`/reviews/create?type=hotel&id=${r.hotel_id}`}
+                                                className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-300"
+                                            >
+                                                ★ Review your stay
+                                            </Link>
+                                        )}
                                         {r.status === 'pending' && r.payment_status !== 'paid' && (
                                             <button
                                                 onClick={() => setPayFor(payFor === r.id ? null : r.id)}

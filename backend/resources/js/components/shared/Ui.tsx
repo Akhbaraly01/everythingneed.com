@@ -110,7 +110,7 @@ export function EmptyState({ icon, title, description, action }: {
     icon?: ReactNode; title: string; description?: string; action?: ReactNode;
 }) {
     return (
-        <div className="rounded-xl border border-dashed border-gray-300 p-14 text-center dark:border-gray-600">
+        <div className="glass-1 rounded-xl border border-dashed border-gray-300 p-10 text-center md:p-14 dark:border-gray-600">
             {icon && <div className="mx-auto mb-3 w-fit text-gray-300">{icon}</div>}
             <p className="font-medium text-gray-900 dark:text-white">{title}</p>
             {description && <p className="text-sm text-gray-500">{description}</p>}

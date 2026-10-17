@@ -6,6 +6,7 @@ import { toast } from '@/components/ui/sonner';
 import {ShoppingCart, Trash2, Plus, Minus, ArrowRight, Tag, AlertTriangle, RefreshCcw} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Image from '@/components/shared/Image';
+import { Button, buttonClasses } from '@/components/shared/Button';
 
 interface CartItem {
     id: string;
@@ -97,9 +98,9 @@ export default function CartIndex() {
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
                         <p className="text-red-600 font-medium">{error}</p>
                         <p className="mt-2 text-sm text-gray-500">Your cart has not been changed — we just couldn't load it.</p>
-                        <button onClick={fetchCart} className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-500">
+                        <Button variant="outline" size="sm" onClick={fetchCart} className="mt-4">
                             <RefreshCcw className="h-4 w-4" /> Retry
-                        </button>
+                        </Button>
                     </div>
                 ) : itemCount === 0 ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
@@ -108,7 +109,7 @@ export default function CartIndex() {
                         <p className="mt-2 text-gray-500">Start adding items to your cart.</p>
                         <Link
                             href="/products"
-                            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+                            className={`mt-4 ${buttonClasses('primary', 'md')}`}
                         >
                             Browse Products <ArrowRight className="h-4 w-4" />
                         </Link>
@@ -156,29 +157,38 @@ export default function CartIndex() {
                                         })()}
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <button
+                                        <Button
+                                            variant="icon"
+                                            iconOnly
+                                            size="sm"
+                                            aria-label="Decrease quantity"
                                             onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                                            className="rounded-lg border border-gray-300 p-1 hover:bg-gray-50 dark:border-gray-600"
                                         >
                                             <Minus className="h-4 w-4" />
-                                        </button>
+                                        </Button>
                                         <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
-                                        <button
+                                        <Button
+                                            variant="icon"
+                                            iconOnly
+                                            size="sm"
+                                            aria-label="Increase quantity"
                                             onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                            className="rounded-lg border border-gray-300 p-1 hover:bg-gray-50 dark:border-gray-600"
                                         >
                                             <Plus className="h-4 w-4" />
-                                        </button>
+                                        </Button>
                                     </div>
                                     <p className="w-24 text-right font-semibold text-gray-900 dark:text-white">
                                         {formatPrice(item.unit_price * item.quantity)}
                                     </p>
-                                    <button
+                                    <Button
+                                        variant="danger"
+                                        iconOnly
+                                        size="sm"
+                                        aria-label="Remove item"
                                         onClick={() => removeItem(item.id)}
-                                        className="rounded-lg p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
                                     >
                                         <Trash2 className="h-4 w-4" />
-                                    </button>
+                                    </Button>
                                 </div>
                             ))}
                         </div>
@@ -209,12 +219,9 @@ export default function CartIndex() {
                                                 placeholder="Coupon code"
                                                 className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700"
                                             />
-                                            <button
-                                                onClick={applyCoupon}
-                                                className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium hover:bg-gray-50 dark:border-gray-600"
-                                            >
+                                            <Button variant="primary" size="sm" onClick={applyCoupon}>
                                                 Apply
-                                            </button>
+                                            </Button>
                                         </div>
                                         {couponMsg && (
                                             <p className={`mt-1 text-xs ${couponMsg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
@@ -259,13 +266,13 @@ export default function CartIndex() {
 
                                 <Link
                                     href="/orders/checkout"
-                                    className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-6 py-3 text-lg font-semibold text-white hover:bg-indigo-500"
+                                    className={`mt-6 w-full ${buttonClasses('primary', 'lg')}`}
                                 >
                                     Proceed to Checkout <ArrowRight className="h-5 w-5" />
                                 </Link>
                                 <Link
                                     href="/products"
-                                    className="mt-3 flex w-full items-center justify-center rounded-lg border border-gray-300 px-6 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300"
+                                    className={`mt-3 w-full ${buttonClasses('outline', 'md')}`}
                                 >
                                     Continue Shopping
                                 </Link>

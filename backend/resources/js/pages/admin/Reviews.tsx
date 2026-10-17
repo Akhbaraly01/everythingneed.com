@@ -30,7 +30,7 @@ interface Meta {
     total: number;
 }
 
-const TYPES = ['all', 'product', 'vendor', 'doctor', 'hotel', 'restaurant', 'course', 'property'];
+const TYPES = ['all', 'product', 'vendor', 'doctor', 'hotel', 'restaurant', 'course', 'property', 'expert'];
 const STATUSES = ['all', 'approved', 'hidden', 'rejected'];
 
 const STATUS_STYLES: Record<string, string> = {
@@ -53,10 +53,25 @@ export default function AdminReviews() {
     useEffect(() => {
         setLoading(true);
         const qs = new URLSearchParams({ page: String(page), per_page: '15' });
-        if (type !== 'all') qs.set('reviewable_type', type);
-        if (status !== 'all') qs.set('status', status);
-        api.get<{ data: Review[]; meta: Meta }>(`/api/admin/reviews?${qs}`)
-            .then((res) => { setReviews(rows<Review>(res)); setMeta(res.meta); })
+        // Expert reviews live in their own table - same console gate, own endpoint.
+        const endpoint = type === 'expert' ? '/api/admin/expert-reviews' : '/api/admin/reviews';
+        if (type !== 'all' && type !== 'expert') qs.set('reviewable_type', type);
+        if (status !== 'all' && type !== 'expert') qs.set('status', status);
+        api.get<{ data: Review[]; meta: Meta }>(`${endpoint}?${qs}`)
+            .then((res) => {
+                const list = rows<Review & { user_name?: string }>(res).map((r) =>
+                    type === 'expert'
+                        ? {
+                            ...r,
+                            reviewable_type: 'expert',
+                            status: 'approved',
+                            user: r.user ?? (r.user_name ? { id: '', name: r.user_name, email: '' } : null),
+                        }
+                        : r,
+                );
+                setReviews(list);
+                setMeta(res.meta);
+            })
             .catch((e) => { setReviews([]); toast.error(errorMessage(e, 'Failed to load reviews')); })
             .finally(() => setLoading(false));
     }, [type, status, page]);
@@ -78,7 +93,11 @@ export default function AdminReviews() {
     const remove = async (r: Review) => {
         setBusy(true);
         try {
-            await api.del(`/api/admin/reviews/${r.id}`);
+            // Expert reviews live in their own table with their own endpoint.
+            const url = r.reviewable_type === 'expert'
+                ? `/api/admin/expert-reviews/${r.id}`
+                : `/api/admin/reviews/${r.id}`;
+            await api.del(url);
             setReviews(reviews.filter((x) => x.id !== r.id));
             toast.success('Review deleted.');
         } catch (e) {
@@ -173,11 +192,11 @@ export default function AdminReviews() {
                             key: 'actions', header: 'Actions',
                             render: (r) => (
                                 <div className="flex items-center gap-1">
-                                    {r.status !== 'hidden' && r.status !== 'rejected' && (
+                                    {r.reviewable_type !== 'expert' && r.status !== 'hidden' && r.status !== 'rejected' && (
                                         <button onClick={() => moderate(r, 'hidden')} title="Hide review"
                                             className="rounded p-1 text-amber-600 hover:bg-amber-50"><EyeOff className="h-4 w-4" /></button>
                                     )}
-                                    {(r.status === 'hidden' || r.status === 'rejected') && (
+                                    {r.reviewable_type !== 'expert' && (r.status === 'hidden' || r.status === 'rejected') && (
                                         <button onClick={() => moderate(r, 'approved')} title="Approve review"
                                             className="rounded p-1 text-green-600 hover:bg-green-50"><Undo2 className="h-4 w-4" /></button>
                                     )}

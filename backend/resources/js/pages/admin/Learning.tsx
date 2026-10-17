@@ -3,7 +3,7 @@ import { Head } from '@inertiajs/react';
 import { api, errorMessage, rows } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import ConfirmDialog from '@/components/shared/Ui';
-import { BookOpen, Pencil, Plus, Search, Star, Trash2 } from 'lucide-react';
+import { BookOpen, ListChecks, Pencil, Plus, Search, Star, Trash2, X } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -78,6 +78,7 @@ export default function AdminLearning() {
     const [saving, setSaving] = useState(false);
     const [deleteFor, setDeleteFor] = useState<Course | null>(null);
     const [deleting, setDeleting] = useState(false);
+    const [lessonCourse, setLessonCourse] = useState<Course | null>(null);
     const [form, setForm] = useState<CourseForm>(EMPTY_FORM);
 
     const load = (pageToUse = page, query = q, cat = category, courseStatus = status) => {
@@ -356,6 +357,8 @@ export default function AdminLearning() {
                                             </td>
                                             <td className="px-4 py-3">
                                                 <div className="flex items-center gap-1">
+                                                    <button onClick={() => setLessonCourse(c)} title="Manage lessons" data-testid="manage-lessons"
+                                                        className="rounded p-1 text-indigo-600 hover:bg-indigo-50"><ListChecks className="h-4 w-4" /></button>
                                                     <button onClick={() => startEdit(c)} title="Edit"
                                                         className="rounded p-1 text-blue-600 hover:bg-blue-50"><Pencil className="h-4 w-4" /></button>
                                                     {courseStatus !== 'published' && (
@@ -388,6 +391,10 @@ export default function AdminLearning() {
                     onConfirm={() => deleteFor && void remove(deleteFor)}
                     onCancel={() => setDeleteFor(null)}
                 />
+
+                {lessonCourse && (
+                    <LessonManager course={lessonCourse} onClose={() => setLessonCourse(null)} />
+                )}
 
                 {meta && meta.last_page > 1 && (
                     <div className="flex items-center justify-between text-sm text-gray-500">
@@ -475,3 +482,220 @@ type CommunityQueueItem = {
     created_at: string;
     user?: { name?: string };
 };
+
+/** Real curriculum row (CourseLesson entity / course_lessons table). */
+interface Lesson {
+    id: string;
+    course_id: string;
+    title: string;
+    content?: string | null;
+    video_url?: string | null;
+    duration_minutes?: number | null;
+    lesson_order: number;
+    is_free_preview?: boolean;
+}
+
+interface LessonForm {
+    title: string;
+    video_url: string;
+    content: string;
+    duration_minutes: string;
+    lesson_order: string;
+    is_free_preview: boolean;
+}
+
+const EMPTY_LESSON_FORM: LessonForm = {
+    title: '', video_url: '', content: '', duration_minutes: '', lesson_order: '', is_free_preview: false,
+};
+
+/**
+ * Lesson management (master directive §10): add, edit, reorder and remove
+ * lessons on a course. Video URLs feed the same in-app player used by the
+ * learner lesson page.
+ */
+function LessonManager({ course, onClose }: { course: Course; onClose: () => void }) {
+    const [lessons, setLessons] = useState<Lesson[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [form, setForm] = useState<LessonForm>(EMPTY_LESSON_FORM);
+    const [editing, setEditing] = useState<Lesson | null>(null);
+    const [saving, setSaving] = useState(false);
+    const [deleteFor, setDeleteFor] = useState<Lesson | null>(null);
+    const [deleting, setDeleting] = useState(false);
+
+    const loadLessons = () => {
+        setLoading(true);
+        api.get<{ data: Lesson[] }>(`/api/admin/courses/${course.id}/lessons`)
+            .then((res) => setLessons(rows<Lesson>(res)))
+            .catch((e) => toast.error(errorMessage(e, 'Failed to load lessons')))
+            .finally(() => setLoading(false));
+    };
+
+    useEffect(loadLessons, [course.id]);
+
+    const startEdit = (lesson: Lesson) => {
+        setEditing(lesson);
+        setForm({
+            title: lesson.title,
+            video_url: lesson.video_url ?? '',
+            content: lesson.content ?? '',
+            duration_minutes: lesson.duration_minutes != null ? String(lesson.duration_minutes) : '',
+            lesson_order: String(lesson.lesson_order),
+            is_free_preview: Boolean(lesson.is_free_preview),
+        });
+    };
+
+    const resetForm = () => {
+        setEditing(null);
+        setForm(EMPTY_LESSON_FORM);
+    };
+
+    const submit = async (e: FormEvent) => {
+        e.preventDefault();
+        setSaving(true);
+        const payload = {
+            title: form.title,
+            video_url: form.video_url || null,
+            content: form.content || null,
+            duration_minutes: form.duration_minutes ? Number(form.duration_minutes) : null,
+            lesson_order: form.lesson_order ? Number(form.lesson_order) : null,
+            is_free_preview: form.is_free_preview,
+        };
+        try {
+            if (editing) {
+                await api.put(`/api/admin/courses/${course.id}/lessons/${editing.id}`, payload);
+                toast.success('Lesson updated.');
+            } else {
+                await api.post(`/api/admin/courses/${course.id}/lessons`, payload);
+                toast.success('Lesson added to the curriculum.');
+            }
+            resetForm();
+            loadLessons();
+        } catch (err) {
+            toast.error(errorMessage(err, editing ? 'Failed to update lesson' : 'Failed to add lesson'));
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const remove = async (lesson: Lesson) => {
+        setDeleting(true);
+        try {
+            await api.del(`/api/admin/courses/${course.id}/lessons/${lesson.id}`);
+            toast.success('Lesson deleted.');
+            setDeleteFor(null);
+            if (editing?.id === lesson.id) resetForm();
+            loadLessons();
+        } catch (e) {
+            toast.error(errorMessage(e, 'Could not delete lesson'));
+        } finally {
+            setDeleting(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4 pt-16" data-testid="lesson-manager">
+            <div className="w-full max-w-3xl rounded-lg bg-white p-5 shadow-xl dark:bg-gray-800">
+                <div className="flex items-start justify-between gap-3">
+                    <div>
+                        <h2 className="font-semibold text-gray-900 dark:text-white">Lessons — {course.title}</h2>
+                        <p className="text-xs text-gray-500">
+                            {lessons.length} lesson{lessons.length === 1 ? '' : 's'} · videos play in-app on the lesson page
+                        </p>
+                    </div>
+                    <button onClick={onClose} title="Close" className="rounded p-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700">
+                        <X className="h-5 w-5" />
+                    </button>
+                </div>
+
+                <form onSubmit={submit} className="mt-4 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+                    <p className="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
+                        {editing ? `Edit lesson: ${editing.title}` : 'Add a lesson'}
+                    </p>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                        <label className="text-sm text-gray-600 dark:text-gray-300">Title
+                            <input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
+                                data-testid="lesson-title"
+                                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700" />
+                        </label>
+                        <label className="text-sm text-gray-600 dark:text-gray-300">Video URL (YouTube, Vimeo, TikTok, Facebook, MP4/HLS)
+                            <input value={form.video_url} placeholder="https://www.youtube.com/watch?v=..." onChange={(e) => setForm({ ...form, video_url: e.target.value })}
+                                data-testid="lesson-video-url"
+                                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700" />
+                        </label>
+                        <label className="text-sm text-gray-600 dark:text-gray-300">Duration (minutes)
+                            <input type="number" min="0" value={form.duration_minutes} onChange={(e) => setForm({ ...form, duration_minutes: e.target.value })}
+                                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700" />
+                        </label>
+                        <label className="text-sm text-gray-600 dark:text-gray-300">Order
+                            <input type="number" min="1" value={form.lesson_order} placeholder="Auto (end)" onChange={(e) => setForm({ ...form, lesson_order: e.target.value })}
+                                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700" />
+                        </label>
+                        <label className="sm:col-span-2 text-sm text-gray-600 dark:text-gray-300">Content
+                            <textarea rows={2} value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })}
+                                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700" />
+                        </label>
+                        <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                            <input type="checkbox" checked={form.is_free_preview} onChange={(e) => setForm({ ...form, is_free_preview: e.target.checked })} />
+                            Free preview
+                        </label>
+                    </div>
+                    <div className="mt-3 flex gap-2">
+                        <button type="submit" disabled={saving} data-testid="lesson-save"
+                            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50">
+                            {saving ? 'Saving...' : editing ? 'Save lesson' : 'Add lesson'}
+                        </button>
+                        {editing && (
+                            <button type="button" onClick={resetForm}
+                                className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300">
+                                Cancel edit
+                            </button>
+                        )}
+                    </div>
+                </form>
+
+                <div className="mt-4">
+                    {loading ? (
+                        <p className="text-sm text-gray-500">Loading lessons...</p>
+                    ) : lessons.length === 0 ? (
+                        <p className="text-sm text-gray-500">No lessons yet. Add the first one above.</p>
+                    ) : (
+                        <ul className="divide-y divide-gray-100 dark:divide-gray-700" data-testid="lesson-list">
+                            {lessons.map((lesson) => (
+                                <li key={lesson.id} className="flex items-start justify-between gap-3 py-2">
+                                    <div className="min-w-0">
+                                        <p className="truncate text-sm font-medium text-gray-900 dark:text-white">
+                                            <span className="mr-2 inline-block rounded bg-gray-100 px-1.5 text-xs text-gray-600 dark:bg-gray-700 dark:text-gray-300">{lesson.lesson_order}</span>
+                                            {lesson.title}
+                                            {lesson.is_free_preview && <span className="ml-2 rounded bg-green-100 px-1.5 text-xs text-green-700">Free</span>}
+                                        </p>
+                                        <p className="truncate text-xs text-gray-500">
+                                            {lesson.duration_minutes != null ? `${lesson.duration_minutes} min` : 'No duration'}
+                                            {lesson.video_url ? ` · ${lesson.video_url}` : ' · no video'}
+                                        </p>
+                                    </div>
+                                    <div className="flex shrink-0 items-center gap-1">
+                                        <button onClick={() => startEdit(lesson)} title="Edit lesson"
+                                            className="rounded p-1 text-blue-600 hover:bg-blue-50"><Pencil className="h-4 w-4" /></button>
+                                        <button onClick={() => setDeleteFor(lesson)} title="Delete lesson"
+                                            className="rounded p-1 text-red-600 hover:bg-red-50"><Trash2 className="h-4 w-4" /></button>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+
+                <ConfirmDialog
+                    open={deleteFor !== null}
+                    title="Delete lesson?"
+                    description={deleteFor ? `Delete "${deleteFor.title}" from the curriculum?` : undefined}
+                    confirmLabel="Delete"
+                    danger
+                    busy={deleting}
+                    onConfirm={() => deleteFor && void remove(deleteFor)}
+                    onCancel={() => setDeleteFor(null)}
+                />
+            </div>
+        </div>
+    );
+}

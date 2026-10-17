@@ -29,8 +29,10 @@ class Payment extends Model
 
     protected $casts = [
         'amount' => 'decimal:2',
-        'gateway_response' => 'array',
-        'metadata' => 'array',
+        // AES-256-GCM at rest (APP_KEY); security:encrypt-pii backfills rows
+        // written before these casts existed.
+        'gateway_response' => 'encrypted:array',
+        'metadata' => 'encrypted:array',
     ];
 
     const STATUS_PENDING = 'pending';

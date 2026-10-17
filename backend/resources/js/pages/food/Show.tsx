@@ -1,9 +1,34 @@
 import AppLayout from '@/layouts/AppLayout';
-import {Head} from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import type { Restaurant, MenuItem } from '@/types';
-import {MapPin, Star, Leaf, Flame} from 'lucide-react';
-import { useState } from 'react';
+import { MapPin, Star, Leaf, Flame, Plus, ShoppingCart } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import Image from '@/components/shared/Image';
+
+interface CartRow {
+    id: string;
+    menu_item_id: string;
+    quantity: number;
+    unit_price: number;
+    menu_item: { id: string; name: string; price: number };
+}
+
+interface StoredFoodCart {
+    items: CartRow[];
+    restaurant_id: string;
+    restaurant_name: string;
+    subtotal: number;
+}
+
+function readFoodCart(): StoredFoodCart | null {
+    try {
+        const stored = localStorage.getItem('food_cart');
+        return stored ? (JSON.parse(stored) as StoredFoodCart) : null;
+    } catch {
+        return null;
+    }
+}
 
 interface RestaurantShowProps {
     restaurant: Restaurant & { menu_items?: MenuItem[] };
@@ -11,6 +36,48 @@ interface RestaurantShowProps {
 
 export default function RestaurantShow({ restaurant }: RestaurantShowProps) {
     const [selectedCategory, setSelectedCategory] = useState<string>('All');
+    const [cartCount, setCartCount] = useState(0);
+
+    useEffect(() => {
+        const cart = readFoodCart();
+        if (cart?.restaurant_id === restaurant.id) {
+            setCartCount(cart.items.reduce((n, i) => n + i.quantity, 0));
+        }
+    }, [restaurant.id]);
+
+    const addToCart = (item: MenuItem) => {
+        const existing = readFoodCart();
+        const items = existing && existing.restaurant_id === restaurant.id ? [...existing.items] : [];
+        if (existing && existing.restaurant_id !== restaurant.id && existing.items.length > 0) {
+            toast.info('Started a new cart — items from the previous restaurant were removed.');
+        }
+        const row = items.find((i) => i.menu_item_id === item.id);
+        if (row) {
+            row.quantity += 1;
+        } else {
+            items.push({
+                id: item.id,
+                menu_item_id: item.id,
+                quantity: 1,
+                unit_price: Number(item.price),
+                menu_item: { id: item.id, name: item.name, price: Number(item.price) },
+            });
+        }
+        const subtotal = items.reduce((sum, i) => sum + i.unit_price * i.quantity, 0);
+        try {
+            localStorage.setItem('food_cart', JSON.stringify({
+                items,
+                restaurant_id: restaurant.id,
+                restaurant_name: restaurant.name,
+                subtotal,
+            }));
+        } catch {
+            toast.error('Could not save your cart on this device.');
+            return;
+        }
+        setCartCount(items.reduce((n, i) => n + i.quantity, 0));
+        toast.success(`${item.name} added to cart.`);
+    };
 
     const menuCategories = ['All', ...Array.from(new Set(restaurant.menu_items?.map((item) => item.category).filter((c): c is string => Boolean(c)) ?? []))];
     const filteredMenu = selectedCategory === 'All'
@@ -51,7 +118,17 @@ export default function RestaurantShow({ restaurant }: RestaurantShowProps) {
 
                 {/* Menu */}
                 <div className="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
-                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Menu</h2>
+                    <div className="flex items-center justify-between gap-3">
+                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Menu</h2>
+                        {cartCount > 0 && (
+                            <Link
+                                href="/food/cart"
+                                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+                            >
+                                <ShoppingCart className="h-4 w-4" /> View cart ({cartCount})
+                            </Link>
+                        )}
+                    </div>
 
                     {/* Category filter */}
                     {menuCategories.length > 1 && (
@@ -101,8 +178,16 @@ export default function RestaurantShow({ restaurant }: RestaurantShowProps) {
                                     </div>
                                     <div className="ml-4 text-right">
                                         <p className="text-lg font-bold text-gray-900 dark:text-white">${item.price.toFixed(2)}</p>
-                                        {!item.is_available && (
+                                        {!item.is_available ? (
                                             <p className="text-xs text-red-500">Unavailable</p>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                onClick={() => addToCart(item)}
+                                                className="mt-1 inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500"
+                                            >
+                                                <Plus className="h-4 w-4" /> Add
+                                            </button>
                                         )}
                                     </div>
                                 </div>

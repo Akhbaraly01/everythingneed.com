@@ -58,6 +58,22 @@ class NeedRequest extends Model
         'delivery_requirements',
         'notes',
         'status',
+        'answers',
+        'form_schema_snapshot',
+        'form_schema_version',
+        'selected_listing_id',
+        'selected_package',
+        'pricing_basis',
+        'is_remote',
+        'state',
+        'lga',
+        'city',
+        'is_asap',
+        'preferred_time_window',
+        'visibility',
+        'invited_provider_ids',
+        'client_key',
+        'agreed_price_override',
     ];
 
     protected $casts = [
@@ -68,7 +84,42 @@ class NeedRequest extends Model
         'quantity' => 'integer',
         'preferred_date' => 'date',
         'deadline' => 'date',
+        'answers' => 'array',
+        'form_schema_snapshot' => 'array',
+        'form_schema_version' => 'integer',
+        'selected_package' => 'array',
+        'is_remote' => 'boolean',
+        'is_asap' => 'boolean',
+        'invited_provider_ids' => 'array',
     ];
+
+    /** Pricing models a request can declare (§7 step 4). */
+    public const PRICING_FIXED = 'fixed';
+    public const PRICING_RANGE = 'range';
+    public const PRICING_HOURLY = 'hourly';
+    public const PRICING_PER_ITEM = 'per_item';
+    public const PRICING_QUOTE = 'quote';
+    public const PRICING_INSPECTION = 'inspection';
+    public const PRICING_FLEXIBLE = 'flexible';
+
+    public const PRICING_BASES = [
+        self::PRICING_FIXED,
+        self::PRICING_RANGE,
+        self::PRICING_HOURLY,
+        self::PRICING_PER_ITEM,
+        self::PRICING_QUOTE,
+        self::PRICING_INSPECTION,
+        self::PRICING_FLEXIBLE,
+    ];
+
+    /** Visibility modes (§7 step 7). invite_only is enforced, not labeled. */
+    public const VISIBILITY_PUBLIC = 'public';
+    public const VISIBILITY_INVITE_ONLY = 'invite_only';
+
+    public function isProviderInvited(string $userId): bool
+    {
+        return in_array($userId, $this->invited_provider_ids ?? [], true);
+    }
 
     public function offers()
     {
@@ -94,6 +145,13 @@ class NeedRequest extends Model
     public function events()
     {
         return $this->hasMany(NeedRequestEvent::class, 'need_request_id')
+            ->orderByDesc('created_at');
+    }
+
+    /** P0 needs console: needs-scoped disputes (shared disputes table). */
+    public function disputes()
+    {
+        return $this->hasMany(\Modules\Orders\Entities\Dispute::class, 'need_request_id')
             ->orderByDesc('created_at');
     }
 }

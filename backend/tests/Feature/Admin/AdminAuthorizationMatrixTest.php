@@ -158,6 +158,10 @@ class AdminAuthorizationMatrixTest extends TestCase
             'allow' => ['/admin/dashboard'],
             'deny' => ['/admin/users', '/admin/finance', '/admin/orders', '/admin/categories', '/admin/kyc'],
         ],
+        'needs_viewer' => [
+            'allow' => ['/admin/dashboard', '/admin/needs'],
+            'deny' => ['/admin/users', '/admin/finance', '/admin/orders', '/admin/categories', '/admin/kyc', '/admin/rbac'],
+        ],
         'payout_reviewer' => [
             'allow' => ['/admin/dashboard', '/admin/payouts'],
             'deny' => ['/admin/users', '/admin/finance', '/admin/wallet', '/admin/orders'],
@@ -182,7 +186,7 @@ class AdminAuthorizationMatrixTest extends TestCase
             'allow' => ['/admin/dashboard', '/admin/analytics', '/admin/reports'],
             'deny' => ['/admin/users', '/admin/finance', '/admin/orders', '/admin/categories', '/admin/kyc'],
         ],
-        // Spec §65 named admin roles (full 39-role coverage).
+        // Spec §65 named admin roles (full 40-role coverage since TODO 21).
         'category_admin' => [
             'allow' => ['/admin/dashboard', '/admin/categories', '/admin/category', '/admin/brands'],
             'deny' => ['/admin/users', '/admin/finance', '/admin/orders', '/admin/kyc', '/admin/cms', '/admin/approvals'],
@@ -197,7 +201,7 @@ class AdminAuthorizationMatrixTest extends TestCase
         ],
     ];
 
-    public function test_matrix_covers_the_full_39_role_roster(): void
+    public function test_matrix_covers_the_full_40_role_roster(): void
     {
         $this->assertEqualsCanonicalizing(
             \Modules\Admin\Http\Controllers\AdminRbacController::ROLES,

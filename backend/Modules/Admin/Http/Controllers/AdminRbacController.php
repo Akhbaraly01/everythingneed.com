@@ -14,7 +14,7 @@ use Modules\Admin\Http\Requests\RevokePermissionRequest;
 
 class AdminRbacController extends Controller
 {
-    // Canonical 39-role set — must stay equal to Core\Enums\AppRole::values()
+    // Canonical 40-role set — must stay equal to Core\Enums\AppRole::values()
     // (asserted by tests\Unit\Admin\CanonicalRolesTest).
     public const ROLES = [
         'super_admin', 'administrator', 'platform_ops', 'security_admin',
@@ -24,11 +24,11 @@ class AdminRbacController extends Controller
         'customer_service', 'marketplace_admin', 'hotel_admin', 'food_admin',
         'transport_admin', 'agriculture_admin', 'building_admin', 'jobs_admin',
         'pharmacy_admin', 'orders_admin', 'wallet_admin', 'support_admin',
-        'real_estate_admin', 'needs_admin',
+        'real_estate_admin', 'needs_admin', 'needs_viewer',
         'payout_reviewer', 'refund_agent', 'inventory_manager', 'cms_editor',
         'auditor', 'analyst',
         'kyc_reviewer', 'worker', 'user',
-        // Spec §65 named admin roles.
+        // Spec A?65 named admin roles.
         'category_admin', 'vendor_manager', 'content_admin',
     ];
 

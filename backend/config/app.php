@@ -15,6 +15,9 @@ return [
     'faker_locale' => env('APP_FAKER_LOCALE', 'en_US'),
     'key' => env('APP_KEY'),
     'cipher' => 'AES-256-GCM',
+    // Retired key kept only across a rotation window: PiiCipher decrypts
+    // old ciphertext with it while security:encrypt-pii re-encrypts to `key`.
+    'previous_key' => env('APP_PREVIOUS_KEY', ''),
     'maintenance' => [
         'driver' => env('APP_MAINTENANCE_DRIVER', 'file'),
         'store' => env('APP_MAINTENANCE_STORE', 'database'),

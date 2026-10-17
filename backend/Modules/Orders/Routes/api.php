@@ -68,4 +68,6 @@ Route::prefix('api')->middleware('auth:sanctum')->group(function () {
     Route::post('/disputes', [DisputeController::class, 'store']);
     Route::get('/disputes/{id}', [DisputeController::class, 'show']);
     Route::post('/disputes/{id}/close', [DisputeController::class, 'close']);
+    Route::get('/disputes/{id}/evidence', [DisputeController::class, 'evidence']);
+    Route::post('/disputes/{id}/evidence', [DisputeController::class, 'addEvidence']);
 });

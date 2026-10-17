@@ -8,6 +8,8 @@ import { formatDateTime } from '@/lib/utils';
 import { formatPrice } from '@/lib/currency';
 import EmptyState from '@/components/shared/EmptyState';
 import LoadingState, { ErrorState } from '@/components/shared/LoadingState';
+import { Button } from '@/components/shared/Button';
+import ImageUploadField from '@/components/shared/ImageUploadField';
 
 interface AidRequest {
     id: string;
@@ -19,6 +21,7 @@ interface AidRequest {
     currency: string;
     status: string;
     rejection_reason?: string | null;
+    images?: string[] | null;
     created_at: string;
 }
 
@@ -50,6 +53,7 @@ export default function MyAid() {
     const [description, setDescription] = useState('');
     const [category, setCategory] = useState('');
     const [goal, setGoal] = useState('');
+    const [images, setImages] = useState<string[]>([]);
     const [submitting, setSubmitting] = useState(false);
 
     const load = useCallback(() => {
@@ -83,6 +87,7 @@ export default function MyAid() {
                 description: description.trim(),
                 category: category || undefined,
                 goal_amount: Number(goal),
+                images: images.length > 0 ? images : undefined,
                 idempotency_key: `aid-req-${title.trim().toLowerCase().replace(/\s+/g, '-').slice(0, 40)}-${Date.now()}`,
             });
             toast.success('Aid request submitted for review');
@@ -90,6 +95,7 @@ export default function MyAid() {
             setDescription('');
             setCategory('');
             setGoal('');
+            setImages([]);
             setShowForm(false);
             load();
         } catch (e) {
@@ -112,12 +118,12 @@ export default function MyAid() {
                     <p className="text-sm text-gray-500 dark:text-gray-400">
                         Requests you filed are reviewed by support before going public.
                     </p>
-                    <button
+                    <Button
                         onClick={() => setShowForm((v) => !v)}
-                        className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+                        className="gap-1"
                     >
                         <Plus className="h-4 w-4" /> New request
-                    </button>
+                    </Button>
                 </div>
 
                 {showForm && (
@@ -158,20 +164,26 @@ export default function MyAid() {
                                 className="w-48 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
                             />
                         </div>
+                        <ImageUploadField
+                            value={images}
+                            onChange={setImages}
+                            folder="aid"
+                            label="Injury / disease photos (optional)"
+                            hint="Up to 5 photos to help reviewers verify the need."
+                        />
                         <div className="flex gap-2">
-                            <button
+                            <Button
                                 onClick={submit}
-                                disabled={submitting}
-                                className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
+                                loading={submitting}
                             >
-                                {submitting ? 'Submitting...' : 'Submit for review'}
-                            </button>
-                            <button
+                                Submit for review
+                            </Button>
+                            <Button
                                 onClick={() => setShowForm(false)}
-                                className="rounded-lg border border-gray-300 px-5 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                                variant="ghost"
                             >
                                 Cancel
-                            </button>
+                            </Button>
                         </div>
                     </div>
                 )}
@@ -213,6 +225,20 @@ export default function MyAid() {
                                                         <p className="mt-1 text-xs text-red-600 dark:text-red-400">
                                                             Rejected: {r.rejection_reason}
                                                         </p>
+                                                    )}
+                                                    {r.images && r.images.length > 0 && (
+                                                        <div className="mt-2 flex flex-wrap gap-1.5">
+                                                            {r.images.map((url, i) => (
+                                                                <a key={`${r.id}-img-${i}`} href={url} target="_blank" rel="noreferrer">
+                                                                    <img
+                                                                        src={url}
+                                                                        alt=""
+                                                                        loading="lazy"
+                                                                        className="h-12 w-12 rounded-md border border-border object-cover"
+                                                                    />
+                                                                </a>
+                                                            ))}
+                                                        </div>
                                                     )}
                                                 </div>
                                                 <div className="flex items-center gap-2">

@@ -6,12 +6,15 @@
  * playback always goes through embedUrlFor() so the UI never reflects an
  * arbitrary embed host back from stored data.
  */
-export type VideoProvider = 'upload' | 'youtube' | 'vimeo' | 'facebook';
+export type VideoProvider = 'upload' | 'youtube' | 'vimeo' | 'facebook' | 'tiktok';
 
-export const VIDEO_PROVIDERS: readonly VideoProvider[] = ['upload', 'youtube', 'vimeo', 'facebook'];
+export const VIDEO_PROVIDERS: readonly VideoProvider[] = ['upload', 'youtube', 'vimeo', 'facebook', 'tiktok'];
+
+/** Direct media files (mp4/webm/ogg/mov/m4v/HLS) play in a native <video>. */
+const DIRECT_FILE = /\.(mp4|webm|ogg|ogv|mov|m4v|m3u8|mpd)(?:[?#].*)?$/i;
 
 export interface ResolvedVideo {
-    provider: VideoProvider;
+    provider: VideoProvider | 'file';
     videoId: string;
     /** Self-hosted files play their own URL; embeds get a provider embed URL. */
     url: string;
@@ -68,6 +71,19 @@ function facebookId(raw: string): string | null {
     return match ? match[1] : null;
 }
 
+function tiktokId(raw: string): string | null {
+    let u: URL;
+    try {
+        u = new URL(raw);
+    } catch {
+        return null;
+    }
+    const host = u.hostname.replace(/^www\./, '');
+    if (host !== 'tiktok.com' && host !== 'm.tiktok.com') return null;
+    const match = u.pathname.match(/\/(?:@[\w.-]+\/video|embed\/v2|v)\/(\d{6,25})/);
+    return match ? match[1] : null;
+}
+
 /** Client-side resolution used by the composer preview (mirrors the server). */
 export function resolveVideoUrl(raw: string): ResolvedVideo | null {
     const value = raw.trim();
@@ -86,6 +102,13 @@ export function resolveVideoUrl(raw: string): ResolvedVideo | null {
     const fb = facebookId(value);
     if (fb) return { provider: 'facebook', videoId: fb, url: value };
 
+    const tt = tiktokId(value);
+    if (tt) return { provider: 'tiktok', videoId: tt, url: value };
+
+    if (DIRECT_FILE.test(value)) {
+        return { provider: 'file', videoId: value, url: value };
+    }
+
     return null;
 }
 
@@ -94,7 +117,7 @@ export function resolveVideoUrl(raw: string): ResolvedVideo | null {
  * auto-plays until the player component asks for it.
  */
 export function embedUrlFor(
-    provider: VideoProvider,
+    provider: VideoProvider | 'file',
     videoId: string,
     opts: { autoplay?: boolean } = {},
 ): string | null {
@@ -108,7 +131,10 @@ export function embedUrlFor(
             const href = encodeURIComponent(`https://www.facebook.com/videos/${videoId}/`);
             return `https://www.facebook.com/plugins/video.php?href=${href}&show_text=false&width=640`;
         }
+        case 'tiktok':
+            return `https://www.tiktok.com/embed/v2/${encodeURIComponent(videoId)}`;
         case 'upload':
+        case 'file':
             return videoId;
         default:
             return null;
@@ -118,4 +144,87 @@ export function embedUrlFor(
 /** True when a stored pair from the API is safe to render. */
 export function isKnownProvider(value: string | null | undefined): value is VideoProvider {
     return typeof value === 'string' && (VIDEO_PROVIDERS as readonly string[]).includes(value);
+}
+
+/* ------------------------------------------------------------------ *
+ * Playback resolution for lesson/product/consultation surfaces.
+ *
+ * Feed posts resolve server-side (VideoResolver) into the stored quad;
+ * everywhere else the URL is resolved at render time so a raw link
+ * never reaches an <iframe src>. Direct media files play natively;
+ * Udemy links are honest in-app notices (no embeddable player exists).
+ * ------------------------------------------------------------------ */
+export type PlaybackProvider = VideoProvider | 'file' | 'udemy' | 'jitsi' | 'meet' | 'zoom';
+
+export const PLAYBACK_PROVIDERS: readonly PlaybackProvider[] = [...VIDEO_PROVIDERS, 'file', 'udemy', 'jitsi', 'meet', 'zoom'];
+
+export interface PlaybackSource {
+    provider: PlaybackProvider;
+    videoId: string;
+    url: string;
+    /** Playable in-app; false renders an explanatory notice instead. */
+    playable: boolean;
+}
+
+export function isPlaybackProvider(value: string | null | undefined): value is PlaybackProvider {
+    return typeof value === 'string' && (PLAYBACK_PROVIDERS as readonly string[]).includes(value);
+}
+
+/**
+ * Resolve any stored URL for in-app playback:
+ *   - youtube/vimeo/facebook/tiktok/upload via the same rules as the server,
+ *   - direct media files (mp4/webm/ogg/mov/m4v/HLS) -> native player,
+ *   - udemy.com -> notice (Udemy lectures are not embeddable).
+ * Unknown hosts return null: the caller shows an in-app notice instead
+ * of reflecting an arbitrary URL into an iframe.
+ */
+export function resolvePlaybackSource(raw: string | null | undefined): PlaybackSource | null {
+    const value = (raw ?? '').trim();
+    if (!value) return null;
+
+    const known = resolveVideoUrl(value);
+    if (known) return { ...known, playable: true };
+
+    if (!/^https?:\/\//i.test(value)) return null;
+
+    let host: string;
+    try {
+        host = new URL(value).hostname.replace(/^www\./, '');
+    } catch {
+        return null;
+    }
+
+    if (host === 'udemy.com' || host.endsWith('.udemy.com')) {
+        return { provider: 'udemy', videoId: value, url: value, playable: false };
+    }
+
+    // Live classes: Jitsi rooms embed in-app through the External API.
+    if (host === 'meet.jit.si' || host.endsWith('.jit.si') || host.startsWith('jitsi.')) {
+        return { provider: 'jitsi', videoId: value, url: value, playable: true };
+    }
+
+    // Google Meet and Zoom refuse third-party embedding (frame headers /
+    // signed-SDK requirement): honest notices with a labeled link.
+    if (host === 'meet.google.com') {
+        return { provider: 'meet', videoId: value, url: value, playable: false };
+    }
+    if (host === 'zoom.us' || host.endsWith('.zoom.us')) {
+        return { provider: 'zoom', videoId: value, url: value, playable: false };
+    }
+
+    if (DIRECT_FILE.test(value)) {
+        return { provider: 'file', videoId: value, url: value, playable: true };
+    }
+
+    return null;
+}
+
+/** Room name for a Jitsi join URL (last path segment). */
+export function meetingRoomName(raw: string): string {
+    try {
+        const name = new URL(raw).pathname.split('/').filter(Boolean).pop();
+        return name ? decodeURIComponent(name) : '';
+    } catch {
+        return '';
+    }
 }

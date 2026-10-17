@@ -2,7 +2,7 @@
 
 namespace Modules\Reviews\Services;
 
-use Modules\Learn\Entities\Course;
+use Core\Services\Contracts\LearnCatalogInterface;
 use Modules\Reviews\Entities\Review;
 
 /**
@@ -15,6 +15,10 @@ use Modules\Reviews\Entities\Review;
  */
 class CourseRatingAggregator
 {
+    public function __construct(
+        private LearnCatalogInterface $catalog
+    ) {}
+
     public function sync(string $courseId): void
     {
         $stats = Review::query()
@@ -24,15 +28,14 @@ class CourseRatingAggregator
             ->selectRaw('count(*) as reviews_total, avg(rating) as rating_average')
             ->first();
 
-        // A soft-deleted course is out of discovery; leave it untouched.
-        $course = Course::find($courseId);
-        if (!$course) {
-            return;
-        }
-
         $total = (int) ($stats->reviews_total ?? 0);
-        $course->rating = $total > 0 ? round((float) ($stats->rating_average ?? 0), 1) : null;
-        $course->reviews_count = $total;
-        $course->save();
+
+        // Learn owns the write (missing/soft-deleted courses are left
+        // untouched inside the catalogue service).
+        $this->catalog->updateRating(
+            $courseId,
+            $total > 0 ? round((float) ($stats->rating_average ?? 0), 1) : null,
+            $total
+        );
     }
 }

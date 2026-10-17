@@ -9,6 +9,12 @@ Route::prefix('api')->group(function () {
         Route::get('/properties/my-listings', [PropertyController::class, 'myListings']);
         Route::post('/properties/{id}/inquiries', [PropertyController::class, 'inquiry']);
         Route::post('/properties/{id}/viewing-requests', [PropertyController::class, 'inquiry']);
+
+        // N-43 viewing tour slots: owner workflow + requester statuses.
+        Route::get('/properties/{id}/viewing-requests', [PropertyController::class, 'viewingRequests']);
+        Route::post('/viewing-requests/{viewingId}/approve', [PropertyController::class, 'approveViewing']);
+        Route::post('/viewing-requests/{viewingId}/reject', [PropertyController::class, 'rejectViewing']);
+        Route::get('/my-viewing-requests', [PropertyController::class, 'myViewings']);
     });
 
     // Public reads

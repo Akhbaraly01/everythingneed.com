@@ -62,6 +62,24 @@ class AidController extends Controller
             return response()->json(['message' => 'Aid request not found'], 404);
         }
 
+        // Donor unlinkability: anonymous donations expose no donor identity
+        // to the public. The donor, the request owner, and moderation staff
+        // still resolve names (receipts, refunds, fraud review).
+        $viewer = $request->user();
+        $canSeeDonors = $isOwner
+            || ($viewer && in_array($viewer->role ?? null, ['super_admin', 'administrator', 'healthcare_admin'], true))
+            || ($viewer && method_exists($viewer, 'hasRole') && (
+                $viewer->hasRole('super_admin') || $viewer->hasRole('administrator') || $viewer->hasRole('healthcare_admin')
+            ));
+        $aid->setRelation('donations', $aid->donations->map(function ($donation) use ($viewer, $canSeeDonors) {
+            $isSelf = $viewer && (string) $donation->donor_id === (string) $viewer->id;
+            if ($donation->is_anonymous && !$isSelf && !$canSeeDonors) {
+                $donation->setRelation('donor', null);
+            }
+
+            return $donation;
+        }));
+
         return response()->json(['data' => $aid]);
     }
 
@@ -74,7 +92,22 @@ class AidController extends Controller
             'category' => 'nullable|string|max:60',
             'goal_amount' => 'required|numeric|min:1|max:100000',
             'idempotency_key' => 'nullable|string|max:120',
+            // Optional injury/disease evidence: uploader-produced URLs only
+            // (POST /api/upload first), never raw client strings.
+            'images' => 'nullable|array|max:5',
+            'images.*' => 'nullable|url|max:2048',
         ]);
+
+        // Own-scope backstop: evidence must live under the filer's personal
+        // upload scope, never hotlinked from another account or the web.
+        $scope = 'uploads/u/'.$request->user()->id.'/';
+        foreach ($data['images'] ?? [] as $url) {
+            if (!str_contains((string) $url, $scope)) {
+                return response()->json([
+                    'message' => 'Each image must be uploaded to your own library first.',
+                ], 422);
+            }
+        }
 
         $aid = DB::transaction(function () use ($data, $request) {
             if (!empty($data['idempotency_key'])) {
@@ -95,6 +128,7 @@ class AidController extends Controller
                 'currency' => Currencies::default(),
                 'status' => AidRequest::STATUS_PENDING,
                 'idempotency_key' => $data['idempotency_key'] ?? null,
+                'images' => array_values($data['images'] ?? []),
             ]);
         });
 
@@ -142,6 +176,7 @@ class AidController extends Controller
         $data = $request->validate([
             'amount' => 'required|numeric|min:1|max:100000',
             'method' => 'required|string|max:30',
+            'anonymous' => 'nullable|boolean',
         ]);
 
         $donationKey = 'aid-'.$aid->id.'-'.$request->user()->id;
@@ -162,7 +197,7 @@ class AidController extends Controller
         ]);
 
         try {
-            $donation = DB::transaction(function () use ($aid, $request, $amount, $payment) {
+            $donation = DB::transaction(function () use ($aid, $request, $amount, $payment, $data) {
                 $donation = AidDonation::create([
                     'aid_request_id' => $aid->id,
                     'donor_id' => $request->user()->id,
@@ -170,6 +205,7 @@ class AidController extends Controller
                     'currency' => $aid->currency ?: Currencies::default(),
                     'payment_id' => (string) ($payment->id ?? ''),
                     'status' => AidDonation::STATUS_COMPLETED,
+                    'is_anonymous' => (bool) ($data['anonymous'] ?? false),
                 ]);
 
                 $raised = (float) $aid->raised_amount + $amount;

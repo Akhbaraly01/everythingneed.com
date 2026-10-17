@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
 import { useLanguage } from '@/lib/use-language';
-import { type Language } from '@/lib/i18n-dict';
+import { type Language, LANGUAGES, LANGUAGE_NAMES } from '@/lib/i18n-dict';
 import { useTheme } from '@/components/ThemeProvider';
 import { persistCurrency, isDisplayCurrency } from '@/lib/currency';
 import TwoFactorCard from '@/components/account/TwoFactorCard';
@@ -149,8 +149,9 @@ export default function Settings({ user, settings }: SettingsProps) {
                                                 className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                             >
                                                 <option value="en">English</option>
-                                                <option value="es">Spanish</option>
-                                                <option value="fr">French</option>
+                                                {LANGUAGES.filter((code) => code !== 'en').map((code) => (
+                                                    <option key={code} value={code}>{LANGUAGE_NAMES[code]}</option>
+                                                ))}
                                             </select>
                                         </div>
                                         <div className="flex-1">

@@ -1,5 +1,6 @@
 import AppLayout from '@/layouts/AppLayout';
 import VideoPlayer from '@/components/learn/VideoPlayer';
+import { Button } from '@/components/shared/Button';
 import { PromptDialog } from '@/components/shared/Ui';
 import { statusLabel, statusTone } from '@/lib/lifecycle';
 import { api, errorMessage, rows } from '@/lib/api';
@@ -220,7 +221,7 @@ export default function LearnFeed() {
             return;
         }
         if (mediaType === 'video' && !videoPreview) {
-            toast.error('Add a valid YouTube, Vimeo, Facebook or uploaded video link.');
+            toast.error('Add a valid YouTube, Vimeo, Facebook, TikTok or direct video file link.');
             return;
         }
         setSubmitting(true);
@@ -480,34 +481,33 @@ export default function LearnFeed() {
                         </p>
                     </div>
                     {authed && (
-                        <button
+                        <Button
                             type="button"
                             onClick={() => {
                                 if (!showComposer) resetComposer();
                                 setShowComposer(!showComposer);
                             }}
-                            className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500"
+                            size="sm"
+                            className="flex items-center gap-1.5"
                         >
                             {showComposer ? <Upload className="h-4 w-4" /> : <PenLine className="h-4 w-4" />}
                             {showComposer ? 'Hide' : 'Share'}
-                        </button>
+                        </Button>
                     )}
                 </div>
 
                 <div className="mt-4 flex gap-2 border-b border-gray-200 dark:border-gray-700">
                     {(['feed', 'mine'] as Tab[]).map((t) => (
-                        <button
+                        <Button
                             key={t}
                             type="button"
                             onClick={() => setTab(t)}
-                            className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium ${
-                                tab === t
-                                    ? 'border-indigo-600 text-indigo-600'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
-                            }`}
+                            variant={tab === t ? 'primary' : 'ghost'}
+                            size="sm"
+                            className="-mb-px border-b-2 px-3 py-2"
                         >
                             {t === 'feed' ? 'Community' : 'My posts'}
-                        </button>
+                        </Button>
                     ))}
                 </div>
 
@@ -576,7 +576,7 @@ export default function LearnFeed() {
                                         <input
                                             value={videoUrl}
                                             onChange={(e) => setVideoUrl(e.target.value)}
-                                            placeholder="YouTube, Vimeo or Facebook video link"
+                                            placeholder="YouTube, Vimeo, Facebook, TikTok or direct file link"
                                             aria-label="Video URL"
                                             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                         />
@@ -588,7 +588,7 @@ export default function LearnFeed() {
                                             )}
                                             {videoUrl.trim() && !videoPreview && (
                                                 <span className="text-red-500">
-                                                    Unsupported host - use YouTube, Vimeo or Facebook.
+                                                    Unsupported host - use YouTube, Vimeo, Facebook, TikTok or a direct video file.
                                                 </span>
                                             )}
                                             <label className="text-gray-500">
@@ -605,22 +605,21 @@ export default function LearnFeed() {
                                     </div>
                                 )}
                                 <div className="flex flex-wrap gap-2">
-                                    <button
+                                    <Button
                                         type="submit"
-                                        disabled={submitting}
-                                        className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+                                        loading={submitting}
                                     >
-                                        {submitting ? 'Sending...' : editingId ? 'Resubmit' : 'Submit for review'}
-                                    </button>
+                                        {editingId ? 'Resubmit' : 'Submit for review'}
+                                    </Button>
                                     {!editingId && (
-                                        <button
+                                        <Button
                                             type="button"
                                             disabled={submitting}
                                             onClick={() => void submitPost(true)}
-                                            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:text-gray-300"
+                                            variant="outline"
                                         >
                                             Save draft
-                                        </button>
+                                        </Button>
                                     )}
                                 </div>
                             </form>
@@ -637,33 +636,29 @@ export default function LearnFeed() {
 
                         <div className="mt-4 flex flex-wrap items-center gap-2">
                             {SORTS.map((s) => (
-                                <button
+                                <Button
                                     key={s}
                                     type="button"
                                     onClick={() => setSort(s)}
-                                    className={`rounded-full px-3 py-1 text-sm font-medium capitalize ${
-                                        sort === s
-                                            ? 'bg-indigo-600 text-white'
-                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
-                                    }`}
+                                    variant={sort === s ? 'primary' : 'outline'}
+                                    size="sm"
+                                    className="rounded-full px-3 py-1 capitalize"
                                 >
                                     {s}
-                                </button>
+                                </Button>
                             ))}
                             <span className="mx-1 h-4 w-px bg-gray-300 dark:bg-gray-600" />
                             {TYPES.map((t) => (
-                                <button
+                                <Button
                                     key={t}
                                     type="button"
                                     onClick={() => setType(t)}
-                                    className={`rounded-full px-3 py-1 text-sm font-medium capitalize ${
-                                        type === t
-                                            ? 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900'
-                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
-                                    }`}
+                                    variant={type === t ? 'secondary' : 'outline'}
+                                    size="sm"
+                                    className="rounded-full px-3 py-1 capitalize"
                                 >
                                     {t}
-                                </button>
+                                </Button>
                             ))}
                         </div>
 
@@ -678,24 +673,25 @@ export default function LearnFeed() {
                                     className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm dark:border-gray-600 dark:bg-gray-700"
                                 />
                             </div>
-                            <button
+                            <Button
                                 type="submit"
-                                className="rounded-lg bg-gray-800 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-700 dark:bg-gray-600"
                             >
                                 Search
-                            </button>
+                            </Button>
                         </form>
 
                         {authorFilter && (
                             <div className="mt-2 flex items-center gap-2 text-xs text-gray-500">
                                 <span>Filtered to one creator</span>
-                                <button
+                                <Button
                                     type="button"
                                     onClick={() => setAuthorFilter(null)}
-                                    className="text-indigo-600 underline"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="px-0 underline"
                                 >
                                     Clear
-                                </button>
+                                </Button>
                             </div>
                         )}
 
@@ -732,18 +728,16 @@ export default function LearnFeed() {
                                             </p>
                                         </div>
                                         {post.user && authed && (
-                                            <button
+                                            <Button
                                                 type="button"
                                                 onClick={() => void toggleFollow(post)}
-                                                className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${
-                                                    post.viewer?.following
-                                                        ? 'border-indigo-600 text-indigo-600'
-                                                        : 'border-gray-300 text-gray-600 hover:border-indigo-400 dark:border-gray-600 dark:text-gray-300'
-                                                }`}
+                                                variant={post.viewer?.following ? 'secondary' : 'outline'}
+                                                size="sm"
+                                                className="flex items-center gap-1 rounded-full px-2.5 py-1"
                                             >
                                                 {post.viewer?.following && <CheckCircle2 className="h-3 w-3" />}
                                                 {post.viewer?.following ? 'Following' : 'Follow'}
-                                            </button>
+                                            </Button>
                                         )}
                                     </div>
 
@@ -769,48 +763,60 @@ export default function LearnFeed() {
                                     </p>
 
                                     <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
-                                        <button
+                                        <Button
                                             type="button"
                                             onClick={() => void toggleLike(post)}
-                                            className={`flex items-center gap-1 ${post.viewer?.liked ? 'text-indigo-600' : 'hover:text-indigo-600'}`}
+                                            variant="ghost"
+                                            size="sm"
+                                            className="flex items-center gap-1 px-0"
                                             aria-label={`Like ${post.title}`}
+                                            aria-pressed={post.viewer?.liked}
                                         >
                                             <Heart className={`h-4 w-4 ${post.viewer?.liked ? 'fill-current' : ''}`} />{' '}
                                             {post.likes_count}
-                                        </button>
-                                        <button
+                                        </Button>
+                                        <Button
                                             type="button"
                                             onClick={() => void loadComments(post.id)}
-                                            className="flex items-center gap-1 hover:text-indigo-600"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="flex items-center gap-1 px-0"
                                             aria-label={`Comments on ${post.title}`}
                                         >
                                             <MessageCircle className="h-4 w-4" /> {post.comments_count}
-                                        </button>
-                                        <button
+                                        </Button>
+                                        <Button
                                             type="button"
                                             onClick={() => void sharePost(post)}
-                                            className="flex items-center gap-1 hover:text-indigo-600"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="flex items-center gap-1 px-0"
                                             aria-label={`Share ${post.title}`}
                                         >
                                             <Share2 className="h-4 w-4" /> {post.shares_count}
-                                        </button>
-                                        <button
+                                        </Button>
+                                        <Button
                                             type="button"
                                             onClick={() => void toggleSave(post)}
-                                            className={`flex items-center gap-1 ${post.viewer?.saved ? 'text-amber-500' : 'hover:text-amber-500'}`}
+                                            variant="icon"
+                                            iconOnly
+                                            size="sm"
                                             aria-label={`Save ${post.title}`}
+                                            aria-pressed={post.viewer?.saved}
                                         >
                                             <Bookmark className={`h-4 w-4 ${post.viewer?.saved ? 'fill-current' : ''}`} />
-                                        </button>
+                                        </Button>
                                         {authed && (
-                                            <button
+                                            <Button
                                                 type="button"
                                                 onClick={() => setReportFor(post)}
-                                                className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500"
+                                                variant="ghost"
+                                                size="sm"
+                                                className="flex items-center gap-1 px-0 text-xs"
                                                 aria-label={`Report ${post.title}`}
                                             >
                                                 <Flag className="h-3.5 w-3.5" /> Report
-                                            </button>
+                                            </Button>
                                         )}
                                         {post.media_type === 'video' && progress[post.id] !== undefined && (
                                             <span className="text-xs text-gray-400">{progress[post.id]}s watched</span>
@@ -828,21 +834,26 @@ export default function LearnFeed() {
                                                         <span className="text-xs text-gray-400">
                                                             {new Date(c.created_at).toLocaleDateString()}
                                                         </span>
-                                                        <button
+                                                        <Button
                                                             type="button"
                                                             onClick={() => void likeComment(post.id, c.id)}
-                                                            className={`flex items-center gap-1 text-xs ${c.liked ? 'text-indigo-600' : 'text-gray-400 hover:text-indigo-600'}`}
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="flex items-center gap-1 px-0 text-xs"
+                                                            aria-pressed={c.liked}
                                                         >
                                                             <Heart className="h-3 w-3" /> {c.likes_count ?? 0}
-                                                        </button>
+                                                        </Button>
                                                         {authed && (
-                                                            <button
+                                                            <Button
                                                                 type="button"
                                                                 onClick={() => setReplyTo(replyTo === c.id ? null : c.id)}
-                                                                className="text-xs text-gray-400 hover:text-indigo-600"
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="px-0 text-xs"
                                                             >
                                                                 Reply
-                                                            </button>
+                                                            </Button>
                                                         )}
                                                     </div>
                                                     <p className="text-gray-700 dark:text-gray-300">{c.content}</p>
@@ -852,13 +863,16 @@ export default function LearnFeed() {
                                                                 {r.user?.name ?? 'Learner'}
                                                             </span>{' '}
                                                             <span className="text-gray-600 dark:text-gray-300">{r.content}</span>
-                                                            <button
+                                                            <Button
                                                                 type="button"
                                                                 onClick={() => void likeComment(post.id, r.id, c.id)}
-                                                                className={`ml-2 text-xs ${r.liked ? 'text-indigo-600' : 'text-gray-400 hover:text-indigo-600'}`}
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="ml-2 px-0 text-xs"
+                                                                aria-pressed={r.liked}
                                                             >
                                                                 <Heart className="inline h-3 w-3" /> {r.likes_count ?? 0}
-                                                            </button>
+                                                            </Button>
                                                         </div>
                                                     ))}
                                                     {authed && replyTo === c.id && (
@@ -873,14 +887,16 @@ export default function LearnFeed() {
                                                                 maxLength={2000}
                                                                 className="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                                             />
-                                                            <button
+                                                            <Button
                                                                 type="button"
                                                                 onClick={() => void sendComment(post.id, c.id)}
-                                                                className="rounded-lg bg-indigo-600 px-3 py-1.5 text-white hover:bg-indigo-500"
+                                                                variant="icon"
+                                                                iconOnly
+                                                                size="sm"
                                                                 aria-label="Send reply"
                                                             >
                                                                 <Send className="h-4 w-4" />
-                                                            </button>
+                                                            </Button>
                                                         </div>
                                                     )}
                                                 </div>
@@ -897,14 +913,16 @@ export default function LearnFeed() {
                                                         maxLength={2000}
                                                         className="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                                     />
-                                                    <button
+                                                    <Button
                                                         type="button"
                                                         onClick={() => void sendComment(post.id)}
-                                                        className="rounded-lg bg-indigo-600 px-3 py-1.5 text-white hover:bg-indigo-500"
+                                                        variant="icon"
+                                                        iconOnly
+                                                        size="sm"
                                                         aria-label="Send comment"
                                                     >
                                                         <Send className="h-4 w-4" />
-                                                    </button>
+                                                    </Button>
                                                 </div>
                                             )}
                                         </div>
@@ -970,22 +988,25 @@ export default function LearnFeed() {
                                         />
                                     )}
                                     {post.status === 'rejected' && (
-                                        <button
+                                        <Button
                                             type="button"
                                             onClick={() => setReportFor(post)}
-                                            className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500"
+                                            size="sm"
+                                            className="text-xs"
                                         >
                                             Appeal
-                                        </button>
+                                        </Button>
                                     )}
                                     {(post.status === 'draft' || post.status === 'needs_information' || post.status === 'rejected') && (
-                                        <button
+                                        <Button
                                             type="button"
                                             onClick={() => startEditMine(post)}
-                                            className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300"
+                                            variant="outline"
+                                            size="sm"
+                                            className="text-xs"
                                         >
                                             Edit
-                                        </button>
+                                        </Button>
                                     )}
                                 </div>
                             </article>

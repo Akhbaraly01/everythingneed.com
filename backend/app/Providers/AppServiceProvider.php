@@ -45,6 +45,12 @@ use Core\Services\Contracts\PublicNavigationInterface;
 use Core\Services\PublicNavigationResolver;
 use Core\Services\Contracts\EffectivePermissionResolverInterface;
 use Core\Services\EffectivePermissionResolver;
+use Core\Services\Contracts\EventSignerInterface;
+use Core\Services\EventSigner;
+use Core\Services\Contracts\SignedStorageServiceInterface;
+use Core\Services\SignedStorageService;
+use Core\Services\Contracts\LearnCatalogInterface;
+use Modules\Learn\Services\LearnCatalogService;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -72,6 +78,9 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(ApprovalEngineInterface::class, ApprovalEngine::class);
         $this->app->bind(PublicNavigationInterface::class, PublicNavigationResolver::class);
         $this->app->bind(EffectivePermissionResolverInterface::class, EffectivePermissionResolver::class);
+        $this->app->bind(LearnCatalogInterface::class, LearnCatalogService::class);
+        $this->app->bind(EventSignerInterface::class, EventSigner::class);
+        $this->app->bind(SignedStorageServiceInterface::class, SignedStorageService::class);
     }
 
     public function boot(): void

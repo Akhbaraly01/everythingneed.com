@@ -5,8 +5,9 @@ namespace Modules\Learn\Support;
 /**
  * Resolves a pasted video URL into a provider + stable video id at submit
  * time, so playback can be driven by first-party embeds (YouTube/Vimeo/
- * Facebook SDK players) or our own uploaded file - never by an arbitrary
- * embed URL echoed back at render time (open-embed / clickjacking risk).
+ * Facebook/TikTok SDK players), our own uploaded file, or direct media
+ * files in a native player - never by an arbitrary embed URL echoed back
+ * at render time (open-embed / clickjacking risk).
  */
 class VideoResolver
 {
@@ -27,6 +28,15 @@ class VideoResolver
             return [
                 'provider' => self::PROVIDER_UPLOAD,
                 'provider_video_id' => parse_url($url, PHP_URL_PATH) ?: $url,
+            ];
+        }
+
+        // Direct media files (mp4/webm/ogg/mov/m4v/HLS) play in a native
+        // <video> element; the URL itself is served from video_url.
+        if (preg_match('~\.(mp4|webm|ogg|ogv|mov|m4v|m3u8|mpd)(?:[?#].*)?$~i', $url)) {
+            return [
+                'provider' => 'file',
+                'provider_video_id' => '',
             ];
         }
 
@@ -70,6 +80,14 @@ class VideoResolver
             }
             if ($host === 'fb.watch' && preg_match('#^/([\w-]{6,30})#', (string) parse_url($url, PHP_URL_PATH), $m)) {
                 return ['provider' => 'facebook', 'provider_video_id' => $m[1]];
+            }
+
+            return null;
+        }
+
+        if (in_array($host, ['tiktok.com', 'm.tiktok.com'], true)) {
+            if (preg_match('#/(?:@[\w.-]+/video|embed/v2|v)/(\d{6,25})#', (string) parse_url($url, PHP_URL_PATH), $m)) {
+                return ['provider' => 'tiktok', 'provider_video_id' => $m[1]];
             }
 
             return null;

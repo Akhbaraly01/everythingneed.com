@@ -4,6 +4,7 @@ import { api, errorMessage } from '@/lib/api';
 import { toast } from 'sonner';
 import { MapPin, Plus, Trash2, Check, RefreshCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { Button } from '@/components/shared/Button';
 
 interface Address {
     id: string;
@@ -90,9 +91,9 @@ export default function AccountAddresses() {
             <div className="max-w-2xl space-y-6">
                 <div className="flex items-center justify-between">
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white">My Addresses</h1>
-                    <button onClick={() => setShowForm(!showForm)} className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
+                    <Button size="sm" onClick={() => setShowForm(!showForm)}>
                         <Plus className="h-4 w-4" /> Add Address
-                    </button>
+                    </Button>
                 </div>
 
                 {showForm && (
@@ -117,8 +118,8 @@ export default function AccountAddresses() {
                             </div>
                         </div>
                         <div className="mt-4 flex gap-2">
-                            <button onClick={addAddress} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">Save</button>
-                            <button onClick={() => setShowForm(false)} className="rounded-lg border px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Cancel</button>
+                            <Button size="sm" onClick={addAddress}>Save</Button>
+                            <Button variant="ghost" size="sm" onClick={() => setShowForm(false)}>Cancel</Button>
                         </div>
                     </div>
                 )}
@@ -128,9 +129,9 @@ export default function AccountAddresses() {
                 ) : error ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
                         <p className="text-red-600 font-medium">{error}</p>
-                        <button onClick={load} className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-500">
+                        <Button variant="outline" size="sm" onClick={load} className="mt-4">
                             <RefreshCcw className="h-4 w-4" /> Retry
-                        </button>
+                        </Button>
                     </div>
                 ) : addresses.length === 0 ? (
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
@@ -152,13 +153,13 @@ export default function AccountAddresses() {
                                 </div>
                                 <div className="flex items-center gap-2">
                                     {!a.is_default && (
-                                        <button onClick={() => setDefault(a.id)} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-indigo-600" title="Set as default">
+                                        <Button variant="icon" iconOnly size="sm" onClick={() => setDefault(a.id)} title="Set as default" aria-label="Set as default">
                                             <Check className="h-4 w-4" />
-                                        </button>
+                                        </Button>
                                     )}
-                                    <button onClick={() => deleteAddress(a.id)} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-red-600" title="Delete">
+                                    <Button variant="danger" iconOnly size="sm" onClick={() => deleteAddress(a.id)} title="Delete" aria-label="Delete">
                                         <Trash2 className="h-4 w-4" />
-                                    </button>
+                                    </Button>
                                 </div>
                             </div>
                         ))}

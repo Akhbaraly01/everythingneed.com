@@ -240,11 +240,23 @@ class DemoDataSeeder extends Seeder
 
     private function seedNeedCategories(): void
     {
+        // TODO 05 example question schemas (allowlisted field types only).
+        $cleaningSchema = json_encode([
+            ['key' => 'property_type', 'label' => 'Property type', 'type' => 'select', 'required' => true, 'options' => ['Apartment', 'House', 'Office', 'Shop']],
+            ['key' => 'rooms', 'label' => 'Number of rooms', 'type' => 'number', 'required' => true],
+            ['key' => 'deep_clean', 'label' => 'Deep clean needed?', 'type' => 'boolean', 'required' => false],
+        ]);
+        $tutoringSchema = json_encode([
+            ['key' => 'subject', 'label' => 'Subject', 'type' => 'text', 'required' => true],
+            ['key' => 'level', 'label' => 'Level', 'type' => 'select', 'required' => true, 'options' => ['Primary', 'Secondary', 'University', 'Professional']],
+            ['key' => 'format', 'label' => 'Preferred format', 'type' => 'select', 'required' => false, 'options' => ['In person', 'Online', 'Either']],
+        ]);
+
         DB::table('need_categories')->insert([
             ['id'=>Str::uuid(),'name'=>'Transportation','slug'=>'transportation','description'=>'Moving goods and people','icon'=>'truck','color'=>'#3B82F6','sort_order'=>1,'created_at'=>now()],
             ['id'=>Str::uuid(),'name'=>'Building Services','slug'=>'building-services','description'=>'Construction and maintenance','icon'=>'hammer','color'=>'#F59E0B','sort_order'=>2,'created_at'=>now()],
-            ['id'=>Str::uuid(),'name'=>'Home Cleaning','slug'=>'home-cleaning','description'=>'Cleaning and maintenance','icon'=>'sparkles','color'=>'#10B981','sort_order'=>3,'created_at'=>now()],
-            ['id'=>Str::uuid(),'name'=>'Tutoring','slug'=>'tutoring','description'=>'Education and training','icon'=>'book-open','color'=>'#8B5CF6','sort_order'=>4,'created_at'=>now()],
+            ['id'=>Str::uuid(),'name'=>'Home Cleaning','slug'=>'home-cleaning','description'=>'Cleaning and maintenance','icon'=>'sparkles','color'=>'#10B981','sort_order'=>3,'created_at'=>now(),'form_schema'=>$cleaningSchema,'form_schema_version'=>1],
+            ['id'=>Str::uuid(),'name'=>'Tutoring','slug'=>'tutoring','description'=>'Education and training','icon'=>'book-open','color'=>'#8B5CF6','sort_order'=>4,'created_at'=>now(),'form_schema'=>$tutoringSchema,'form_schema_version'=>1],
             ['id'=>Str::uuid(),'name'=>'Event Planning','slug'=>'event-planning','description'=>'Events and celebrations','icon'=>'calendar','color'=>'#EC4899','sort_order'=>5,'created_at'=>now()],
             ['id'=>Str::uuid(),'name'=>'Tech Support','slug'=>'tech-support','description'=>'Technology assistance','icon'=>'monitor','color'=>'#6366F1','sort_order'=>6,'created_at'=>now()],
         ]);

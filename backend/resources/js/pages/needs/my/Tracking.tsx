@@ -1,9 +1,11 @@
 import AppLayout from '@/layouts/AppLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { api, errorMessage } from '@/lib/api';
 import { NEED_STATUS_LABELS, needStatusClasses } from '@/lib/needs';
+import { useConfirm } from '@/lib/confirm';
 import { ArrowLeft, CircleDot, Navigation } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import type { NeedRequestDetail } from '@/types';
 
 /**
@@ -11,14 +13,46 @@ import type { NeedRequestDetail } from '@/types';
  * timeline - every state change recorded server-side (spec S12 activity).
  */
 export default function MyNeedTracking({ need_id }: { need_id: string }) {
+    const { auth } = usePage().props as { auth?: { user?: { id: string } } };
+    const ask = useConfirm();
     const [need, setNeed] = useState<NeedRequestDetail | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [accepting, setAccepting] = useState(false);
+    // TODO 13 booking slot (owner/provider view; null when never booked).
+    const [booking, setBooking] = useState<{
+        scheduled_start: string;
+        scheduled_end: string;
+        timezone?: string | null;
+        status: string;
+        provider?: { name?: string | null } | null;
+    } | null>(null);
 
     useEffect(() => {
         api.get<{ data: NeedRequestDetail }>(`/api/need-requests/${need_id}`)
             .then((res) => setNeed(res.data))
             .catch((e) => setError(errorMessage(e, 'Could not load tracking')));
+        api.get<{ data: typeof booking }>(`/api/need-requests/${need_id}/bookings`)
+            .then((res) => setBooking(res.data ?? null))
+            .catch(() => setBooking(null));
     }, [need_id]);
+
+    // TODO 15 owner acceptance of delivered work (releases the payout).
+    const acceptWork = async () => {
+        if (!(await ask({ title: 'Accept the delivered work?', description: 'This releases the payout and cannot be undone.', danger: true }))) return;
+        setAccepting(true);
+        try {
+            await api.post(`/api/need-requests/${need_id}/accept`);
+            toast.success('Work accepted.');
+            const res = await api.get<{ data: NeedRequestDetail }>(`/api/need-requests/${need_id}`);
+            setNeed(res.data);
+        } catch (e) {
+            toast.error(errorMessage(e, 'Could not accept the work'));
+        } finally {
+            setAccepting(false);
+        }
+    };
+
+    const isOwner = !!need && auth?.user?.id === need.user_id;
 
     const order = [
         'draft', 'pending', 'published', 'offered', 'negotiating', 'accepted',
@@ -69,6 +103,31 @@ export default function MyNeedTracking({ need_id }: { need_id: string }) {
                                 <p className="mt-3 text-sm text-gray-500">
                                     This request left the standard flow (current state: {NEED_STATUS_LABELS[need.status]}).
                                 </p>
+                            )}
+
+                            {isOwner && need.status === 'fulfilled' && (
+                                <div className="mt-4">
+                                    <button
+                                        onClick={acceptWork}
+                                        disabled={accepting}
+                                        className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+                                    >
+                                        {accepting ? 'Accepting…' : 'Accept work & release payout'}
+                                    </button>
+                                </div>
+                            )}
+
+                            {booking && booking.status === 'scheduled' && (
+                                <div className="mt-4 rounded-lg border border-green-200 bg-green-50 p-3 text-sm dark:border-green-800 dark:bg-green-900/20">
+                                    <p className="font-semibold text-green-800 dark:text-green-200">Booked slot</p>
+                                    <p className="mt-1 text-gray-700 dark:text-gray-300">
+                                        {new Date(booking.scheduled_start).toLocaleString()} – {new Date(booking.scheduled_end).toLocaleString()}
+                                        {booking.timezone ? ` (${booking.timezone})` : ''}
+                                    </p>
+                                    {booking.provider?.name && (
+                                        <p className="text-gray-600 dark:text-gray-400">with {booking.provider.name}</p>
+                                    )}
+                                </div>
                             )}
                         </>
                     )}

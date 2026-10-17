@@ -3,6 +3,7 @@ import { Link } from '@inertiajs/react';
 import {X, GitCompareArrows, Star, Trash2, ChevronLeft} from 'lucide-react';
 import { api } from '@/lib/api';
 import { formatPrice } from '@/lib/currency';
+import { Button, buttonClasses } from '@/components/shared/Button';
 
 interface CompareProduct {
     id: string;
@@ -93,23 +94,25 @@ export default function CompareDrawer() {
                         <span className="text-sm font-medium">
                             {items.length}/{MAX_COMPARE} selected
                         </span>
-                        <button
+                        <Button
                             type="button"
+                            size="sm"
                             onClick={() => setDrawerOpen(true)}
                             disabled={items.length < 2}
-                            className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-50"
                         >
                             <GitCompareArrows className="h-3.5 w-3.5" />
                             Compare
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                             type="button"
+                            variant="danger"
+                            iconOnly
+                            size="sm"
                             onClick={() => void clearCompare()}
                             aria-label="Clear comparison"
-                            className="flex h-7 w-7 items-center justify-center rounded-md text-destructive hover:bg-muted"
                         >
                             <Trash2 className="h-4 w-4" />
-                        </button>
+                        </Button>
                     </div>
                 </div>
             )}
@@ -125,21 +128,24 @@ export default function CompareDrawer() {
                                 Product Comparison
                             </h2>
                             <div className="flex items-center gap-2">
-                                <button
+                                <Button
                                     type="button"
+                                    variant="ghost"
+                                    size="sm"
                                     onClick={() => void clearCompare()}
-                                    className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted"
                                 >
                                     Clear all
-                                </button>
-                                <button
+                                </Button>
+                                <Button
                                     type="button"
+                                    variant="icon"
+                                    iconOnly
+                                    size="sm"
                                     onClick={() => setDrawerOpen(false)}
                                     aria-label="Close comparison"
-                                    className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted"
                                 >
                                     <X className="h-4 w-4" />
-                                </button>
+                                </Button>
                             </div>
                         </div>
 
@@ -153,14 +159,17 @@ export default function CompareDrawer() {
                                         {items.map((item) => (
                                             <th key={item.id} className="p-2 text-center">
                                                 <div className="relative">
-                                                    <button
+                                                    <Button
                                                         type="button"
+                                                        variant="danger"
+                                                        iconOnly
+                                                        size="sm"
                                                         onClick={() => void removeFromCompare(item.id)}
                                                         aria-label={`Remove ${item.name}`}
-                                                        className="absolute -top-1 -right-1 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground"
+                                                        className="absolute -top-1 -right-1 z-10 !h-5 !w-5 !min-h-5"
                                                     >
                                                         <X className="h-3 w-3" />
-                                                    </button>
+                                                    </Button>
                                                     <div className="mx-auto mb-2 h-20 w-20 overflow-hidden rounded-lg bg-muted">
                                                         {item.image_url && (
                                                             <img
@@ -227,18 +236,19 @@ export default function CompareDrawer() {
                             <Link
                                 href="/products/compare"
                                 onClick={() => setDrawerOpen(false)}
-                                className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+                                className={buttonClasses('primary', 'md')}
                             >
                                 Full comparison page
                             </Link>
-                            <button
+                            <Button
                                 type="button"
+                                variant="ghost"
+                                size="sm"
                                 onClick={() => setDrawerOpen(false)}
-                                className="rounded-md border border-border px-4 py-2 text-sm font-medium hover:bg-muted"
                             >
-                                <ChevronLeft className="mr-1 inline h-4 w-4" />
+                                <ChevronLeft className="h-4 w-4" />
                                 Keep shopping
-                            </button>
+                            </Button>
                         </div>
                     </div>
                 </div>

@@ -1,6 +1,7 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link } from '@inertiajs/react';
 import { api } from '@/lib/api';
+import { Button } from '@/components/shared/Button';
 import { useEffect, useState } from 'react';
 import { Play, FileText, BookOpen, ArrowLeft, ArrowRight } from 'lucide-react';
 
@@ -143,13 +144,14 @@ export default function Documentation() {
                                         ))}
                                     </div>
                                     {!s.allHref && state.page < state.lastPage && (
-                                        <button
+                                        <Button
                                             onClick={() => loadSection(s.key, state.page + 1, true)}
-                                            disabled={state.loading}
-                                            className="mt-3 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium disabled:opacity-50 dark:border-gray-600"
+                                            loading={state.loading}
+                                            variant="outline"
+                                            className="mt-3"
                                         >
-                                            {state.loading ? 'Loading...' : 'Load more documents'}
-                                        </button>
+                                            Load more documents
+                                        </Button>
                                     )}
                                 </>
                             )}

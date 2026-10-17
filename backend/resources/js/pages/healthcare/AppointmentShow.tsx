@@ -4,8 +4,10 @@ import { api, errorMessage } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { formatPrice } from '@/lib/currency';
 import ConfirmDialog from '@/components/shared/Ui';
+import { Button } from '@/components/shared/Button';
 import { toast } from 'sonner';
 import { useState } from 'react';
+import VideoRoom from '@/components/media/VideoRoom';
 import {
     ArrowLeft, Stethoscope, Video, MapPin, FileText,
     Pill, CalendarClock, XCircle, ClipboardList,
@@ -23,6 +25,7 @@ interface Appointment {
     home_address?: string | null;
     status: string;
     created_at: string;
+    images?: string[] | null;
     doctor?: { full_name: string; specialization?: string; qualification?: string } | null;
 }
 
@@ -43,6 +46,7 @@ export default function AppointmentShow({ appointment: a, consultation }: Props)
     const [busy, setBusy] = useState(false);
     const [joining, setJoining] = useState(false);
     const [confirmCancel, setConfirmCancel] = useState(false);
+    const [room, setRoom] = useState<{ provider: string; room: string; join_url: string } | null>(null);
 
     const cancel = async () => {
         setBusy(true);
@@ -61,9 +65,9 @@ export default function AppointmentShow({ appointment: a, consultation }: Props)
     const joinVirtual = async () => {
         setJoining(true);
         try {
-            const res = await api.post<{ data: { join_url: string; provider: string } }>(`/api/appointments/${a.id}/video-room`);
-            window.open(res.data.join_url, '_blank', 'noopener');
-            toast.info(`Opening ${res.data.provider} room…`, { description: 'The same link is shared with your clinician.' });
+            const res = await api.post<{ data: { join_url: string; provider: string; room: string } }>(`/api/appointments/${a.id}/video-room`);
+            setRoom(res.data);
+            toast.success('Consultation room ready', { description: 'Your clinician joins the same room — stay on this page.' });
         } catch (err) {
             toast.error(errorMessage(err, 'Could not open the room'));
         } finally {
@@ -90,6 +94,25 @@ export default function AppointmentShow({ appointment: a, consultation }: Props)
                     </div>
                     <h1 className="mb-1 text-lg font-bold text-gray-900 dark:text-white">{a.symptoms}</h1>
                     {a.description && <p className="mb-4 text-sm text-gray-500">{a.description}</p>}
+                    {a.images && a.images.length > 0 && (
+                        <div className="mb-4">
+                            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                Attached evidence
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                                {a.images.map((url, i) => (
+                                    <a key={`${a.id}-img-${i}`} href={url} target="_blank" rel="noreferrer">
+                                        <img
+                                            src={url}
+                                            alt=""
+                                            loading="lazy"
+                                            className="h-20 w-20 rounded-lg border border-border object-cover hover:opacity-90"
+                                        />
+                                    </a>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
                         <Info label="Type">
@@ -116,24 +139,42 @@ export default function AppointmentShow({ appointment: a, consultation }: Props)
                         </Info>
                     </dl>
 
-                    {canJoin && (
-                        <button
+                    {canJoin && !room && (
+                        <Button
                             onClick={joinVirtual}
-                            disabled={joining}
-                            className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-sky-600 px-4 py-3 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-60 sm:w-auto"
+                            loading={joining}
+                            iconLeft={<Video className="h-4 w-4" />}
+                            className="mt-5 w-full sm:w-auto"
                         >
-                            <Video className="h-4 w-4" /> {joining ? 'Preparing room…' : 'Join virtual consultation'}
-                        </button>
+                            Join virtual consultation
+                        </Button>
+                    )}
+
+                    {room && (
+                        <div className="mt-5 space-y-2">
+                            <div className="flex items-center justify-between">
+                                <p className="flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-gray-200">
+                                    <Video className="h-4 w-4 text-sky-500" /> Live consultation room
+                                </p>
+                                <Button variant="ghost" size="sm" onClick={() => setRoom(null)}>Close room</Button>
+                            </div>
+                            <VideoRoom provider={room.provider} room={room.room} joinUrl={room.join_url} displayName="" />
+                            <p className="text-xs text-gray-500">
+                                Your clinician joins this same room. Keep this page open during the consultation.
+                            </p>
+                        </div>
                     )}
 
                     {cancellable && (
-                        <button
+                        <Button
                             onClick={() => setConfirmCancel(true)}
                             disabled={busy}
-                            className={`flex items-center gap-1.5 rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 dark:border-red-900/50 ${canJoin ? 'mt-3' : 'mt-5'}`}
+                            variant="danger"
+                            iconLeft={<XCircle className="h-4 w-4" />}
+                            className={`gap-1.5 ${canJoin ? 'mt-3' : 'mt-5'}`}
                         >
-                            <XCircle className="h-4 w-4" /> Cancel appointment
-                        </button>
+                            Cancel appointment
+                        </Button>
                     )}
                 </div>
 

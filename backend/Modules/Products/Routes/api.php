@@ -5,6 +5,9 @@ use Modules\Products\Http\Controllers\ProductController;
 
 Route::prefix('api')->group(function () {
     Route::get('/products', [ProductController::class, 'index']);
+    // Home infinite feed (Home rebuild) — declared before /products/{id}
+    // so "feed" never resolves as a product id.
+    Route::get('/home/feed', [ProductController::class, 'homeFeed']);
     Route::get('/products/comparison', [ProductController::class, 'comparison'])
         ->middleware('auth:sanctum');
     Route::get('/products/{id}', [ProductController::class, 'show']);

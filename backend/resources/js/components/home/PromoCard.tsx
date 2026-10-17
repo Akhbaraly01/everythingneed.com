@@ -1,5 +1,6 @@
 import { Link } from '@inertiajs/react';
 import { ArrowRight, Gift, type LucideIcon } from 'lucide-react';
+import { buttonClasses } from '@/components/shared/Button';
 
 interface PromoCardProps {
     /** Stable hook for tests/e2e: `home-section-{key}`. */
@@ -27,7 +28,7 @@ export default function PromoCard({
     return (
         <section
             data-testid={testId}
-            className="flex items-center gap-4 rounded-xl border border-border bg-card p-4"
+            className="glass-1 glass-edge flex items-center gap-4 rounded-xl p-4"
         >
             <span className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 sm:flex">
                 <Icon className="h-6 w-6 text-primary" aria-hidden="true" />
@@ -36,12 +37,9 @@ export default function PromoCard({
                 <h2 className="text-sm font-bold text-foreground md:text-base">{title}</h2>
                 <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground md:text-sm">{text}</p>
             </div>
-            <Link
-                href={href}
-                className="shrink-0 rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 md:text-sm"
-            >
+            <Link href={href} className={buttonClasses('primary', 'sm')}>
                 {cta}
-                <ArrowRight className="ml-1 inline h-3 w-3" aria-hidden="true" />
+                <ArrowRight className="h-3 w-3" aria-hidden="true" />
             </Link>
         </section>
     );

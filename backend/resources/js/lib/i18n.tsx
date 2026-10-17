@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
     isLanguage,
+    isRtl,
     normalizeLanguage,
     persistLanguage,
     storedLanguage,
@@ -42,6 +43,8 @@ export function LanguageProvider({
     useEffect(() => {
         try {
             document.documentElement.lang = language;
+            // RTL scripts (Arabic) mirror the entire layout globally.
+            document.documentElement.dir = isRtl(language) ? 'rtl' : 'ltr';
         } catch {
             // Non-DOM renderers (tests) have no document.
         }
