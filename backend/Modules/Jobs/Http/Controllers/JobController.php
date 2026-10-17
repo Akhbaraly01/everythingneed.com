@@ -363,16 +363,92 @@ class JobController extends Controller
         ]);
     }
 
+    /**
+     * Admin console: full edit of a job post. Every field is optional, but
+     * at least one change must be present (the is_active toggle rides here).
+     *
+     * PUT /api/admin/jobs/{id} (role: super_admin, administrator, jobs_admin)
+     */
     public function adminUpdate(Request $request, string $id): JsonResponse
     {
-        $request->validate(['is_active' => 'required|boolean']);
+        $data = $request->validate([
+            'title' => 'sometimes|string|max:255',
+            'description' => 'sometimes|string|max:10000',
+            'company' => 'sometimes|string|max:255',
+            'location' => 'sometimes|string|max:255',
+            'job_type' => 'sometimes|string|in:full_time,part_time,contract,internship,temporary',
+            'salary_min' => 'sometimes|nullable|numeric|min:0',
+            'salary_max' => 'sometimes|nullable|numeric|min:0',
+            'currency' => 'sometimes|nullable|string|size:3',
+            'requirements' => 'sometimes|nullable|array',
+            'benefits' => 'sometimes|nullable|array',
+            'expires_at' => 'sometimes|nullable|date',
+            'is_active' => 'sometimes|boolean',
+        ]);
+
+        if ($data === []) {
+            return response()->json(['message' => 'No changes provided'], 422);
+        }
 
         $job = JobPost::find($id);
         if (!$job) {
             return response()->json(['message' => 'Job not found'], 404);
         }
-        $job->update(['is_active' => $request->boolean('is_active')]);
 
-        return response()->json(['data' => $job]);
+        $job->update($data);
+
+        try {
+            app(\Core\Services\Contracts\AuditServiceInterface::class)->log([
+                'action' => 'update',
+                'entity_type' => 'job_post',
+                'entity_id' => $job->id,
+                'performed_by' => $request->user()?->id,
+                'new_values' => ['fields' => array_keys($data)],
+            ]);
+        } catch (\Throwable) {
+            // Audit failures must not break edits.
+        }
+
+        return response()->json([
+            'message' => 'Job updated successfully',
+            'data' => $job->fresh(),
+        ]);
+    }
+
+    /**
+     * Admin console: delete a job post (soft delete). Refused while
+     * applications exist so applicant history stays intact.
+     *
+     * DELETE /api/admin/jobs/{id} (role: super_admin, administrator, jobs_admin)
+     */
+    public function adminDestroy(Request $request, string $id): JsonResponse
+    {
+        $job = JobPost::find($id);
+        if (!$job) {
+            return response()->json(['message' => 'Job not found'], 404);
+        }
+
+        if ($job->applications()->exists()) {
+            return response()->json([
+                'message' => 'This job has applications and cannot be deleted. Deactivate it instead.',
+            ], 422);
+        }
+
+        $title = $job->title;
+        $job->delete();
+
+        try {
+            app(\Core\Services\Contracts\AuditServiceInterface::class)->log([
+                'action' => 'delete',
+                'entity_type' => 'job_post',
+                'entity_id' => $id,
+                'performed_by' => $request->user()?->id,
+                'new_values' => ['title' => $title],
+            ]);
+        } catch (\Throwable) {
+            // Audit failures must not break deletion.
+        }
+
+        return response()->json(['message' => 'Job deleted']);
     }
 }

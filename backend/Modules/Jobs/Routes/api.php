@@ -34,6 +34,8 @@ Route::prefix('api')->group(function () {
         ->middleware('role:super_admin,administrator,jobs_admin');
     Route::put('/admin/jobs/{id}', [JobController::class, 'adminUpdate'])
         ->middleware('role:super_admin,administrator,jobs_admin');
+    Route::delete('/admin/jobs/{id}', [JobController::class, 'adminDestroy'])
+        ->middleware('role:super_admin,administrator,jobs_admin');
     Route::get('/admin/job-applications', [JobController::class, 'adminApplications'])
         ->middleware('role:super_admin,administrator,jobs_admin');
     Route::get('/jobs/{id}', [JobController::class, 'show']);
