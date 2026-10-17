@@ -18,7 +18,7 @@ class StoreProductRequest extends FormRequest
             return false;
         }
 
-        if ($user->hasRole('super_admin') || $user->hasRole('administrator')) {
+        if ($user->hasRole('super_admin') || $user->hasRole('administrator') || $user->hasRole('platform_ops')) {
             return true;
         }
 

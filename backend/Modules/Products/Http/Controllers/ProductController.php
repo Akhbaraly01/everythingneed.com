@@ -240,8 +240,11 @@ class ProductController extends Controller
 
     private function isAdmin(Request $request): bool
     {
+        // Same management surface as the /admin/products console gate
+        // (routes/web.php): super_admin, administrator, platform_ops.
         return $request->user()->hasRole('super_admin')
-            || $request->user()->hasRole('administrator');
+            || $request->user()->hasRole('administrator')
+            || $request->user()->hasRole('platform_ops');
     }
 
     /**

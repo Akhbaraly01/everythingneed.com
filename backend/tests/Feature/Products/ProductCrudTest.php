@@ -407,4 +407,47 @@ class ProductCrudTest extends TestCase
 
         $response->assertStatus(403);
     }
+
+    /**
+     * The /admin/products console gate is super_admin, administrator and
+     * platform_ops (routes/web.php) - the product API must match, otherwise
+     * platform_ops gets 403 on every management action the console offers.
+     */
+    public function test_platform_ops_manages_products_like_admins(): void
+    {
+        $ops = $this->createUser();
+        $this->assignRole($ops, 'platform_ops');
+        $vendorUser = $this->createUser();
+        $vendor = $this->createVendor($vendorUser);
+
+        $created = $this->actingAs($ops, 'sanctum')
+            ->postJson('/api/products', [
+                'vendor_id' => $vendor->id,
+                'name' => 'Ops Draft Product',
+                'category' => 'electronics',
+                'price' => 19.99,
+                'stock_quantity' => 4,
+                'publication_state' => 'hidden',
+            ]);
+        $created->assertStatus(201);
+        $product = Product::find($created->json('data.id'));
+        $this->assertSame('hidden', $product->publication_state);
+
+        $updated = $this->actingAs($ops, 'sanctum')
+            ->putJson("/api/products/{$product->id}", [
+                'name' => 'Ops Edited Product',
+                'publication_state' => 'published',
+            ]);
+        $updated->assertOk();
+        $product->refresh();
+        $this->assertSame('Ops Edited Product', $product->name);
+        $this->assertSame('published', $product->publication_state);
+        $this->assertTrue($product->is_active);
+
+        $deleted = $this->actingAs($ops, 'sanctum')
+            ->deleteJson("/api/products/{$product->id}");
+        $deleted->assertOk();
+        $product->refresh();
+        $this->assertSame('archived', $product->publication_state);
+    }
 }

@@ -8,6 +8,7 @@ Route::prefix('api')->middleware('auth:sanctum')->group(function () {
     Route::post('/delivery/managers', [DeliveryController::class, 'store']);
     Route::get('/delivery/managers/{id}', [DeliveryController::class, 'show']);
     Route::put('/delivery/managers/{id}', [DeliveryController::class, 'update']);
+    Route::delete('/delivery/managers/{id}', [DeliveryController::class, 'destroy']);
     Route::post('/delivery/managers/{id}/deliver', [DeliveryController::class, 'markDelivered']);
     Route::post('/delivery/managers/{id}/fail', [DeliveryController::class, 'markFailed']);
     Route::put('/delivery/availability', [DeliveryController::class, 'updateAvailability']);

@@ -15,8 +15,14 @@ class DeliveryController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        // The manager directory is a management surface (the /admin/deliveries
+        // console is its only UI consumer) - not a public listing.
+        if (!$this->canManage($request)) {
+            return response()->json(['message' => 'Only delivery operations staff can list managers'], 403);
+        }
+
         $query = DeliveryManager::query()->select([
-            'id', 'full_name', 'vehicle_type', 'is_available', 'completed_deliveries', 'rating', 'created_at',
+            'id', 'full_name', 'phone', 'vehicle_type', 'is_available', 'completed_deliveries', 'rating', 'created_at',
         ]);
 
         if ($request->has('is_available')) {
@@ -70,14 +76,14 @@ class DeliveryController extends Controller
         }
 
         $isSelf = $manager->user_id === Auth::id();
-        if (!$isSelf && !$this->isAdmin($request) && !$request->user()->hasRole('vendor_admin')) {
+        if (!$isSelf && !$this->canManage($request) && !$request->user()->hasRole('vendor_admin')) {
             return response()->json(['message' => 'You do not have access to this delivery profile'], 403);
         }
 
         $data = $manager->only([
             'id', 'full_name', 'vehicle_type', 'is_available', 'completed_deliveries', 'rating', 'created_at',
         ]);
-        if ($isSelf || $this->isAdmin($request)) {
+        if ($isSelf || $this->canManage($request)) {
             $data['phone'] = $manager->phone;
             $data['user_id'] = $manager->user_id;
         }
@@ -123,7 +129,7 @@ class DeliveryController extends Controller
             return response()->json(['message' => 'Delivery manager not found'], 404);
         }
 
-        if ($manager->user_id !== Auth::id() && !$this->isAdmin($request)) {
+        if ($manager->user_id !== Auth::id() && !$this->canManage($request)) {
             return response()->json(['message' => 'You do not manage this delivery profile'], 403);
         }
 
@@ -140,6 +146,34 @@ class DeliveryController extends Controller
             'message' => 'Delivery manager updated',
             'data' => $manager->fresh(),
         ]);
+    }
+
+    /**
+     * Admin console deletion. Managers referenced by the Plan G2
+     * order-assignment ledger cannot be removed - clear the delivery rows
+     * first, otherwise historical tracking would dangle.
+     */
+    public function destroy(Request $request, string $id): JsonResponse
+    {
+        $manager = DeliveryManager::find($id);
+
+        if (!$manager) {
+            return response()->json(['message' => 'Delivery manager not found'], 404);
+        }
+
+        if (!$this->canManage($request)) {
+            return response()->json(['message' => 'Only delivery operations staff can remove managers'], 403);
+        }
+
+        if (Delivery::where('manager_id', $manager->id)->exists()) {
+            return response()->json([
+                'message' => 'This manager has delivery assignments on record and cannot be deleted.',
+            ], 422);
+        }
+
+        $manager->delete();
+
+        return response()->json(['message' => 'Delivery manager removed']);
     }
 
     public function markDelivered(Request $request, string $id): JsonResponse
@@ -185,7 +219,7 @@ class DeliveryController extends Controller
             return response()->json(['message' => 'Delivery manager not found'], 404);
         }
 
-        if ($manager->user_id !== Auth::id() && !$this->isAdmin($request)) {
+        if ($manager->user_id !== Auth::id() && !$this->canManage($request)) {
             return response()->json(['message' => 'You do not manage this delivery profile'], 403);
         }
 
@@ -206,10 +240,14 @@ class DeliveryController extends Controller
         ]);
     }
 
-    private function isAdmin(Request $request): bool
+    /** Same management surface as the /admin/deliveries console gate (routes/web.php). */
+    private function canManage(Request $request): bool
     {
         return $request->user()->hasRole('super_admin')
-            || $request->user()->hasRole('administrator');
+            || $request->user()->hasRole('administrator')
+            || $request->user()->hasRole('transport_admin')
+            || $request->user()->hasRole('platform_ops')
+            || $request->user()->hasRole('orders_admin');
     }
 
     private function ownManager(Request $request): ?DeliveryManager
@@ -223,7 +261,7 @@ class DeliveryController extends Controller
      */
     public function assign(Request $request, string $orderId): JsonResponse
     {
-        if (! $this->isAdmin($request)) {
+        if (! $this->canManage($request)) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -386,3 +424,4 @@ class DeliveryController extends Controller
         return response()->json(['data' => $delivery]);
     }
 }
+
