@@ -89,6 +89,7 @@ class MedicineController extends Controller
 
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
+            'generic_name' => 'nullable|string|max:255',
             'description' => 'nullable|string|max:2000',
             'price' => 'sometimes|numeric|min:0',
             'stock' => 'sometimes|integer|min:0',
@@ -97,7 +98,9 @@ class MedicineController extends Controller
             'dosage_form' => 'nullable|string|max:100',
             'strength' => 'nullable|string|max:100',
             'manufacturer' => 'nullable|string|max:255',
+            'vendor_id' => 'nullable|uuid|exists:vendors,id',
             'image_url' => 'nullable|url|max:500',
+            'requires_prescription' => 'sometimes|boolean',
         ]);
 
         if (!isset($validated['stock_quantity']) && isset($validated['stock'])) {
@@ -105,11 +108,65 @@ class MedicineController extends Controller
         }
         unset($validated['stock']);
 
+        if ($validated === []) {
+            return response()->json(['message' => 'No changes provided'], 422);
+        }
+
         $medicine->update($validated);
+
+        try {
+            app(\Core\Services\Contracts\AuditServiceInterface::class)->log([
+                'action' => 'update',
+                'entity_type' => 'medicine',
+                'entity_id' => $id,
+                'performed_by' => $request->user()?->id,
+                'new_values' => $validated,
+            ]);
+        } catch (\Throwable) {
+            // Audit failures must not break the update.
+        }
 
         return response()->json([
             'message' => 'Medicine updated successfully',
             'data' => $medicine->fresh(),
         ]);
+    }
+
+    /**
+     * Admin console: remove a medicine from the catalogue. Soft delete so
+     * historic order items keep resolving; refused while order items exist.
+     *
+     * DELETE /api/medicines/{id} (role: super_admin, administrator, pharmacy_admin)
+     */
+    public function destroy(Request $request, string $id): JsonResponse
+    {
+        $medicine = Medicine::find($id);
+
+        if (!$medicine) {
+            return response()->json(['message' => 'Medicine not found'], 404);
+        }
+
+        if ($medicine->orderItems()->exists()) {
+            return response()->json([
+                'message' => 'This medicine has orders and cannot be deleted. Set stock to zero instead.',
+            ], 422);
+        }
+
+        $name = $medicine->name;
+        $medicine->delete();
+
+        try {
+            app(\Core\Services\Contracts\AuditServiceInterface::class)->log([
+                'action' => 'delete',
+                'entity_type' => 'medicine',
+                'entity_id' => $id,
+                'performed_by' => $request->user()?->id,
+                'new_values' => ['name' => $name],
+            ]);
+        } catch (\Throwable) {
+            // Audit failures must not break deletion.
+        }
+
+        return response()->json(['message' => 'Medicine deleted']);
     }
 }

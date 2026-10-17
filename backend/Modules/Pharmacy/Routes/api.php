@@ -13,6 +13,7 @@ Route::prefix('api')->group(function () {
         Route::post('/pharmacy/prescriptions', [PharmacyOrderController::class, 'storePrescription']);
         Route::post('/medicines', [MedicineController::class, 'store'])->middleware('role:super_admin,administrator,pharmacy_admin');
         Route::put('/medicines/{id}', [MedicineController::class, 'update'])->middleware('role:super_admin,administrator,pharmacy_admin');
+        Route::delete('/medicines/{id}', [MedicineController::class, 'destroy'])->middleware('role:super_admin,administrator,pharmacy_admin');
 
         Route::get('/pharmacy/orders', [PharmacyOrderController::class, 'orders']);
         Route::get('/pharmacy/orders/{id}', [PharmacyOrderController::class, 'show']);

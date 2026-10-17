@@ -4,7 +4,8 @@ import { Head, usePage } from '@inertiajs/react';
 import { api, errorMessage, rows } from '@/lib/api';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 import DataTable from '@/components/shared/DataTable';
-import { Pill, ClipboardList, FileText, Plus, X } from 'lucide-react';
+import { useConfirm } from '@/lib/confirm';
+import { Pill, ClipboardList, FileText, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -62,6 +63,7 @@ export default function AdminPharmacy() {
         || (auth?.roles ?? []).includes('administrator')
         || (auth?.roles ?? []).includes('pharmacy_admin');
 
+    const confirm = useConfirm();
     const [tab, setTab] = useState<Tab>('orders');
     const [orders, setOrders] = useState<MedicineOrder[]>([]);
     const [medicines, setMedicines] = useState<Medicine[]>([]);
@@ -73,6 +75,9 @@ export default function AdminPharmacy() {
     const [showMedForm, setShowMedForm] = useState(false);
     const [savingMed, setSavingMed] = useState(false);
     const [medForm, setMedForm] = useState({ name: '', category: '', price: '', stock: '', requires_prescription: false });
+    const [editMed, setEditMed] = useState<Medicine | null>(null);
+    const [editForm, setEditForm] = useState({ name: '', generic_name: '', category: '', price: '', stock: '', requires_prescription: false });
+    const [savingEdit, setSavingEdit] = useState(false);
 
     useEffect(() => {
         setLoading(true);
@@ -141,6 +146,68 @@ export default function AdminPharmacy() {
             toast.error(errorMessage(err, 'Create failed'));
         } finally {
             setSavingMed(false);
+        }
+    };
+
+    const reloadMedicines = () => {
+        api.get<{ data: Medicine[]; meta: Meta }>(`/api/medicines?page=${page}&per_page=15`)
+            .then((res) => { setMedicines(rows<Medicine>(res)); setMeta(res.meta); })
+            .catch(() => { /* list refresh is best effort */ });
+    };
+
+    const openEditMed = (m: Medicine) => {
+        setEditMed(m);
+        setEditForm({
+            name: m.name,
+            generic_name: m.generic_name ?? '',
+            category: m.category,
+            price: String(m.price ?? ''),
+            stock: String(m.stock_quantity ?? ''),
+            requires_prescription: m.requires_prescription,
+        });
+    };
+
+    const submitEditMed = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editMed) return;
+        if (!editForm.name.trim() || !editForm.category.trim()) {
+            toast.error('Name and category are required');
+            return;
+        }
+        setSavingEdit(true);
+        try {
+            await api.put(`/api/medicines/${editMed.id}`, {
+                name: editForm.name.trim(),
+                generic_name: editForm.generic_name.trim() || null,
+                category: editForm.category.trim(),
+                price: Number(editForm.price) || 0,
+                stock_quantity: editForm.stock === '' ? 0 : Number(editForm.stock),
+                requires_prescription: editForm.requires_prescription,
+            });
+            toast.success('Medicine updated.');
+            setEditMed(null);
+            reloadMedicines();
+        } catch (err) {
+            toast.error(errorMessage(err, 'Update failed'));
+        } finally {
+            setSavingEdit(false);
+        }
+    };
+
+    const deleteMedicine = async (m: Medicine) => {
+        const ok = await confirm({
+            title: `Delete ${m.name}?`,
+            description: 'The medicine is removed from the catalogue. Medicines with orders cannot be deleted - set stock to zero instead.',
+            confirmLabel: 'Delete',
+            danger: true,
+        });
+        if (!ok) return;
+        try {
+            await api.del(`/api/medicines/${m.id}`);
+            toast.success('Medicine deleted.');
+            reloadMedicines();
+        } catch (err) {
+            toast.error(errorMessage(err, 'Delete failed'));
         }
     };
 
@@ -367,6 +434,23 @@ export default function AdminPharmacy() {
                                 key: 'rx', header: 'Prescription',
                                 render: (m) => <>{m.requires_prescription ? 'Required' : 'OTC'}</>,
                             },
+                            ...(canManageMeds ? [{
+                                key: 'actions', header: 'Actions',
+                                render: (m: Medicine) => (
+                                    <div className="flex gap-1.5">
+                                        <button data-testid={`medicine-edit-${m.id}`} onClick={() => openEditMed(m)}
+                                            className="rounded-lg border border-gray-300 p-1.5 text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300"
+                                            title="Edit medicine">
+                                            <Pencil className="h-3.5 w-3.5" />
+                                        </button>
+                                        <button data-testid={`medicine-delete-${m.id}`} onClick={() => deleteMedicine(m)}
+                                            className="rounded-lg border border-red-300 p-1.5 text-red-600 hover:bg-red-50"
+                                            title="Delete medicine">
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                        </button>
+                                    </div>
+                                ),
+                            }] : []),
                         ]}
                         data={medicines}
                         loading={false}
@@ -383,6 +467,52 @@ export default function AdminPharmacy() {
                             <button disabled={(meta.page ?? meta.current_page ?? 1) * (meta.per_page ?? 15) >= meta.total} onClick={() => setPage(page + 1)}
                                 className="rounded-lg border border-gray-300 px-3 py-1 disabled:opacity-40 dark:border-gray-600">Next</button>
                         </div>
+                    </div>
+                )}
+
+                {editMed && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setEditMed(null)}>
+                        <form data-testid="medicine-edit-modal" onClick={(e) => e.stopPropagation()} onSubmit={submitEditMed}
+                            className="w-full max-w-lg space-y-4 rounded-xl bg-white p-6 shadow-xl dark:bg-gray-800">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Edit Medicine</h2>
+                                <button type="button" onClick={() => setEditMed(null)}><X className="h-5 w-5 text-gray-400" /></button>
+                            </div>
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <label className="text-sm">Name *
+                                    <input required maxLength={255} data-testid="medicine-edit-name" value={editForm.name}
+                                        onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></label>
+                                <label className="text-sm">Generic name
+                                    <input maxLength={255} data-testid="medicine-edit-generic" value={editForm.generic_name}
+                                        onChange={(e) => setEditForm({ ...editForm, generic_name: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></label>
+                                <label className="text-sm">Category *
+                                    <input required maxLength={100} data-testid="medicine-edit-category" value={editForm.category}
+                                        onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></label>
+                                <label className="text-sm">Price *
+                                    <input required type="number" min={0} step="0.01" data-testid="medicine-edit-price" value={editForm.price}
+                                        onChange={(e) => setEditForm({ ...editForm, price: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></label>
+                                <label className="text-sm">Stock
+                                    <input type="number" min={0} step={1} data-testid="medicine-edit-stock" value={editForm.stock}
+                                        onChange={(e) => setEditForm({ ...editForm, stock: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></label>
+                                <label className="flex items-end gap-2 text-sm">Requires prescription
+                                    <input type="checkbox" data-testid="medicine-edit-rx" checked={editForm.requires_prescription}
+                                        onChange={(e) => setEditForm({ ...editForm, requires_prescription: e.target.checked })}
+                                        className="mb-2 h-4 w-4" /></label>
+                            </div>
+                            <div className="flex justify-end gap-2">
+                                <button type="button" onClick={() => setEditMed(null)}
+                                    className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300">Cancel</button>
+                                <button type="submit" data-testid="medicine-edit-save" disabled={savingEdit}
+                                    className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50">
+                                    {savingEdit ? 'Saving...' : 'Save Changes'}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 )}
             </div>
