@@ -1,5 +1,5 @@
 import AdminLayout from '@/layouts/AdminLayout';
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import { Plus, Save, Trash2 } from 'lucide-react';
 import { api, errorMessage } from '@/lib/api';
@@ -31,6 +31,12 @@ const LOCATIONS = ['header', 'footer', 'mobile', 'category', 'more'];
  * siteNav shared prop. Previously API-only.
  */
 export default function AdminNavigation() {
+    // cms_editor holds navigation.view only: the console stays readable but
+    // every mutating control disappears instead of 403ing on click.
+    const permissions =
+        (usePage().props.auth as { permissions?: string[] } | null)?.permissions ?? [];
+    const canManage = permissions.includes('*') || permissions.includes('navigation.manage');
+
     const [menus, setMenus] = useState<Navigation[]>([]);
     const [selectedId, setSelectedId] = useState<string>('');
     const [loading, setLoading] = useState(true);
@@ -193,13 +199,15 @@ export default function AdminNavigation() {
                             onChange={(e) => setNewMenu({ ...newMenu, name: e.target.value })}
                             placeholder="Menu name"
                             aria-label="Menu name"
-                            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                            disabled={!canManage}
+                            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                         />
                         <select
                             value={newMenu.location}
                             onChange={(e) => setNewMenu({ ...newMenu, location: e.target.value })}
                             aria-label="Menu location"
-                            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                            disabled={!canManage}
+                            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                         >
                             {LOCATIONS.map((loc) => (
                                 <option key={loc} value={loc}>{loc}</option>
@@ -208,7 +216,8 @@ export default function AdminNavigation() {
                         <button
                             type="button"
                             onClick={() => void createMenu()}
-                            className="flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500"
+                            disabled={!canManage}
+                            className="flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             <Plus className="h-4 w-4" /> New menu
                         </button>
@@ -250,20 +259,24 @@ export default function AdminNavigation() {
                                         {selected.name} <span className="text-sm font-normal text-gray-500">({selected.location})</span>
                                     </h2>
                                     <div className="flex gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => void publishToggle()}
-                                            className="rounded-lg border border-gray-300 px-3 py-1 text-sm hover:bg-gray-50 dark:border-gray-600"
-                                        >
-                                            {selected.status === 'published' ? 'Set to draft' : 'Publish'}
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setConfirmDelete(true)}
-                                            className="flex items-center gap-1 rounded-lg border border-red-300 px-3 py-1 text-sm text-red-600 hover:bg-red-50 dark:border-red-700"
-                                        >
-                                            <Trash2 className="h-4 w-4" /> Delete
-                                        </button>
+                                        {canManage && (
+                                            <>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => void publishToggle()}
+                                                    className="rounded-lg border border-gray-300 px-3 py-1 text-sm hover:bg-gray-50 dark:border-gray-600"
+                                                >
+                                                    {selected.status === 'published' ? 'Set to draft' : 'Publish'}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setConfirmDelete(true)}
+                                                    className="flex items-center gap-1 rounded-lg border border-red-300 px-3 py-1 text-sm text-red-600 hover:bg-red-50 dark:border-red-700"
+                                                >
+                                                    <Trash2 className="h-4 w-4" /> Delete
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
 
@@ -276,7 +289,8 @@ export default function AdminNavigation() {
                                                 placeholder="Title"
                                                 aria-label="Item title"
                                                 maxLength={160}
-                                                className="rounded-lg border border-gray-300 px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                                disabled={!canManage}
+                                                className="rounded-lg border border-gray-300 px-2 py-1 text-sm disabled:opacity-60 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                             />
                                             <input
                                                 value={it.url}
@@ -284,7 +298,8 @@ export default function AdminNavigation() {
                                                 placeholder="/path or https://..."
                                                 aria-label="Item URL"
                                                 maxLength={500}
-                                                className="rounded-lg border border-gray-300 px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                                disabled={!canManage}
+                                                className="rounded-lg border border-gray-300 px-2 py-1 text-sm disabled:opacity-60 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                             />
                                             <div className="flex items-center gap-2">
                                                 <input
@@ -293,45 +308,53 @@ export default function AdminNavigation() {
                                                     placeholder="icon"
                                                     aria-label="Item icon"
                                                     maxLength={80}
-                                                    className="w-20 rounded-lg border border-gray-300 px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                                    disabled={!canManage}
+                                                    className="w-20 rounded-lg border border-gray-300 px-2 py-1 text-sm disabled:opacity-60 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                                 />
                                                 <label className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300">
                                                     <input
                                                         type="checkbox"
                                                         checked={it.is_active}
                                                         onChange={(e) => patchItem(it.id, { is_active: e.target.checked })}
+                                                        disabled={!canManage}
                                                     />
                                                     On
                                                 </label>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => removeItem(it.id)}
-                                                    aria-label={`Remove ${it.title}`}
-                                                    className="text-red-500 hover:text-red-700"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </button>
+                                                {canManage && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeItem(it.id)}
+                                                        aria-label={`Remove ${it.title}`}
+                                                        className="text-red-500 hover:text-red-700"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                     ))}
                                 </div>
 
                                 <div className="mt-4 flex gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={addItem}
-                                        className="flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-600"
-                                    >
-                                        <Plus className="h-4 w-4" /> Add item
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => void saveItems()}
-                                        disabled={saving}
-                                        className="flex items-center gap-1 rounded-lg bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
-                                    >
-                                        <Save className="h-4 w-4" /> {saving ? 'Saving...' : 'Save items'}
-                                    </button>
+                                    {canManage && (
+                                        <>
+                                            <button
+                                                type="button"
+                                                onClick={addItem}
+                                                className="flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-600"
+                                            >
+                                                <Plus className="h-4 w-4" /> Add item
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => void saveItems()}
+                                                disabled={saving}
+                                                className="flex items-center gap-1 rounded-lg bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+                                            >
+                                                <Save className="h-4 w-4" /> {saving ? 'Saving...' : 'Save items'}
+                                            </button>
+                                        </>
+                                    )}
                                 </div>
 
                                 <ConfirmDialog

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { api, errorMessage } from '@/lib/api';
 import ConfirmDialog from '@/components/shared/Ui';
@@ -53,6 +53,12 @@ const EMPTY_FORM: FormState = {
 };
 
 export default function AdminCategories({ categories }: Props) {
+    // Mutations are gated by categories.categories.manage; viewers (moderator,
+    // platform_ops w/o manage) see the tree read-only instead of 403 toasts.
+    const permissions =
+        (usePage().props.auth as { permissions?: string[] } | null)?.permissions ?? [];
+    const canManage = permissions.includes('*') || permissions.includes('categories.categories.manage');
+
     const [showForm, setShowForm] = useState(false);
     const [editId, setEditId] = useState<string | null>(null);
     const [form, setForm] = useState<FormState>(EMPTY_FORM);
@@ -210,7 +216,8 @@ export default function AdminCategories({ categories }: Props) {
                                 reset();
                                 setShowForm(!showForm);
                             }}
-                            className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
+                            disabled={!canManage}
+                            className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             <Plus className="h-4 w-4" /> Add category
                         </button>
@@ -404,20 +411,24 @@ export default function AdminCategories({ categories }: Props) {
                                     )}
                                 </div>
                                 <div className="flex shrink-0 gap-2">
-                                    <button
-                                        onClick={() => startEdit(cat)}
-                                        className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-indigo-600 dark:hover:bg-gray-700"
-                                        aria-label={`Edit ${cat.name}`}
-                                    >
-                                        <Pencil className="h-4 w-4" />
-                                    </button>
-                                    <button
-                                        onClick={() => setDeleteFor(cat)}
-                                        className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600 dark:hover:bg-gray-700"
-                                        aria-label={`Delete ${cat.name}`}
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </button>
+                                    {canManage && (
+                                        <>
+                                            <button
+                                                onClick={() => startEdit(cat)}
+                                                className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-indigo-600 dark:hover:bg-gray-700"
+                                                aria-label={`Edit ${cat.name}`}
+                                            >
+                                                <Pencil className="h-4 w-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => setDeleteFor(cat)}
+                                                className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600 dark:hover:bg-gray-700"
+                                                aria-label={`Delete ${cat.name}`}
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
+                                        </>
+                                    )}
                                 </div>
                             </li>
                         ))}

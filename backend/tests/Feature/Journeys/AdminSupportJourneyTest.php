@@ -80,4 +80,35 @@ class AdminSupportJourneyTest extends TestCase
         $this->patchJson("/api/admin/support/tickets/{$ticketId}/assign", ['assigned_to' => $agent->id])
             ->assertOk();
     }
+
+    public function test_support_agents_endpoint_serves_the_assignee_picker(): void
+    {
+        // Support staff hold manageSupport but NOT the users console's
+        // manageUsers policy - the picker has its own lightweight endpoint.
+        $caller = $this->createUser();
+        $this->assignRole($caller, 'support_agent');
+
+        $colleague = $this->createUser(['name' => 'Ada Agent']);
+        $this->assignRole($colleague, 'support_admin');
+
+        $suspended = $this->createUser(['name' => 'Sam Suspended']);
+        $this->assignRole($suspended, 'support_agent');
+        DB::table('users')->where('id', $suspended->id)->update(['suspended_at' => now()]);
+
+        $plain = $this->createUser();
+
+        $this->actingAs($caller, 'sanctum');
+        $res = $this->getJson('/api/admin/support/agents')->assertOk();
+        $ids = array_column($res->json('data'), 'id');
+
+        $this->assertContains($colleague->id, $ids);
+        $this->assertNotContains($suspended->id, $ids, 'suspended staff must not be assignable');
+        $this->assertNotContains($plain->id, $ids, 'plain users are not agents');
+        // Payload stays minimal: id/name/email only.
+        $this->assertSame(['id', 'name', 'email'], array_keys($res->json('data.0')));
+
+        // Plain users may not enumerate staff.
+        $this->actingAs($plain, 'sanctum');
+        $this->getJson('/api/admin/support/agents')->assertStatus(403);
+    }
 }

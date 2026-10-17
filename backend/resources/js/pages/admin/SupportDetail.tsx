@@ -94,7 +94,7 @@ export default function AdminSupportDetail({ ticket_id }: { ticket_id: string })
 
     useEffect(() => {
         load();
-        api.get<{ data: UserLite[] }>('/api/admin/users', { params: { role: 'support_agent', per_page: 100 } })
+        api.get<{ data: UserLite[] }>('/api/admin/support/agents')
             .then((res) => setAgents(Array.isArray(res.data) ? res.data : []))
             .catch(() => setAgents([]));
         api.get<{ data: DepartmentLite[] }>('/api/admin/departments')

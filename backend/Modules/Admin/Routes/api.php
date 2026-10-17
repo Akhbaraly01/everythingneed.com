@@ -268,6 +268,10 @@ Route::prefix('api/admin')->middleware(['api', 'auth:sanctum', EnsureAccountActi
     // Support tickets
     Route::get('/support/tickets', [AdminSupportController::class, 'tickets'])
         ->can('manageSupport');
+    // Lightweight assignee picker for support staff (they cannot reach the
+    // users console's manageUsers-gated index).
+    Route::get('/support/agents', [AdminSupportController::class, 'agents'])
+        ->can('manageSupport');
     Route::get('/support/tickets/{id}', [AdminSupportController::class, 'show'])
         ->can('manageSupport');
     Route::patch('/support/tickets/{id}/assign', [AdminSupportController::class, 'assign'])

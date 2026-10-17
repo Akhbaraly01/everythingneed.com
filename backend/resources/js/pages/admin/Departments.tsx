@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { api, errorMessage } from '@/lib/api';
 import ConfirmDialog from '@/components/shared/Ui';
@@ -22,6 +22,11 @@ interface Props {
 const emptyForm = { name: '', description: '' };
 
 export default function AdminDepartments({ departments }: Props) {
+    // The page gate also admits support roles (they use departments for
+    // routing), but only super_admin/administrator may mutate them.
+    const roles = (usePage().props.auth as { roles?: string[] } | null)?.roles ?? [];
+    const canManage = roles.includes('super_admin') || roles.includes('administrator');
+
     const [editing, setEditing] = useState<Department | null>(null);
     const [creating, setCreating] = useState(false);
     const [form, setForm] = useState(emptyForm);
@@ -79,9 +84,11 @@ export default function AdminDepartments({ departments }: Props) {
                             <p className="text-sm text-gray-500">Routing for support tickets and internal escalation</p>
                         </div>
                     </div>
-                    <button onClick={openCreate} className="flex items-center gap-1.5 rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700">
-                        <Plus className="h-4 w-4" /> New department
-                    </button>
+                    {canManage && (
+                        <button onClick={openCreate} className="flex items-center gap-1.5 rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700">
+                            <Plus className="h-4 w-4" /> New department
+                        </button>
+                    )}
                 </div>
 
                 <DataTable
@@ -96,15 +103,19 @@ export default function AdminDepartments({ departments }: Props) {
                             key: 'actions', header: 'Actions',
                             render: (d) => (
                                 <div className="flex justify-end gap-2">
-                                    <button onClick={() => openEdit(d)} className="text-gray-400 hover:text-sky-600"><Pencil className="h-4 w-4" /></button>
-                                    <button
-                                        onClick={() => setDeleteFor(d)}
-                                        disabled={Number(d.tickets_count) > 0}
-                                        title={Number(d.tickets_count) > 0 ? 'In use by tickets — cannot delete' : 'Delete'}
-                                        className="text-gray-400 hover:text-red-500 disabled:cursor-not-allowed disabled:text-gray-200"
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </button>
+                                    {canManage && (
+                                        <>
+                                            <button onClick={() => openEdit(d)} className="text-gray-400 hover:text-sky-600"><Pencil className="h-4 w-4" /></button>
+                                            <button
+                                                onClick={() => setDeleteFor(d)}
+                                                disabled={Number(d.tickets_count) > 0}
+                                                title={Number(d.tickets_count) > 0 ? 'In use by tickets — cannot delete' : 'Delete'}
+                                                className="text-gray-400 hover:text-red-500 disabled:cursor-not-allowed disabled:text-gray-200"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
+                                        </>
+                                    )}
                                 </div>
                             ),
                         },

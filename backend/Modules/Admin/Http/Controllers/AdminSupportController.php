@@ -54,6 +54,35 @@ class AdminSupportController extends Controller
         return response()->json(['message' => 'Ticket assigned successfully']);
     }
 
+    /**
+     * Assignable support staff (id/name/email only). Support roles hold
+     * manageSupport but NOT the users console's manageUsers policy, so the
+     * old "GET /api/admin/users?role=support_agent" picker 403ed for them.
+     *
+     * GET /api/admin/support/agents
+     */
+    public function agents(): JsonResponse
+    {
+        $roles = array_map(
+            fn (\Core\Enums\AppRole $r) => $r->value,
+            [
+                \Core\Enums\AppRole::SUPER_ADMIN,
+                \Core\Enums\AppRole::ADMINISTRATOR,
+                \Core\Enums\AppRole::SUPPORT_AGENT,
+                \Core\Enums\AppRole::CUSTOMER_SERVICE,
+                \Core\Enums\AppRole::SUPPORT_ADMIN,
+            ],
+        );
+
+        $agents = \App\Models\User::query()
+            ->whereNull('suspended_at')
+            ->whereHas('roles', fn ($q) => $q->whereIn('role', $roles))
+            ->orderBy('name')
+            ->get(['id', 'name', 'email']);
+
+        return response()->json(['data' => $agents]);
+    }
+
     /** Staff ticket detail: full thread including internal notes + events. */
     public function show(Request $request, string $id): JsonResponse
     {
