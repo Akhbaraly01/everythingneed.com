@@ -13,12 +13,14 @@ class Plan extends Model
         'price',
         'currency',
         'interval',
+        'duration_days',
         'features',
         'is_active',
     ];
 
     protected $casts = [
         'price' => 'decimal:2',
+        'duration_days' => 'integer',
         'features' => 'array',
         'is_active' => 'boolean',
     ];
