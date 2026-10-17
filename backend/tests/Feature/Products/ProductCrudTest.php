@@ -37,6 +37,62 @@ class ProductCrudTest extends TestCase
             ->assertJsonStructure(['data', 'meta']);
     }
 
+    public function test_public_listing_hides_inactive_products(): void
+    {
+        $vendorUser = $this->createUser();
+        $vendor = $this->createVendor($vendorUser);
+        Product::factory()->create(['vendor_id' => $vendor->id, 'name' => 'Live Product']);
+        Product::factory()->create([
+            'vendor_id' => $vendor->id,
+            'name' => 'Archived Product',
+            'is_active' => false,
+            'publication_state' => 'archived',
+        ]);
+
+        $response = $this->getJson('/api/products?per_page=50');
+
+        $response->assertOk();
+        $names = collect($response->json('data'))->pluck('name');
+        $this->assertTrue($names->contains('Live Product'));
+        $this->assertFalse($names->contains('Archived Product'));
+    }
+
+    public function test_public_listing_ignores_is_active_override(): void
+    {
+        $vendorUser = $this->createUser();
+        $vendor = $this->createVendor($vendorUser);
+        Product::factory()->create([
+            'vendor_id' => $vendor->id,
+            'name' => 'Hidden Product',
+            'is_active' => false,
+        ]);
+
+        $response = $this->getJson('/api/products?is_active=0&per_page=50');
+
+        $response->assertOk();
+        $names = collect($response->json('data'))->pluck('name');
+        $this->assertFalse($names->contains('Hidden Product'));
+    }
+
+    public function test_catalogue_manager_still_sees_inactive_products(): void
+    {
+        $vendorUser = $this->createUser();
+        $vendor = $this->createVendor($vendorUser);
+        Product::factory()->create([
+            'vendor_id' => $vendor->id,
+            'name' => 'Manager Visible Archived',
+            'is_active' => false,
+            'publication_state' => 'archived',
+        ]);
+
+        $response = $this->actingAs($this->createAdmin(), 'sanctum')
+            ->getJson('/api/products?per_page=50');
+
+        $response->assertOk();
+        $names = collect($response->json('data'))->pluck('name');
+        $this->assertTrue($names->contains('Manager Visible Archived'));
+    }
+
     public function test_anyone_can_view_a_product(): void
     {
         $vendorUser = $this->createUser();

@@ -17,8 +17,18 @@ class ProductController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        $filters = $request->only(['search', 'category', 'vendor_id', 'brand_id', 'is_active', 'sort']);
+
+        // Public catalogue: only live products (archived/hidden/draft rows must
+        // never leak into storefront listings). The products console managers
+        // (same roles as the routes/web.php /admin/products gate) keep their
+        // filters so the management view can surface every publication state.
+        if (!$this->isCatalogueManager($request)) {
+            $filters['is_active'] = true;
+        }
+
         $products = $this->productService->getProducts(
-            $request->only(['search', 'category', 'vendor_id', 'brand_id', 'is_active', 'sort']),
+            $filters,
             $request->get('page', 1),
             $request->get('per_page', 15)
         );
@@ -32,6 +42,19 @@ class ProductController extends Controller
                 'total' => $products->total(),
             ],
         ]);
+    }
+
+    private function isCatalogueManager(Request $request): bool
+    {
+        $user = $request->user();
+
+        if ($user === null) {
+            return false;
+        }
+
+        return $user->hasRole('super_admin')
+            || $user->hasRole('administrator')
+            || $user->hasRole('platform_ops');
     }
 
     public function show(string $id): JsonResponse

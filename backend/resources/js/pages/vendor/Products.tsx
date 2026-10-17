@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/AppLayout';
 import { api, errorMessage } from '@/lib/api';
@@ -28,6 +28,13 @@ export default function VendorProducts({ products }: Props) {
     const [form, setForm] = useState(emptyForm);
     const [busy, setBusy] = useState(false);
     const [pendingDelete, setPendingDelete] = useState<Product | null>(null);
+    const [vendorId, setVendorId] = useState('');
+
+    useEffect(() => {
+        api.get<{ data: { id: string } }>('/api/vendors/mine')
+            .then((res) => setVendorId(res.data.id))
+            .catch(() => toast.error('Could not load your vendor profile'));
+    }, []);
 
     const openCreate = () => { setForm(emptyForm); setEditing(null); setCreating(true); };
     const openEdit = (p: Product) => {
@@ -51,7 +58,7 @@ export default function VendorProducts({ products }: Props) {
                 await api.put(`/api/products/${editing.id}`, payload);
                 toast.success('Product updated');
             } else {
-                await api.post('/api/products', payload);
+                await api.post('/api/products', { vendor_id: vendorId, ...payload });
                 toast.success('Product created');
             }
             setCreating(false);
@@ -162,7 +169,7 @@ export default function VendorProducts({ products }: Props) {
                             </div>
                             <div className="flex justify-end gap-2 pt-2">
                                 <button type="button" onClick={() => setCreating(false)} className="rounded-lg px-4 py-2 text-sm text-gray-500">Cancel</button>
-                                <button type="submit" disabled={busy} className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60">
+                                <button type="submit" disabled={busy || (!editing && !vendorId)} className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60">
                                     {busy ? 'Saving…' : editing ? 'Save changes' : 'Create product'}
                                 </button>
                             </div>

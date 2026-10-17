@@ -916,3 +916,11 @@ Master prompt §7 requires per-candidate validation (demand evidence + fraud anal
 | N-08 | Community price oracle | ADAPT (extend curated `NeedCostGuide` with verified-payer provenance) |
 
 Gate: docs-only change; no code, no routes, no migrations. `PHASE_07` VER-07 updated to list the register.
+
+## Vendor product forms + public catalogue hardening (2026-10-17, L-C)
+
+| ID | Finding | Fix | Evidence |
+|---|---|---|---|
+| L-C.1 | **bug: vendor create forms never sent `vendor_id`** | Both vendor surfaces (`resources/js/pages/vendor/ProductCreate.tsx`, `resources/js/pages/vendor/Products.tsx` modal) posted without `vendor_id`, which `StoreProductRequest` requires (`required|uuid|exists:vendors,id`) - vendor form submissions always 422'd. Fixed in the frontend: both fetch `/api/vendors/mine` on mount and include `vendor_id` (submit gated until the profile resolves). API semantics unchanged; no server-side defaulting. | `npx playwright test e2e/vendor-products.spec.ts --project=chromium` **3/3** (portal form create; products-page modal create; storefront video player on an admin-created published product). tsc/eslint clean. |
+| L-C.2 | **bug: public `GET /api/products` leaked archived/hidden products** | The public index only filtered `approved_at`; admin-archived rows keep `approved_at` set and stayed listed (surface: the admin.spec return chain picked an archived row -> checkout 422 "Product unavailable"). Fixed in `ProductController@index`: public callers force `is_active=true` (explicit `?is_active=0` ignored); catalogue managers (`super_admin`/`administrator`/`platform_ops`, aligned with the `/admin/products` page gate) keep their filters so the console management view still sees every state. | `php artisan test tests/Feature/Products` **42 passed** (ProductCrudTest +3: hides inactive; ignores guest override; manager still sees archived). Live API probe: archived rows 0 in the public listing. |
+| L-C gates | Regression after the fixes | admin e2e **5/5** (incl. the previously failing returns chain - now buys a live row from `E2E Modal Product`, fulfilled by TechStore); vendor e2e **3/3**; marketplace+scan e2e **15/15**; Learn+Products+SecurityHeaders phpunit **131 passed (895 assertions)**; `npm run build` green. | |
