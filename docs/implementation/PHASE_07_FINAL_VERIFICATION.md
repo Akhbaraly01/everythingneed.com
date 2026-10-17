@@ -4,13 +4,17 @@ Status: evidence compiled below from this programme run.
 
 ## VER-01 Static/structural
 
-- `tsc --noEmit`: clean (no TS changes this run; last full green stands).
-- `eslint`: clean (no TS changes this run).
+- `tsc --noEmit`: clean (2026-10-17 re-run after lesson management + product
+  videos: 0 errors).
+- `eslint`: clean (0 errors; incl. new `e2e/admin.spec.ts` lesson-manager
+  test).
 - Routes: 271/271 Inertia targets resolve; 0 dead static links (re-verified
   method, prior session).
 - Migrations: all ran (`migrate:status` clean through
   `2026_10_12_000004`); no `migrate:fresh` on shared DBs.
 - Boundary tests green (ownership, dependency ratchet, closures, BaaS).
+- Authorization coverage + audit middleware/chain re-run 2026-10-17:
+  11 passed (24 assertions) — no unauthorized routes, chain verifies.
 - Secrets: `.env*` diffs empty-valued only.
 
 ## VER-02 Automated tests (this run, sequential chunks)
@@ -24,6 +28,15 @@ Status: evidence compiled below from this programme run.
 | Healthcare suites | 87 passed |
 | Auth + RBAC/Users/Settings | 47 + 79 passed |
 | Integration (Money/Financial/Dependency/DomainEvent) | 21 passed |
+
+**2026-10-17 full-suite certification (after Learn lesson management +
+product videos):** entire backend suite in 7 sequential batches —
+**1,883 passed (12,406 assertions), 0 failures** (Admin 366;
+Needs+Notifications 148; Learn+Healthcare+Engagement 189;
+Security+Auth+Payments+Checkout+Orders+Wallet 285; Wave A–U 251; misc
+domains 164; remaining domains+Unit 480). Frontend: vitest 56/56; playback
+e2e 4/4; admin e2e 5/5 (incl. lesson-manager modal loop); learn-landing
+6/6; `npm run build` green.
 
 ## VER-03 Browser (this run)
 
@@ -55,7 +68,10 @@ runbook; no destructive action taken.
 
 This file + `MASTER_EXECUTION_PLAN.md` + `PHASE_00..06_*` + retained
 sibling evidence (`MASTER_GAP_REGISTER`, implementation reports,
-`SECURITY.md`, `REVIEW_GUIDE.md`).
+`SECURITY.md`, `REVIEW_GUIDE.md`) + `NOVEL_SERVICES_VALIDATION.md` (§7
+validation register, 2026-10-17: 8 candidates analysed against verified
+building blocks — 3 ADAPT paths, 4 POSTPONE, 1 BLOCKED-BY-BUSINESS; none
+built, none promised).
 
 ## VER-08 Known issues / blocked
 

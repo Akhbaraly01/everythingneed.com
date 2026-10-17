@@ -899,3 +899,20 @@ Gaps 1-5 - directed fixes + H-C charity module + home density (2026-10-09)
 | L-B.1 product videos end-to-end | Read: `ProductResource` exposes `video_url` + `production_video_url`. Write: both added to `StoreProductRequest` rules and `ProductController@update` validation + `only()` allowlist (previously dropped silently). UI: vendor `ProductCreate`/`ProductEdit` and admin `admin/Products.tsx` gain a "Product video URL" field; storefront `products/Show.tsx` renders the video via `resolvePlaybackSource` + `VideoPlayer` (in-app, no heartbeat, `data-testid="product-video"`); `types/index.ts` Product gains the fields. | `ProductCrudTest` **20 passed (60 assertions)** â€” detail exposure + vendor set-video round-trip + bad URL 422 |
 | L gates | `php artisan test tests/Feature/Learn tests/Feature/Products tests/Feature/SecurityHeadersTest.php` **131 passed (895 assertions)**; admin parity+sweep **38 passed (98 assertions)**; admin render+matrix+nav **50 passed (1258 assertions)**; auth coverage + audit middleware/chain **11 passed (24 assertions)**; `npx vitest run` **56/56**; playback e2e **4/4**; admin e2e **5/5**; learn-landing e2e **6/6**; tsc **0**; eslint **0 errors**; `npm run build` green. Docs: `docs/architecture/VIDEO_PROVIDER_COMPATIBILITY.md` Â§5/Â§6 updated (product videos no longer "dead storage"; new evidence rows). |
 | L gates (full) | Full backend suite certified 2026-10-17 after lesson management + product videos: **1,883 passed (12,406 assertions), 0 failures** in 7 sequential batches â€” Admin 366; Needs+Notifications 148; Learn+Healthcare+Engagement 189; Security+Auth+Payments+Checkout+Orders+Wallet 285; Wave A-U 251; misc domains 164; remaining domains+Unit 480. |
+
+## Novel Services Lab validation (§7) — 2026-10-17
+
+Master prompt §7 requires per-candidate validation (demand evidence + fraud analysis + cost model) before any code; none are promised as built. Deliverable: `docs/implementation/NOVEL_SERVICES_VALIDATION.md` — all 8 candidates analysed against verified building blocks (file-level references only, no fabricated market data).
+
+| ID | Candidate | Decision |
+|---|---|---|
+| N-01 | Single-cart multi-vertical checkout | POSTPONE (needs real basket-composition data; split-refund model undesigned) |
+| N-02 | Skill-barter exchange | POSTPONE (sybil/farming + barter tax treatment unresolved) |
+| N-03 | Blind donor allocation pool | POSTPONE (committee operations must be staffed first) |
+| N-04 | Prescription-to-door interaction guard | POSTPONE (requires licensed drug-interaction DB + clinical sign-off) |
+| N-05 | Learn-to-earn micro-credentials | ADAPT (caps on existing cert/wallet infra; gated on volume + economic approval) |
+| N-06 | Milestone escrow + arbitration | BLOCKED-BY-BUSINESS (P4 legal/ops) |
+| N-07 | Verified-provider passport | ADAPT (Core-contract migration on KycGate/profiles) |
+| N-08 | Community price oracle | ADAPT (extend curated `NeedCostGuide` with verified-payer provenance) |
+
+Gate: docs-only change; no code, no routes, no migrations. `PHASE_07` VER-07 updated to list the register.
