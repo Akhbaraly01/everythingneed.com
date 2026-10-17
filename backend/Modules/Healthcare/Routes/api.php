@@ -27,6 +27,14 @@ Route::post('/appointments/{id}/video-room', [AppointmentController::class, 'vid
         Route::get('/admin/healthcare/consultations', [\Modules\Healthcare\Http\Controllers\HealthCompatController::class, 'adminConsultations'])
             ->middleware('role:super_admin,administrator,healthcare_admin');
 
+        // W8: provider profile edit + guarded delete.
+        Route::put('/admin/healthcare/doctors/{id}', [DoctorController::class, 'adminUpdate'])
+            ->middleware('role:super_admin,administrator,healthcare_admin')
+            ->where('id', '[0-9a-f-]{36}');
+        Route::delete('/admin/healthcare/doctors/{id}', [DoctorController::class, 'adminDestroy'])
+            ->middleware('role:super_admin,administrator,healthcare_admin')
+            ->where('id', '[0-9a-f-]{36}');
+
         // Lab console (healthcare workspace): manage the catalog + overview bookings.
         // Bookings must precede /labs/{id} or "bookings" matches {id}.
         Route::get('/admin/healthcare/labs', [\Modules\Healthcare\Http\Controllers\LabController::class, 'adminList'])
@@ -36,6 +44,9 @@ Route::post('/appointments/{id}/video-room', [AppointmentController::class, 'vid
         Route::post('/admin/healthcare/labs', [\Modules\Healthcare\Http\Controllers\LabController::class, 'store'])
             ->middleware('role:super_admin,administrator,healthcare_admin');
         Route::put('/admin/healthcare/labs/{id}', [\Modules\Healthcare\Http\Controllers\LabController::class, 'update'])
+            ->middleware('role:super_admin,administrator,healthcare_admin')
+            ->where('id', '[0-9a-f-]{36}');
+        Route::delete('/admin/healthcare/labs/{id}', [\Modules\Healthcare\Http\Controllers\LabController::class, 'destroy'])
             ->middleware('role:super_admin,administrator,healthcare_admin')
             ->where('id', '[0-9a-f-]{36}');
 
@@ -59,6 +70,9 @@ Route::post('/appointments/{id}/video-room', [AppointmentController::class, 'vid
         Route::post('/admin/healthcare/content', [\Modules\Healthcare\Http\Controllers\HealthContentController::class, 'adminStore'])
             ->middleware('role:super_admin,administrator,healthcare_admin');
         Route::put('/admin/healthcare/content/{id}', [\Modules\Healthcare\Http\Controllers\HealthContentController::class, 'adminUpdate'])
+            ->middleware('role:super_admin,administrator,healthcare_admin')
+            ->where('id', '[0-9a-f-]{36}');
+        Route::delete('/admin/healthcare/content/{id}', [\Modules\Healthcare\Http\Controllers\HealthContentController::class, 'adminDestroy'])
             ->middleware('role:super_admin,administrator,healthcare_admin')
             ->where('id', '[0-9a-f-]{36}');
     });

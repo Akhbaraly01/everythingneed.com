@@ -136,11 +136,57 @@ class HealthContentController extends Controller
             'is_active' => 'sometimes|boolean',
         ]);
 
+        if ($data === []) {
+            return response()->json(['message' => 'No changes provided'], 422);
+        }
+
         $content->update($data);
+
+        try {
+            app(\Core\Services\Contracts\AuditServiceInterface::class)->log([
+                'action' => 'update',
+                'entity_type' => 'health_content',
+                'entity_id' => $id,
+                'performed_by' => $request->user()?->id,
+                'new_values' => $data,
+            ]);
+        } catch (\Throwable) {
+            // Audit failures must not break the update.
+        }
 
         return response()->json([
             'message' => 'Health content updated',
             'data' => $content->fresh(),
         ]);
+    }
+
+    /**
+     * DELETE /api/admin/healthcare/content/{id} - remove a library item.
+     * Soft delete so historic deep links can still resolve via admin reads.
+     * (role: super_admin, administrator, healthcare_admin)
+     */
+    public function adminDestroy(Request $request, string $id): JsonResponse
+    {
+        $content = HealthContent::find($id);
+        if (!$content) {
+            return response()->json(['message' => 'Content not found'], 404);
+        }
+
+        $title = $content->title;
+        $content->delete();
+
+        try {
+            app(\Core\Services\Contracts\AuditServiceInterface::class)->log([
+                'action' => 'delete',
+                'entity_type' => 'health_content',
+                'entity_id' => $id,
+                'performed_by' => $request->user()?->id,
+                'new_values' => ['title' => $title],
+            ]);
+        } catch (\Throwable) {
+            // Audit failures must not break deletion.
+        }
+
+        return response()->json(['message' => 'Health content deleted']);
     }
 }

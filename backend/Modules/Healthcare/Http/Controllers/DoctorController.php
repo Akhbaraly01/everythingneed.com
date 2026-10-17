@@ -125,4 +125,94 @@ class DoctorController extends Controller
                 ->where('expert_id', $doctor->id)->get(),
         ], 201);
     }
+
+    /**
+     * Admin console: full provider profile edit.
+     *
+     * PUT /api/admin/healthcare/doctors/{id}
+     * (role: super_admin, administrator, healthcare_admin)
+     */
+    public function adminUpdate(Request $request, string $id): JsonResponse
+    {
+        $doctor = \Modules\Healthcare\Entities\Doctor::find($id);
+
+        if (!$doctor) {
+            return response()->json(['message' => 'Doctor not found'], 404);
+        }
+
+        $validated = $request->validate([
+            'full_name' => 'sometimes|string|max:255',
+            'specialization' => 'sometimes|string|max:100',
+            'profession' => 'sometimes|string|in:doctor,nurse,chew,dentist,pharmacist,medical_laboratory_scientist,physiotherapist,optometrist,midwife,dietitian,psychologist,other',
+            'qualification' => 'sometimes|string|max:255',
+            'experience_years' => 'sometimes|integer|min:0',
+            'consultation_fee' => 'sometimes|numeric|min:0',
+            'virtual_fee' => 'nullable|numeric|min:0',
+            'home_visit_fee' => 'nullable|numeric|min:0',
+            'avatar_url' => 'nullable|url|max:500',
+            'is_available' => 'sometimes|boolean',
+        ]);
+
+        if ($validated === []) {
+            return response()->json(['message' => 'No changes provided'], 422);
+        }
+
+        $doctor->update($validated);
+
+        try {
+            app(\Core\Services\Contracts\AuditServiceInterface::class)->log([
+                'action' => 'update',
+                'entity_type' => 'doctor',
+                'entity_id' => $id,
+                'performed_by' => $request->user()?->id,
+                'new_values' => $validated,
+            ]);
+        } catch (\Throwable) {
+            // Audit failures must not break the update.
+        }
+
+        return response()->json([
+            'message' => 'Doctor updated successfully',
+            'data' => new DoctorResource($doctor->fresh()),
+        ]);
+    }
+
+    /**
+     * Admin console: remove a provider. Soft delete; refused while health
+     * tickets reference the doctor so history keeps resolving.
+     *
+     * DELETE /api/admin/healthcare/doctors/{id}
+     * (role: super_admin, administrator, healthcare_admin)
+     */
+    public function adminDestroy(Request $request, string $id): JsonResponse
+    {
+        $doctor = \Modules\Healthcare\Entities\Doctor::find($id);
+
+        if (!$doctor) {
+            return response()->json(['message' => 'Doctor not found'], 404);
+        }
+
+        if ($doctor->healthTickets()->exists()) {
+            return response()->json([
+                'message' => 'This doctor has appointments and cannot be deleted. Set availability to off instead.',
+            ], 422);
+        }
+
+        $name = $doctor->full_name;
+        $doctor->delete();
+
+        try {
+            app(\Core\Services\Contracts\AuditServiceInterface::class)->log([
+                'action' => 'delete',
+                'entity_type' => 'doctor',
+                'entity_id' => $id,
+                'performed_by' => $request->user()?->id,
+                'new_values' => ['full_name' => $name],
+            ]);
+        } catch (\Throwable) {
+            // Audit failures must not break deletion.
+        }
+
+        return response()->json(['message' => 'Doctor deleted']);
+    }
 }

@@ -262,9 +262,61 @@ class LabController extends Controller
             'is_active'                => 'boolean',
         ]);
 
+        if ($validated === []) {
+            return response()->json(['message' => 'No changes provided'], 422);
+        }
+
         $test->update($validated);
 
+        try {
+            app(\Core\Services\Contracts\AuditServiceInterface::class)->log([
+                'action' => 'update',
+                'entity_type' => 'lab_test',
+                'entity_id' => $id,
+                'performed_by' => $request->user()?->id,
+                'new_values' => $validated,
+            ]);
+        } catch (\Throwable) {
+            // Audit failures must not break the update.
+        }
+
         return response()->json(['message' => 'Lab test updated', 'data' => $test->fresh()]);
+    }
+
+    /**
+     * DELETE /api/admin/healthcare/labs/{id} - remove a lab test.
+     * Soft delete; refused while bookings reference the test.
+     * (role: super_admin, administrator, healthcare_admin)
+     */
+    public function destroy(Request $request, string $id): JsonResponse
+    {
+        $test = LabTest::find($id);
+        if (!$test) {
+            return response()->json(['message' => 'Lab test not found'], 404);
+        }
+
+        if ($test->bookings()->exists()) {
+            return response()->json([
+                'message' => 'This lab test has bookings and cannot be deleted. Deactivate it instead.',
+            ], 422);
+        }
+
+        $name = $test->name;
+        $test->delete();
+
+        try {
+            app(\Core\Services\Contracts\AuditServiceInterface::class)->log([
+                'action' => 'delete',
+                'entity_type' => 'lab_test',
+                'entity_id' => $id,
+                'performed_by' => $request->user()?->id,
+                'new_values' => ['name' => $name],
+            ]);
+        } catch (\Throwable) {
+            // Audit failures must not break deletion.
+        }
+
+        return response()->json(['message' => 'Lab test deleted']);
     }
 
     /** GET /api/admin/healthcare/labs/bookings - every booking across patients. */

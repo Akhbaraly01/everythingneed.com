@@ -2,8 +2,9 @@ import { statusTone } from '@/lib/lifecycle';
 import AdminLayout from '@/layouts/AdminLayout';
 import { Head, usePage } from '@inertiajs/react';
 import { api, errorMessage, rows } from '@/lib/api';
+import { useConfirm } from '@/lib/confirm';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
-import { Stethoscope, Plus, CalendarCheck, ClipboardList, Search, X, Check, FlaskConical } from 'lucide-react';
+import { Stethoscope, Plus, CalendarCheck, ClipboardList, Search, X, Check, FlaskConical, Pencil, Trash2 } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -18,6 +19,7 @@ interface Doctor {
     consultation_fee: number;
     virtual_fee?: number | null;
     home_visit_fee?: number | null;
+    avatar_url?: string | null;
     is_available: boolean;
     rating?: number | null;
 }
@@ -55,6 +57,7 @@ interface ConsultationRow {
 interface LabTest {
     id: string;
     name: string;
+    description?: string | null;
     category: string;
     price: number;
     result_time_hours: number;
@@ -128,6 +131,7 @@ const PAGE = 15;
 export default function AdminHealthcare() {
     const { auth } = usePage().props as unknown as { auth: { roles?: string[] } };
     const isSuper = (auth?.roles ?? []).includes('super_admin');
+    const confirm = useConfirm();
 
     const [tab, setTab] = useState<Tab>('doctors');
     const [loading, setLoading] = useState(true);
@@ -182,6 +186,16 @@ export default function AdminHealthcare() {
     const [showLabForm, setShowLabForm] = useState(false);
     const [savingLab, setSavingLab] = useState(false);
     const [labForm, setLabForm] = useState({ name: '', category: '', price: 0, result_time_hours: 24, preparation_instructions: '' });
+
+    const [editDoctor, setEditDoctor] = useState<Doctor | null>(null);
+    const [doctorEditForm, setDoctorEditForm] = useState({ full_name: '', specialization: '', profession: 'doctor', qualification: '', experience_years: '', consultation_fee: '', virtual_fee: '', home_visit_fee: '', avatar_url: '', is_available: true });
+    const [savingDoctorEdit, setSavingDoctorEdit] = useState(false);
+    const [editLab, setEditLab] = useState<LabTest | null>(null);
+    const [labEditForm, setLabEditForm] = useState({ name: '', description: '', category: '', price: '', result_time_hours: '', preparation_instructions: '' });
+    const [savingLabEdit, setSavingLabEdit] = useState(false);
+    const [editContent, setEditContent] = useState<HealthContent | null>(null);
+    const [contentEditForm, setContentEditForm] = useState({ title: '', summary: '', url: '', specialty: '' });
+    const [savingContentEdit, setSavingContentEdit] = useState(false);
 
     const [assigning, setAssigning] = useState<string | null>(null);
     const [allDoctors, setAllDoctors] = useState<Doctor[]>([]);
@@ -332,6 +346,180 @@ export default function AdminHealthcare() {
             toast.success(lab.is_active ? 'Deactivated.' : 'Activated.');
         } catch (err) {
             toast.error(errorMessage(err, 'Update failed'));
+        }
+    };
+
+    const PROFESSIONS = ['doctor', 'nurse', 'chew', 'dentist', 'pharmacist', 'medical_laboratory_scientist', 'physiotherapist', 'optometrist', 'midwife', 'dietitian', 'psychologist', 'other'];
+
+    const openEditDoctor = (d: Doctor) => {
+        setEditDoctor(d);
+        setDoctorEditForm({
+            full_name: d.full_name,
+            specialization: d.specialization,
+            profession: d.profession,
+            qualification: d.qualification ?? '',
+            experience_years: d.experience_years != null ? String(d.experience_years) : '',
+            consultation_fee: String(d.consultation_fee ?? ''),
+            virtual_fee: d.virtual_fee != null ? String(d.virtual_fee) : '',
+            home_visit_fee: d.home_visit_fee != null ? String(d.home_visit_fee) : '',
+            avatar_url: d.avatar_url ?? '',
+            is_available: d.is_available,
+        });
+    };
+
+    const submitDoctorEdit = async (e: FormEvent) => {
+        e.preventDefault();
+        if (!editDoctor) return;
+        if (!doctorEditForm.full_name.trim() || !doctorEditForm.specialization.trim()) {
+            toast.error('Name and specialization are required');
+            return;
+        }
+        setSavingDoctorEdit(true);
+        try {
+            const res = await api.put<{ data: Doctor }>(`/api/admin/healthcare/doctors/${editDoctor.id}`, {
+                full_name: doctorEditForm.full_name.trim(),
+                specialization: doctorEditForm.specialization.trim(),
+                profession: doctorEditForm.profession,
+                qualification: doctorEditForm.qualification.trim(),
+                experience_years: Number(doctorEditForm.experience_years) || 0,
+                consultation_fee: Number(doctorEditForm.consultation_fee) || 0,
+                virtual_fee: doctorEditForm.virtual_fee === '' ? null : Number(doctorEditForm.virtual_fee),
+                home_visit_fee: doctorEditForm.home_visit_fee === '' ? null : Number(doctorEditForm.home_visit_fee),
+                avatar_url: doctorEditForm.avatar_url.trim() || null,
+                is_available: doctorEditForm.is_available,
+            });
+            toast.success('Doctor updated.');
+            setEditDoctor(null);
+            setDoctors(doctors.map((d) => (d.id === editDoctor.id ? { ...d, ...res.data } : d)));
+        } catch (err) {
+            toast.error(errorMessage(err, 'Update failed'));
+        } finally {
+            setSavingDoctorEdit(false);
+        }
+    };
+
+    const deleteDoctor = async (d: Doctor) => {
+        const ok = await confirm({
+            title: `Delete Dr. ${d.full_name}?`,
+            description: 'The provider is removed from the directory. Doctors with appointments cannot be deleted - set availability to off instead.',
+            confirmLabel: 'Delete',
+            danger: true,
+        });
+        if (!ok) return;
+        try {
+            await api.del(`/api/admin/healthcare/doctors/${d.id}`);
+            toast.success('Doctor deleted.');
+            setDoctors(doctors.filter((x) => x.id !== d.id));
+        } catch (err) {
+            toast.error(errorMessage(err, 'Delete failed'));
+        }
+    };
+
+    const openEditLab = (l: LabTest) => {
+        setEditLab(l);
+        setLabEditForm({
+            name: l.name,
+            description: l.description ?? '',
+            category: l.category,
+            price: String(l.price ?? ''),
+            result_time_hours: String(l.result_time_hours ?? ''),
+            preparation_instructions: l.preparation_instructions ?? '',
+        });
+    };
+
+    const submitLabEdit = async (e: FormEvent) => {
+        e.preventDefault();
+        if (!editLab) return;
+        if (!labEditForm.name.trim() || !labEditForm.category.trim()) {
+            toast.error('Name and category are required');
+            return;
+        }
+        setSavingLabEdit(true);
+        try {
+            const res = await api.put<{ data: LabTest }>(`/api/admin/healthcare/labs/${editLab.id}`, {
+                name: labEditForm.name.trim(),
+                description: labEditForm.description.trim() || null,
+                category: labEditForm.category.trim(),
+                price: Number(labEditForm.price) || 0,
+                result_time_hours: Number(labEditForm.result_time_hours) || 1,
+                preparation_instructions: labEditForm.preparation_instructions.trim() || null,
+            });
+            toast.success('Lab test updated.');
+            setEditLab(null);
+            setLabs(labs.map((l) => (l.id === editLab.id ? { ...l, ...res.data } : l)));
+        } catch (err) {
+            toast.error(errorMessage(err, 'Update failed'));
+        } finally {
+            setSavingLabEdit(false);
+        }
+    };
+
+    const deleteLab = async (l: LabTest) => {
+        const ok = await confirm({
+            title: `Delete ${l.name}?`,
+            description: 'The test is removed from the catalogue. Tests with bookings cannot be deleted - deactivate instead.',
+            confirmLabel: 'Delete',
+            danger: true,
+        });
+        if (!ok) return;
+        try {
+            await api.del(`/api/admin/healthcare/labs/${l.id}`);
+            toast.success('Lab test deleted.');
+            setLabs(labs.filter((x) => x.id !== l.id));
+        } catch (err) {
+            toast.error(errorMessage(err, 'Delete failed'));
+        }
+    };
+
+    const openEditContent = (c: HealthContent) => {
+        setEditContent(c);
+        setContentEditForm({
+            title: c.title,
+            summary: c.summary ?? '',
+            url: c.url ?? '',
+            specialty: c.specialty ?? '',
+        });
+    };
+
+    const submitContentEdit = async (e: FormEvent) => {
+        e.preventDefault();
+        if (!editContent) return;
+        if (!contentEditForm.title.trim()) {
+            toast.error('Title is required');
+            return;
+        }
+        setSavingContentEdit(true);
+        try {
+            const res = await api.put<{ data: HealthContent }>(`/api/admin/healthcare/content/${editContent.id}`, {
+                title: contentEditForm.title.trim(),
+                summary: contentEditForm.summary.trim() || null,
+                url: contentEditForm.url.trim() || null,
+                specialty: contentEditForm.specialty.trim() || null,
+            });
+            toast.success('Content updated.');
+            setEditContent(null);
+            setContents(contents.map((c) => (c.id === editContent.id ? { ...c, ...res.data } : c)));
+        } catch (err) {
+            toast.error(errorMessage(err, 'Update failed'));
+        } finally {
+            setSavingContentEdit(false);
+        }
+    };
+
+    const deleteContent = async (c: HealthContent) => {
+        const ok = await confirm({
+            title: `Delete "${c.title}"?`,
+            description: 'The library item is removed from the documentation hub.',
+            confirmLabel: 'Delete',
+            danger: true,
+        });
+        if (!ok) return;
+        try {
+            await api.del(`/api/admin/healthcare/content/${c.id}`);
+            toast.success('Content deleted.');
+            setContents(contents.filter((x) => x.id !== c.id));
+        } catch (err) {
+            toast.error(errorMessage(err, 'Delete failed'));
         }
     };
 
@@ -754,6 +942,7 @@ const submitDoctor = async (e: FormEvent) => {
                                     <th className="px-4 py-3">Available</th>
                                     <th className="px-4 py-3">Rating</th>
                                     <th className="px-4 py-3">Experience</th>
+                                    <th className="px-4 py-3">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y dark:divide-gray-700">
@@ -773,6 +962,20 @@ const submitDoctor = async (e: FormEvent) => {
                                         </td>
                                         <td className="px-4 py-3">{d.rating != null ? Number(d.rating).toFixed(1) : '—'}</td>
                                         <td className="px-4 py-3">{d.experience_years ?? '—'} yrs</td>
+                                        <td className="px-4 py-3">
+                                            <div className="flex gap-1.5">
+                                                <button data-testid={`doctor-edit-${d.id}`} onClick={() => openEditDoctor(d)}
+                                                    className="rounded-lg border border-gray-300 p-1.5 text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300"
+                                                    title="Edit doctor">
+                                                    <Pencil className="h-3.5 w-3.5" />
+                                                </button>
+                                                <button data-testid={`doctor-delete-${d.id}`} onClick={() => deleteDoctor(d)}
+                                                    className="rounded-lg border border-red-300 p-1.5 text-red-600 hover:bg-red-50"
+                                                    title="Delete doctor">
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </button>
+                                            </div>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -868,10 +1071,22 @@ const submitDoctor = async (e: FormEvent) => {
                                             </span>
                                         </td>
                                         <td className="px-4 py-3">
-                                            <button onClick={() => toggleLabActive(lab)}
-                                                className="rounded-lg bg-gray-800 px-2.5 py-1 text-xs font-semibold text-white hover:bg-gray-700 dark:bg-gray-600">
-                                                {lab.is_active ? 'Deactivate' : 'Activate'}
-                                            </button>
+                                            <div className="flex gap-1.5">
+                                                <button onClick={() => toggleLabActive(lab)}
+                                                    className="rounded-lg bg-gray-800 px-2.5 py-1 text-xs font-semibold text-white hover:bg-gray-700 dark:bg-gray-600">
+                                                    {lab.is_active ? 'Deactivate' : 'Activate'}
+                                                </button>
+                                                <button data-testid={`lab-edit-${lab.id}`} onClick={() => openEditLab(lab)}
+                                                    className="rounded-lg border border-gray-300 p-1.5 text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300"
+                                                    title="Edit lab test">
+                                                    <Pencil className="h-3.5 w-3.5" />
+                                                </button>
+                                                <button data-testid={`lab-delete-${lab.id}`} onClick={() => deleteLab(lab)}
+                                                    className="rounded-lg border border-red-300 p-1.5 text-red-600 hover:bg-red-50"
+                                                    title="Delete lab test">
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -1023,10 +1238,22 @@ const submitDoctor = async (e: FormEvent) => {
                                             </span>
                                         </td>
                                         <td className="px-4 py-3">
-                                            <button onClick={() => toggleContentActive(c)}
-                                                className="rounded-lg bg-gray-800 px-2.5 py-1 text-xs font-semibold text-white hover:bg-gray-700 dark:bg-gray-600">
-                                                {c.is_active ? 'Unpublish' : 'Publish'}
-                                            </button>
+                                            <div className="flex gap-1.5">
+                                                <button onClick={() => toggleContentActive(c)}
+                                                    className="rounded-lg bg-gray-800 px-2.5 py-1 text-xs font-semibold text-white hover:bg-gray-700 dark:bg-gray-600">
+                                                    {c.is_active ? 'Unpublish' : 'Publish'}
+                                                </button>
+                                                <button data-testid={`content-edit-${c.id}`} onClick={() => openEditContent(c)}
+                                                    className="rounded-lg border border-gray-300 p-1.5 text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300"
+                                                    title="Edit item">
+                                                    <Pencil className="h-3.5 w-3.5" />
+                                                </button>
+                                                <button data-testid={`content-delete-${c.id}`} onClick={() => deleteContent(c)}
+                                                    className="rounded-lg border border-red-300 p-1.5 text-red-600 hover:bg-red-50"
+                                                    title="Delete item">
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -1107,6 +1334,154 @@ const submitDoctor = async (e: FormEvent) => {
                             <button disabled={page * (meta.per_page ?? PAGE) >= meta.total} onClick={() => setPage(page + 1)}
                                 className="rounded-lg border border-gray-300 px-3 py-1 disabled:opacity-40 dark:border-gray-600">Next</button>
                         </div>
+                    </div>
+                )}
+
+                {editDoctor && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setEditDoctor(null)}>
+                        <form data-testid="doctor-edit-modal" onClick={(e) => e.stopPropagation()} onSubmit={submitDoctorEdit}
+                            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto space-y-4 rounded-xl bg-white p-6 shadow-xl dark:bg-gray-800">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Edit Provider</h2>
+                                <button type="button" onClick={() => setEditDoctor(null)}><X className="h-5 w-5 text-gray-400" /></button>
+                            </div>
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <label className="text-sm">Full name *
+                                    <input required maxLength={255} data-testid="doctor-edit-name" value={doctorEditForm.full_name}
+                                        onChange={(e) => setDoctorEditForm({ ...doctorEditForm, full_name: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></label>
+                                <label className="text-sm">Profession
+                                    <select data-testid="doctor-edit-profession" value={doctorEditForm.profession}
+                                        onChange={(e) => setDoctorEditForm({ ...doctorEditForm, profession: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 capitalize dark:border-gray-600 dark:bg-gray-700">
+                                        {PROFESSIONS.map((p) => <option key={p} value={p}>{p.replace(/_/g, ' ')}</option>)}
+                                    </select></label>
+                                <label className="text-sm">Specialization *
+                                    <input required maxLength={100} data-testid="doctor-edit-specialization" value={doctorEditForm.specialization}
+                                        onChange={(e) => setDoctorEditForm({ ...doctorEditForm, specialization: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></label>
+                                <label className="text-sm">Qualification
+                                    <input maxLength={255} data-testid="doctor-edit-qualification" value={doctorEditForm.qualification}
+                                        onChange={(e) => setDoctorEditForm({ ...doctorEditForm, qualification: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></label>
+                                <label className="text-sm">Experience (years)
+                                    <input type="number" min={0} step={1} data-testid="doctor-edit-experience" value={doctorEditForm.experience_years}
+                                        onChange={(e) => setDoctorEditForm({ ...doctorEditForm, experience_years: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></label>
+                                <label className="text-sm">Consultation fee *
+                                    <input required type="number" min={0} step="0.01" data-testid="doctor-edit-fee" value={doctorEditForm.consultation_fee}
+                                        onChange={(e) => setDoctorEditForm({ ...doctorEditForm, consultation_fee: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></label>
+                                <label className="text-sm">Virtual fee
+                                    <input type="number" min={0} step="0.01" data-testid="doctor-edit-virtual-fee" value={doctorEditForm.virtual_fee}
+                                        onChange={(e) => setDoctorEditForm({ ...doctorEditForm, virtual_fee: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></label>
+                                <label className="text-sm">Home visit fee
+                                    <input type="number" min={0} step="0.01" data-testid="doctor-edit-home-fee" value={doctorEditForm.home_visit_fee}
+                                        onChange={(e) => setDoctorEditForm({ ...doctorEditForm, home_visit_fee: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></label>
+                                <label className="text-sm sm:col-span-2">Avatar URL
+                                    <input type="url" maxLength={500} data-testid="doctor-edit-avatar" value={doctorEditForm.avatar_url}
+                                        onChange={(e) => setDoctorEditForm({ ...doctorEditForm, avatar_url: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></label>
+                                <label className="flex items-end gap-2 text-sm">Available for bookings
+                                    <input type="checkbox" data-testid="doctor-edit-available" checked={doctorEditForm.is_available}
+                                        onChange={(e) => setDoctorEditForm({ ...doctorEditForm, is_available: e.target.checked })}
+                                        className="mb-2 h-4 w-4" /></label>
+                            </div>
+                            <div className="flex justify-end gap-2">
+                                <button type="button" onClick={() => setEditDoctor(null)}
+                                    className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300">Cancel</button>
+                                <button type="submit" data-testid="doctor-edit-save" disabled={savingDoctorEdit}
+                                    className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50">
+                                    {savingDoctorEdit ? 'Saving...' : 'Save Changes'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                )}
+
+                {editLab && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setEditLab(null)}>
+                        <form data-testid="lab-edit-modal" onClick={(e) => e.stopPropagation()} onSubmit={submitLabEdit}
+                            className="w-full max-w-lg space-y-4 rounded-xl bg-white p-6 shadow-xl dark:bg-gray-800">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Edit Lab Test</h2>
+                                <button type="button" onClick={() => setEditLab(null)}><X className="h-5 w-5 text-gray-400" /></button>
+                            </div>
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <label className="text-sm sm:col-span-2">Name *
+                                    <input required maxLength={150} data-testid="lab-edit-name" value={labEditForm.name}
+                                        onChange={(e) => setLabEditForm({ ...labEditForm, name: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></label>
+                                <label className="text-sm">Category *
+                                    <input required maxLength={100} data-testid="lab-edit-category" value={labEditForm.category}
+                                        onChange={(e) => setLabEditForm({ ...labEditForm, category: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></label>
+                                <label className="text-sm">Price *
+                                    <input required type="number" min={0} step="0.01" data-testid="lab-edit-price" value={labEditForm.price}
+                                        onChange={(e) => setLabEditForm({ ...labEditForm, price: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></label>
+                                <label className="text-sm">Result time (hours)
+                                    <input type="number" min={1} max={720} step={1} data-testid="lab-edit-hours" value={labEditForm.result_time_hours}
+                                        onChange={(e) => setLabEditForm({ ...labEditForm, result_time_hours: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></label>
+                                <label className="text-sm sm:col-span-2">Description
+                                    <textarea maxLength={1000} rows={2} data-testid="lab-edit-description" value={labEditForm.description}
+                                        onChange={(e) => setLabEditForm({ ...labEditForm, description: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></label>
+                                <label className="text-sm sm:col-span-2">Preparation instructions
+                                    <textarea maxLength={1000} rows={2} data-testid="lab-edit-prep" value={labEditForm.preparation_instructions}
+                                        onChange={(e) => setLabEditForm({ ...labEditForm, preparation_instructions: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></label>
+                            </div>
+                            <div className="flex justify-end gap-2">
+                                <button type="button" onClick={() => setEditLab(null)}
+                                    className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300">Cancel</button>
+                                <button type="submit" data-testid="lab-edit-save" disabled={savingLabEdit}
+                                    className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50">
+                                    {savingLabEdit ? 'Saving...' : 'Save Changes'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                )}
+
+                {editContent && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setEditContent(null)}>
+                        <form data-testid="content-edit-modal" onClick={(e) => e.stopPropagation()} onSubmit={submitContentEdit}
+                            className="w-full max-w-lg space-y-4 rounded-xl bg-white p-6 shadow-xl dark:bg-gray-800">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Edit Library Item</h2>
+                                <button type="button" onClick={() => setEditContent(null)}><X className="h-5 w-5 text-gray-400" /></button>
+                            </div>
+                            <div className="space-y-4">
+                                <label className="block text-sm">Title *
+                                    <input required maxLength={255} data-testid="content-edit-title" value={contentEditForm.title}
+                                        onChange={(e) => setContentEditForm({ ...contentEditForm, title: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></label>
+                                <label className="block text-sm">Summary
+                                    <textarea maxLength={2000} rows={2} data-testid="content-edit-summary" value={contentEditForm.summary}
+                                        onChange={(e) => setContentEditForm({ ...contentEditForm, summary: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></label>
+                                <label className="block text-sm">URL
+                                    <input type="url" maxLength={2000} data-testid="content-edit-url" value={contentEditForm.url}
+                                        onChange={(e) => setContentEditForm({ ...contentEditForm, url: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></label>
+                                <label className="block text-sm">Specialty
+                                    <input maxLength={100} data-testid="content-edit-specialty" value={contentEditForm.specialty}
+                                        onChange={(e) => setContentEditForm({ ...contentEditForm, specialty: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700" /></label>
+                            </div>
+                            <div className="flex justify-end gap-2">
+                                <button type="button" onClick={() => setEditContent(null)}
+                                    className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300">Cancel</button>
+                                <button type="submit" data-testid="content-edit-save" disabled={savingContentEdit}
+                                    className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50">
+                                    {savingContentEdit ? 'Saving...' : 'Save Changes'}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 )}
             </div>
