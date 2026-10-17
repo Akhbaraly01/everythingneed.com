@@ -45,21 +45,70 @@ class DeliveryController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $request->validate([
+        $validated = $request->validate([
             'full_name' => 'required|string|max:255',
             'phone' => 'required|string|max:20',
             'vehicle_type' => 'nullable|string|max:100',
+            'is_available' => 'nullable|boolean',
+            'user_email' => 'nullable|email|max:255',
         ]);
 
+        $userId = Auth::id();
+        $adminRegistered = false;
+
+        // W8 console: operations staff can register another account as a
+        // rider by email (the rider directory exists for console use).
+        if (!empty($validated['user_email'])) {
+            if (!$this->canManage($request)) {
+                return response()->json([
+                    'message' => 'Only delivery operations staff can register another account',
+                ], 403);
+            }
+
+            $user = \App\Models\User::where('email', $validated['user_email'])->first();
+
+            if (!$user) {
+                return response()->json([
+                    'message' => 'No account found with that email address',
+                ], 422);
+            }
+
+            if (DeliveryManager::where('user_id', $user->id)->exists()) {
+                return response()->json([
+                    'message' => 'This account already has a delivery manager profile',
+                ], 422);
+            }
+
+            $userId = $user->id;
+            $adminRegistered = true;
+        }
+
         $manager = DeliveryManager::create([
-            'user_id' => Auth::id(),
-            'full_name' => $request->full_name,
-            'phone' => $request->phone,
-            'vehicle_type' => $request->vehicle_type,
-            'is_available' => true,
+            'user_id' => $userId,
+            'full_name' => $validated['full_name'],
+            'phone' => $validated['phone'],
+            'vehicle_type' => $validated['vehicle_type'] ?? null,
+            'is_available' => $validated['is_available'] ?? true,
             'completed_deliveries' => 0,
             'rating' => 0,
         ]);
+
+        if ($adminRegistered) {
+            try {
+                app(\Core\Services\Contracts\AuditServiceInterface::class)->log([
+                    'action' => 'create',
+                    'entity_type' => 'delivery_manager',
+                    'entity_id' => $manager->id,
+                    'performed_by' => $request->user()?->id,
+                    'new_values' => [
+                        'user_email' => $validated['user_email'],
+                        'full_name' => $validated['full_name'],
+                    ],
+                ]);
+            } catch (\Throwable) {
+                // Audit failures must not break the registration.
+            }
+        }
 
         return response()->json([
             'message' => 'Delivery manager registered',

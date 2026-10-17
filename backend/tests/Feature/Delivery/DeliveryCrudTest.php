@@ -96,4 +96,72 @@ class DeliveryCrudTest extends TestCase
             ->deleteJson("/api/delivery/managers/{$id}")->assertStatus(403);
         $this->assertNotNull(DeliveryManager::find($id));
     }
+
+    public function test_ops_register_another_account_by_email(): void
+    {
+        $ops = $this->createUser();
+        $this->assignRole($ops, 'transport_admin');
+        $target = $this->createUser();
+
+        $res = $this->actingAs($ops, 'sanctum')
+            ->postJson('/api/delivery/managers', [
+                'user_email' => $target->email,
+                'full_name' => 'Console Rider',
+                'phone' => '+233240000001',
+                'vehicle_type' => 'van',
+                'is_available' => false,
+            ])->assertStatus(201);
+
+        $manager = DeliveryManager::findOrFail($res->json('data.id'));
+        $this->assertSame($target->id, $manager->user_id);
+        $this->assertFalse($manager->is_available);
+        $this->assertSame('van', $manager->vehicle_type);
+    }
+
+    public function test_register_by_email_rejects_unknown_address(): void
+    {
+        $this->actingAsAdmin();
+
+        $this->postJson('/api/delivery/managers', [
+            'user_email' => 'ghost@example.com',
+            'full_name' => 'Ghost',
+            'phone' => '+233240000002',
+        ])->assertStatus(422)
+            ->assertJsonPath('message', 'No account found with that email address');
+    }
+
+    public function test_register_by_email_rejects_duplicate_rider(): void
+    {
+        $this->actingAsAdmin();
+        $target = $this->createUser();
+        DeliveryManager::create([
+            'user_id' => $target->id,
+            'full_name' => 'Existing',
+            'phone' => '+233240000003',
+            'is_available' => true,
+            'completed_deliveries' => 0,
+            'rating' => 0,
+        ]);
+
+        $this->postJson('/api/delivery/managers', [
+            'user_email' => $target->email,
+            'full_name' => 'Duplicate',
+            'phone' => '+233240000004',
+        ])->assertStatus(422)
+            ->assertJsonPath('message', 'This account already has a delivery manager profile');
+    }
+
+    public function test_plain_users_cannot_register_other_accounts(): void
+    {
+        $target = $this->createUser();
+
+        $this->actingAs($this->createUser(), 'sanctum')
+            ->postJson('/api/delivery/managers', [
+                'user_email' => $target->email,
+                'full_name' => 'Sneaky',
+                'phone' => '+233240000005',
+            ])->assertStatus(403);
+
+        $this->assertNull(DeliveryManager::where('user_id', $target->id)->first());
+    }
 }

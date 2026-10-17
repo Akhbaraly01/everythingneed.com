@@ -4,7 +4,7 @@ import { useConfirm } from '@/lib/confirm';
 import { api, errorMessage, rows } from '@/lib/api';
 import { formatDateTime } from '@/lib/utils';
 import DataTable from '@/components/shared/DataTable';
-import { Pencil, Star, ToggleLeft, ToggleRight, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Star, ToggleLeft, ToggleRight, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -43,6 +43,9 @@ export default function AdminDeliveries() {
     const [editing, setEditing] = useState<DeliveryManager | null>(null);
     const [editForm, setEditForm] = useState<EditForm>({ full_name: '', phone: '', vehicle_type: '' });
     const [saving, setSaving] = useState(false);
+    const [showCreate, setShowCreate] = useState(false);
+    const [creating, setCreating] = useState(false);
+    const [createForm, setCreateForm] = useState({ user_email: '', full_name: '', phone: '', vehicle_type: '', is_available: true });
 
     useEffect(() => {
         setLoading(true);
@@ -102,13 +105,49 @@ export default function AdminDeliveries() {
         }
     };
 
+    const submitCreate = async () => {
+        if (!createForm.user_email.trim()) {
+            toast.error('Account email is required');
+            return;
+        }
+        if (!createForm.full_name.trim() || !createForm.phone.trim()) {
+            toast.error('Full name and phone are required');
+            return;
+        }
+        setCreating(true);
+        try {
+            await api.post('/api/delivery/managers', {
+                user_email: createForm.user_email.trim(),
+                full_name: createForm.full_name.trim(),
+                phone: createForm.phone.trim(),
+                vehicle_type: createForm.vehicle_type.trim() || null,
+                is_available: createForm.is_available,
+            });
+            toast.success('Delivery manager registered.');
+            setShowCreate(false);
+            setCreateForm({ user_email: '', full_name: '', phone: '', vehicle_type: '', is_available: true });
+            setPage(1);
+            setAvail('all');
+        } catch (e) {
+            toast.error(errorMessage(e, 'Registration failed'));
+        } finally {
+            setCreating(false);
+        }
+    };
+
     return (
         <AdminLayout title="Deliveries">
             <Head title="Deliveries" />
             <div className="space-y-6">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Delivery Managers</h1>
-                    {meta && <span className="text-sm text-gray-500">{meta.total} managers</span>}
+                    <div className="flex items-center gap-3">
+                        {meta && <span className="text-sm text-gray-500">{meta.total} managers</span>}
+                        <button data-testid="delivery-create" onClick={() => setShowCreate(true)}
+                            className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500">
+                            <Plus className="h-4 w-4" /> New Manager
+                        </button>
+                    </div>
                 </div>
 
                 <div className="flex flex-wrap gap-2">
@@ -221,6 +260,60 @@ export default function AdminDeliveries() {
                                 <button onClick={() => void saveEdit()} disabled={saving} data-testid="delivery-edit-save"
                                     className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
                                     {saving ? 'Saving…' : 'Save changes'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {showCreate && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" data-testid="delivery-create-modal">
+                        <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg dark:bg-gray-800">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">New delivery manager</h2>
+                                <button onClick={() => setShowCreate(false)}><X className="h-5 w-5 text-gray-400" /></button>
+                            </div>
+                            <p className="mt-1 text-xs text-gray-500">Attaches an existing account (by email) to the rider roster.</p>
+                            <div className="mt-4 space-y-3">
+                                <label className="block text-sm text-gray-600 dark:text-gray-300">
+                                    Account email *
+                                    <input type="email" value={createForm.user_email} data-testid="delivery-create-email"
+                                        onChange={(e) => setCreateForm({ ...createForm, user_email: e.target.value })}
+                                        placeholder="rider@example.com"
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700" />
+                                </label>
+                                <label className="block text-sm text-gray-600 dark:text-gray-300">
+                                    Full name *
+                                    <input value={createForm.full_name} data-testid="delivery-create-name"
+                                        onChange={(e) => setCreateForm({ ...createForm, full_name: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700" />
+                                </label>
+                                <label className="block text-sm text-gray-600 dark:text-gray-300">
+                                    Phone *
+                                    <input value={createForm.phone} data-testid="delivery-create-phone"
+                                        onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700" />
+                                </label>
+                                <label className="block text-sm text-gray-600 dark:text-gray-300">
+                                    Vehicle
+                                    <input value={createForm.vehicle_type} data-testid="delivery-create-vehicle"
+                                        onChange={(e) => setCreateForm({ ...createForm, vehicle_type: e.target.value })}
+                                        placeholder="motorbike, van, car…"
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700" />
+                                </label>
+                                <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                                    <input type="checkbox" checked={createForm.is_available}
+                                        onChange={(e) => setCreateForm({ ...createForm, is_available: e.target.checked })}
+                                        className="h-4 w-4" />
+                                    Available for assignments
+                                </label>
+                            </div>
+                            <div className="mt-5 flex justify-end gap-2">
+                                <button onClick={() => setShowCreate(false)}
+                                    className="rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-gray-600">Cancel</button>
+                                <button onClick={() => void submitCreate()} disabled={creating} data-testid="delivery-create-save"
+                                    className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+                                    {creating ? 'Registering…' : 'Register manager'}
                                 </button>
                             </div>
                         </div>
