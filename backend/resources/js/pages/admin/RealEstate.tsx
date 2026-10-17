@@ -1,8 +1,9 @@
 import AdminLayout from '@/layouts/AdminLayout';
 import { Head } from '@inertiajs/react';
+import { useConfirm } from '@/lib/confirm';
 import { api, errorMessage, rows } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
-import { Home, Plus, Power, Search } from 'lucide-react';
+import { Home, Pencil, Plus, Power, Search, Trash2 } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -30,7 +31,20 @@ interface Meta {
     total: number;
 }
 
+interface EditForm {
+    title: string;
+    property_type: string;
+    price: string;
+    currency: string;
+    city: string;
+    country: string;
+    bedrooms: string;
+    bathrooms: string;
+    is_featured: boolean;
+}
+
 export default function AdminRealEstate() {
+    const confirm = useConfirm();
     const [items, setItems] = useState<Property[]>([]);
     const [meta, setMeta] = useState<Meta | null>(null);
     const [loading, setLoading] = useState(true);
@@ -39,6 +53,11 @@ export default function AdminRealEstate() {
     const [page, setPage] = useState(1);
     const [showForm, setShowForm] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [editing, setEditing] = useState<Property | null>(null);
+    const [editForm, setEditForm] = useState<EditForm>({
+        title: '', property_type: 'apartment', price: '', currency: 'USD',
+        city: '', country: '', bedrooms: '', bathrooms: '', is_featured: false,
+    });
     const [form, setForm] = useState({
         title: '', description: '', property_type: 'apartment', listing_type: 'sale',
         price: '', address: '', city: '', country: '', bedrooms: '', bathrooms: '',
@@ -69,6 +88,69 @@ export default function AdminRealEstate() {
             toast.success(`Property ${!p.is_active ? 'activated' : 'deactivated'}.`);
         } catch (e) {
             toast.error(errorMessage(e, 'Update failed'));
+        }
+    };
+
+    const openEdit = (p: Property) => {
+        setEditing(p);
+        setEditForm({
+            title: p.title,
+            property_type: p.property_type,
+            price: String(p.price),
+            currency: p.currency ?? 'USD',
+            city: p.city ?? '',
+            country: p.country ?? '',
+            bedrooms: p.bedrooms != null ? String(p.bedrooms) : '',
+            bathrooms: p.bathrooms != null ? String(p.bathrooms) : '',
+            is_featured: Boolean(p.is_featured),
+        });
+    };
+
+    const saveEdit = async () => {
+        if (!editing) return;
+        setSaving(true);
+        try {
+            await api.put(`/api/admin/properties/${editing.id}`, {
+                title: editForm.title,
+                property_type: editForm.property_type,
+                price: Number(editForm.price),
+                currency: editForm.currency,
+                city: editForm.city,
+                country: editForm.country,
+                bedrooms: editForm.bedrooms === '' ? null : Number(editForm.bedrooms),
+                bathrooms: editForm.bathrooms === '' ? null : Number(editForm.bathrooms),
+                is_featured: editForm.is_featured,
+            });
+            setItems(items.map((x) => (x.id === editing.id ? {
+                ...x,
+                ...editForm,
+                price: Number(editForm.price),
+                bedrooms: editForm.bedrooms === '' ? null : Number(editForm.bedrooms),
+                bathrooms: editForm.bathrooms === '' ? null : Number(editForm.bathrooms),
+            } : x)));
+            toast.success('Listing updated.');
+            setEditing(null);
+        } catch (e) {
+            toast.error(errorMessage(e, 'Update failed'));
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const remove = async (p: Property) => {
+        const ok = await confirm({
+            title: 'Delete listing',
+            description: `Remove "${p.title}" from the marketplace? The listing is soft-deleted and can be restored in the database if needed.`,
+            confirmLabel: 'Delete',
+            danger: true,
+        });
+        if (!ok) return;
+        try {
+            await api.del(`/api/admin/properties/${p.id}`);
+            setItems(items.filter((x) => x.id !== p.id));
+            toast.success('Listing removed.');
+        } catch (e) {
+            toast.error(errorMessage(e, 'Delete failed'));
         }
     };
 
@@ -231,10 +313,20 @@ export default function AdminRealEstate() {
                                             </span>
                                         </td>
                                         <td className="px-4 py-3">
-                                            <button onClick={() => toggle(p)} title={p.is_active ? 'Deactivate' : 'Activate'}
-                                                className="flex items-center gap-1 rounded-lg border border-gray-300 px-2 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300">
-                                                <Power className="h-3 w-3" /> {p.is_active ? 'Disable' : 'Enable'}
-                                            </button>
+                                            <div className="flex items-center gap-1">
+                                                <button onClick={() => toggle(p)} title={p.is_active ? 'Deactivate' : 'Activate'} data-testid={`property-toggle-${p.id}`}
+                                                    className="flex items-center gap-1 rounded-lg border border-gray-300 px-2 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300">
+                                                    <Power className="h-3 w-3" /> {p.is_active ? 'Disable' : 'Enable'}
+                                                </button>
+                                                <button onClick={() => openEdit(p)} title="Edit listing" data-testid={`property-edit-${p.id}`}
+                                                    className="rounded-lg border border-gray-300 p-1.5 text-blue-600 hover:bg-blue-50 dark:border-gray-600 dark:text-blue-400">
+                                                    <Pencil className="h-3 w-3" />
+                                                </button>
+                                                <button onClick={() => remove(p)} title="Delete listing" data-testid={`property-delete-${p.id}`}
+                                                    className="rounded-lg border border-gray-300 p-1.5 text-red-600 hover:bg-red-50 dark:border-gray-600 dark:text-red-400">
+                                                    <Trash2 className="h-3 w-3" />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -251,6 +343,73 @@ export default function AdminRealEstate() {
                                 className="rounded-lg border border-gray-300 px-3 py-1 disabled:opacity-40 dark:border-gray-600">Previous</button>
                             <button disabled={meta.page * meta.per_page >= meta.total} onClick={() => setPage(page + 1)}
                                 className="rounded-lg border border-gray-300 px-3 py-1 disabled:opacity-40 dark:border-gray-600">Next</button>
+                        </div>
+                    </div>
+                )}
+
+                {editing && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" data-testid="property-edit-modal">
+                        <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-lg dark:bg-gray-800">
+                            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Edit listing</h2>
+                            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                                <label className="text-sm text-gray-600 dark:text-gray-300 sm:col-span-2">Title
+                                    <input value={editForm.title} data-testid="property-edit-title"
+                                        onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700" />
+                                </label>
+                                <label className="text-sm text-gray-600 dark:text-gray-300">Property type
+                                    <select value={editForm.property_type} data-testid="property-edit-type"
+                                        onChange={(e) => setEditForm({ ...editForm, property_type: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700">
+                                        {['apartment', 'house', 'condo', 'land', 'commercial'].map((t) => (
+                                            <option key={t} value={t}>{t}</option>
+                                        ))}
+                                    </select>
+                                </label>
+                                <label className="text-sm text-gray-600 dark:text-gray-300">Price
+                                    <input type="number" min="0" step="0.01" value={editForm.price} data-testid="property-edit-price"
+                                        onChange={(e) => setEditForm({ ...editForm, price: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700" />
+                                </label>
+                                <label className="text-sm text-gray-600 dark:text-gray-300">Currency
+                                    <input value={editForm.currency} maxLength={3} data-testid="property-edit-currency"
+                                        onChange={(e) => setEditForm({ ...editForm, currency: e.target.value.toUpperCase() })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700" />
+                                </label>
+                                <label className="text-sm text-gray-600 dark:text-gray-300">City
+                                    <input value={editForm.city} data-testid="property-edit-city"
+                                        onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700" />
+                                </label>
+                                <label className="text-sm text-gray-600 dark:text-gray-300">Country
+                                    <input value={editForm.country} data-testid="property-edit-country"
+                                        onChange={(e) => setEditForm({ ...editForm, country: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700" />
+                                </label>
+                                <label className="text-sm text-gray-600 dark:text-gray-300">Bedrooms
+                                    <input type="number" min="0" value={editForm.bedrooms} data-testid="property-edit-bedrooms"
+                                        onChange={(e) => setEditForm({ ...editForm, bedrooms: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700" />
+                                </label>
+                                <label className="text-sm text-gray-600 dark:text-gray-300">Bathrooms
+                                    <input type="number" min="0" value={editForm.bathrooms} data-testid="property-edit-bathrooms"
+                                        onChange={(e) => setEditForm({ ...editForm, bathrooms: e.target.value })}
+                                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700" />
+                                </label>
+                                <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 sm:col-span-2">
+                                    <input type="checkbox" checked={editForm.is_featured} data-testid="property-edit-featured"
+                                        onChange={(e) => setEditForm({ ...editForm, is_featured: e.target.checked })} />
+                                    Featured listing
+                                </label>
+                            </div>
+                            <div className="mt-5 flex justify-end gap-2">
+                                <button onClick={() => setEditing(null)}
+                                    className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 dark:border-gray-600 dark:text-gray-300">Cancel</button>
+                                <button onClick={() => void saveEdit()} disabled={saving} data-testid="property-edit-save"
+                                    className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+                                    {saving ? 'Saving…' : 'Save changes'}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}

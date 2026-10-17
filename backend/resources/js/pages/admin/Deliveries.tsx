@@ -94,7 +94,7 @@ export default function AdminDeliveries() {
         });
         if (!ok) return;
         try {
-            await api.delete(`/api/delivery/managers/${m.id}`);
+            await api.del(`/api/delivery/managers/${m.id}`);
             setManagers(managers.filter((x) => x.id !== m.id));
             toast.success(`${m.full_name} removed.`);
         } catch (e) {

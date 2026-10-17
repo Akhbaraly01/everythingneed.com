@@ -382,21 +382,65 @@ class AdminDomainController extends Controller
         return $this->paginate($query, $validated['page'] ?? 1, 15);
     }
 
+    /**
+     * Full admin edit of a listing. Every field is optional (`sometimes`)
+     * so the console can send just the activation toggle or a complete
+     * edit payload; an empty payload is rejected.
+     */
     public function updateProperty(Request $request, string $id): JsonResponse
     {
-        $request->validate(['is_active' => 'required|boolean']);
+        $validated = $request->validate([
+            'title' => 'sometimes|string|max:255',
+            'description' => 'sometimes|nullable|string|max:5000',
+            'listing_type' => 'sometimes|string|in:sale,rent',
+            'property_type' => 'sometimes|string|in:apartment,house,condo,land,commercial',
+            'price' => 'sometimes|numeric|min:0',
+            'currency' => 'sometimes|string|size:3',
+            'address' => 'sometimes|string|max:500',
+            'city' => 'sometimes|string|max:100',
+            'state' => 'sometimes|nullable|string|max:100',
+            'country' => 'sometimes|string|max:100',
+            'bedrooms' => 'sometimes|nullable|integer|min:0',
+            'bathrooms' => 'sometimes|nullable|integer|min:0',
+            'area_sqft' => 'sometimes|nullable|numeric|min:0',
+            'is_active' => 'sometimes|boolean',
+            'is_featured' => 'sometimes|boolean',
+        ]);
+
+        if ($validated === []) {
+            return response()->json(['message' => 'No changes provided'], 422);
+        }
 
         $exists = DB::table('properties')->where('id', $id)->whereNull('deleted_at')->exists();
         if (!$exists) {
             return response()->json(['message' => 'Property not found'], 404);
         }
 
+        DB::table('properties')->where('id', $id)->update(array_merge($validated, [
+            'updated_at' => now(),
+        ]));
+
+        return response()->json(['message' => 'Property updated']);
+    }
+
+    /**
+     * Admin moderation delete of a listing (soft delete: history and
+     * owner records stay intact, the listing disappears everywhere).
+     */
+    public function destroyProperty(Request $request, string $id): JsonResponse
+    {
+        $exists = DB::table('properties')->where('id', $id)->whereNull('deleted_at')->exists();
+        if (!$exists) {
+            return response()->json(['message' => 'Property not found'], 404);
+        }
+
         DB::table('properties')->where('id', $id)->update([
-            'is_active' => $request->boolean('is_active'),
+            'deleted_at' => now(),
+            'is_active' => false,
             'updated_at' => now(),
         ]);
 
-        return response()->json(['message' => 'Property updated']);
+        return response()->json(['message' => 'Property removed']);
     }
 
     /** Admin moderation delete (owner-only endpoint cannot serve moderators). */

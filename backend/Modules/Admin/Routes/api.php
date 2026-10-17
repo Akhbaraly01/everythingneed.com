@@ -378,6 +378,8 @@ Route::prefix('api/admin')->middleware(['api', 'auth:sanctum', EnsureAccountActi
         ->middleware('role:super_admin,administrator,building_admin,real_estate_admin');
     Route::put('/properties/{id}', [AdminDomainController::class, 'updateProperty'])
         ->middleware('role:super_admin,administrator,building_admin,real_estate_admin');
+    Route::delete('/properties/{id}', [AdminDomainController::class, 'destroyProperty'])
+        ->middleware('role:super_admin,administrator,building_admin,real_estate_admin');
     Route::delete('/reviews/{id}', [AdminDomainController::class, 'destroyReview'])
         ->middleware('role:super_admin,administrator,moderator');
 

@@ -189,6 +189,113 @@ class AdminDomainControllerTest extends TestCase
     }
 
     #[Test]
+    public function test_property_full_edit_updates_every_listing_field(): void
+    {
+        $owner = $this->createUser();
+        $property = Property::create([
+            'user_id' => $owner->id,
+            'title' => 'Old Title',
+            'property_type' => 'apartment',
+            'price' => 100000,
+            'currency' => 'USD',
+            'address' => '1 Edit Street',
+            'city' => 'Accra',
+            'country' => 'GH',
+            'bedrooms' => 1,
+            'bathrooms' => 1,
+            'is_active' => true,
+            'is_featured' => false,
+        ]);
+        $building = $this->createUser();
+        $this->assignRole($building, 'building_admin');
+
+        $this->actingAs($building, 'sanctum')
+            ->putJson("/api/admin/properties/{$property->id}", [
+                'title' => 'Renovated Duplex',
+                'property_type' => 'house',
+                'price' => 325000.5,
+                'currency' => 'GHS',
+                'city' => 'Kumasi',
+                'country' => 'GH',
+                'bedrooms' => 4,
+                'bathrooms' => 3,
+                'is_featured' => true,
+            ])
+            ->assertOk();
+
+        $this->assertDatabaseHas('properties', [
+            'id' => $property->id,
+            'title' => 'Renovated Duplex',
+            'property_type' => 'house',
+            'city' => 'Kumasi',
+            'bedrooms' => 4,
+            'bathrooms' => 3,
+            'is_featured' => true,
+        ]);
+
+        // Empty payloads are rejected instead of silently no-oping.
+        $this->actingAs($building, 'sanctum')
+            ->putJson("/api/admin/properties/{$property->id}", [])
+            ->assertStatus(422);
+    }
+
+    #[Test]
+    public function test_admin_soft_deletes_a_property(): void
+    {
+        $owner = $this->createUser();
+        $property = Property::create([
+            'user_id' => $owner->id,
+            'title' => 'Doomed Listing',
+            'property_type' => 'land',
+            'price' => 5000,
+            'currency' => 'USD',
+            'address' => '9 Delete Lane',
+            'city' => 'Lagos',
+            'country' => 'NG',
+            'is_active' => true,
+        ]);
+        $building = $this->createUser();
+        $this->assignRole($building, 'building_admin');
+
+        $this->actingAs($building, 'sanctum')
+            ->deleteJson("/api/admin/properties/{$property->id}")
+            ->assertOk();
+
+        $this->assertSoftDeleted('properties', ['id' => $property->id]);
+
+        // Gone from the console listing.
+        $list = $this->actingAs($building, 'sanctum')->getJson('/api/admin/properties');
+        $this->assertNotContains($property->id, array_column($list->json('data'), 'id'));
+
+        // Repeat delete is a 404, and plain users are forbidden.
+        $this->actingAs($building, 'sanctum')
+            ->deleteJson("/api/admin/properties/{$property->id}")
+            ->assertNotFound();
+        $this->actingAs($this->createUser(), 'sanctum')
+            ->deleteJson("/api/admin/properties/{$property->id}")
+            ->assertForbidden();
+    }
+
+    #[Test]
+    public function test_building_admin_can_create_listings_without_403(): void
+    {
+        $building = $this->createUser();
+        $this->assignRole($building, 'building_admin');
+
+        $this->actingAs($building, 'sanctum')
+            ->postJson('/api/admin/properties', [
+                'title' => 'Console Created',
+                'property_type' => 'apartment',
+                'price' => 88000,
+                'currency' => 'USD',
+                'address' => '5 Console Road',
+                'city' => 'Tema',
+                'country' => 'GH',
+            ])
+            ->assertStatus(201);
+    }
+
+    #[Test]
     public function test_review_moderation_delete(): void
     {
         $author = $this->createUser();

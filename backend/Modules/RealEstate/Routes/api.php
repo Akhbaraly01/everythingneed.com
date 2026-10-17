@@ -21,7 +21,8 @@ Route::prefix('api')->group(function () {
     Route::get('/properties', [PropertyController::class, 'index']);
     Route::get('/properties/{id}', [PropertyController::class, 'show']);
 
-    // Admin console: create a listing (spec 47)
+    // Admin console: create a listing (spec 47). Same roles as the
+    // /admin/real-estate page gate (routes/web.php).
     Route::post('/admin/properties', [PropertyController::class, 'store'])
-        ->middleware('role:super_admin,administrator,real_estate_admin');
+        ->middleware('role:super_admin,administrator,building_admin,real_estate_admin');
 });
