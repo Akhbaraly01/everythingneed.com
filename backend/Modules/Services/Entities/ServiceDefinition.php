@@ -9,6 +9,7 @@ class ServiceDefinition extends Model
     protected $fillable = [
         'name',
         'category',
+        'category_id',
         'description',
         'image_url',
         'provider',
@@ -42,5 +43,11 @@ class ServiceDefinition extends Model
     public function bookings()
     {
         return $this->hasMany(ServiceBooking::class, 'service_id');
+    }
+
+    /** Taxonomy link (M-1); `category` stays as the display/legacy string. */
+    public function categoryRef()
+    {
+        return $this->belongsTo(ServiceCategory::class, 'category_id');
     }
 }

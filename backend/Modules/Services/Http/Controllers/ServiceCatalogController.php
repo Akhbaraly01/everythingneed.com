@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Modules\Payments\Services\PaymentService;
 use Modules\Services\Entities\ServiceBooking;
+use Modules\Services\Entities\ServiceCategory;
 use Modules\Services\Entities\ServiceDefinition;
 
 /**
@@ -29,12 +30,22 @@ class ServiceCatalogController extends Controller
             ->orderByDesc('created_at');
 
         if ($request->filled('category')) {
-            // Spec 100 admins may type "Building Services" while UIs filter on
-            // "building" - match the exact token or a "token ..." prefix.
-            $category = $request->string('category')->toString();
-            $query->where(function ($q) use ($category) {
-                $q->where('category', $category)
-                    ->orWhere('category', 'ilike', $category.'%');
+            // M-1: prefer the taxonomy slug (category + its subcategories so
+            // the "Home Cleaning" tile surfaces "Deep Cleaning" jobs too);
+            // legacy free-text rows ("Building Services" vs filter "building")
+            // keep matching via exact token or "token ..." prefix.
+            $slug = $request->string('category')->toString();
+            $category = ServiceCategory::where('slug', $slug)->first();
+            $categoryIds = $category
+                ? [$category->id, ...$category->children()->pluck('id')->all()]
+                : [];
+
+            $query->where(function ($q) use ($categoryIds, $slug) {
+                if ($categoryIds !== []) {
+                    $q->whereIn('category_id', $categoryIds);
+                }
+                $q->orWhere('category', $slug)
+                    ->orWhere('category', 'ilike', $slug.'%');
             });
         }
         if ($request->filled('location')) {
@@ -66,7 +77,37 @@ class ServiceCatalogController extends Controller
             return response()->json(['message' => 'Service not found'], 404);
         }
 
-        return response()->json(['data' => $service]);
+        return response()->json(['data' => $service->load('categoryRef:id,name,slug,icon,color,parent_id')]);
+    }
+
+    /**
+     * GET /api/service-categories - active taxonomy tree (roots with active
+     * children) plus a count of live services per node, powering the
+     * 7-icons + See more grid on the services surfaces.
+     */
+    public function categories(): JsonResponse
+    {
+        $liveServices = fn ($q) => $q->where('status', ServiceDefinition::STATUS_ACTIVE);
+
+        $categories = ServiceCategory::whereNull('parent_id')
+            ->where('is_active', true)
+            ->with(['children' => fn ($q) => $q
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->withCount(['services as services_count' => $liveServices])])
+            ->withCount(['services as services_count' => $liveServices])
+            ->orderBy('sort_order')
+            ->get();
+
+        // Grid counts are "services reachable from this tile": a root tile
+        // aggregates its subcategories so "Home Cleaning 3" is truthful when
+        // the jobs sit in "Deep Cleaning".
+        foreach ($categories as $root) {
+            $root->services_count = (int) $root->services_count
+                + $root->children->sum(fn ($child) => (int) $child->services_count);
+        }
+
+        return response()->json(['data' => $categories]);
     }
 
     /**

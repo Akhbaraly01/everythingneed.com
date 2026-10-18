@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Modules\Payments\Services\PaymentService;
 use Modules\Services\Entities\ServiceBooking;
+use Modules\Services\Entities\ServiceCategory;
 use Modules\Services\Entities\ServiceDefinition;
 
 /**
@@ -157,9 +158,10 @@ class AdminServiceController extends Controller
 
     private function validated(Request $request, ?string $ignoreId = null): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'name' => 'required|string|max:120',
-            'category' => 'required|string|max:50',
+            'category' => 'required_without:category_id|string|max:50',
+            'category_id' => ['nullable', 'uuid', 'exists:service_categories,id'],
             'description' => 'nullable|string|max:4000',
             'image_url' => 'nullable|url|max:500',
             'provider' => 'nullable|string|max:120',
@@ -180,5 +182,17 @@ class AdminServiceController extends Controller
             'delivery_rules' => 'nullable|string|max:2000',
             'status' => ['required', Rule::in(['active', 'draft', 'inactive'])],
         ]);
+
+        // Taxonomy assignment wins over free text: keep the legacy display
+        // string aligned with the selected category so existing filters and
+        // search keep matching (M-1 backward compatibility).
+        if (! empty($data['category_id'])) {
+            $category = ServiceCategory::find($data['category_id']);
+            if ($category) {
+                $data['category'] = $category->name;
+            }
+        }
+
+        return $data;
     }
 }

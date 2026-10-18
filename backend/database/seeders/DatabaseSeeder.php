@@ -381,6 +381,11 @@ class DatabaseSeeder extends Seeder
         // for the customer account, incl. one linked to a delivered order.
         $this->call(PrescriptionLifecycleSeeder::class);
 
+        // Mega-phase M-1: service taxonomy (categories + subcategories +
+        // icons) with demo services per root category; also re-links legacy
+        // free-text service rows to the new taxonomy.
+        $this->call(ServiceCategorySeeder::class);
+
         // Placeholder artwork for every other vertical (runs last so it
         // covers hotels/courses/needs/... created by the demo seeders above).
         $this->call(PlaceholderImageSeeder::class);
