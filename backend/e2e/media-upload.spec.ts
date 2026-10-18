@@ -85,7 +85,9 @@ test('vendor product form compresses and uploads a local image file', async ({ p
     await page.getByTestId('product-price').fill('29.99');
     await page.getByTestId('product-stock').fill('7');
 
-    await expect(page.getByTestId('product-submit')).toBeEnabled({ timeout: 15_000 });
+    // Late in a full-suite run the single-worker dev server answers slowly;
+    // the submit stays disabled until /api/vendors/mine resolves.
+    await expect(page.getByTestId('product-submit')).toBeEnabled({ timeout: 45_000 });
     await page.getByTestId('product-submit').click();
 
     await page.waitForURL('**/vendor/products', { timeout: 20_000 });

@@ -26,7 +26,7 @@ interface Meta {
 }
 
 export default function AdminFood() {
-    const confirm = useConfirm();
+    const ask = useConfirm();
     const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
     const [meta, setMeta] = useState<Meta | null>(null);
     const [loading, setLoading] = useState(true);
@@ -128,7 +128,7 @@ export default function AdminFood() {
     };
 
     const deleteRestaurant = async (r: Restaurant) => {
-        const ok = await confirm({
+        const ok = await ask({
             title: `Delete ${r.name}?`,
             description: 'The restaurant is removed from listings. Restaurants with orders cannot be deleted — deactivate instead.',
             confirmLabel: 'Delete',

@@ -131,7 +131,7 @@ const PAGE = 15;
 export default function AdminHealthcare() {
     const { auth } = usePage().props as unknown as { auth: { roles?: string[] } };
     const isSuper = (auth?.roles ?? []).includes('super_admin');
-    const confirm = useConfirm();
+    const ask = useConfirm();
 
     const [tab, setTab] = useState<Tab>('doctors');
     const [loading, setLoading] = useState(true);
@@ -399,7 +399,7 @@ export default function AdminHealthcare() {
     };
 
     const deleteDoctor = async (d: Doctor) => {
-        const ok = await confirm({
+        const ok = await ask({
             title: `Delete Dr. ${d.full_name}?`,
             description: 'The provider is removed from the directory. Doctors with appointments cannot be deleted - set availability to off instead.',
             confirmLabel: 'Delete',
@@ -455,7 +455,7 @@ export default function AdminHealthcare() {
     };
 
     const deleteLab = async (l: LabTest) => {
-        const ok = await confirm({
+        const ok = await ask({
             title: `Delete ${l.name}?`,
             description: 'The test is removed from the catalogue. Tests with bookings cannot be deleted - deactivate instead.',
             confirmLabel: 'Delete',
@@ -507,7 +507,7 @@ export default function AdminHealthcare() {
     };
 
     const deleteContent = async (c: HealthContent) => {
-        const ok = await confirm({
+        const ok = await ask({
             title: `Delete "${c.title}"?`,
             description: 'The library item is removed from the documentation hub.',
             confirmLabel: 'Delete',

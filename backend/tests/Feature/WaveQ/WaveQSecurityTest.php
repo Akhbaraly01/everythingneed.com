@@ -171,8 +171,15 @@ class WaveQSecurityTest extends TestCase
             ->assertStatus(422);
         $this->postJson('/api/upload', ['file' => UploadedFile::fake()->create('evil.exe', 100, 'application/x-msdownload')])
             ->assertStatus(422);
-        $this->postJson('/api/upload', ['file' => UploadedFile::fake()->create('huge.png', 11000, 'image/png')])
-            ->assertStatus(422);
+        // Non-video files are capped at 25MB by UploadFileRequest (videos
+        // get the 500MB envelope post-transcode). A valid PNG header padded
+        // past the ceiling proves the size rule itself, not the mime rule.
+        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==');
+        $oversize = $this->postJson('/api/upload', [
+            'file' => UploadedFile::fake()->createWithContent('huge.png', $png.str_repeat('A', 26 * 1024 * 1024)),
+        ]);
+        $oversize->assertStatus(422)->assertJsonValidationErrors(['file']);
+        $this->assertStringContainsString('25MB', (string) $oversize->json('errors.file.0'));
 
         $this->postJson('/api/upload', ['file' => UploadedFile::fake()->image('ok.png')])
             ->assertStatus(201);

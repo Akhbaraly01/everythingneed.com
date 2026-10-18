@@ -28,7 +28,7 @@ interface Meta {
 }
 
 export default function AdminHotels() {
-    const confirm = useConfirm();
+    const ask = useConfirm();
     const [hotels, setHotels] = useState<HotelItem[]>([]);
     const [meta, setMeta] = useState<Meta | null>(null);
     const [loading, setLoading] = useState(true);
@@ -141,7 +141,7 @@ export default function AdminHotels() {
     };
 
     const deleteHotel = async (h: HotelItem) => {
-        const ok = await confirm({
+        const ok = await ask({
             title: `Delete ${h.name}?`,
             description: 'The hotel and its rooms are removed. Hotels with reservations cannot be deleted — deactivate instead.',
             confirmLabel: 'Delete',

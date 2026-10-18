@@ -446,23 +446,30 @@ test('home-visit chain: book with address, per-professional fee, admin sees type
     const pro = pros.find((p) => Number(p.home_visit_fee) > 0) ?? pros[0];
     const expectedFee = Number(pro.home_visit_fee) > 0 ? Number(pro.home_visit_fee) : Number(pro.consultation_fee);
 
-    // 2. Book a home visit on a fresh slot (walk dates like the lab chain).
+    // 2. Book a home visit on a fresh slot: bookings persist between runs and
+    //    the partial unique index rejects clashes, so walk date x hour
+    //    candidates (a fixed date+time goes stale after a single run).
     const address = `E2E Home ${Date.now()}, Accra`;
     let ticket: { id: string } | null = null;
-    for (let day = 30; day <= 40 && !ticket; day++) {
+    outer: for (let day = 3; day <= 40; day++) {
         const date = new Date(Date.now() + day * 86400_000).toISOString().slice(0, 10);
-        const res = await request.post('/api/appointments', {
-            headers: bearer(token),
-            data: {
-                doctor_id: pro.id,
-                symptoms: 'E2E home visit check',
-                consultation_type: 'home_visit',
-                home_address: address,
-                appointment_date: date,
-                appointment_time: '10:00',
-            },
-        });
-        if (res.status() === 201) ticket = (await res.json()).data as { id: string };
+        for (let hour = 9; hour <= 17; hour++) {
+            const res = await request.post('/api/appointments', {
+                headers: bearer(token),
+                data: {
+                    doctor_id: pro.id,
+                    symptoms: 'E2E home visit check',
+                    consultation_type: 'home_visit',
+                    home_address: address,
+                    appointment_date: date,
+                    appointment_time: `${String(hour).padStart(2, '0')}:00`,
+                },
+            });
+            if (res.status() === 201) {
+                ticket = (await res.json()).data as { id: string };
+                break outer;
+            }
+        }
     }
     expect(ticket, 'home-visit ticket booked').not.toBeNull();
 
@@ -589,7 +596,7 @@ test('admin console: healthcare requests, content and prescriptions tabs', async
     await page.getByRole('button', { name: 'New Content', exact: true }).click();
     const guideTitle = `E2E Guide ${Date.now()}`;
     await page.getByLabel(/Title/).fill(guideTitle);
-    await page.getByRole('button', { name: 'Publish', exact: true }).click();
+    await page.locator('form').getByRole('button', { name: 'Publish', exact: true }).click();
     await expect(page.getByText(guideTitle).first()).toBeVisible();
     const row = page.locator('tr', { hasText: guideTitle }).first();
     await row.getByRole('button', { name: 'Unpublish', exact: true }).click();

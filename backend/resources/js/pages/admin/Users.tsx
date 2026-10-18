@@ -37,7 +37,7 @@ export default function AdminUsers() {
     const canCreate = permissions.includes('*') || permissions.includes('users.users.create');
     const canEdit = permissions.includes('*') || permissions.includes('users.users.update');
     const canDelete = permissions.includes('*') || permissions.includes('users.users.delete');
-    const confirm = useConfirm();
+    const ask = useConfirm();
 
     const [users, setUsers] = useState<User[]>([]);
     const [roles, setRoles] = useState<string[]>([]);
@@ -153,7 +153,7 @@ export default function AdminUsers() {
     };
 
     const deleteUser = async (user: User) => {
-        const ok = await confirm({
+        const ok = await ask({
             title: `Delete ${user.name}?`,
             description: 'The account is soft-deleted and can no longer sign in. This cannot be undone from the console.',
             confirmLabel: 'Delete',

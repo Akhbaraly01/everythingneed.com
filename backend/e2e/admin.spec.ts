@@ -32,25 +32,65 @@ test('guest hitting the admin console lands on login', async ({ page }) => {
     await expect(page.locator('#login-email')).toBeVisible();
 });
 
-test('super admin reorders and toggles home sections', async ({ page }) => {
+test('super admin reorders and toggles home sections', async ({ page, request }) => {
     await webLogin(page, SUPER, '/admin/dashboard');
+
+    // The API is the ground truth for the toggle state. A slow dev-server
+    // response once stranded the UI mid-toggle: the test failed, the retry
+    // "restored" from the wrong baseline, and Deals stayed off - which broke
+    // every later home-page spec. Read the baseline via API, verify the
+    // mutation via API, and always restore that baseline in the finally.
+    const token = await apiLogin(request, SUPER);
+    const sectionPayload = await (
+        await request.get('/api/admin/home-sections', {
+            headers: bearer(token),
+            timeout: 15_000,
+        })
+    ).json();
+    const deals = (sectionPayload.data as Array<{ id: string; slug: string; is_active: boolean }>)
+        .find((s) => s.slug === 'deals');
+    expect(deals, 'seeded deals home section exists').toBeTruthy();
+    const wasOn = deals!.is_active;
+
+    const readDealsActive = async (): Promise<boolean> => {
+        const body = await (
+            await request.get('/api/admin/home-sections', {
+                headers: bearer(token),
+                timeout: 15_000,
+            })
+        ).json();
+        return (body.data as Array<{ slug: string; is_active: boolean }>)
+            .find((s) => s.slug === 'deals')!.is_active;
+    };
+
     await page.goto('/admin/home-sections', { waitUntil: 'domcontentloaded' });
     await expect(page.getByTestId('home-admin-section-featured')).toBeVisible();
     await expect(page.getByTestId('home-admin-section-deals')).toBeVisible();
 
-    // Toggle off then back on (persists through the API).
     const toggle = page.getByTestId('home-admin-toggle-deals');
-    const wasOn = (await toggle.getAttribute('aria-checked')) === 'true';
-    await toggle.click();
-    await expect(toggle).toHaveAttribute(
-        'aria-checked',
-        wasOn ? 'false' : 'true',
-        { timeout: 10_000 },
-    );
-    await toggle.click();
-    await expect(toggle).toHaveAttribute('aria-checked', wasOn ? 'true' : 'false', {
-        timeout: 10_000,
-    });
+    try {
+        // Toggle off then back on (persists through the API).
+        await toggle.click();
+        await expect.poll(readDealsActive, { timeout: 15_000 }).toBe(!wasOn);
+        await expect(toggle).toHaveAttribute('aria-checked', String(!wasOn), { timeout: 15_000 });
+
+        await toggle.click();
+        await expect.poll(readDealsActive, { timeout: 15_000 }).toBe(wasOn);
+        await expect(toggle).toHaveAttribute('aria-checked', String(wasOn), { timeout: 15_000 });
+    } finally {
+        // Never leave the storefront sections toggled off, best-effort.
+        try {
+            if ((await readDealsActive()) !== wasOn) {
+                await request.put(`/api/admin/home-sections/${deals!.id}`, {
+                    headers: bearer(token),
+                    data: { is_active: wasOn },
+                    timeout: 15_000,
+                });
+            }
+        } catch {
+            // A dead server defeats the restore; a later admin run re-seeds.
+        }
+    }
 });
 
 test('super admin manages course lessons from the Learning console', async ({ page }) => {

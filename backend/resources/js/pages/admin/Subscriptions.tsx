@@ -50,7 +50,7 @@ const INTERVALS = ['daily', 'weekly', 'monthly', 'quarterly', 'biannually', 'yea
 type Tab = 'subscriptions' | 'plans';
 
 export default function AdminSubscriptions() {
-    const confirm = useConfirm();
+    const ask = useConfirm();
     const [tab, setTab] = useState<Tab>('subscriptions');
 
     const [subs, setSubs] = useState<Subscription[]>([]);
@@ -163,7 +163,7 @@ export default function AdminSubscriptions() {
     };
 
     const deletePlan = async (p: Plan) => {
-        const ok = await confirm({
+        const ok = await ask({
             title: `Delete ${p.name}?`,
             description: 'The plan is removed from the catalogue. Plans with subscriptions cannot be deleted - deactivate instead.',
             confirmLabel: 'Delete',

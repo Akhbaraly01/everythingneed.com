@@ -50,23 +50,30 @@ test('virtual appointment joins the in-app consultation room', async ({ page, re
     expect(pros.length, 'seeded virtual professionals exist').toBeGreaterThan(0);
     const pro = pros[0];
 
-    // 2. Book a virtual appointment on a fresh slot (days 30-40 walk, like
-    //    the home-visit chain). Booking with a doctor_id lands the ticket
-    //    already assigned, which is exactly the joinable state.
+    // 2. Book a virtual appointment on a fresh slot: bookings persist between
+    //    runs and the partial unique index rejects clashes, so walk date x
+    //    hour candidates (a fixed date+time goes stale after a single run).
+    //    Booking with a doctor_id lands the ticket already assigned, which is
+    //    exactly the joinable state.
     let ticket: { id: string; status: string } | null = null;
-    for (let day = 30; day <= 40 && !ticket; day++) {
+    outer: for (let day = 3; day <= 40; day++) {
         const date = new Date(Date.now() + day * 86400_000).toISOString().slice(0, 10);
-        const res = await request.post('/api/appointments', {
-            headers: bearer(token),
-            data: {
-                doctor_id: pro.id,
-                symptoms: 'E2E virtual playback check',
-                consultation_type: 'virtual',
-                appointment_date: date,
-                appointment_time: '11:30',
-            },
-        });
-        if (res.status() === 201) ticket = (await res.json()).data as { id: string; status: string };
+        for (let hour = 9; hour <= 17; hour++) {
+            const res = await request.post('/api/appointments', {
+                headers: bearer(token),
+                data: {
+                    doctor_id: pro.id,
+                    symptoms: 'E2E virtual playback check',
+                    consultation_type: 'virtual',
+                    appointment_date: date,
+                    appointment_time: `${String(hour).padStart(2, '0')}:30`,
+                },
+            });
+            if (res.status() === 201) {
+                ticket = (await res.json()).data as { id: string; status: string };
+                break outer;
+            }
+        }
     }
     expect(ticket, 'virtual ticket booked').not.toBeNull();
     expect(ticket!.status, 'booked ticket is joinable (assigned)').toBe('assigned');

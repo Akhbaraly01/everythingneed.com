@@ -34,7 +34,7 @@ interface EditForm {
 }
 
 export default function AdminDeliveries() {
-    const confirm = useConfirm();
+    const ask = useConfirm();
     const [managers, setManagers] = useState<DeliveryManager[]>([]);
     const [meta, setMeta] = useState<Meta | null>(null);
     const [loading, setLoading] = useState(true);
@@ -89,7 +89,7 @@ export default function AdminDeliveries() {
     };
 
     const remove = async (m: DeliveryManager) => {
-        const ok = await confirm({
+        const ok = await ask({
             title: 'Delete delivery manager',
             description: `Remove ${m.full_name} from the delivery roster?`,
             confirmLabel: 'Delete',

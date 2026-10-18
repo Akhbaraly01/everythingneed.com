@@ -190,19 +190,31 @@ class WaveCNavigationMediaTest extends TestCase
         $this->assertSame(480, $item->height);
     }
 
-    public function test_svg_and_executable_uploads_are_rejected(): void
+    public function test_svg_uploads_are_sanitized_and_executables_rejected(): void
     {
         $this->actingAsRole('user');
 
-        $this->postJson('/api/upload', [
-            'file' => UploadedFile::fake()->createWithContent('evil.svg', '<svg onload="alert(1)"></svg>'),
-        ])->assertStatus(422)->assertJsonValidationErrors(['file']);
+        // Spec 44: SVGs flow through the sanitizer (script/event payloads
+        // stripped) before landing on disk - they are no longer rejected
+        // outright, but nothing scriptable may survive storage.
+        $res = $this->postJson('/api/upload', [
+            'file' => UploadedFile::fake()->createWithContent(
+                'evil.svg',
+                '<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"><script>alert(2)</script></svg>'
+            ),
+        ])->assertStatus(201);
 
+        $stored = (string) Storage::disk('public')->get($res->json('data.path'));
+        $this->assertStringNotContainsString('onload', $stored);
+        $this->assertStringNotContainsString('<script', $stored);
+        $this->assertStringNotContainsString('alert', $stored);
+
+        // Executables and script payloads masquerading as files stay out.
         $this->postJson('/api/upload', [
             'file' => UploadedFile::fake()->createWithContent('shell.php', '<?php echo 1; ?>'),
         ])->assertStatus(422)->assertJsonValidationErrors(['file']);
 
-        $this->assertSame(0, MediaItem::count());
+        $this->assertSame(1, MediaItem::count());
     }
 
     public function test_media_library_scoping_and_delete_ownership(): void

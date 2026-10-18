@@ -63,7 +63,7 @@ export default function AdminPharmacy() {
         || (auth?.roles ?? []).includes('administrator')
         || (auth?.roles ?? []).includes('pharmacy_admin');
 
-    const confirm = useConfirm();
+    const ask = useConfirm();
     const [tab, setTab] = useState<Tab>('orders');
     const [orders, setOrders] = useState<MedicineOrder[]>([]);
     const [medicines, setMedicines] = useState<Medicine[]>([]);
@@ -195,7 +195,7 @@ export default function AdminPharmacy() {
     };
 
     const deleteMedicine = async (m: Medicine) => {
-        const ok = await confirm({
+        const ok = await ask({
             title: `Delete ${m.name}?`,
             description: 'The medicine is removed from the catalogue. Medicines with orders cannot be deleted - set stock to zero instead.',
             confirmLabel: 'Delete',

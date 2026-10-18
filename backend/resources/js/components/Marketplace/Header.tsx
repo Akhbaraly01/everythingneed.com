@@ -137,7 +137,7 @@ export default function Header({
                 className="glass-2 fixed inset-x-0 top-0 z-50 border-b border-border/60"
             >
             <div className="container mx-auto px-3 py-2">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                     <Link
                         href="/"
                         className="hidden shrink-0 items-center gap-1.5 sm:flex"
@@ -206,7 +206,7 @@ export default function Header({
 
                     <Link
                         href="/scan"
-                        className="icon-glass-3d tap-safe hidden sm:inline-flex"
+                        className="icon-glass-3d tap-safe inline-flex"
                         aria-label={t('nav.scan')}
                     >
                         <ScanQrCode className="h-[18px] w-[18px]" />

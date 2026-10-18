@@ -42,7 +42,7 @@ const JOB_TYPES = ['full_time', 'part_time', 'contract', 'internship', 'temporar
 const typeLabel = (t: string) => t.replace(/_/g, ' ');
 
 export default function AdminJobs() {
-    const confirm = useConfirm();
+    const ask = useConfirm();
     const [view, setView] = useState<'posts' | 'applications'>('posts');
     const [jobs, setJobs] = useState<Job[]>([]);
     const [meta, setMeta] = useState<Meta | null>(null);
@@ -155,7 +155,7 @@ export default function AdminJobs() {
     };
 
     const deleteJob = async (j: Job) => {
-        const ok = await confirm({
+        const ok = await ask({
             title: `Delete ${j.title}?`,
             description: 'The post is removed. Posts with applications cannot be deleted — deactivate instead.',
             confirmLabel: 'Delete',

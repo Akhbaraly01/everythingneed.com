@@ -44,7 +44,7 @@ interface EditForm {
 }
 
 export default function AdminRealEstate() {
-    const confirm = useConfirm();
+    const ask = useConfirm();
     const [items, setItems] = useState<Property[]>([]);
     const [meta, setMeta] = useState<Meta | null>(null);
     const [loading, setLoading] = useState(true);
@@ -138,7 +138,7 @@ export default function AdminRealEstate() {
     };
 
     const remove = async (p: Property) => {
-        const ok = await confirm({
+        const ok = await ask({
             title: 'Delete listing',
             description: `Remove "${p.title}" from the marketplace? The listing is soft-deleted and can be restored in the database if needed.`,
             confirmLabel: 'Delete',

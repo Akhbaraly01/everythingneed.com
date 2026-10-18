@@ -53,7 +53,7 @@ export default function VendorProductEdit({ product_id }: { product_id?: string 
                         <MediaUploadInput
                             kind="image"
                             value={form.image_url}
-                            onChange={(url) => setForm({ ...form, image_url: url })}
+                            onChange={(url) => setForm((f) => ({ ...f, image_url: url }))}
                             folder="products"
                             label="Product photo"
                             uploadTestId="product-image"
@@ -63,7 +63,7 @@ export default function VendorProductEdit({ product_id }: { product_id?: string 
                     <MediaUploadInput
                         kind="video"
                         value={form.video_url}
-                        onChange={(url) => setForm({ ...form, video_url: url })}
+                            onChange={(url) => setForm((f) => ({ ...f, video_url: url }))}
                         folder="products"
                         label="Product video (plays in-app on your product page)"
                         linkTestId="product-video-url"

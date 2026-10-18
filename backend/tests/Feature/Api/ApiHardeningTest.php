@@ -161,11 +161,27 @@ class ApiHardeningTest extends TestCase
 
     public function test_delivery_index_strips_user_pii(): void
     {
+        // The roster is a management surface: plain users are denied...
         $this->actingAsUser();
+        $this->getJson('/api/delivery/managers')->assertStatus(403);
 
-        $res = $this->getJson('/api/delivery/managers');
+        // ...and even staff listings never carry account email/contact PII.
+        $ops = $this->createUser();
+        $this->assignRole($ops, 'platform_ops');
+
+        $rider = $this->createUser();
+        \Modules\Delivery\Entities\DeliveryManager::create([
+            'user_id' => $rider->id,
+            'full_name' => 'Rita Rider',
+            'phone' => '+233555000111',
+            'vehicle_type' => 'motorbike',
+            'is_available' => true,
+        ]);
+
+        $res = $this->actingAs($ops, 'sanctum')->getJson('/api/delivery/managers');
         $res->assertOk();
         $this->assertStringNotContainsString('"email"', $res->getContent());
+        $this->assertStringContainsString('Rita Rider', $res->getContent());
     }
 
     public function test_property_viewing_request_alias_creates_viewing_not_property(): void
