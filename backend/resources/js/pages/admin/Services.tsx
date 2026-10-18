@@ -3,14 +3,10 @@ import { Head } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, ClipboardList, X, RefreshCw, Inbox } from 'lucide-react';
 import { api, errorMessage, rows } from '@/lib/api';
+import { useConfirm } from '@/lib/confirm';
 import { toast } from 'sonner';
 import ConfirmDialog, { EmptyState, StatusBadge, TableSkeleton } from '@/components/shared/Ui';
 import MediaUploadInput from '@/components/shared/MediaUploadInput';
-
-const CATEGORIES = [
-    'building', 'cleaning', 'food', 'transport', 'healthcare', 'learning',
-    'agriculture', 'events', 'it', 'design', 'legal', 'finance', 'beauty', 'repair',
-];
 
 const PRICING_MODES = ['fixed', 'hourly', 'quote'] as const;
 const STATUSES = ['active', 'draft', 'inactive'] as const;
@@ -26,6 +22,8 @@ interface ServiceRow {
     id: string;
     name: string;
     category: string;
+    category_id: string | null;
+    categoryRef?: { id: string; name: string; slug: string } | null;
     description: string | null;
     image_url: string | null;
     provider: string | null;
@@ -41,6 +39,33 @@ interface ServiceRow {
     cancellation_rules: string | null;
     delivery_rules: string | null;
     status: string;
+}
+
+interface ServiceCategoryRow {
+    id: string;
+    name: string;
+    slug: string;
+    description: string | null;
+    icon: string | null;
+    color: string | null;
+    sort_order: number;
+    parent_id: string | null;
+    is_active: boolean;
+    services_count?: number;
+    children_count?: number;
+    children?: ServiceCategoryRow[];
+}
+
+interface CategoryEditorState {
+    id: string | null;
+    name: string;
+    slug: string;
+    description: string;
+    icon: string;
+    color: string;
+    sort_order: string;
+    parent_id: string;
+    is_active: boolean;
 }
 
 interface ServiceBookingRow {
@@ -60,6 +85,7 @@ interface EditorState {
     id: string | null;
     name: string;
     category: string;
+    category_id: string;
     description: string;
     image_url: string;
     provider: string;
@@ -81,7 +107,8 @@ interface EditorState {
 const emptyEditor = (): EditorState => ({
     id: null,
     name: '',
-    category: 'building',
+    category: '',
+    category_id: '',
     description: '',
     image_url: '',
     provider: '',
@@ -100,18 +127,35 @@ const emptyEditor = (): EditorState => ({
     status: 'active',
 });
 
+const emptyCategoryEditor = (): CategoryEditorState => ({
+    id: null,
+    name: '',
+    slug: '',
+    description: '',
+    icon: '',
+    color: '',
+    sort_order: '0',
+    parent_id: '',
+    is_active: true,
+});
+
 const money = (value: string | number, currency: string): string => `${currency} ${Number(value).toFixed(2)}`;
 
 export default function AdminServices() {
-    const [tab, setTab] = useState<'services' | 'bookings'>('services');
+    const ask = useConfirm();
+    const [tab, setTab] = useState<'services' | 'bookings' | 'categories'>('services');
     const [services, setServices] = useState<ServiceRow[]>([]);
     const [bookings, setBookings] = useState<ServiceBookingRow[]>([]);
+    const [categories, setCategories] = useState<ServiceCategoryRow[]>([]);
     const [loading, setLoading] = useState(true);
     const [editor, setEditor] = useState<EditorState | null>(null);
     const [saving, setSaving] = useState(false);
     const [editorError, setEditorError] = useState('');
     const [confirm, setConfirm] = useState<{ id: string; name: string } | null>(null);
     const [confirmBusy, setConfirmBusy] = useState(false);
+    const [catEditor, setCatEditor] = useState<CategoryEditorState | null>(null);
+    const [catSaving, setCatSaving] = useState(false);
+    const [catError, setCatError] = useState('');
 
     const loadServices = async () => {
         try {
@@ -133,9 +177,27 @@ export default function AdminServices() {
         }
     };
 
+    const loadCategories = async () => {
+        try {
+            const res = await api.get<{ data: ServiceCategoryRow[] }>('/api/admin/service-categories');
+            // The admin endpoint returns a flat list (roots AND children, the
+            // inactive ones included); order it root-first for display.
+            const flat = rows<ServiceCategoryRow>(res);
+            const ordered: ServiceCategoryRow[] = [];
+            for (const root of flat.filter((c) => !c.parent_id).sort((a, b) => a.sort_order - b.sort_order)) {
+                ordered.push(root);
+                ordered.push(...flat.filter((c) => c.parent_id === root.id).sort((a, b) => a.sort_order - b.sort_order));
+            }
+            setCategories(ordered);
+        } catch (e) {
+            toast.error(errorMessage(e, 'Failed to load service categories'));
+        }
+    };
+
     useEffect(() => {
         void loadServices();
         void loadBookings();
+        void loadCategories();
     }, []);
 
     const openCreate = () => {
@@ -149,6 +211,7 @@ export default function AdminServices() {
             id: row.id,
             name: row.name,
             category: row.category,
+            category_id: row.category_id ?? '',
             description: row.description ?? '',
             image_url: row.image_url ?? '',
             provider: row.provider ?? '',
@@ -178,8 +241,8 @@ export default function AdminServices() {
             setEditorError('Service name is required.');
             return;
         }
-        if (!editor.category.trim()) {
-            setEditorError('Category is required.');
+        if (!editor.category_id && !editor.category.trim()) {
+            setEditorError('Pick a category from the taxonomy (or keep a legacy free-text category).');
             return;
         }
         if (Number.isNaN(Number(editor.base_price)) || Number(editor.base_price) < 0) {
@@ -190,7 +253,8 @@ export default function AdminServices() {
         setEditorError('');
         const payload = {
             name: editor.name.trim(),
-            category: editor.category.trim().toLowerCase(),
+            category: editor.category_id ? undefined : editor.category.trim().toLowerCase(),
+            category_id: editor.category_id || null,
             description: editor.description.trim() || null,
             image_url: editor.image_url.trim() || null,
             provider: editor.provider.trim() || null,
@@ -241,6 +305,93 @@ export default function AdminServices() {
             toast.error(errorMessage(e, 'Could not delete service'));
         } finally {
             setConfirmBusy(false);
+        }
+    };
+
+    const openCategoryEditor = (cat?: ServiceCategoryRow) => {
+        setCatError('');
+        setCatEditor(
+            cat
+                ? {
+                      id: cat.id,
+                      name: cat.name,
+                      slug: cat.slug,
+                      description: cat.description ?? '',
+                      icon: cat.icon ?? '',
+                      color: cat.color ?? '',
+                      sort_order: String(cat.sort_order ?? 0),
+                      parent_id: cat.parent_id ?? '',
+                      is_active: cat.is_active,
+                  }
+                : emptyCategoryEditor(),
+        );
+    };
+
+    const saveCategory = async () => {
+        if (!catEditor) return;
+        if (!catEditor.name.trim()) {
+            setCatError('Name is required.');
+            return;
+        }
+        if (!catEditor.slug.trim()) {
+            setCatError('Slug is required.');
+            return;
+        }
+        setCatSaving(true);
+        setCatError('');
+        const payload = {
+            name: catEditor.name.trim(),
+            slug: catEditor.slug.trim().toLowerCase(),
+            description: catEditor.description.trim() || null,
+            icon: catEditor.icon.trim() || null,
+            color: catEditor.color.trim() || null,
+            sort_order: Number(catEditor.sort_order) || 0,
+            parent_id: catEditor.parent_id || null,
+            is_active: catEditor.is_active,
+        };
+        try {
+            if (catEditor.id) {
+                await api.put(`/api/admin/service-categories/${catEditor.id}`, payload);
+                toast.success('Category updated.');
+            } else {
+                await api.post('/api/admin/service-categories', payload);
+                toast.success('Category created.');
+            }
+            setCatEditor(null);
+            await Promise.all([loadCategories(), loadServices()]);
+        } catch (e) {
+            setCatError(errorMessage(e, 'Could not save category'));
+        } finally {
+            setCatSaving(false);
+        }
+    };
+
+    const toggleCategoryActive = async (cat: ServiceCategoryRow) => {
+        try {
+            await api.put(`/api/admin/service-categories/${cat.id}`, { is_active: !cat.is_active });
+            toast.success(cat.is_active ? 'Category deactivated.' : 'Category activated.');
+            await Promise.all([loadCategories(), loadServices()]);
+        } catch (e) {
+            toast.error(errorMessage(e, 'Could not toggle category'));
+        }
+    };
+
+    const deleteCategory = async (cat: ServiceCategoryRow) => {
+        if (
+            !(await ask({
+                title: 'Delete this category?',
+                description: 'Categories that still have services or subcategories are protected - deactivate them instead.',
+                danger: true,
+            }))
+        ) {
+            return;
+        }
+        try {
+            await api.del(`/api/admin/service-categories/${cat.id}`);
+            toast.success('Category deleted.');
+            await Promise.all([loadCategories(), loadServices()]);
+        } catch (e) {
+            toast.error(errorMessage(e, 'Could not delete category'));
         }
     };
 
@@ -299,10 +450,11 @@ export default function AdminServices() {
                 </div>
 
                 <div className="flex gap-2">
-                    {(['services', 'bookings'] as const).map((t) => (
+                    {(['services', 'bookings', 'categories'] as const).map((t) => (
                         <button
                             key={t}
                             type="button"
+                            data-testid={`tab-${t}`}
                             onClick={() => setTab(t)}
                             className={`rounded-lg px-4 py-2 text-sm font-medium ${
                                 tab === t
@@ -310,7 +462,7 @@ export default function AdminServices() {
                                     : 'border border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300'
                             }`}
                         >
-                            {t === 'services' ? 'Services' : 'Bookings'}
+                            {t === 'services' ? 'Services' : t === 'bookings' ? 'Bookings' : 'Categories'}
                             {t === 'bookings' && bookings.length > 0 ? ` (${bookings.length})` : ''}
                         </button>
                     ))}
@@ -353,7 +505,7 @@ export default function AdminServices() {
                                     {services.map((row) => (
                                         <tr key={row.id}>
                                             <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{row.name}</td>
-                                            <td className="px-4 py-3 text-gray-500">{row.category}</td>
+                                            <td className="px-4 py-3 text-gray-500">{row.categoryRef?.name ?? row.category}</td>
                                             <td className="px-4 py-3 text-gray-500">{row.location ?? '—'}</td>
                                             <td className="px-4 py-3 text-gray-500">
                                                 {money(row.base_price, row.currency || 'USD')}
@@ -390,6 +542,225 @@ export default function AdminServices() {
                             </table>
                         </div>
                     )
+                ) : tab === 'categories' ? (
+                    <div className="space-y-4">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                            <p className="text-sm text-gray-500">
+                                Categories and subcategories power the icon grids on the public services pages (spec 39/100).
+                            </p>
+                            <button
+                                type="button"
+                                data-testid="new-service-category"
+                                onClick={() => openCategoryEditor()}
+                                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+                            >
+                                <Plus className="h-4 w-4" /> New Category
+                            </button>
+                        </div>
+                        <div className="overflow-x-auto rounded-lg bg-white shadow dark:bg-gray-800">
+                            <table className="min-w-full text-left text-sm">
+                                <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase text-gray-500 dark:border-gray-700 dark:bg-gray-900">
+                                    <tr>
+                                        <th className="px-4 py-3">Name</th>
+                                        <th className="px-4 py-3">Parent</th>
+                                        <th className="px-4 py-3">Icon</th>
+                                        <th className="px-4 py-3">Color</th>
+                                        <th className="px-4 py-3">Order</th>
+                                        <th className="px-4 py-3">Active</th>
+                                        <th className="px-4 py-3">Use</th>
+                                        <th className="px-4 py-3 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                                    {categories.map((cat) => (
+                                        <tr
+                                            key={cat.id}
+                                            data-testid={`category-row-${cat.slug}`}
+                                            className={cat.parent_id ? 'bg-gray-50/60 dark:bg-gray-900/40' : ''}
+                                        >
+                                            <td className="px-4 py-3">
+                                                <span
+                                                    className={
+                                                        cat.parent_id
+                                                            ? 'pl-5 text-gray-600 dark:text-gray-300'
+                                                            : 'font-medium text-gray-900 dark:text-white'
+                                                    }
+                                                >
+                                                    {cat.parent_id ? `— ${cat.name}` : cat.name}
+                                                </span>
+                                                <div className="font-mono text-xs text-gray-400">{cat.slug}</div>
+                                            </td>
+                                            <td className="px-4 py-3 text-gray-500">
+                                                {cat.parent_id
+                                                    ? categories.find((c) => c.id === cat.parent_id)?.name ?? '—'
+                                                    : 'Top level'}
+                                            </td>
+                                            <td className="px-4 py-3 font-mono text-xs text-gray-500">{cat.icon ?? '—'}</td>
+                                            <td className="px-4 py-3">
+                                                {cat.color ? (
+                                                    <span className="inline-flex items-center gap-2 text-xs text-gray-500">
+                                                        <span
+                                                            className="h-4 w-4 rounded-full border border-gray-200 dark:border-gray-600"
+                                                            style={{ backgroundColor: cat.color }}
+                                                        />
+                                                        {cat.color}
+                                                    </span>
+                                                ) : (
+                                                    '—'
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3 text-gray-500">{cat.sort_order}</td>
+                                            <td className="px-4 py-3 text-gray-500">{cat.is_active ? 'yes' : 'no'}</td>
+                                            <td className="px-4 py-3 text-xs text-gray-500">
+                                                {cat.services_count ?? 0} services · {cat.children_count ?? 0} subcategories
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <div className="flex justify-end gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => openCategoryEditor(cat)}
+                                                        className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => void toggleCategoryActive(cat)}
+                                                        className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                                                    >
+                                                        {cat.is_active ? 'Deactivate' : 'Activate'}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => void deleteCategory(cat)}
+                                                        className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-red-600 hover:bg-red-50 dark:border-gray-600 dark:text-red-400 dark:hover:bg-red-900/20"
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {categories.length === 0 && (
+                                        <tr>
+                                            <td className="px-4 py-3 text-gray-500" colSpan={8}>
+                                                No categories yet - create the first one.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {catEditor && (
+                            <div className="max-w-2xl rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+                                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                                    {catEditor.id ? 'Edit category' : 'New category'}
+                                </h3>
+                                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                                    <label className="block text-sm">
+                                        <span className="text-gray-600 dark:text-gray-300">Name *</span>
+                                        <input
+                                            data-testid="category-name-input"
+                                            value={catEditor.name}
+                                            onChange={(e) => setCatEditor((p) => (p ? { ...p, name: e.target.value } : p))}
+                                            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+                                        />
+                                    </label>
+                                    <label className="block text-sm">
+                                        <span className="text-gray-600 dark:text-gray-300">Slug *</span>
+                                        <input
+                                            value={catEditor.slug}
+                                            onChange={(e) => setCatEditor((p) => (p ? { ...p, slug: e.target.value } : p))}
+                                            placeholder="lowercase-hyphens"
+                                            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 font-mono text-xs dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+                                        />
+                                    </label>
+                                    <label className="block text-sm sm:col-span-2">
+                                        <span className="text-gray-600 dark:text-gray-300">Description</span>
+                                        <textarea
+                                            value={catEditor.description}
+                                            onChange={(e) => setCatEditor((p) => (p ? { ...p, description: e.target.value } : p))}
+                                            rows={2}
+                                            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+                                        />
+                                    </label>
+                                    <label className="block text-sm">
+                                        <span className="text-gray-600 dark:text-gray-300">Icon (lucide key)</span>
+                                        <input
+                                            value={catEditor.icon}
+                                            onChange={(e) => setCatEditor((p) => (p ? { ...p, icon: e.target.value } : p))}
+                                            placeholder="sparkles"
+                                            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 font-mono text-xs dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+                                        />
+                                    </label>
+                                    <label className="block text-sm">
+                                        <span className="text-gray-600 dark:text-gray-300">Color</span>
+                                        <input
+                                            value={catEditor.color}
+                                            onChange={(e) => setCatEditor((p) => (p ? { ...p, color: e.target.value } : p))}
+                                            placeholder="#0EA5E9"
+                                            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 font-mono text-xs dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+                                        />
+                                    </label>
+                                    <label className="block text-sm">
+                                        <span className="text-gray-600 dark:text-gray-300">Sort order</span>
+                                        <input
+                                            type="number"
+                                            value={catEditor.sort_order}
+                                            onChange={(e) => setCatEditor((p) => (p ? { ...p, sort_order: e.target.value } : p))}
+                                            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+                                        />
+                                    </label>
+                                    <label className="block text-sm">
+                                        <span className="text-gray-600 dark:text-gray-300">Parent</span>
+                                        <select
+                                            value={catEditor.parent_id}
+                                            onChange={(e) => setCatEditor((p) => (p ? { ...p, parent_id: e.target.value } : p))}
+                                            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+                                        >
+                                            <option value="">None (top level)</option>
+                                            {categories
+                                                .filter((c) => !c.parent_id && c.id !== catEditor.id)
+                                                .map((c) => (
+                                                    <option key={c.id} value={c.id}>
+                                                        {c.name}
+                                                    </option>
+                                                ))}
+                                        </select>
+                                    </label>
+                                    <label className="inline-flex items-center gap-2 text-sm text-gray-700 sm:col-span-2 dark:text-gray-200">
+                                        <input
+                                            type="checkbox"
+                                            checked={catEditor.is_active}
+                                            onChange={(e) => setCatEditor((p) => (p ? { ...p, is_active: e.target.checked } : p))}
+                                        />
+                                        Active (visible publicly, shown in the icon grids)
+                                    </label>
+                                </div>
+                                {catError && <p className="mt-3 text-sm text-red-600">{catError}</p>}
+                                <div className="mt-4 flex justify-end gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setCatEditor(null)}
+                                        disabled={catSaving}
+                                        className="rounded-lg px-4 py-2 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="button"
+                                        data-testid="save-category"
+                                        onClick={() => void saveCategory()}
+                                        disabled={catSaving}
+                                        className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-60"
+                                    >
+                                        {catSaving ? 'Saving…' : catEditor.id ? 'Save changes' : 'Create category'}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 ) : bookings.length === 0 ? (
                     <EmptyState
                         icon={<Inbox className="h-10 w-10" />}
@@ -497,18 +868,49 @@ export default function AdminServices() {
                                 </label>
                                 <label className="block text-sm">
                                     <span className="text-gray-600 dark:text-gray-300">Category *</span>
-                                    <input
-                                        list="service-categories"
-                                        value={editor.category}
-                                        onChange={(e) => setEditor((p) => (p ? { ...p, category: e.target.value } : p))}
+                                    <select
+                                        data-testid="service-category-select"
+                                        value={editor.category_id}
+                                        onChange={(e) =>
+                                            setEditor((p) => {
+                                                if (!p) return p;
+                                                const picked = categories.find((c) => c.id === e.target.value);
+                                                return {
+                                                    ...p,
+                                                    category_id: e.target.value,
+                                                    category: picked ? picked.slug : p.category,
+                                                };
+                                            })
+                                        }
                                         className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-                                        placeholder="building"
-                                    />
-                                    <datalist id="service-categories">
-                                        {CATEGORIES.map((c) => (
-                                            <option key={c} value={c} />
-                                        ))}
-                                    </datalist>
+                                    >
+                                        <option value="">— Legacy free-text category —</option>
+                                        {categories
+                                            .filter((c) => !c.parent_id)
+                                            .map((root) => (
+                                                <optgroup key={root.id} label={root.name}>
+                                                    <option value={root.id}>{root.name} (all)</option>
+                                                    {categories
+                                                        .filter((c) => c.parent_id === root.id)
+                                                        .map((child) => (
+                                                            <option key={child.id} value={child.id}>
+                                                                — {child.name}
+                                                            </option>
+                                                        ))}
+                                                </optgroup>
+                                            ))}
+                                    </select>
+                                    {!editor.category_id && (
+                                        <input
+                                            value={editor.category}
+                                            onChange={(e) => setEditor((p) => (p ? { ...p, category: e.target.value } : p))}
+                                            className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+                                            placeholder="legacy category, e.g. building"
+                                        />
+                                    )}
+                                    <span className="mt-1 block text-xs text-gray-400">
+                                        Managed under the Categories tab - subcategories show as “— name”.
+                                    </span>
                                 </label>
                             </div>
 

@@ -25,7 +25,9 @@ class AdminServiceController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = ServiceDefinition::query()->orderByDesc('created_at');
+        $query = ServiceDefinition::query()
+            ->with('categoryRef:id,name,slug')
+            ->orderByDesc('created_at');
 
         if ($request->filled('category')) {
             $query->where('category', $request->string('category')->toString());

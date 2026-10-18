@@ -50,6 +50,7 @@ use App\Http\Controllers\Web\TasksPageController;
 use App\Http\Controllers\Web\MessagingPageController;
 use App\Http\Controllers\Web\VendorPortalPageController;
 use App\Http\Controllers\Web\HealthcarePageController;
+use App\Http\Controllers\Web\ServiceCatalogPageController;
 use App\Http\Controllers\Web\ServiceRequestsPageController;
 use App\Http\Controllers\Web\AdminPageController;
 use App\Http\Controllers\Web\AdminDetailPageController;
@@ -1008,6 +1009,12 @@ Route::get('/pharmacy/prescription-upload', function () {
 // ─── Public vertical landings (Inertia) ───────────────────────────────────────
 Route::get('/agriculture', [ServiceRequestsPageController::class, 'agriculture'])->name('agriculture.index');
 Route::get('/building-services', [ServiceRequestsPageController::class, 'buildingServices'])->name('building-services.index');
+
+// ─── Public service catalogue (spec 39/100) ───────────────────────────────────
+// Taxonomy grid (7 icons + See more) and bookable detail pages; the home
+// services rail and category tiles link here.
+Route::get('/services', [ServiceCatalogPageController::class, 'index'])->name('services.index');
+Route::get('/services/{id}', [ServiceCatalogPageController::class, 'show'])->name('services.show');
 
 // ─── Admin console (Inertia, role-gated) ──────────────────────────────────────
 // Mirrors ADMIN_WORKSPACE_AUTHORIZATION_MATRIX.md: the dashboard is the common
