@@ -101,7 +101,8 @@ test('language switch translates chrome globally', async ({ page }) => {
     await expect(page.getByText('Featured Products').first()).toBeVisible();
 
     await page.getByLabel('Language').click();
-    await page.getByRole('button', { name: 'Español' }).click();
+    // The switcher is an ARIA menu: the options are menuitemradio, not buttons.
+    await page.getByRole('menuitemradio', { name: 'Español' }).click();
 
     await expect(page.getByPlaceholder('Buscar todo...')).toBeVisible();
     await expect(page.getByText('Productos destacados').first()).toBeVisible();
