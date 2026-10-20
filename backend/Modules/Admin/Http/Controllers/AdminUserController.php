@@ -3,8 +3,8 @@
 namespace Modules\Admin\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use Core\Enums\AppRole;
 use Core\Services\Contracts\RoleAssignmentInterface;
+use Core\Services\Contracts\RoleRegistryInterface;
 use Core\Services\Contracts\UserAdminInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -35,7 +35,7 @@ class AdminUserController extends Controller
     {
         $validated = $request->validate([
             'search'   => ['nullable', 'string', 'max:100'],
-            'role'     => ['nullable', 'string', Rule::in(AppRole::values())],
+            'role'     => ['nullable', 'string', Rule::in(app(RoleRegistryInterface::class)->all())],
             'per_page' => ['nullable', 'integer', 'min:5', 'max:100'],
             'page'     => ['nullable', 'integer', 'min:1'],
         ]);

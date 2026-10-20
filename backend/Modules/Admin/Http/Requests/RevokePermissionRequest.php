@@ -2,9 +2,9 @@
 
 namespace Modules\Admin\Http\Requests;
 
+use Core\Services\Contracts\RoleRegistryInterface;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use Modules\Admin\Http\Controllers\AdminRbacController;
 
 class RevokePermissionRequest extends FormRequest
 {
@@ -21,7 +21,7 @@ class RevokePermissionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'role' => ['required', 'string', Rule::in(AdminRbacController::ROLES)],
+            'role' => ['required', 'string', Rule::in(app(RoleRegistryInterface::class)->all())],
             'permission' => ['required', 'string'],
         ];
     }

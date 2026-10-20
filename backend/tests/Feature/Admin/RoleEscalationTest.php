@@ -4,11 +4,19 @@ namespace Tests\Feature\Admin;
 
 use App\Models\User;
 use App\Models\UserRole;
+use Database\Seeders\PermissionSeeder;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class RoleEscalationTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed(PermissionSeeder::class);
+        \Illuminate\Support\Facades\Cache::forget('rbac.matrix');
+    }
+
     private function userWithRole(string $role): User
     {
         $user = User::factory()->create();

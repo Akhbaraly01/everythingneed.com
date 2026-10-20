@@ -2,12 +2,21 @@
 
 namespace Tests\Feature\Journeys;
 
+use Database\Seeders\PermissionSeeder;
+use Illuminate\Support\Facades\Cache;
 use Modules\Products\Entities\Product;
 use Modules\Vendors\Entities\Vendor;
 use Tests\TestCase;
 
 class AdminOrderRefundJourneyTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed(PermissionSeeder::class);
+        Cache::forget('rbac.matrix');
+    }
+
     /** Places a real order through checkout and returns [vendorUser, vendorOrderId]. */
     private function placeVendorOrder(): array
     {
@@ -59,7 +68,7 @@ class AdminOrderRefundJourneyTest extends TestCase
         $this->postJson("/api/admin/orders/{$vendorOrderId}/refund", [])->assertStatus(422);
     }
 
-    public function test_administrator_role_is_allowed_but_finance_and_strangers_are_not(): void
+    public function test_finance_and_administrator_holders_of_refund_permission_are_allowed_but_strangers_are_not(): void
     {
         [, $vendorOrderId] = $this->placeVendorOrder();
 
@@ -68,19 +77,22 @@ class AdminOrderRefundJourneyTest extends TestCase
         $this->actingAs($stranger, 'sanctum');
         $this->postJson("/api/admin/orders/{$vendorOrderId}/refund", [])->assertStatus(403);
 
-        // finance_admin is NOT in the manageOrders policy (super_admin/administrator only)
+        // finance_admin holds orders.orders.refund in the seeded matrix
         $finance = $this->createUser();
         $this->assignRole($finance, 'finance_admin');
         $this->actingAs($finance, 'sanctum');
-        $this->postJson("/api/admin/orders/{$vendorOrderId}/refund", [])->assertStatus(403);
+        $this->postJson("/api/admin/orders/{$vendorOrderId}/refund", ['reason' => 'Finance approved'])
+            ->assertOk();
+        $this->postJson("/api/admin/orders/{$vendorOrderId}/refund", [])->assertStatus(422);
 
-        // administrator is allowed
+        // administrator is allowed on a fresh sub-order
+        [, $secondOrderId] = $this->placeVendorOrder();
         $administrator = $this->createUser();
         $this->assignRole($administrator, 'administrator');
         $this->actingAs($administrator, 'sanctum');
-        $this->postJson("/api/admin/orders/{$vendorOrderId}/refund", ['reason' => 'Approved goodwill'])
+        $this->postJson("/api/admin/orders/{$secondOrderId}/refund", ['reason' => 'Approved goodwill'])
             ->assertOk();
-        $this->assertDatabaseHas('vendor_orders', ['id' => $vendorOrderId, 'status' => 'refunded']);
+        $this->assertDatabaseHas('vendor_orders', ['id' => $secondOrderId, 'status' => 'refunded']);
     }
 
     public function test_unknown_sub_order_returns_404(): void

@@ -19,6 +19,12 @@ return Application::configure(basePath: dirname(__DIR__))
         ['prefix' => 'api', 'middleware' => ['api', 'auth:sanctum']],
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // Multilingual Phase 0: the `locale` cookie is a non-sensitive UI
+        // preference read by the pre-paint script and written directly by
+        // client JS, so it must stay plain (encrypted cookies written from
+        // the client are undecryptable and get dropped server-side).
+        $middleware->encryptCookies(except: ['locale']);
+
         $middleware->alias([
             'role' => \App\Http\Middleware\EnsureUserHasRole::class,
             'permission' => \App\Http\Middleware\EnsureUserHasPermission::class,
@@ -29,6 +35,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->web(append: [
             \App\Http\Middleware\EnsureAccountActive::class,
+            \App\Http\Middleware\ApplyUserLocale::class,
             \App\Http\Middleware\HandleInertiaRequests::class,
         ]);
 
@@ -49,6 +56,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // Module routes register outside the core api group, so a global
         // route-independent limiter guarantees full coverage.
         $middleware->use([
+            // Multilingual Phase 0: resolve request locale (cookie ->
+            // Accept-Language -> default) before anything renders or
+            // validates; account preference layers on in the web group.
+            \App\Http\Middleware\SetLocale::class,
             \App\Http\Middleware\GlobalRateLimit::class,
             // Phase 5: tighter per-actor window for POST/PUT/PATCH/DELETE
             // under /api/* (reads keep the generous buckets).

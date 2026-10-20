@@ -59,7 +59,7 @@ class DeliveryController extends Controller
         // W8 console: operations staff can register another account as a
         // rider by email (the rider directory exists for console use).
         if (!empty($validated['user_email'])) {
-            if (!$this->canManage($request)) {
+        if (!$request->user()->hasPermission('delivery.deliveries.view')) {
                 return response()->json([
                     'message' => 'Only delivery operations staff can register another account',
                 ], 403);
@@ -292,11 +292,7 @@ class DeliveryController extends Controller
     /** Same management surface as the /admin/deliveries console gate (routes/web.php). */
     private function canManage(Request $request): bool
     {
-        return $request->user()->hasRole('super_admin')
-            || $request->user()->hasRole('administrator')
-            || $request->user()->hasRole('transport_admin')
-            || $request->user()->hasRole('platform_ops')
-            || $request->user()->hasRole('orders_admin');
+        return $request->user()->hasPermission('delivery.deliveries.manage');
     }
 
     private function ownManager(Request $request): ?DeliveryManager

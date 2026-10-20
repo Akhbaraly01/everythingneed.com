@@ -16,13 +16,13 @@ Route::prefix('api')->group(function () {
 
     // Admin console (all restaurants incl. inactive)
     Route::get('/admin/restaurants', [RestaurantController::class, 'adminIndex'])
-        ->middleware('role:super_admin,administrator,food_admin');
+        ->middleware('permission:food.overview.view');
     Route::put('/admin/restaurants/{id}', [RestaurantController::class, 'adminUpdate'])
-        ->middleware('role:super_admin,administrator,food_admin');
+        ->middleware('permission:food.menu.manage');
     Route::delete('/admin/restaurants/{id}', [RestaurantController::class, 'adminDestroy'])
-        ->middleware('role:super_admin,administrator,food_admin');
+        ->middleware('permission:food.menu.manage');
     Route::post('/admin/restaurants', [RestaurantController::class, 'adminStore'])
-        ->middleware('role:super_admin,administrator,food_admin');
+        ->middleware('permission:food.menu.manage');
     Route::get('/restaurants/{id}', [RestaurantController::class, 'show']);
     Route::get('/restaurants/{id}/menu', [RestaurantController::class, 'menu']);
 

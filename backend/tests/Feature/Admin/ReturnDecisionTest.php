@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Orders\Entities\Order;
 use Modules\Orders\Entities\ReturnRequest;
@@ -16,6 +17,8 @@ class ReturnDecisionTest extends TestCase
     {
         parent::setUp();
         config(['payments.driver' => 'mock']);
+        $this->seed(PermissionSeeder::class);
+        \Illuminate\Support\Facades\Cache::forget('rbac.matrix');
     }
 
     private function createPendingReturn(bool $withPayment = true, float $amount = 50.0): array

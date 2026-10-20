@@ -31,12 +31,12 @@ Route::prefix('api')->group(function () {
 
     // Admin console (all posts incl. inactive/expired)
     Route::get('/admin/jobs', [JobController::class, 'adminIndex'])
-        ->middleware('role:super_admin,administrator,jobs_admin');
+        ->middleware('permission:jobs.overview.view');
     Route::put('/admin/jobs/{id}', [JobController::class, 'adminUpdate'])
-        ->middleware('role:super_admin,administrator,jobs_admin');
+        ->middleware('permission:jobs.overview.manage');
     Route::delete('/admin/jobs/{id}', [JobController::class, 'adminDestroy'])
-        ->middleware('role:super_admin,administrator,jobs_admin');
+        ->middleware('permission:jobs.overview.manage');
     Route::get('/admin/job-applications', [JobController::class, 'adminApplications'])
-        ->middleware('role:super_admin,administrator,jobs_admin');
+        ->middleware('permission:jobs.applications.view');
     Route::get('/jobs/{id}', [JobController::class, 'show']);
 });

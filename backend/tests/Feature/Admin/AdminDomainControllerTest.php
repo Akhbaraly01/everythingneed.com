@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Orders\Entities\Dispute;
 use Modules\RealEstate\Entities\Property;
@@ -19,6 +20,13 @@ use Tests\TestCase;
 class AdminDomainControllerTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed(PermissionSeeder::class);
+        \Illuminate\Support\Facades\Cache::forget('rbac.matrix');
+    }
 
     /** @return array<string, array{string}> */
     public static function readEndpoints(): array

@@ -11,6 +11,11 @@ use Core\Services\Contracts\PermissionServiceInterface;
  *
  * Gates are registered in AuthServiceProvider::boot().
  * Each method receives the authenticated User and returns bool.
+ *
+ * Permissions are the single source of truth: every gate below (except the
+ * documented dashboard exemption) delegates to the effective-permission
+ * resolver, so granting/revoking a permission takes effect immediately on
+ * both the page middleware and the API `can:` checks.
  */
 class AdminPolicy
 {
@@ -45,138 +50,113 @@ class AdminPolicy
     }
 
     /**
-     * Only super_admin and administrator can manage users.
-     * security_admin included (W1 parity: /admin/users web group) — its
-     * MATRIX grants cover users.users.view/update/suspend/activate.
+     * Users console: requires the console-management permission.
      */
     public function manageUsers(User $user): bool
     {
-        return $this->hasRole($user, [
-            AppRole::SUPER_ADMIN, AppRole::ADMINISTRATOR, AppRole::SECURITY_ADMIN,
-        ]);
+        return $user->hasPermission('users.users.manage');
     }
 
     /**
-     * Vendor management: super_admin, administrator, vendor_admin + platform_ops
-     * (W1 parity with the /admin/vendors web group; MATRIX vendors.*) and
-     * vendor_manager (spec §65).
+     * Vendors console: read access to the vendor registry.
      */
     public function manageVendors(User $user): bool
     {
-        return $this->hasRole($user, [
-            AppRole::SUPER_ADMIN, AppRole::ADMINISTRATOR, AppRole::VENDOR_ADMIN,
-            AppRole::PLATFORM_OPS, AppRole::VENDOR_MANAGER,
-        ]);
+        return $user->hasPermission('vendors.vendors.view');
     }
 
     /**
-     * Order management: super_admin, administrator + the orders-console roles
-     * (W1 parity with /admin/orders and /admin/returns web groups).
+     * Orders/returns console: read access to order data.
      */
     public function manageOrders(User $user): bool
     {
-        return $this->hasRole($user, [
-            AppRole::SUPER_ADMIN, AppRole::ADMINISTRATOR, AppRole::PLATFORM_OPS,
-            AppRole::ORDERS_ADMIN, AppRole::REFUND_AGENT,
-        ]);
+        return $user->hasPermission('orders.orders.view');
     }
 
     /**
-     * Finance is restricted to super_admin and finance_admin.
+     * Finance overview is restricted to finance-overview holders.
      */
     public function viewFinance(User $user): bool
     {
-        return $this->hasRole($user, [AppRole::SUPER_ADMIN, AppRole::FINANCE_ADMIN]);
+        return $user->hasPermission('finance.overview.view');
     }
 
     /**
-     * Content management for super_admin and content_manager.
+     * Legacy content gate — CMS page membership.
      */
     public function manageContent(User $user): bool
     {
-        return $this->hasRole($user, [AppRole::SUPER_ADMIN, AppRole::CONTENT_MANAGER]);
+        return $user->hasPermission('cms.pages.manage');
     }
 
     /**
-     * Analytics for super_admin, administrator, analytics_admin and analyst
-     * (W1 parity with the /admin/analytics web group).
+     * Analytics console.
      */
     public function viewAnalytics(User $user): bool
     {
-        return $this->hasRole($user, [
-            AppRole::SUPER_ADMIN, AppRole::ADMINISTRATOR, AppRole::ANALYTICS_ADMIN,
-            AppRole::ANALYST,
-        ]);
+        return $user->hasPermission('analytics.overview.view');
     }
 
     /**
-     * Support operations — mirrors the /admin/support web route roles.
+     * Support console.
      */
     public function manageSupport(User $user): bool
     {
-        return $this->hasRole($user, [
-            AppRole::SUPER_ADMIN, AppRole::ADMINISTRATOR, AppRole::SUPPORT_AGENT,
-            AppRole::CUSTOMER_SERVICE, AppRole::SUPPORT_ADMIN,
-        ]);
+        return $user->hasPermission('support.tickets.view');
     }
 
     /**
-     * Healthcare management for super_admin and healthcare_admin.
+     * Healthcare console.
      */
     public function manageHealthcare(User $user): bool
     {
-        return $this->hasRole($user, [AppRole::SUPER_ADMIN, AppRole::HEALTHCARE_ADMIN]);
+        return $user->hasPermission('healthcare.overview.view');
     }
 
     /**
-     * Learning management for super_admin and learning_admin.
+     * Learning console.
      */
     public function manageLearning(User $user): bool
     {
-        return $this->hasRole($user, [AppRole::SUPER_ADMIN, AppRole::LEARNING_ADMIN]);
+        return $user->hasPermission('learn.overview.view');
     }
 
     /**
-     * System settings - super_admin and administrator (both hold the
-     * settings.* permissions in the role matrix; the Settings/System nav
-     * entries declare settings.system.update so visibility matches the gate).
+     * System settings.
      */
     public function manageSettings(User $user): bool
     {
-        return $this->hasRole($user, [AppRole::SUPER_ADMIN, AppRole::ADMINISTRATOR]);
+        return $user->hasPermission('settings.system.update');
     }
 
     /**
-     * Audit logs — super_admin only.
+     * Audit logs.
      */
     public function viewAuditLogs(User $user): bool
     {
-        return $this->hasRole($user, [AppRole::SUPER_ADMIN, AppRole::SECURITY_ADMIN, AppRole::AUDITOR]);
+        return $user->hasPermission('audit.logs.view');
     }
 
     /**
-     * Finance management — super_admin, finance_admin + the finance-console
-     * roles (W1 parity with /admin/finance, /admin/payouts, /admin/wallet web
-     * groups; MATRIX finance/payments grants cover administrator, wallet_admin
-     * and payout_reviewer).
+     * Finance operations — any of the finance-console permissions.
      */
     public function manageFinance(User $user): bool
     {
-        return $this->hasRole($user, [
-            AppRole::SUPER_ADMIN, AppRole::ADMINISTRATOR, AppRole::FINANCE_ADMIN,
-            AppRole::WALLET_ADMIN, AppRole::PAYOUT_REVIEWER,
+        return $this->hasAnyPermission($user, [
+            'finance.overview.view',
+            'finance.payments.manage',
+            'finance.refunds.process',
+            'finance.payouts.manage',
+            'finance.transactions.view',
         ]);
     }
 
     /**
-     * CMS management — mirrors the /admin/cms web route roles.
+     * CMS management.
      */
     public function manageCms(User $user): bool
     {
-        return $this->hasRole($user, [
-            AppRole::SUPER_ADMIN, AppRole::ADMINISTRATOR, AppRole::CONTENT_MANAGER,
-            AppRole::CMS_EDITOR, AppRole::CONTENT_ADMIN,
-        ]);
+        return $user->hasPermission('cms.pages.manage');
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -184,17 +164,19 @@ class AdminPolicy
     // ──────────────────────────────────────────────────────────────────────────
 
     /**
-     * Fetches the user's AppRole from the user_roles table.
+     * Returns true if the user holds any of the given permissions.
+     *
+     * @param  list<string>  $permissions
      */
-    private function getUserRole(User $user): ?AppRole
+    private function hasAnyPermission(User $user, array $permissions): bool
     {
-        $roleValue = $this->permissions->primaryRole($user->id);
-
-        if (! $roleValue) {
-            return null;
+        foreach ($permissions as $permission) {
+            if ($user->hasPermission($permission)) {
+                return true;
+            }
         }
 
-        return AppRole::tryFrom($roleValue);
+        return false;
     }
 
     /**

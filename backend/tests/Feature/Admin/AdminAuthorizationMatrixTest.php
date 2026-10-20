@@ -155,7 +155,7 @@ class AdminAuthorizationMatrixTest extends TestCase
             'deny' => ['/admin/building', '/admin/users', '/admin/finance', '/admin/orders'],
         ],
         'needs_admin' => [
-            'allow' => ['/admin/dashboard'],
+            'allow' => ['/admin/dashboard', '/admin/needs'],
             'deny' => ['/admin/users', '/admin/finance', '/admin/orders', '/admin/categories', '/admin/kyc'],
         ],
         'needs_viewer' => [
@@ -286,7 +286,7 @@ class AdminAuthorizationMatrixTest extends TestCase
         );
     }
 
-    public function test_every_registry_href_is_role_gated_or_root_alias(): void
+    public function test_every_registry_href_is_role_or_permission_gated(): void
     {
         $ts = (string) file_get_contents(resource_path('js/config/consoleNavigation.ts'));
         preg_match_all("#href:\s*'(/admin[^']*)'#", $ts, $m);
@@ -295,10 +295,11 @@ class AdminAuthorizationMatrixTest extends TestCase
             $path = ltrim($href, '/');
             $route = Route::getRoutes()->match(\Illuminate\Http\Request::create('/'.$path, 'GET'));
 
-            $hasRoleGate = collect($route->gatherMiddleware())
-                ->contains(fn ($middleware) => is_string($middleware) && str_starts_with($middleware, 'role:'));
+            $gated = collect($route->gatherMiddleware())
+                ->contains(fn ($middleware) => is_string($middleware)
+                    && (str_starts_with($middleware, 'role:') || str_starts_with($middleware, 'permission:')));
 
-            $this->assertTrue($hasRoleGate, "{$href} must carry a role: middleware");
+            $this->assertTrue($gated, "{$href} must carry a role: or permission: middleware");
         }
     }
 }

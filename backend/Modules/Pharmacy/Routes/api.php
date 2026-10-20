@@ -11,9 +11,9 @@ Route::prefix('api')->group(function () {
         Route::get('/prescriptions/{id}', [\Modules\Pharmacy\Http\Controllers\PrescriptionController::class, 'show']);
         Route::post('/prescriptions/{id}/order', [\Modules\Pharmacy\Http\Controllers\PrescriptionController::class, 'order']);
         Route::post('/pharmacy/prescriptions', [PharmacyOrderController::class, 'storePrescription']);
-        Route::post('/medicines', [MedicineController::class, 'store'])->middleware('role:super_admin,administrator,pharmacy_admin');
-        Route::put('/medicines/{id}', [MedicineController::class, 'update'])->middleware('role:super_admin,administrator,pharmacy_admin');
-        Route::delete('/medicines/{id}', [MedicineController::class, 'destroy'])->middleware('role:super_admin,administrator,pharmacy_admin');
+        Route::post('/medicines', [MedicineController::class, 'store'])->middleware('permission:pharmacy.medicines.manage');
+        Route::put('/medicines/{id}', [MedicineController::class, 'update'])->middleware('permission:pharmacy.medicines.manage');
+        Route::delete('/medicines/{id}', [MedicineController::class, 'destroy'])->middleware('permission:pharmacy.medicines.manage');
 
         Route::get('/pharmacy/orders', [PharmacyOrderController::class, 'orders']);
         Route::get('/pharmacy/orders/{id}', [PharmacyOrderController::class, 'show']);
@@ -28,7 +28,7 @@ Route::prefix('api')->group(function () {
 
 // Fulfillment console (W4): pending -> confirmed -> processing ->
 // shipped -> delivered, plus cancelling with restock.
-Route::middleware(['auth:sanctum', 'role:super_admin,administrator,pharmacy_admin'])
+Route::middleware(['auth:sanctum', 'permission:pharmacy.overview.manage'])
     ->prefix('api/admin/pharmacy')
     ->group(function () {
         Route::post('/orders/{id}/confirm', [PharmacyAdminController::class, 'confirm']);
@@ -41,7 +41,7 @@ Route::middleware(['auth:sanctum', 'role:super_admin,administrator,pharmacy_admi
 // H-D: prescriptions oversight is read-only and mirrors the seeded
 // matrix (healthcare_admin holds pharmacy.prescriptions.view), so the
 // Healthcare console's Prescriptions tab can serve it.
-Route::middleware(['auth:sanctum', 'role:super_admin,administrator,pharmacy_admin,healthcare_admin'])
+Route::middleware(['auth:sanctum', 'permission:pharmacy.prescriptions.view'])
     ->prefix('api/admin/pharmacy')
     ->group(function () {
         Route::get('/prescriptions', [PharmacyAdminController::class, 'prescriptions']);

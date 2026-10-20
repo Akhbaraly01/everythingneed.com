@@ -5,9 +5,12 @@ namespace Modules\Admin\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Core\Services\Contracts\PermissionServiceInterface;
 use Core\Services\Contracts\RoleAssignmentInterface;
+use Core\Services\Contracts\RoleRegistryInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Modules\Admin\Http\Requests\AssignUserRoleRequest;
+use Modules\Admin\Http\Requests\BulkRolePermissionRequest;
+use Modules\Admin\Http\Requests\CreateCustomRoleRequest;
 use Modules\Admin\Http\Requests\GrantPermissionRequest;
 use Modules\Admin\Http\Requests\GrantUserPermissionRequest;
 use Modules\Admin\Http\Requests\RevokePermissionRequest;
@@ -32,16 +35,31 @@ class AdminRbacController extends Controller
         'category_admin', 'vendor_manager', 'content_admin',
     ];
 
+    // Roles labelled "Core" in the console (flagship platform roles).
+    // All canonical roles are protected (non-deletable); custom roles
+    // created from the console are deletable.
+    public const CORE_ROLES = ['super_admin', 'administrator', 'user'];
+
     public function __construct(
         private PermissionServiceInterface $permissions,
         private RoleAssignmentInterface $assignments,
         private \Core\Services\Contracts\ScopeResolverInterface $scopes,
         private \Core\Services\Contracts\AuditServiceInterface $audit,
+        private RoleRegistryInterface $registry,
     ) {}
 
     public function roles(): JsonResponse
     {
-        return response()->json(['data' => $this->permissions->roleSummaries(self::ROLES)]);
+        $roles = $this->registry->all();
+        $summaries = collect($this->permissions->roleSummaries($roles))->keyBy('role');
+
+        return response()->json(['data' => collect($roles)->map(fn (string $role) => [
+            'role'       => $role,
+            'label'      => $this->registry->label($role),
+            'user_count' => (int) ($summaries[$role]['user_count'] ?? 0),
+            'is_core'    => in_array($role, self::CORE_ROLES, true),
+            'is_custom'  => ! $this->registry->isCore($role),
+        ])->values()->all()]);
     }
 
     public function permissions(): JsonResponse
@@ -59,12 +77,25 @@ class AdminRbacController extends Controller
     /**
      * Effective role -> permission matrix from the database, plus the
      * denied-state rows (W2) so the console can offer one-click restore.
+     * Covers canonical + custom roles with console metadata.
      */
     public function matrix(): JsonResponse
     {
+        $roles = $this->registry->all();
+        $summaries = collect($this->permissions->roleSummaries($roles))->keyBy('role');
+
+        $data = collect($this->permissions->permissionMatrix($roles))->map(fn (array $row) => [
+            'role'        => $row['role'],
+            'label'       => $this->registry->label($row['role']),
+            'permissions' => $row['permissions'],
+            'user_count'  => (int) ($summaries[$row['role']]['user_count'] ?? 0),
+            'is_core'     => in_array($row['role'], self::CORE_ROLES, true),
+            'is_custom'   => ! $this->registry->isCore($row['role']),
+        ])->values()->all();
+
         return response()->json([
-            'data' => $this->permissions->permissionMatrix(self::ROLES),
-            'denied' => $this->permissions->deniedMatrix(self::ROLES),
+            'data' => $data,
+            'denied' => $this->permissions->deniedMatrix($roles),
         ]);
     }
 
@@ -104,6 +135,111 @@ class AdminRbacController extends Controller
         ], $request);
 
         return response()->json(['message' => "Revoked {$validated['permission']} from {$validated['role']}"]);
+    }
+
+    /**
+     * Bulk grant/revoke for one role in a single transaction (the role
+     * card editor saves all chips at once; one audit row, one cache flush).
+     */
+    public function bulkUpdate(BulkRolePermissionRequest $request): JsonResponse
+    {
+        $validated = $request->validated();
+        $grant = $validated['grant'] ?? [];
+        $revoke = $validated['revoke'] ?? [];
+
+        $this->permissions->bulkUpdateRolePermissions($validated['role'], $grant, $revoke);
+
+        $this->auditChange('role_permission', $validated['role'], [
+            'new_values' => [
+                'granted' => array_values($grant),
+                'revoked' => array_values($revoke),
+            ],
+        ], $request);
+
+        return response()->json([
+            'message' => "Updated {$validated['role']} (".count($grant).' granted, '.count($revoke).' revoked)',
+        ]);
+    }
+
+    /**
+     * Creates a custom role with its initial permission selection.
+     */
+    public function createRole(CreateCustomRoleRequest $request): JsonResponse
+    {
+        $validated = $request->validated();
+
+        $slug = $this->registry->create(
+            $validated['name'],
+            $validated['slug'] ?? null,
+            $validated['description'] ?? null,
+            $validated['permissions'] ?? [],
+            $request->user()?->id,
+        );
+
+        $this->auditChange('custom_role', $slug, [
+            'new_values' => [
+                'name' => $validated['name'],
+                'slug' => $slug,
+                'permissions' => $validated['permissions'] ?? [],
+            ],
+        ], $request);
+
+        return response()->json(['message' => "Role {$slug} created", 'slug' => $slug], 201);
+    }
+
+    /**
+     * Deletes a custom role. Built-in roles are protected and a role that
+     * still has users assigned must be emptied first (no orphan rows).
+     */
+    public function deleteRole(Request $request, string $slug): JsonResponse
+    {
+        if ($this->registry->isCore($slug)) {
+            return response()->json(['message' => 'Built-in roles cannot be deleted.'], 422);
+        }
+
+        if (! in_array($slug, $this->registry->custom(), true)) {
+            return response()->json(['message' => 'Role not found'], 404);
+        }
+
+        $holders = $this->registry->holderCount($slug);
+
+        if ($holders > 0) {
+            return response()->json([
+                'message' => "Reassign the {$holders} user(s) holding this role before deleting it.",
+            ], 422);
+        }
+
+        $this->registry->delete($slug);
+
+        $this->auditChange('custom_role', $slug, [
+            'new_values' => ['deleted' => true],
+        ], $request);
+
+        return response()->json(['message' => "Role {$slug} deleted"]);
+    }
+
+    /**
+     * Restores a canonical role's seeded default permission set.
+     */
+    public function resetRole(Request $request, string $role): JsonResponse
+    {
+        if (! \Database\Seeders\PermissionSeeder::isDefaultRole($role)) {
+            return response()->json(['message' => 'Only built-in roles can be reset to their defaults.'], 422);
+        }
+
+        $before = count($this->permissions->permissionMatrix([$role])[0]['permissions'] ?? []);
+
+        $this->permissions->resetRolePermissions($role);
+
+        $this->auditChange('role_permission', $role, [
+            'old_values' => ['granted_count' => $before],
+            'new_values' => [
+                'granted_count' => count(\Database\Seeders\PermissionSeeder::defaultsFor($role)),
+                'reset' => true,
+            ],
+        ], $request);
+
+        return response()->json(['message' => "Role {$role} reset to defaults"]);
     }
 
     public function updateRole(AssignUserRoleRequest $request): JsonResponse

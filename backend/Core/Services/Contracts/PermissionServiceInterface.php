@@ -34,6 +34,18 @@ interface PermissionServiceInterface
     /** Flip a role permission to denied (row kept for audit/restore). */
     public function revokeRolePermission(string $role, string $permission): void;
 
+    /**
+     * Bulk grant/revoke for one role in a single transaction, followed by
+     * a single rbac.matrix cache flush (admin bulk-edit of a role card).
+     *
+     * @param  list<string>  $grant
+     * @param  list<string>  $revoke
+     */
+    public function bulkUpdateRolePermissions(string $role, array $grant, array $revoke): void;
+
+    /** Wipe the role's rows and reinsert the seeded default grant set. */
+    public function resetRolePermissions(string $role): void;
+
     /** Add a per-user permission grant (user_permissions table; idempotent). */
     public function grantUserPermission(string $userId, string $permission, ?string $grantedBy = null, ?string $note = null): void;
 

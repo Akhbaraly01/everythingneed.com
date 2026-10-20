@@ -2,10 +2,10 @@
 
 namespace Modules\Admin\Http\Requests;
 
+use Core\Services\Contracts\RoleRegistryInterface;
 use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use Modules\Admin\Http\Controllers\AdminRbacController;
 
 class GrantPermissionRequest extends FormRequest
 {
@@ -33,7 +33,7 @@ class GrantPermissionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'role' => ['required', 'string', Rule::in(AdminRbacController::ROLES)],
+            'role' => ['required', 'string', Rule::in(app(RoleRegistryInterface::class)->all())],
             'permission' => ['required', 'string', Rule::in(PermissionSeeder::CATALOG)],
         ];
     }

@@ -67,24 +67,24 @@ export interface ConsoleNavItem {
 export const adminNavigation: ConsoleNavItem[] = [
     // Platform
     { label: 'Dashboard', href: '/admin/dashboard', icon: ShieldCheck, group: 'Platform' },
-    { label: 'Users', href: '/admin/users', icon: Users, group: 'Platform', permission: 'users.users.view' },
+    { label: 'Users', href: '/admin/users', icon: Users, group: 'Platform', permission: 'users.users.manage' },
     { label: 'Roles & Permissions', href: '/admin/rbac', icon: KeyRound, group: 'Platform', permission: 'users.permissions.manage' },
     { label: 'Analytics', href: '/admin/analytics', icon: BarChart3, group: 'Platform', permission: 'analytics.overview.view' },
     { label: 'Reports', href: '/admin/reports', icon: FileText, group: 'Platform', permission: 'reports.reports.view' },
 
     // Commerce
-    { label: 'Products', href: '/admin/products', icon: Package, group: 'Commerce', permission: 'products.products.view' },
+    { label: 'Products', href: '/admin/products', icon: Package, group: 'Commerce', permission: 'products.products.manage' },
     { label: 'Categories', href: '/admin/categories', icon: FolderTree, group: 'Commerce', permission: 'categories.categories.view' },
     { label: 'Approvals', href: '/admin/approvals', icon: ShieldCheck, group: 'Commerce', permission: 'products.products.approve' },
     { label: 'Vendors', href: '/admin/vendors', icon: Store, group: 'Commerce', permission: 'vendors.vendors.view' },
     { label: 'Orders', href: '/admin/orders', icon: ShoppingCart, group: 'Commerce', permission: 'orders.orders.view' },
-    { label: 'Brands', href: '/admin/brands', icon: ShoppingBag, group: 'Commerce', permission: 'products.products.view' },
+    { label: 'Brands', href: '/admin/brands', icon: ShoppingBag, group: 'Commerce', permission: 'brands.brands.view' },
     { label: 'Inventory', href: '/admin/inventory', icon: Boxes, group: 'Commerce', permission: 'inventory.stock.view' },
 
     // Finance
     { label: 'Finance', href: '/admin/finance', icon: DollarSign, group: 'Finance', permission: 'finance.overview.view' },
     { label: 'Payouts', href: '/admin/payouts', icon: Wallet, group: 'Finance', permission: 'finance.payouts.manage' },
-    { label: 'Wallet Ledger', href: '/admin/wallet', icon: Wallet, group: 'Finance', permission: 'finance.transactions.view' },
+    { label: 'Wallet Ledger', href: '/admin/wallet', icon: Wallet, group: 'Finance', permission: 'payments.payments.view' },
     { label: 'Subscriptions', href: '/admin/subscriptions', icon: CreditCard, group: 'Finance', permission: 'subscriptions.subscriptions.view' },
 
     // Healthcare
@@ -96,19 +96,20 @@ export const adminNavigation: ConsoleNavItem[] = [
     { label: 'Content Review', href: '/admin/learning/review', icon: ListChecks, group: 'Learning', permission: 'learn.posts.review' },
 
     // Content
-    { label: 'CMS', href: '/admin/cms', icon: Building2, group: 'Content', permission: 'cms.pages.view' },
+    { label: 'CMS', href: '/admin/cms', icon: Building2, group: 'Content', permission: 'cms.pages.manage' },
     { label: 'Home Sections', href: '/admin/home-sections', icon: Home, group: 'Content', permission: 'cms.home.view' },
-    { label: 'Navigation', href: '/admin/navigation', icon: Menu, group: 'Content', permission: 'cms.pages.view' },
+    { label: 'Navigation', href: '/admin/navigation', icon: Menu, group: 'Content', permission: 'navigation.view' },
     { label: 'Modules', href: '/admin/modules', icon: LayoutGrid, group: 'Content', permission: 'modules.view' },
     { label: 'Forms', href: '/admin/forms', icon: FormInput, group: 'Content', permission: 'forms.view' },
     { label: 'Media Library', href: '/admin/media', icon: Images, group: 'Content', permission: 'media.view' },
-    { label: 'Newsletter', href: '/admin/newsletter', icon: Mail, group: 'Content', permission: 'cms.pages.view' },
+    { label: 'Newsletter', href: '/admin/newsletter', icon: Mail, group: 'Content', permission: 'cms.pages.manage' },
 
     // Operations
     { label: 'Hotels', href: '/admin/hotels', icon: Hotel, group: 'Operations', permission: 'hotels.overview.view' },
     { label: 'Food', href: '/admin/food', icon: UtensilsCrossed, group: 'Operations', permission: 'food.overview.view' },
     { label: 'Transport', href: '/admin/transport', icon: Plane, group: 'Operations', permission: 'transport.overview.view' },
     { label: 'Jobs', href: '/admin/jobs', icon: Briefcase, group: 'Operations', permission: 'jobs.overview.view' },
+    { label: 'Job Seekers', href: '/admin/job-seekers', icon: Handshake, group: 'Operations', permission: 'job_seekers.overview.view' },
     { label: 'Deliveries', href: '/admin/deliveries', icon: Truck, group: 'Operations', permission: 'delivery.deliveries.view' },
     { label: 'Pharmacy', href: '/admin/pharmacy', icon: Pill, group: 'Operations', permission: 'pharmacy.overview.view' },
     { label: 'Building Services', href: '/admin/building', icon: Building2, group: 'Operations', permission: 'building_services.overview.view' },

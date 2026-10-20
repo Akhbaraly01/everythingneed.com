@@ -2,7 +2,7 @@
 
 namespace Modules\Admin\Http\Requests;
 
-use Core\Enums\AppRole;
+use Core\Services\Contracts\RoleRegistryInterface;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -21,7 +21,7 @@ class AdminUpdateRoleRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'role' => ['required', 'string', Rule::in(AppRole::values())],
+            'role' => ['required', 'string', Rule::in(app(RoleRegistryInterface::class)->all())],
         ];
     }
 }

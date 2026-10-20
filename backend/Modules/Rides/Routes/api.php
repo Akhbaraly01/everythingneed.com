@@ -42,9 +42,9 @@ Route::prefix('api')->group(function () {
 // Admin console (all rides/flights incl. inactive)
 Route::prefix('api/admin/transport')->group(function () {
     Route::get('/rides', [RideController::class, 'adminIndex'])
-        ->middleware('role:super_admin,administrator,transport_admin');
+        ->middleware('permission:rides.overview.view');
     Route::get('/flights', [FlightController::class, 'adminIndex'])
-        ->middleware('role:super_admin,administrator,transport_admin');
+        ->middleware('permission:rides.overview.view');
     Route::put('/flights/{id}', [FlightController::class, 'adminUpdate'])
-        ->middleware('role:super_admin,administrator,transport_admin');
+        ->middleware('permission:rides.flights.manage');
 });
