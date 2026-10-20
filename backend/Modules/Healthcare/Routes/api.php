@@ -7,7 +7,7 @@ use Modules\Healthcare\Http\Controllers\HealthContentController;
 
 Route::prefix('api')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
-        Route::post('/doctors', [DoctorController::class, 'store'])->middleware('role:super_admin,administrator,healthcare_admin');
+        Route::post('/doctors', [DoctorController::class, 'store'])->middleware('permission:healthcare.doctors.manage');
         Route::put('/doctors/{id}/availability', [DoctorController::class, 'setAvailability']);
 
         Route::get('/appointments', [AppointmentController::class, 'index']);
@@ -15,65 +15,67 @@ Route::prefix('api')->group(function () {
         Route::get('/appointments/{id}', [AppointmentController::class, 'show']);
         Route::post('/appointments/{id}/pay', [AppointmentController::class, 'pay']);
         Route::get('/appointments/{id}/consultation', [AppointmentController::class, 'consultationRecord']);
+        Route::get('/appointments/{id}/messages', [AppointmentController::class, 'messages']);
+        Route::post('/appointments/{id}/messages', [AppointmentController::class, 'postMessage']);
 Route::post('/appointments/{id}/video-room', [AppointmentController::class, 'videoRoom']);
         Route::post('/appointments/{id}/cancel', [AppointmentController::class, 'cancel']);
-        Route::post('/appointments/{id}/assign-doctor', [AppointmentController::class, 'assignDoctor'])->middleware('role:super_admin,administrator,healthcare_admin');
+        Route::post('/appointments/{id}/assign-doctor', [AppointmentController::class, 'assignDoctor'])->middleware('permission:healthcare.appointments.manage');
         Route::post('/appointments/{id}/start', [AppointmentController::class, 'start']);
         Route::post('/appointments/{id}/complete', [AppointmentController::class, 'complete']);
 
         // Admin console reads (healthcare workspace)
         Route::get('/admin/healthcare/tickets', [AppointmentController::class, 'adminTickets'])
-            ->middleware('role:super_admin,administrator,healthcare_admin');
+            ->middleware('permission:healthcare.appointments.view');
         Route::get('/admin/healthcare/consultations', [\Modules\Healthcare\Http\Controllers\HealthCompatController::class, 'adminConsultations'])
-            ->middleware('role:super_admin,administrator,healthcare_admin');
+            ->middleware('permission:healthcare.appointments.view');
 
         // W8: provider profile edit + guarded delete.
         Route::put('/admin/healthcare/doctors/{id}', [DoctorController::class, 'adminUpdate'])
-            ->middleware('role:super_admin,administrator,healthcare_admin')
+            ->middleware('permission:healthcare.doctors.manage')
             ->where('id', '[0-9a-f-]{36}');
         Route::delete('/admin/healthcare/doctors/{id}', [DoctorController::class, 'adminDestroy'])
-            ->middleware('role:super_admin,administrator,healthcare_admin')
+            ->middleware('permission:healthcare.doctors.manage')
             ->where('id', '[0-9a-f-]{36}');
 
         // Lab console (healthcare workspace): manage the catalog + overview bookings.
         // Bookings must precede /labs/{id} or "bookings" matches {id}.
         Route::get('/admin/healthcare/labs', [\Modules\Healthcare\Http\Controllers\LabController::class, 'adminList'])
-            ->middleware('role:super_admin,administrator,healthcare_admin');
+            ->middleware('permission:healthcare.labs.manage');
         Route::get('/admin/healthcare/labs/bookings', [\Modules\Healthcare\Http\Controllers\LabController::class, 'adminBookings'])
-            ->middleware('role:super_admin,administrator,healthcare_admin');
+            ->middleware('permission:healthcare.labs.manage');
         Route::post('/admin/healthcare/labs', [\Modules\Healthcare\Http\Controllers\LabController::class, 'store'])
-            ->middleware('role:super_admin,administrator,healthcare_admin');
+            ->middleware('permission:healthcare.labs.manage');
         Route::put('/admin/healthcare/labs/{id}', [\Modules\Healthcare\Http\Controllers\LabController::class, 'update'])
-            ->middleware('role:super_admin,administrator,healthcare_admin')
+            ->middleware('permission:healthcare.labs.manage')
             ->where('id', '[0-9a-f-]{36}');
         Route::delete('/admin/healthcare/labs/{id}', [\Modules\Healthcare\Http\Controllers\LabController::class, 'destroy'])
-            ->middleware('role:super_admin,administrator,healthcare_admin')
+            ->middleware('permission:healthcare.labs.manage')
             ->where('id', '[0-9a-f-]{36}');
 
         // H-C: Aid / Charity review queue (requester files -> support reviews).
         Route::get('/admin/healthcare/aid', [\Modules\Healthcare\Http\Controllers\AidController::class, 'adminList'])
-            ->middleware('role:super_admin,administrator,healthcare_admin');
+            ->middleware('permission:healthcare.aid.view');
         Route::put('/admin/healthcare/aid/{id}', [\Modules\Healthcare\Http\Controllers\AidController::class, 'adminDecide'])
-            ->middleware('role:super_admin,administrator,healthcare_admin')
+            ->middleware('permission:healthcare.aid.manage')
             ->where('id', '[0-9a-f-]{36}');
 
         // H-D: "Others" service-request triage queue.
         Route::get('/admin/healthcare/service-requests', [\Modules\Healthcare\Http\Controllers\ServiceRequestController::class, 'adminList'])
-            ->middleware('role:super_admin,administrator,healthcare_admin');
+            ->middleware('permission:healthcare.appointments.view');
         Route::put('/admin/healthcare/service-requests/{id}', [\Modules\Healthcare\Http\Controllers\ServiceRequestController::class, 'adminDecide'])
-            ->middleware('role:super_admin,administrator,healthcare_admin')
+            ->middleware('permission:healthcare.appointments.manage')
             ->where('id', '[0-9a-f-]{36}');
 
         // H-D: Documentation hub library management (all types incl. inactive).
         Route::get('/admin/healthcare/content', [\Modules\Healthcare\Http\Controllers\HealthContentController::class, 'adminList'])
-            ->middleware('role:super_admin,administrator,healthcare_admin');
+            ->middleware('permission:healthcare.content.view');
         Route::post('/admin/healthcare/content', [\Modules\Healthcare\Http\Controllers\HealthContentController::class, 'adminStore'])
-            ->middleware('role:super_admin,administrator,healthcare_admin');
+            ->middleware('permission:healthcare.content.manage');
         Route::put('/admin/healthcare/content/{id}', [\Modules\Healthcare\Http\Controllers\HealthContentController::class, 'adminUpdate'])
-            ->middleware('role:super_admin,administrator,healthcare_admin')
+            ->middleware('permission:healthcare.content.manage')
             ->where('id', '[0-9a-f-]{36}');
         Route::delete('/admin/healthcare/content/{id}', [\Modules\Healthcare\Http\Controllers\HealthContentController::class, 'adminDestroy'])
-            ->middleware('role:super_admin,administrator,healthcare_admin')
+            ->middleware('permission:healthcare.content.manage')
             ->where('id', '[0-9a-f-]{36}');
     });
 

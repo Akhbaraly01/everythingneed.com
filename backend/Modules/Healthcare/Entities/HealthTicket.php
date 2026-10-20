@@ -52,4 +52,20 @@ class HealthTicket extends Model
     {
         return $this->belongsTo(Doctor::class);
     }
+
+    /**
+     * The payment that settled this consultation (L-H-3 receipt source).
+     */
+    public function payment()
+    {
+        return $this->belongsTo(\Modules\Payments\Entities\Payment::class, 'payment_id');
+    }
+
+    /**
+     * Discussion messages on this appointment (L-H-3).
+     */
+    public function messages()
+    {
+        return $this->hasMany(AppointmentMessage::class, 'ticket_id');
+    }
 }

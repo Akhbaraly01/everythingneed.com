@@ -31,6 +31,8 @@ test('lab booking chain: browse -> book -> pay -> visible in detail -> appears i
     page,
     request,
 }) => {
+    // API slot-walking + 8 page loads on the single-worker dev server.
+    test.setTimeout(150_000);
     const token = await apiLogin(request, CUSTOMER);
 
     // 1. Discover a bookable active lab test (seeded demo catalog).
@@ -396,7 +398,7 @@ test('prescription chain: expired/filled blocked -> order active -> cancel keeps
 test('bookings hub: tiles navigate hub, aid, labs and documents', async ({ page }) => {
     // Navigation-heavy chain (15+ page loads on the single-worker dev
     // server): needs headroom over the 90s file default.
-    test.setTimeout(180_000);
+    test.setTimeout(240_000);
     await webLogin(page, CUSTOMER, '/healthcare');
 
     // 1. Hub tiles reach the new destinations.
@@ -610,4 +612,75 @@ test('admin console: healthcare requests, content and prescriptions tabs', async
     const nurseToken = await apiLogin(request, { email: 'healthcare@everythingneed.com', passwords: ['Password1'] });
     const probe = await request.get('/api/admin/pharmacy/prescriptions', { headers: bearer(nurseToken) });
     expect(probe.status(), 'healthcare_admin reads prescriptions oversight').toBe(200);
+});
+
+test('appointment receipt & discussion chain: pay -> receipt, then message thread', async ({
+    page,
+    request,
+}) => {
+    // Several page loads against the single-worker dev server.
+    test.setTimeout(180_000);
+    const token = await apiLogin(request, CUSTOMER);
+
+    // 1. Book on a fresh slot: bookings persist between runs and the partial
+    //    unique index rejects clashes, so walk date x hour candidates.
+    const list = await (await request.get('/api/health/doctors?per_page=50')).json();
+    const pros = (list.data ?? []) as Array<{ id: string }>;
+    expect(pros.length, 'seeded professionals exist').toBeGreaterThan(0);
+    const pro = pros[0];
+
+    let ticket: { id: string } | null = null;
+    outer: for (let day = 3; day <= 40; day++) {
+        const date = new Date(Date.now() + day * 86400_000).toISOString().slice(0, 10);
+        for (let hour = 9; hour <= 17; hour++) {
+            const res = await request.post('/api/appointments', {
+                headers: bearer(token),
+                data: {
+                    doctor_id: pro.id,
+                    symptoms: 'E2E receipt chain',
+                    consultation_type: 'in_person',
+                    appointment_date: date,
+                    appointment_time: `${String(hour).padStart(2, '0')}:15`,
+                },
+            });
+            if (res.status() === 201) {
+                ticket = (await res.json()).data as { id: string };
+                break outer;
+            }
+        }
+    }
+    expect(ticket, 'receipt-chain ticket booked').not.toBeNull();
+
+    // 2. Pay it; the show resource carries the receipt facts (L-H-3).
+    const pay = await request.post(`/api/appointments/${ticket!.id}/pay`, {
+        headers: bearer(token),
+        data: { method: 'card' },
+    });
+    expect(pay.ok(), `pay -> ${pay.status()}`).toBeTruthy();
+    const show = await (
+        await request.get(`/api/appointments/${ticket!.id}`, { headers: bearer(token) })
+    ).json();
+    expect(show.data.payment_status).toBe('paid');
+    expect(show.data.payment?.reference, 'receipt reference present').toBeTruthy();
+
+    // 3. The list page shows the paid badge; its track link opens the receipt.
+    await webLogin(page, CUSTOMER, '/healthcare/appointments');
+    await page.goto('/healthcare/appointments');
+    const card = page.getByTestId(`appointment-card-${ticket!.id}`);
+    await expect(card).toBeVisible();
+    await expect(card.getByText('Paid')).toBeVisible();
+    await card.getByTestId(`appointment-track-${ticket!.id}`).click();
+    await expect(page).toHaveURL(new RegExp(`/healthcare/appointments/${ticket!.id}$`));
+    await expect(page.getByTestId('appointment-receipt')).toBeVisible();
+
+    // 4. Discuss the booking: send a message; it renders and persists.
+    const body = `E2E scheduling note ${Date.now()}`;
+    await page.getByTestId('appointment-issue-input').fill(body);
+    await page.getByTestId('appointment-issue-send').click();
+    await expect(page.getByText(body).first()).toBeVisible();
+
+    const thread = await (
+        await request.get(`/api/appointments/${ticket!.id}/messages`, { headers: bearer(token) })
+    ).json();
+    expect(((thread.data ?? []) as Array<{ body: string }>).some((m) => m.body === body)).toBeTruthy();
 });
