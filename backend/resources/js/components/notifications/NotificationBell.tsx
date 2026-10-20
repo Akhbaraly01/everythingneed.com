@@ -3,6 +3,7 @@ import { Link, router, usePage } from '@inertiajs/react';
 import { Bell } from 'lucide-react';
 import { api } from '@/lib/api';
 import { formatDateTime } from '@/lib/utils';
+import { useLanguage } from '@/lib/use-language';
 
 export interface NotificationItem {
     id: string;
@@ -83,6 +84,7 @@ const TYPE_LINKS: Record<string, (relatedId?: string | null) => string> = {
  * to the personal marketplace feed otherwise (never a 403 dead-end).
  */
 export default function NotificationBell() {
+    const { t } = useLanguage();
     const { unreadNotifications, workspace } = usePage().props as {
         unreadNotifications?: number;
         workspace?: SharedWorkspace | null;
@@ -183,7 +185,9 @@ export default function NotificationBell() {
             <button
                 type="button"
                 onClick={() => setOpen((v) => !v)}
-                aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+                aria-label={unreadCount > 0
+                    ? t('notifications.count', { n: unreadCount, defaultValue: `Notifications, ${unreadCount} unread` })
+                    : t('nav.notifications')}
                 aria-expanded={open}
                 className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-muted"
             >
@@ -198,25 +202,25 @@ export default function NotificationBell() {
             {open && (
                 <div className="absolute right-0 z-50 mt-2 w-80 rounded-lg border border-border bg-card shadow-lg">
                     <div className="flex items-center justify-between border-b border-border px-4 py-3">
-                        <h3 className="text-sm font-semibold">Notifications</h3>
+                        <h3 className="text-sm font-semibold">{t('nav.notifications')}</h3>
                         {unreadCount > 0 && (
                             <button
                                 type="button"
                                 onClick={() => void markAllAsRead()}
                                 className="text-xs text-primary hover:underline"
                             >
-                                Mark all read
+                                {t('notifications.markAllRead', { defaultValue: 'Mark all read' })}
                             </button>
                         )}
                     </div>
 
                     <div className="max-h-80 overflow-y-auto">
                         {loading ? (
-                            <p className="p-4 text-center text-sm text-muted-foreground">Loading...</p>
+                            <p className="p-4 text-center text-sm text-muted-foreground">{t('common.loading')}</p>
                         ) : items.length === 0 ? (
                             <div className="p-8 text-center text-muted-foreground">
                                 <Bell className="mx-auto mb-2 h-8 w-8 opacity-50" />
-                                <p className="text-sm">No notifications yet</p>
+                                <p className="text-sm">{t('notifications.empty', { defaultValue: 'No notifications yet' })}</p>
                             </div>
                         ) : (
                             <div className="divide-y divide-border">
@@ -259,7 +263,7 @@ export default function NotificationBell() {
                             onClick={() => setOpen(false)}
                             className="block w-full rounded-md py-2 text-center text-sm text-primary hover:bg-muted"
                         >
-                            View all notifications
+                            {t('notifications.viewAll', { defaultValue: 'View all notifications' })}
                         </Link>
                     </div>
                 </div>

@@ -88,14 +88,14 @@ export default function SearchTabs({
                         type="search"
                         value={search}
                         onChange={(e) => onSearchChange?.(e.target.value)}
-                        placeholder="Search products, needs, courses..."
-                        aria-label="Search products, needs, courses"
+                        placeholder={t('searchTabs.searchPh', { defaultValue: 'Search products, needs, courses...' })}
+                        aria-label={t('searchTabs.searchAria', { defaultValue: 'Search products, needs, courses' })}
                     />
                     {search && (
                         <button
                             type="button"
                             onClick={() => onSearchChange?.('')}
-                            aria-label="Clear search"
+                            aria-label={t('searchTabs.clear', { defaultValue: 'Clear search' })}
                             className="tap-safe flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:text-foreground active:scale-90"
                         >
                             <X className="h-4 w-4" />
@@ -109,12 +109,12 @@ export default function SearchTabs({
                         className="glass-2 tap-safe flex h-10 w-[120px] items-center justify-center gap-1 rounded-full px-3 text-xs font-medium text-foreground transition-transform duration-fast active:scale-95"
                     >
                         <ArrowUpDown className="h-3.5 w-3.5 mr-1" />
-                        {sortOptions.find((o) => o.value === sortBy)?.label ?? 'Sort'}
+                        {sortOptions.find((o) => o.value === sortBy)?.label ?? t('searchTabs.sort', { defaultValue: 'Sort' })}
                     </button>
                     {sortOpen && (
                         <button
                             type="button"
-                            aria-label="Close sort menu"
+                            aria-label={t('searchTabs.closeSortMenu', { defaultValue: 'Close sort menu' })}
                             onClick={() => setSortOpen(false)}
                             className="fixed inset-0 z-10 cursor-default bg-transparent"
                         />
@@ -155,7 +155,7 @@ export default function SearchTabs({
                         }`}
                     >
                         {tab.icon && <TabIcon icon={tab.icon} />}
-                        {tab.label}
+                        {t(`searchTabs.${tab.id}`, { defaultValue: tab.label })}
                     </button>
                 ))}
             </div>

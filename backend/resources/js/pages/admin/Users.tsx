@@ -32,11 +32,14 @@ const labelize = (role: string): string =>
     role.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
 export default function AdminUsers() {
-    const permissions =
-        (usePage().props.auth as { permissions?: string[] } | null)?.permissions ?? [];
+    const auth = usePage().props.auth as { roles?: string[]; permissions?: string[] } | null;
+    const permissions = auth?.permissions ?? [];
+    const authRoles = auth?.roles ?? [];
     const canCreate = permissions.includes('*') || permissions.includes('users.users.create');
     const canEdit = permissions.includes('*') || permissions.includes('users.users.update');
     const canDelete = permissions.includes('*') || permissions.includes('users.users.delete');
+    const canManageRoles = permissions.includes('*') || permissions.includes('users.permissions.manage');
+    const isSuperAdmin = authRoles.includes('super_admin');
     const ask = useConfirm();
 
     const [users, setUsers] = useState<User[]>([]);
@@ -220,6 +223,13 @@ export default function AdminUsers() {
 
     const revokeUserPerm = async (permission: string) => {
         if (!permUser) return;
+        const ok = await ask({
+            title: `Revoke ${permission}?`,
+            description: `Remove this direct permission from ${permUser.name}? Role permissions are unchanged.`,
+            confirmLabel: 'Revoke',
+            danger: true,
+        });
+        if (!ok) return;
         setPermBusy(true);
         try {
             await api.del(`/api/admin/users/${permUser.id}/permissions/${encodeURIComponent(permission)}`);
@@ -275,20 +285,26 @@ export default function AdminUsers() {
                             key: 'role',
                             header: 'Role',
                             render: (u: User) => (
-                                <>
-                                    <label className="sr-only" htmlFor={`role-${u.id}`}>Role for {u.name}</label>
-                                    <select
-                                        id={`role-${u.id}`}
-                                        value={u.role ?? ''}
-                                        onChange={(e) => changeRole(u.id, e.target.value)}
-                                        className="rounded border px-2 py-1 text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                                    >
-                                        {!u.role && <option value="">(no role)</option>}
-                                        {roleOptions(u.role).map((r) => (
-                                            <option key={r} value={r}>{labelize(r)}</option>
-                                        ))}
-                                    </select>
-                                </>
+                                canManageRoles ? (
+                                    <>
+                                        <label className="sr-only" htmlFor={`role-${u.id}`}>Role for {u.name}</label>
+                                        <select
+                                            id={`role-${u.id}`}
+                                            value={u.role ?? ''}
+                                            onChange={(e) => changeRole(u.id, e.target.value)}
+                                            className="rounded border px-2 py-1 text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                        >
+                                            {!u.role && <option value="">(no role)</option>}
+                                            {roleOptions(u.role).map((r) => (
+                                                <option key={r} value={r}>{labelize(r)}</option>
+                                            ))}
+                                        </select>
+                                    </>
+                                ) : (
+                                    <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs font-medium capitalize text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+                                        {u.role ? labelize(u.role) : 'No role'}
+                                    </span>
+                                )
                             ),
                         },
                         {
@@ -311,13 +327,15 @@ export default function AdminUsers() {
                             header: 'Actions',
                             render: (u: User) => (
                                 <div className="flex items-center gap-3">
-                                    <button
-                                        onClick={() => void openPerms(u)}
-                                        title="Per-user permissions"
-                                        className="flex items-center gap-1 text-xs font-medium text-violet-600 hover:text-violet-700"
-                                    >
-                                        <KeyRound className="h-3.5 w-3.5" /> Perms
-                                    </button>
+                                    {isSuperAdmin && (
+                                        <button
+                                            onClick={() => void openPerms(u)}
+                                            title="Per-user permissions"
+                                            className="flex items-center gap-1 text-xs font-medium text-violet-600 hover:text-violet-700"
+                                        >
+                                            <KeyRound className="h-3.5 w-3.5" /> Perms
+                                        </button>
+                                    )}
                                     {canEdit && (
                                         <button
                                             onClick={() => openEdit(u)}

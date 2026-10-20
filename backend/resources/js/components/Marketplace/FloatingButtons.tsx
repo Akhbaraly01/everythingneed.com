@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { MessageCircle, X, Send, ShoppingCart } from 'lucide-react';
 import { api } from '@/lib/api';
+import { useLanguage } from '@/lib/use-language';
 import { useCartDrawer } from '@/components/cart/CartDrawerContext';
 
 export function FloatingChat() {
+    const { t } = useLanguage();
     const [isOpen, setIsOpen] = useState(false);
     const [input, setInput] = useState('');
     const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
@@ -28,12 +30,12 @@ export function FloatingChat() {
             const res = await api.post<{ data?: { content?: string } }>('/api/ai/chat', { message: trimmed });
             setMessages((prev) => [
                 ...prev,
-                { role: 'assistant', content: res.data?.content ?? 'Sorry, I could not process your request.' },
+                { role: 'assistant', content: res.data?.content ?? t('chat.sorry', { defaultValue: 'Sorry, I could not process your request.' }) },
             ]);
         } catch {
             setMessages((prev) => [
                 ...prev,
-                { role: 'assistant', content: 'Chat service is unavailable right now.' },
+                { role: 'assistant', content: t('chat.unavailable', { defaultValue: 'Chat service is unavailable right now.' }) },
             ]);
         } finally {
             setLoading(false);
@@ -45,7 +47,7 @@ export function FloatingChat() {
             <button
                 type="button"
                 onClick={() => setIsOpen((v) => !v)}
-                aria-label="Open chat"
+                aria-label={t('chat.open', { defaultValue: 'Open chat' })}
                 className="btn-3d tap-safe fixed bottom-[calc(var(--dock-clearance)+8px)] right-4 z-cluster !h-12 !w-12 !min-h-12 !p-0"
             >
                 {isOpen ? <X className="h-5 w-5" /> : <MessageCircle className="h-5 w-5" />}
@@ -53,16 +55,16 @@ export function FloatingChat() {
             {isOpen && (
                 <div
                     role="dialog"
-                    aria-label="AI Assistant chat"
+                    aria-label={t('chat.dialogAria', { defaultValue: 'AI Assistant chat' })}
                     className="glass-3 glass-edge fixed bottom-[calc(var(--dock-clearance)+64px)] right-4 z-cluster w-[350px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl shadow-2xl md:w-[400px]"
                 >
                     <div className="px-4 pb-3 pt-3 rounded-t-2xl" style={{ backgroundImage: 'var(--gradient-primary)' }}>
-                        <h3 className="font-semibold text-sm text-white">AI Assistant</h3>
-                        <p className="text-xs text-white/80">Ask about products, orders, bookings</p>
+                        <h3 className="font-semibold text-sm text-white">{t('chat.title', { defaultValue: 'AI Assistant' })}</h3>
+                        <p className="text-xs text-white/80">{t('chat.subtitle', { defaultValue: 'Ask about products, orders, bookings' })}</p>
                     </div>
                     <div className="h-64 overflow-y-auto p-3 space-y-2">
                         {messages.length === 0 && (
-                            <p className="text-xs text-muted-foreground">Hi! How can I help you today?</p>
+                            <p className="text-xs text-muted-foreground">{t('chat.hi', { defaultValue: 'Hi! How can I help you today?' })}</p>
                         )}
                         {messages.map((m, i) => (
                             <div
@@ -78,7 +80,7 @@ export function FloatingChat() {
                         ))}
                         {loading && (
                             <p className="text-xs text-muted-foreground" role="status" aria-live="polite">
-                                Typing...
+                                {t('chat.typing', { defaultValue: 'Typing...' })}
                             </p>
                         )}
                     </div>
@@ -89,14 +91,14 @@ export function FloatingChat() {
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter') void sendMessage();
                             }}
-                            placeholder="Type a message..."
-                            aria-label="Type a message"
+                            placeholder={t('chat.typePh', { defaultValue: 'Type a message...' })}
+                            aria-label={t('chat.typeAria', { defaultValue: 'Type a message' })}
                             className="h-9 flex-1 rounded-full border border-input bg-background/80 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                         />
                         <button
                             type="button"
                             onClick={() => void sendMessage()}
-                            aria-label="Send message"
+                            aria-label={t('chat.sendAria', { defaultValue: 'Send message' })}
                             className="btn-3d tap-safe !h-9 !w-9 !min-h-9 !p-0"
                         >
                             <Send className="h-4 w-4" />
@@ -110,11 +112,12 @@ export function FloatingChat() {
 
 export function FloatingCart({ count = 0 }: { count?: number }) {
     const { openCart } = useCartDrawer();
+    const { t } = useLanguage();
     return (
         <button
             type="button"
             onClick={openCart}
-            aria-label="Open cart"
+            aria-label={t('nav.cart')}
             className="icon-glass-3d tap-safe fixed bottom-[calc(var(--dock-clearance)+8px)] left-4 z-cluster !h-12 !w-12"
         >
             <span className="relative">

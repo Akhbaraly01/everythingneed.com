@@ -9,11 +9,10 @@ import {
     ShoppingCart,
     ChevronDown,
     ScanQrCode,
-    Languages,
 } from 'lucide-react';
 import { useTheme } from '@/components/ThemeProvider';
 import { useLanguage } from '@/lib/use-language';
-import { type Language, LANGUAGES, LANGUAGE_NAMES } from '@/lib/i18n-dict';
+import LanguageSwitcher from '@/components/i18n/LanguageSwitcher';
 import { getInitials } from '@/lib/utils';
 import { Button } from '@/components/shared/Button';
 import NotificationBell from '@/components/notifications/NotificationBell';
@@ -28,11 +27,11 @@ interface HeaderProps {
 
 // Shown until an admin publishes a header menu (navigations table).
 const FALLBACK_HEADER: SiteNavItem[] = [
-    { id: 'fallback-home', title: 'Home', url: '/' },
-    { id: 'fallback-needs', title: 'Needs', url: '/needs' },
-    { id: 'fallback-learn', title: 'Learn', url: '/learn' },
-    { id: 'fallback-healthcare', title: 'Healthcare', url: '/healthcare' },
-    { id: 'fallback-account', title: 'Account', url: '/account' },
+    { id: 'fallback-home', title: 'nav.home', url: '/' },
+    { id: 'fallback-needs', title: 'nav.needs', url: '/needs' },
+    { id: 'fallback-learn', title: 'nav.learn', url: '/learn' },
+    { id: 'fallback-healthcare', title: 'nav.healthcare', url: '/healthcare' },
+    { id: 'fallback-account', title: 'nav.account', url: '/account' },
 ];
 
 const forDesktop = (items: SiteNavItem[]): SiteNavItem[] =>
@@ -52,7 +51,7 @@ export default function Header({
     const user = auth?.user ?? auth;
     const { openCart } = useCartDrawer();
     const { theme, setTheme } = useTheme();
-    const { language, setLanguage, t } = useLanguage();
+    const { t } = useLanguage();
     const currentPath = url.split('?')[0];
 
     const siteNav = (props.siteNav ?? {}) as SiteNav;
@@ -69,6 +68,13 @@ export default function Header({
         return currentPath === path || currentPath.startsWith(`${path}/`);
     };
 
+    // Fallback-header entries carry i18n keys ("nav.home"); published
+    // database titles are admin content and render verbatim.
+    const navLabel = (item: SiteNavItem): string =>
+        item.id.startsWith('fallback-')
+            ? t(item.title, { defaultValue: item.title })
+            : item.title;
+
     const navLink = (item: SiteNavItem, className: string) => {
         const active = !/^https?:\/\//i.test(item.url) && isActiveUrl(item.url);
         const classes = `${className}${active ? ' text-primary' : ''}`;
@@ -78,14 +84,14 @@ export default function Header({
         if (/^https?:\/\//i.test(item.url)) {
             return (
                 <a key={item.id} href={item.url} className={classes} {...targetProps}>
-                    {item.title}
+                    {navLabel(item)}
                 </a>
             );
         }
 
         return (
             <Link key={item.id} href={item.url} className={classes} {...targetProps}>
-                {item.title}
+                {navLabel(item)}
             </Link>
         );
     };
@@ -212,34 +218,7 @@ export default function Header({
                         <ScanQrCode className="h-[18px] w-[18px]" />
                     </Link>
 
-                    <details className="relative shrink-0">
-                        <summary
-                            className="icon-glass-3d tap-safe cursor-pointer list-none gap-0.5 px-1.5 [&::-webkit-details-marker]:hidden"
-                            aria-label={t('nav.language')}
-                        >
-                            <Languages className="h-4 w-4" />
-                            <span className="text-[9px] font-bold uppercase">
-                                {language}
-                            </span>
-                        </summary>
-                        <div className="glass-3 glass-edge absolute right-0 top-full z-modal mt-1 w-36 rounded-xl p-1">
-                            {LANGUAGES.map((code) => (
-                                <button
-                                    key={code}
-                                    type="button"
-                                    onClick={(e) => {
-                                        setLanguage(code as Language);
-                                        (e.currentTarget.closest('details') as HTMLDetailsElement | null)?.removeAttribute('open');
-                                    }}
-                                    className={`block w-full rounded-lg px-2 py-1.5 text-left text-sm hover:bg-muted ${
-                                        language === code ? 'font-bold text-primary' : 'text-foreground'
-                                    }`}
-                                >
-                                    {LANGUAGE_NAMES[code]}
-                                </button>
-                            ))}
-                        </div>
-                    </details>
+                    <LanguageSwitcher />
 
                     <Link
                         href={user ? '/tickets' : '/login'}
@@ -278,7 +257,7 @@ export default function Header({
 
                 <nav
                     className="hidden items-center gap-1 md:flex"
-                    aria-label="Main navigation"
+                    aria-label={t('nav.mainNavigation', { defaultValue: 'Main navigation' })}
                     data-testid="site-nav-header"
                 >
                     {headerNav.map((item) =>
@@ -287,7 +266,7 @@ export default function Header({
                     {moreNav.length > 0 && (
                         <details className="relative">
                             <summary className="tap-safe inline-flex cursor-pointer list-none items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium text-foreground hover:bg-muted/70 [&::-webkit-details-marker]:hidden">
-                                More
+                                {t('nav.more', { defaultValue: 'More' })}
                                 <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
                             </summary>
                             <div className="glass-3 glass-edge absolute left-0 top-full z-modal mt-1 w-52 rounded-xl p-1">

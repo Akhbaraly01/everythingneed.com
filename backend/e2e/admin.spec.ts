@@ -230,6 +230,7 @@ test('super admin opens the reports, analytics, system and audit console pages',
         { path: '/admin/analytics', heading: 'Platform Analytics' },
         { path: '/admin/system', heading: 'System Health' },
         { path: '/admin/audit-logs', heading: 'Audit Logs' },
+        { path: '/admin/languages', heading: 'Language Console' },
     ];
     for (const target of targets) {
         await page.goto(target.path);
@@ -245,4 +246,65 @@ test('super admin opens the reports, analytics, system and audit console pages',
         // Web errors redirect back with this flash message - must never fire here.
         await expect(page.getByText('An unexpected error occurred.')).toHaveCount(0);
     }
+});
+
+test('super admin manages the product gallery: append, reorder, promote, remove', async ({
+    page,
+    request,
+}) => {
+    const name = `E2E Gallery Product ${Date.now()}`;
+    const g1 = 'https://img.test/e2e-g1.jpg';
+    const g2 = 'https://img.test/e2e-g2.jpg';
+    const g3 = 'https://img.test/e2e-g3.jpg';
+
+    await webLogin(page, SUPER, '/admin/dashboard');
+    await page.goto('/admin/products', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('heading', { name: 'Manage Products' }).first()).toBeVisible();
+
+    await page.getByRole('button', { name: 'Add Product' }).click();
+    await page.locator('#product-name').fill(name);
+    const vendorValue = await page.locator('#product-vendor option').nth(1).getAttribute('value');
+    expect(vendorValue, 'at least one vendor is seeded').toBeTruthy();
+    await page.locator('#product-vendor').selectOption(vendorValue!);
+    await page.locator('#product-category').fill('electronics');
+    await page.locator('#product-price').fill('19.99');
+    await page.locator('#product-stock').fill('5');
+
+    // Append three gallery images through the paste-a-link path.
+    const gallery = page.getByTestId('admin-product-gallery');
+    for (const url of [g1, g2, g3]) {
+        await gallery.getByTestId('admin-product-gallery-link-toggle').click();
+        await gallery.locator('input[type="url"]').fill(url);
+        await gallery.getByRole('button', { name: 'Use link' }).click();
+    }
+    await expect(gallery.getByTestId('admin-gallery-item-2')).toBeVisible();
+
+    // Reorder: move image 1 right -> [g2, g1, g3].
+    await gallery.getByTestId('admin-gallery-right-0').click();
+    // Promote g2 to main: main becomes g2, gallery keeps [g1, g3].
+    await gallery.getByTestId('admin-gallery-main-0').click();
+    await expect(gallery.getByTestId('admin-gallery-item-1')).toBeVisible();
+    await expect(gallery.getByTestId('admin-gallery-item-2')).toHaveCount(0);
+    // Remove g1: gallery keeps [g3].
+    await gallery.getByTestId('admin-gallery-remove-0').click();
+    await expect(gallery.getByTestId('admin-gallery-item-0')).toBeVisible();
+    await expect(gallery.getByTestId('admin-gallery-item-1')).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Create Product' }).click();
+    // Dialog closes only after the API accepts the payload.
+    await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 20_000 });
+    await expect(page.getByText(name).first()).toBeVisible();
+
+    // API ground truth: "/api/products" is newest-first, so the fresh row is
+    // page 1, item 0 - assert the promoted main + remaining gallery persisted.
+    const list = await (await request.get('/api/products?per_page=5')).json();
+    const created = (list.data as Array<{ id: string; name: string; image_url: string | null; images: string[] | null }>)
+        .find((p) => p.name === name);
+    expect(created, 'created product is on the first page').toBeTruthy();
+    expect(created!.image_url).toBe(g2);
+    expect(created!.images ?? []).toEqual([g3]);
+
+    // Cleanup: archive the fixture product.
+    const token = await apiLogin(request, SUPER);
+    await request.delete(`/api/products/${created!.id}`, { headers: bearer(token) });
 });

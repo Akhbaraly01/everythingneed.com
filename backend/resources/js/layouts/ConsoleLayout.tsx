@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useState } from 'react';
 import { Link, router, usePage } from '@inertiajs/react';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import { getInitials } from '@/lib/utils';
+import { useLanguage } from '@/lib/use-language';
 import type { WorkspaceProps } from '@/types';
 import type { ConsoleNavItem } from '@/config/consoleNavigation';
 import WorkspaceSwitcher from '@/components/workspace/WorkspaceSwitcher';
@@ -30,8 +31,26 @@ interface ConsoleAuth {
  * footer) are deliberately absent. Navigation visibility is UX only —
  * backend route middleware remains the authority.
  */
+/**
+ * Console nav titles live in lang/{locale} under consoleNav.* — the
+ * registry key is derived from the label itself, and every missing
+ * translation gracefully falls back to the (still-correct) label so a
+ * renamed menu entry can never render a raw translation key.
+ */
+const navSlug = (label: string): string =>
+    label
+        .trim()
+        .split(/\s+/)
+        .map((word, index) => {
+            const clean = word.replace(/[^A-Za-z]/g, '');
+            if (!clean) return '';
+            return index === 0 ? clean.toLowerCase() : clean[0].toUpperCase() + clean.slice(1).toLowerCase();
+        })
+        .join('');
+
 export default function ConsoleLayout({ children, title, nav, kind }: ConsoleLayoutProps) {
     const page = usePage();
+    const { t } = useLanguage();
     const auth = page.props.auth as ConsoleAuth | null;
     const workspace = page.props.workspace as WorkspaceProps | null | undefined;
     const user = auth?.user ?? auth;
@@ -77,7 +96,7 @@ export default function ConsoleLayout({ children, title, nav, kind }: ConsoleLay
             {groups.map((group) => (
                 <div key={group}>
                     <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        {group}
+                        {t(`consoleNav.group.${navSlug(group)}`, { defaultValue: group })}
                     </p>
                     <div className="space-y-1">
                         {visibleNav
@@ -93,7 +112,7 @@ export default function ConsoleLayout({ children, title, nav, kind }: ConsoleLay
                                     }`}
                                 >
                                     <item.icon className="h-5 w-5 shrink-0" />
-                                    {item.label}
+                                    {t(`consoleNav.${kind}.${navSlug(item.label)}`, { defaultValue: item.label })}
                                 </Link>
                             ))}
                     </div>
@@ -112,16 +131,16 @@ export default function ConsoleLayout({ children, title, nav, kind }: ConsoleLay
                         <div className="flex h-full flex-col">
                             <div className="flex items-center justify-between p-4">
                                 <Link href={brandHref} className="text-xl font-bold text-foreground">
-                                    {kind === 'admin' ? adminBrand : 'EverythingNeed Provider'}
+                                    {kind === 'admin' ? adminBrand : t('console.providerBrand', { defaultValue: 'EverythingNeed Provider' })}
                                 </Link>
-                                <button type="button" aria-label="Close menu" onClick={() => setSidebarOpen(false)} className="tap-safe rounded-full p-2 text-muted-foreground hover:bg-muted">
+                                <button type="button" aria-label={t('console.closeMenu', { defaultValue: 'Close menu' })} onClick={() => setSidebarOpen(false)} className="tap-safe rounded-full p-2 text-muted-foreground hover:bg-muted">
                                     <X className="h-6 w-6" />
                                 </button>
                             </div>
                             {navList}
                             <div className="border-t border-border/60 p-4">
                                 <Link href={homeHref} className="text-sm font-medium text-primary hover:underline">
-                                    ← Back to marketplace
+                                    ← {t('console.backToMarketplace', { defaultValue: 'Back to marketplace' })}
                                 </Link>
                             </div>
                         </div>
@@ -135,14 +154,14 @@ export default function ConsoleLayout({ children, title, nav, kind }: ConsoleLay
                     <div className="flex flex-1 flex-col overflow-y-auto pt-5 pb-4">
                         <div className="flex flex-shrink-0 items-center px-4">
                             <Link href={brandHref} className="text-xl font-bold text-foreground">
-                                {kind === 'admin' ? adminBrand : 'EverythingNeed Provider'}
+                                {kind === 'admin' ? adminBrand : t('console.providerBrand', { defaultValue: 'EverythingNeed Provider' })}
                             </Link>
                         </div>
                         <div className="mt-8 flex-1">{navList}</div>
                     </div>
                     <div className="flex flex-shrink-0 border-t border-border/60 p-4">
                         <Link href={homeHref} className="text-sm font-medium text-primary hover:underline">
-                            ← Back to marketplace
+                            ← {t('console.backToMarketplace', { defaultValue: 'Back to marketplace' })}
                         </Link>
                     </div>
                 </div>
@@ -155,7 +174,7 @@ export default function ConsoleLayout({ children, title, nav, kind }: ConsoleLay
                         type="button"
                         className="tap-safe -m-2.5 rounded-full p-2.5 text-foreground lg:hidden"
                         onClick={() => setSidebarOpen(true)}
-                        aria-label="Open menu"
+                        aria-label={t('console.openMenu', { defaultValue: 'Open menu' })}
                     >
                         <Menu className="h-6 w-6" />
                     </button>
@@ -167,7 +186,7 @@ export default function ConsoleLayout({ children, title, nav, kind }: ConsoleLay
                                 type="button"
                                 className="-m-1.5 flex items-center p-1.5"
                                 onClick={() => setProfileOpen(!profileOpen)}
-                                aria-label="Open profile menu"
+                                aria-label={t('console.openProfile', { defaultValue: 'Open profile menu' })}
                                 aria-expanded={profileOpen}
                                 aria-haspopup="menu"
                             >
@@ -182,7 +201,7 @@ export default function ConsoleLayout({ children, title, nav, kind }: ConsoleLay
                             {profileOpen && (
                                 <button
                                     type="button"
-                                    aria-label="Close profile menu"
+                                    aria-label={t('console.closeProfile', { defaultValue: 'Close profile menu' })}
                                     onClick={() => setProfileOpen(false)}
                                     className="fixed inset-0 z-[5] cursor-default bg-transparent"
                                 />
@@ -195,7 +214,7 @@ export default function ConsoleLayout({ children, title, nav, kind }: ConsoleLay
                                         onClick={() => setProfileOpen(false)}
                                     >
                                         <User className="h-4 w-4" />
-                                        Profile
+                                        {t('console.profile', { defaultValue: 'Profile' })}
                                     </Link>
                                     <Link
                                         href="/settings"
@@ -203,7 +222,7 @@ export default function ConsoleLayout({ children, title, nav, kind }: ConsoleLay
                                         onClick={() => setProfileOpen(false)}
                                     >
                                         <Settings className="h-4 w-4" />
-                                        Settings
+                                        {t('console.settings', { defaultValue: 'Settings' })}
                                     </Link>
                                     <button
                                         type="button"
@@ -214,7 +233,7 @@ export default function ConsoleLayout({ children, title, nav, kind }: ConsoleLay
                                         className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-foreground hover:bg-muted/70"
                                     >
                                         <LogOut className="h-4 w-4" />
-                                        Sign out
+                                        {t('console.signOut', { defaultValue: 'Sign out' })}
                                     </button>
                                 </div>
                             )}
@@ -232,15 +251,15 @@ export default function ConsoleLayout({ children, title, nav, kind }: ConsoleLay
                         {!canViewCurrentPage ? (
                             <div className="card rounded-lg bg-card p-12 text-center">
                                 <ShieldCheck className="mx-auto h-12 w-12 text-muted-foreground" />
-                                <h3 className="mt-4 text-lg font-medium text-foreground">Access denied</h3>
+                                <h3 className="mt-4 text-lg font-medium text-foreground">{t('console.accessDenied', { defaultValue: 'Access denied' })}</h3>
                                 <p className="mt-2 text-sm text-muted-foreground">
-                                    Your role does not have access to this admin page.
+                                    {t('console.accessDeniedText', { defaultValue: 'Your role does not have access to this admin page.' })}
                                 </p>
                                 <Link
                                     href="/admin/dashboard"
                                     className="mt-6 inline-flex items-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
                                 >
-                                    Back to Admin Dashboard
+                                    {t('console.backToAdmin', { defaultValue: 'Back to Admin Dashboard' })}
                                 </Link>
                             </div>
                         ) : (

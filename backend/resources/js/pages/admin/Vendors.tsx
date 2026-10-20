@@ -1,8 +1,9 @@
 import AdminLayout from '@/layouts/AdminLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { api, errorMessage } from '@/lib/api';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 import DataTable from '@/components/shared/DataTable';
+import { useConfirm } from '@/lib/confirm';
 import { CheckCircle, XCircle } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -26,6 +27,11 @@ interface Vendor {
 }
 
 export default function AdminVendors() {
+    const ask = useConfirm();
+    const permissions =
+        (usePage().props.auth as { permissions?: string[] } | null)?.permissions ?? [];
+    const canApprove = permissions.includes('*') || permissions.includes('vendors.vendors.approve');
+    const canSuspend = permissions.includes('*') || permissions.includes('vendors.vendors.suspend');
     const [vendors, setVendors] = useState<Vendor[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<'all' | 'pending' | 'verified'>('all');
@@ -44,6 +50,15 @@ export default function AdminVendors() {
     useEffect(() => { fetchVendors(); }, [fetchVendors]);
 
     const updateStatus = async (vendor: Vendor, next: 'verified' | 'pending') => {
+        if (next === 'pending') {
+            const ok = await ask({
+                title: `Suspend ${vendor.store_name}?`,
+                description: 'Verification is cleared immediately; the storefront drops off verified-only surfaces.',
+                confirmLabel: 'Suspend',
+                danger: true,
+            });
+            if (!ok) return;
+        }
         try {
             if (next === 'verified') {
                 await api.post(`/api/admin/vendors/${vendor.id}/approve`);
@@ -119,28 +134,35 @@ export default function AdminVendors() {
                         },
                         {
                             key: 'actions', header: 'Actions',
-                            render: (v) => (
-                                <div className="flex gap-3">
-                                    {v.status !== 'verified' && (
-                                        <button
-                                            onClick={() => updateStatus(v, 'verified')}
-                                            aria-label={`Approve ${v.store_name}`}
-                                            className="text-green-600 hover:text-green-800"
-                                        >
-                                            <CheckCircle className="h-4 w-4" aria-hidden="true" />
-                                        </button>
-                                    )}
-                                    {v.status === 'verified' && (
-                                        <button
-                                            onClick={() => updateStatus(v, 'pending')}
-                                            aria-label={`Suspend ${v.store_name}`}
-                                            className="text-red-600 hover:text-red-800"
-                                        >
-                                            <XCircle className="h-4 w-4" aria-hidden="true" />
-                                        </button>
-                                    )}
-                                </div>
-                            ),
+                            render: (v) => {
+                                if (!canApprove && !canSuspend) {
+                                    return <span className="text-xs text-gray-400">View only</span>;
+                                }
+                                return (
+                                    <div className="flex gap-3">
+                                        {canApprove && v.status !== 'verified' && (
+                                            <button
+                                                onClick={() => updateStatus(v, 'verified')}
+                                                aria-label={`Approve ${v.store_name}`}
+                                                title="Approve vendor"
+                                                className="text-green-600 hover:text-green-800"
+                                            >
+                                                <CheckCircle className="h-4 w-4" aria-hidden="true" />
+                                            </button>
+                                        )}
+                                        {canSuspend && v.status === 'verified' && (
+                                            <button
+                                                onClick={() => updateStatus(v, 'pending')}
+                                                aria-label={`Suspend ${v.store_name}`}
+                                                title="Suspend vendor"
+                                                className="text-red-600 hover:text-red-800"
+                                            >
+                                                <XCircle className="h-4 w-4" aria-hidden="true" />
+                                            </button>
+                                        )}
+                                    </div>
+                                );
+                            },
                         },
                     ]}
                     data={vendors}

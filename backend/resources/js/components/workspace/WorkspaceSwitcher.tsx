@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import type { WorkspaceProps } from '@/types';
 import { ChevronsUpDown, Check, Store, LayoutDashboard, ShieldCheck, Briefcase } from 'lucide-react';
+import { useLanguage } from '@/lib/use-language';
 
-const WORKSPACE_META: Record<string, { label: string; icon: typeof ShieldCheck; path: string }> = {
-    marketplace: { label: 'Marketplace', icon: LayoutDashboard, path: '/dashboard' },
-    admin: { label: 'Administration', icon: ShieldCheck, path: '/admin/dashboard' },
-    vendor: { label: 'Vendor Portal', icon: Store, path: '/vendor' },
-    provider: { label: 'Provider Workspace', icon: Briefcase, path: '/provider' },
+const WORKSPACE_META: Record<string, { key: string; label: string; icon: typeof ShieldCheck; path: string }> = {
+    marketplace: { key: 'workspace.marketplace', label: 'Marketplace', icon: LayoutDashboard, path: '/dashboard' },
+    admin: { key: 'workspace.admin', label: 'Administration', icon: ShieldCheck, path: '/admin/dashboard' },
+    vendor: { key: 'workspace.vendor', label: 'Vendor Portal', icon: Store, path: '/vendor' },
+    provider: { key: 'workspace.provider', label: 'Provider Workspace', icon: Briefcase, path: '/provider' },
 };
 
 /**
@@ -16,8 +17,10 @@ const WORKSPACE_META: Record<string, { label: string; icon: typeof ShieldCheck; 
  */
 export default function WorkspaceSwitcher() {
     const page = usePage();
+    const { t } = useLanguage();
     const workspace = page.props.workspace as WorkspaceProps | null | undefined;
     const [open, setOpen] = useState(false);
+    const workspaceLabel = (key: string, label: string): string => t(key, { defaultValue: label });
 
     useEffect(() => {
         if (!open) return;
@@ -45,19 +48,19 @@ export default function WorkspaceSwitcher() {
             <button
                 type="button"
                 onClick={() => setOpen(!open)}
-                aria-label="Switch workspace"
+                aria-label={t('workspace.switch', { defaultValue: 'Switch workspace' })}
                 aria-expanded={open}
                 aria-haspopup="menu"
                 className="tap-safe flex items-center gap-2 rounded-full border border-border/70 bg-background/70 px-3 py-1.5 text-sm font-medium text-foreground hover:bg-muted/70"
             >
                 <CurrentIcon className="h-4 w-4" />
-                <span className="hidden sm:inline">{currentMeta.label}</span>
+                <span className="hidden sm:inline">{workspaceLabel(currentMeta.key, currentMeta.label)}</span>
                 <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
             </button>
             {open && (
                 <button
                     type="button"
-                    aria-label="Close workspace menu"
+                    aria-label={t('workspace.closeMenu', { defaultValue: 'Close workspace menu' })}
                     onClick={() => setOpen(false)}
                     className="fixed inset-0 z-[5] cursor-default bg-transparent"
                 />
@@ -67,7 +70,7 @@ export default function WorkspaceSwitcher() {
                     role="menu"
                     className="glass-3 glass-edge absolute right-0 z-modal mt-2 w-56 origin-top-right rounded-xl py-1"
                 >
-                    <p className="px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Switch workspace</p>
+                    <p className="px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('workspace.switch', { defaultValue: 'Switch workspace' })}</p>
                     {workspace.available.map((key) => {
                         const meta = WORKSPACE_META[key];
                         if (!meta) return null;
@@ -82,7 +85,7 @@ export default function WorkspaceSwitcher() {
                                 onClick={() => setOpen(false)}
                             >
                                 <Icon className="h-4 w-4" />
-                                <span className="flex-1">{meta.label}</span>
+                                <span className="flex-1">{workspaceLabel(meta.key, meta.label)}</span>
                                 {isActive && <Check className="h-4 w-4" />}
                             </Link>
                         );

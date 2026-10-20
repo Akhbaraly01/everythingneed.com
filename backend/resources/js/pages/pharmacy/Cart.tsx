@@ -13,10 +13,12 @@ interface CartItem {
     price: number;
     quantity: number;
     image_url?: string;
+    requires_prescription?: boolean;
 }
 
 export default function PharmacyCart() {
     const [items, setItems] = useState<CartItem[]>([]);
+    const [blockedByPrescription, setBlockedByPrescription] = useState(false);
 
     useEffect(() => {
         try {
@@ -43,9 +45,11 @@ export default function PharmacyCart() {
     };
 
     const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+    const hasRx = items.some((i) => i.requires_prescription);
 
     const handleCheckout = async () => {
         if (items.length === 0) return;
+        setBlockedByPrescription(false);
         try {
             const res = await api.post<{ data: { id: string } }>('/api/pharmacy/orders', {
                 items: items.map((i) => ({ medicine_id: i.medicine_id, quantity: i.quantity })),
@@ -53,7 +57,11 @@ export default function PharmacyCart() {
             localStorage.removeItem('pharmacy_cart');
             router.visit(`/pharmacy/orders/${res.data.id}/confirmation`);
         } catch (e) {
-            toast.error(errorMessage(e, 'Failed to place order'));
+            const message = errorMessage(e, 'Failed to place order');
+            // L-H-4: the server gates Rx medicines behind an active
+            // prescription — surface the path to fix it instead of a bare toast.
+            if (/prescription/i.test(message)) setBlockedByPrescription(true);
+            toast.error(message);
         }
     };
 
@@ -80,7 +88,14 @@ export default function PharmacyCart() {
                                     {item.image_url ? <Image src={item.image_url} alt="" className="h-full w-full object-cover" /> : null}
                                 </div>
                                 <div className="flex-1">
-                                    <p className="font-medium text-gray-900 dark:text-white">{item.name}</p>
+                                    <p className="font-medium text-gray-900 dark:text-white">
+                                        {item.name}
+                                        {item.requires_prescription && (
+                                            <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
+                                                Rx required
+                                            </span>
+                                        )}
+                                    </p>
                                     <p className="text-sm text-gray-500">{formatPrice(item.price)} each</p>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -92,6 +107,31 @@ export default function PharmacyCart() {
                                 <button onClick={() => removeItem(item.medicine_id)} className="text-red-500 hover:text-red-700"><Trash2 className="h-4 w-4" /></button>
                             </div>
                         ))}
+
+                        {(hasRx || blockedByPrescription) && (
+                            <div
+                                data-testid="prescription-notice"
+                                className={`rounded-lg border p-4 text-sm ${
+                                    blockedByPrescription
+                                        ? 'border-red-300 bg-red-50 text-red-900 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200'
+                                        : 'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200'
+                                }`}
+                            >
+                                <p className="font-semibold">
+                                    {blockedByPrescription
+                                        ? 'We could not place your order: an active prescription is required for one or more items.'
+                                        : 'One or more items in your cart require an active prescription.'}
+                                </p>
+                                <p className="mt-1">
+                                    Get a prescription from a doctor, or upload an existing one — then place your order.
+                                </p>
+                                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 font-medium underline">
+                                    <Link href="/pharmacy/prescription-upload">Upload a prescription</Link>
+                                    <Link href="/healthcare/prescriptions">My prescriptions</Link>
+                                    <Link href="/healthcare/doctors">Book a consultation</Link>
+                                </div>
+                            </div>
+                        )}
 
                         <div className="rounded-lg bg-white p-4 shadow dark:bg-gray-800">
                             <div className="flex justify-between text-lg font-bold">

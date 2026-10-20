@@ -1,5 +1,15 @@
 <!DOCTYPE html>
-<html lang="<?php echo e(str_replace('_', '-', app()->getLocale())); ?>">
+<?php
+    // Multilingual Phase 0: server-resolved locale (SetLocale/ApplyUserLocale)
+    // plus the registry map used by the pre-paint sync script below.
+    $__locale = app()->getLocale();
+    $__localeDirs = [];
+    foreach (app(\Core\Services\Contracts\LanguageRegistryInterface::class)->all() as $__code => $__meta) {
+        $__localeDirs[$__code] = ($__meta['dir'] ?? 'ltr') === 'rtl' ? 'rtl' : 'ltr';
+    }
+    $__dir = $__localeDirs[$__locale] ?? 'ltr';
+?>
+<html lang="<?php echo e(str_replace('_', '-', $__locale)); ?>" dir="<?php echo e($__dir); ?>">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -14,7 +24,7 @@
     <meta name="apple-mobile-web-app-title" content="<?php echo e(config('app.name', 'EverythingNeed')); ?>">
 
     
-    <script>
+    <script nonce="<?php echo e(Vite::cspNonce()); ?>">
         (function () {
             try {
                 var root = document.documentElement;
@@ -49,6 +59,40 @@
                 root.setAttribute('data-tier', tier);
             } catch (e) {
                 document.documentElement.setAttribute('data-tier', 'full');
+            }
+
+            try {
+                // Multilingual Phase 0: locale sync. The server already
+                // rendered this document with the resolved locale (cookie >
+                // account > Accept-Language > default); this restores a
+                // guest's local choice that predates the cookie and mirrors
+                // it into the `locale` cookie so the next request agrees.
+                var LOCALE_DIRS = <?php echo json_encode($__localeDirs, 15, 512) ?>;
+                var LOCALE_KEY = 'everythingneed-language';
+                var has = function (value) {
+                    return typeof value === 'string'
+                        && Object.prototype.hasOwnProperty.call(LOCALE_DIRS, value);
+                };
+                var stored = null;
+                try { stored = localStorage.getItem(LOCALE_KEY); } catch (err) {}
+                if (!has(stored)) { stored = null; }
+                var cookie = null;
+                try {
+                    var match = document.cookie.match(/(?:^|;\s*)locale=([^;]+)/);
+                    cookie = match ? decodeURIComponent(match[1]) : null;
+                } catch (err) {}
+                if (!has(cookie)) { cookie = null; }
+                if (!cookie && stored) {
+                    try {
+                        document.cookie = 'locale=' + encodeURIComponent(stored)
+                            + ';path=/;max-age=31536000;samesite=lax';
+                    } catch (err) {}
+                }
+                var chosen = cookie || stored || <?php echo json_encode($__locale, 15, 512) ?>;
+                root.setAttribute('lang', chosen);
+                root.setAttribute('dir', LOCALE_DIRS[chosen] || <?php echo json_encode($__dir, 15, 512) ?>);
+            } catch (e) {
+                // Locale attributes already set server-side; non-fatal.
             }
         })();
     </script>
@@ -111,10 +155,10 @@
     <?php endif; ?>
 
     
-    <script type="application/ld+json"><?php echo json_encode($websiteJsonLd, 15, 512) ?></script>
+    <script type="application/ld+json" nonce="<?php echo e(Vite::cspNonce()); ?>"><?php echo json_encode($websiteJsonLd, 15, 512) ?></script>
     <?php $__currentLoopData = $seoJsonLd; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $jsonLdBlock): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
         <?php if(is_array($jsonLdBlock)): ?>
-            <script type="application/ld+json"><?php echo json_encode($jsonLdBlock, 15, 512) ?></script>
+            <script type="application/ld+json" nonce="<?php echo e(Vite::cspNonce()); ?>"><?php echo json_encode($jsonLdBlock, 15, 512) ?></script>
         <?php endif; ?>
     <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
 

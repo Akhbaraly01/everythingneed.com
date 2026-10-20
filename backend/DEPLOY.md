@@ -40,14 +40,19 @@ Required production values:
 composer install --no-dev --optimize-autoloader
 npm ci
 npm run build
+php artisan i18n:export          # locale bundles -> public/i18n (served as static JSON)
 php artisan storage:link
 ```
+
+`public/i18n` holds content-hash versioned JSON per locale/namespace plus
+`manifest.json`; it is a deploy artifact (gitignored) and must be regenerated
+whenever `lang/**` changes.
 
 ## 4. Database
 
 ```bash
 php artisan migrate --force
-php artisan db:seed --class=ProductionSeeder   # PermissionSeeder + FeatureFlagSeeder only
+php artisan db:seed --class=ProductionSeeder   # PermissionSeeder + FeatureFlagSeeder + LanguageSeeder
 ```
 
 **Never** run in production:

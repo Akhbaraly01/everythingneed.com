@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "@inertiajs/react";
 import { api } from "@/lib/api";
 import { formatPrice } from "@/lib/currency";
+import { useLanguage } from "@/lib/use-language";
 import { Search, Loader2, ShoppingBag, GraduationCap, BedDouble, Briefcase, UtensilsCrossed, Wrench } from "lucide-react";
 
 interface SearchResults {
@@ -23,6 +24,7 @@ const GROUPS = [
 ] as const;
 
 export default function GlobalSearch() {
+    const { t } = useLanguage();
     const [q, setQ] = useState("");
     const [results, setResults] = useState<SearchResults | null>(null);
     const [loading, setLoading] = useState(false);
@@ -72,7 +74,7 @@ export default function GlobalSearch() {
                     value={q}
                     onChange={(e) => setQ(e.target.value)}
                     onFocus={() => q.length >= 2 && setOpen(true)}
-                    placeholder="Search everything…"
+                    placeholder={t('nav.searchPlaceholder')}
                     className="w-full rounded-full border border-gray-300 bg-white py-2 pl-10 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                 />
                 {loading && (
@@ -84,7 +86,7 @@ export default function GlobalSearch() {
                 <div className="absolute left-0 right-0 z-40 mt-1 max-h-96 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
                     {total === 0 && !loading ? (
                         <p className="px-4 py-6 text-center text-sm text-gray-400">
-                            No matches for “{q}”
+                            {t('search.noMatches', { q, defaultValue: `No matches for “${q}”` })}
                         </p>
                     ) : (
                         GROUPS.map(({ key, label, icon: Icon }) => {
@@ -94,11 +96,11 @@ export default function GlobalSearch() {
                             return (
                                 <div key={key} className="border-b border-gray-100 py-1 last:border-0 dark:border-gray-700">
                                     <p className="flex items-center gap-1.5 px-3 pt-2 text-[10px] font-bold uppercase tracking-wide text-gray-400">
-                                        <Icon className="h-3 w-3" /> {label}
+                                        <Icon className="h-3 w-3" /> {t(`search.${key}`, { defaultValue: label })}
                                     </p>
                                     {group.map((row: Record<string, unknown>) => {
                                         const id = String(row.id);
-                                        const title = String(row.name ?? row.title ?? "Untitled");
+                                        const title = String(row.name ?? row.title ?? t('search.untitled', { defaultValue: 'Untitled' }));
                                         const price = row.price ?? row.budget;
                                         return (
                                             <Link

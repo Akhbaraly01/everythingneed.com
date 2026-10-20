@@ -35,13 +35,13 @@ interface TrendingItem {
 }
 
 const rightTopBanners = (t: (key: string) => string): BannerItem[] => [
-    { title: t('home.submitNeed'), subtitle: t('banner.needSub'), cta: t('banner.request'), link: '/needs/request', gradient: 'from-amber-500 to-orange-600', icon: 'sparkles' },
-    { title: t('home.learn'), subtitle: t('banner.learnSub'), cta: t('banner.start'), link: '/learn', gradient: 'from-emerald-500 to-teal-600', icon: 'learn' },
+    { title: t('home.submitNeed'), subtitle: t('floating.needSub'), cta: t('floating.request'), link: '/needs/request', gradient: 'from-amber-500 to-orange-600', icon: 'sparkles' },
+    { title: t('home.learn'), subtitle: t('floating.learnSub'), cta: t('floating.start'), link: '/learn', gradient: 'from-emerald-500 to-teal-600', icon: 'learn' },
 ];
 
 const rightBottomBanners = (t: (key: string) => string): BannerItem[] => [
-    { title: t('home.healthcare'), subtitle: t('banner.healthSub'), cta: t('banner.book'), link: '/healthcare', gradient: 'from-rose-500 to-pink-600', icon: 'health' },
-    { title: t('home.pharmacy'), subtitle: t('banner.pharmacySub'), cta: t('banner.order'), link: '/pharmacy', gradient: 'from-cyan-500 to-blue-600', icon: 'package' },
+    { title: t('home.healthcare'), subtitle: t('floating.healthSub'), cta: t('floating.book'), link: '/healthcare', gradient: 'from-rose-500 to-pink-600', icon: 'health' },
+    { title: t('home.pharmacy'), subtitle: t('floating.pharmacySub'), cta: t('floating.order'), link: '/pharmacy', gradient: 'from-cyan-500 to-blue-600', icon: 'package' },
 ];
 
 function BannerIcon({ icon }: { icon: BannerItem['icon'] }) {
@@ -168,13 +168,13 @@ export default function TripleBanner({ trending }: TripleBannerProps) {
                                 <span className="text-white font-bold text-xs">{t('home.trendingItems')}</span>
                             </div>
                             <span className="bg-white/20 text-white text-[9px] px-1.5 rounded-md">
-                                🔥 Hot
+                                {t('floating.hot', { defaultValue: '🔥 Hot' })}
                             </span>
                         </div>
                         <Link
                             href={item.link ?? `/search?q=${encodeURIComponent(item.name)}`}
                             className="flex-1 flex items-center gap-2 rounded-lg"
-                            aria-label={`View ${item.name}`}
+                            aria-label={t('floating.viewItem', { name: item.name, defaultValue: `View ${item.name}` })}
                         >
                             <div className="w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden bg-white/10 shrink-0">
                                 <Image src={item.image} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
@@ -185,7 +185,9 @@ export default function TripleBanner({ trending }: TripleBannerProps) {
                                     <Star className="h-2.5 w-2.5 fill-yellow-300 text-yellow-300" />
                                     <span className="text-white/80 text-[10px]">{item.rating}</span>
                                     {item.sales && (
-                                        <span className="text-white/60 text-[10px]">• {item.sales} sold</span>
+                                        <span className="text-white/60 text-[10px]">
+                                            {t('floating.soldCount', { n: item.sales, defaultValue: `• ${item.sales} sold` })}
+                                        </span>
                                     )}
                                 </div>
                                 <div className="flex items-center gap-1.5 mt-1">
@@ -200,7 +202,7 @@ export default function TripleBanner({ trending }: TripleBannerProps) {
                                     key={entry.id}
                                     type="button"
                                     onClick={() => setTrendingIndex(idx)}
-                                    aria-label={`Show trending item ${idx + 1}`}
+                                    aria-label={t('floating.showTrending', { n: idx + 1, defaultValue: `Show trending item ${idx + 1}` })}
                                     className={`h-1 rounded-full transition-all ${
                                         idx === safeIndex ? 'w-3 bg-white' : 'w-1 bg-white/40'
                                     }`}
@@ -225,7 +227,7 @@ export default function TripleBanner({ trending }: TripleBannerProps) {
                     </div>
                     <button
                         type="button"
-                        aria-label="Previous banner"
+                        aria-label={t('floating.prevBanner', { defaultValue: 'Previous banner' })}
                         onClick={() => setRightTopIndex((p) => (p - 1 + topBanners.length) % topBanners.length)}
                         className="absolute left-1 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-full bg-black/30 text-white opacity-0 transition-opacity group-hover/rt:opacity-100"
                     >
@@ -233,7 +235,7 @@ export default function TripleBanner({ trending }: TripleBannerProps) {
                     </button>
                     <button
                         type="button"
-                        aria-label="Next banner"
+                        aria-label={t('floating.nextBanner', { defaultValue: 'Next banner' })}
                         onClick={() => setRightTopIndex((p) => (p + 1) % topBanners.length)}
                         className="absolute right-1 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-full bg-black/30 text-white opacity-0 transition-opacity group-hover/rt:opacity-100"
                     >
@@ -253,7 +255,7 @@ export default function TripleBanner({ trending }: TripleBannerProps) {
                     </div>
                     <button
                         type="button"
-                        aria-label="Previous banner"
+                        aria-label={t('floating.prevBanner', { defaultValue: 'Previous banner' })}
                         onClick={() => setRightBottomIndex((p) => (p - 1 + bottomBanners.length) % bottomBanners.length)}
                         className="absolute left-1 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-full bg-black/30 text-white opacity-0 transition-opacity group-hover/rb:opacity-100"
                     >
@@ -261,7 +263,7 @@ export default function TripleBanner({ trending }: TripleBannerProps) {
                     </button>
                     <button
                         type="button"
-                        aria-label="Next banner"
+                        aria-label={t('floating.nextBanner', { defaultValue: 'Next banner' })}
                         onClick={() => setRightBottomIndex((p) => (p + 1) % bottomBanners.length)}
                         className="absolute right-1 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-full bg-black/30 text-white opacity-0 transition-opacity group-hover/rb:opacity-100"
                     >

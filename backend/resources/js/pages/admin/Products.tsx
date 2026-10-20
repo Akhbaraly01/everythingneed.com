@@ -5,7 +5,7 @@ import { formatCurrency } from '@/lib/utils';
 import ConfirmDialog, { PromptDialog } from '@/components/shared/Ui';
 import DataTable from '@/components/shared/DataTable';
 import MediaUploadInput from '@/components/shared/MediaUploadInput';
-import { CheckCircle, XCircle, Eye, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { CheckCircle, ChevronLeft, ChevronRight, Star, XCircle, Eye, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -348,6 +348,44 @@ export default function AdminProducts() {
     const field =
         'w-full rounded-md border border-gray-300 bg-transparent px-2.5 py-1.5 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none dark:border-gray-600 dark:text-white';
 
+    // L-H-7: visual gallery manager. `imagesText` stays the single source of
+    // truth (one URL per line) so payload building is untouched; the manager
+    // just edits that list: append, reorder, remove and promote to main.
+    const galleryUrls = parseUrls(form.imagesText) ?? [];
+    const setGalleryUrls = (urls: string[]) =>
+        setForm((f) => ({ ...f, imagesText: urls.join('\n') }));
+
+    const addGalleryUrl = (url: string) => {
+        const clean = url.trim();
+        if (clean !== '' && !galleryUrls.includes(clean)) {
+            setGalleryUrls([...galleryUrls, clean]);
+        }
+    };
+
+    const removeGalleryUrl = (index: number) =>
+        setGalleryUrls(galleryUrls.filter((_, i) => i !== index));
+
+    const moveGalleryUrl = (index: number, delta: -1 | 1) => {
+        const target = index + delta;
+        if (target < 0 || target >= galleryUrls.length) return;
+        const next = [...galleryUrls];
+        [next[index], next[target]] = [next[target], next[index]];
+        setGalleryUrls(next);
+    };
+
+    const promoteToMain = (index: number) => {
+        const url = galleryUrls[index];
+        if (!url) return;
+        const next = [...galleryUrls];
+        if (form.image_url.trim() !== '') {
+            next[index] = form.image_url.trim();
+        } else {
+            next.splice(index, 1);
+        }
+        setForm((f) => ({ ...f, image_url: url, imagesText: next.join('\n') }));
+        toast.success('Promoted to main image.');
+    };
+
     return (
         <AdminLayout title="Manage Products">
             <Head title="Manage Products" />
@@ -605,9 +643,72 @@ export default function AdminProducts() {
                                     uploadTestId="admin-product-image"
                                     hint="Upload from this device (auto-compressed) or paste a link."
                                 />
-                                <div>
-                                    <label htmlFor="product-gallery" className="mb-1 block text-xs font-medium text-gray-500">Gallery URLs (one per line)</label>
-                                    <textarea id="product-gallery" rows={2} value={form.imagesText} onChange={(e) => setForm({ ...form, imagesText: e.target.value })} className={field} />
+                                <div className="space-y-2" data-testid="admin-product-gallery">
+                                    <span className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                        Gallery ({galleryUrls.length})
+                                    </span>
+                                    {galleryUrls.length > 0 && (
+                                        <div className="flex flex-wrap gap-2">
+                                            {galleryUrls.map((url, i) => (
+                                                <div
+                                                    key={`${url}-${i}`}
+                                                    data-testid={`admin-gallery-item-${i}`}
+                                                    className="group relative h-24 w-24 overflow-hidden rounded-lg border border-border bg-muted"
+                                                >
+                                                    <img src={url} alt={`Gallery image ${i + 1}`} className="h-full w-full object-cover" loading="lazy" />
+                                                    <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-black/60 px-1 py-0.5">
+                                                        <button
+                                                            type="button"
+                                                            aria-label={`Move image ${i + 1} left`}
+                                                            data-testid={`admin-gallery-left-${i}`}
+                                                            disabled={i === 0}
+                                                            onClick={() => moveGalleryUrl(i, -1)}
+                                                            className="rounded p-0.5 text-white hover:bg-white/20 disabled:opacity-30"
+                                                        >
+                                                            <ChevronLeft className="h-3.5 w-3.5" />
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            aria-label={`Set image ${i + 1} as main`}
+                                                            data-testid={`admin-gallery-main-${i}`}
+                                                            onClick={() => promoteToMain(i)}
+                                                            className="rounded p-0.5 text-white hover:bg-white/20"
+                                                        >
+                                                            <Star className="h-3.5 w-3.5" />
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            aria-label={`Move image ${i + 1} right`}
+                                                            data-testid={`admin-gallery-right-${i}`}
+                                                            disabled={i === galleryUrls.length - 1}
+                                                            onClick={() => moveGalleryUrl(i, 1)}
+                                                            className="rounded p-0.5 text-white hover:bg-white/20 disabled:opacity-30"
+                                                        >
+                                                            <ChevronRight className="h-3.5 w-3.5" />
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            aria-label={`Remove image ${i + 1}`}
+                                                            data-testid={`admin-gallery-remove-${i}`}
+                                                            onClick={() => removeGalleryUrl(i)}
+                                                            className="rounded p-0.5 text-white hover:bg-red-500/70"
+                                                        >
+                                                            <X className="h-3.5 w-3.5" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                    <MediaUploadInput
+                                        kind="image"
+                                        value=""
+                                        onChange={(url) => addGalleryUrl(url)}
+                                        folder="products"
+                                        label="Add gallery image"
+                                        uploadTestId="admin-product-gallery"
+                                        hint="Upload from this device (auto-compressed) or paste a link. Use the star to promote an image to main."
+                                    />
                                 </div>
                                 <MediaUploadInput
                                     kind="video"

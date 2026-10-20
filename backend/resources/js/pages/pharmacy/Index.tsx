@@ -37,18 +37,29 @@ export default function PharmacyIndex() {
     }, [search, categoryFilter]);
 
     const addToCart = (med: Medicine) => {
-        if (med.requires_prescription) {
-            toast.warning('This medicine requires a valid prescription. Please upload a prescription first.');
-            return;
-        }
+        // L-H-4: Rx medicines can be added to the cart — the prescription
+        // gate is enforced when the order is placed (server-side), and the
+        // cart shows the required-prescription notice with upload links.
         try {
-            const cart = JSON.parse(localStorage.getItem('pharmacy_cart') ?? '[]') as { medicine_id: string; name: string; price: number; quantity: number; image_url?: string | null }[];
+            const cart = JSON.parse(localStorage.getItem('pharmacy_cart') ?? '[]') as { medicine_id: string; name: string; price: number; quantity: number; image_url?: string | null; requires_prescription?: boolean }[];
             const existing = cart.find((i) => i.medicine_id === med.id);
-            if (existing) { existing.quantity += 1; } else {
-                cart.push({ medicine_id: med.id, name: med.name, price: med.price, quantity: 1, image_url: med.image_url });
+            if (existing) {
+                existing.quantity += 1;
+                existing.requires_prescription = med.requires_prescription;
+            } else {
+                cart.push({
+                    medicine_id: med.id,
+                    name: med.name,
+                    price: med.price,
+                    quantity: 1,
+                    image_url: med.image_url,
+                    requires_prescription: med.requires_prescription,
+                });
             }
             localStorage.setItem('pharmacy_cart', JSON.stringify(cart));
-            toast.success('Added to cart.');
+            toast.success(med.requires_prescription
+                ? 'Added to cart — an active prescription is required at checkout.'
+                : 'Added to cart.');
         } catch (e) {
             toast.error(errorMessage(e, 'Could not add to cart'));
         }

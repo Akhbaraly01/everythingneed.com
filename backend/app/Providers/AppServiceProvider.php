@@ -51,6 +51,17 @@ use Core\Services\Contracts\SignedStorageServiceInterface;
 use Core\Services\SignedStorageService;
 use Core\Services\Contracts\LearnCatalogInterface;
 use Modules\Learn\Services\LearnCatalogService;
+use Core\Services\Contracts\RoleRegistryInterface;
+use Core\Services\RoleRegistry;
+use Core\Services\Contracts\LanguageRegistryInterface;
+use Core\Services\Contracts\LocaleResolverInterface;
+use Core\Localization\TranslationRepository;
+use Core\Localization\LanguageRegistry;
+use Core\Localization\LocaleResolver;
+use Core\Localization\Contracts\TranslationProviderInterface;
+use Core\Localization\Providers\DeepLProvider;
+use Core\Localization\Providers\GoogleCloudTranslationProvider;
+use Core\Localization\Providers\LibreTranslateProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -78,9 +89,26 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(ApprovalEngineInterface::class, ApprovalEngine::class);
         $this->app->bind(PublicNavigationInterface::class, PublicNavigationResolver::class);
         $this->app->bind(EffectivePermissionResolverInterface::class, EffectivePermissionResolver::class);
+        $this->app->bind(RoleRegistryInterface::class, RoleRegistry::class);
         $this->app->bind(LearnCatalogInterface::class, LearnCatalogService::class);
         $this->app->bind(EventSignerInterface::class, EventSigner::class);
         $this->app->bind(SignedStorageServiceInterface::class, SignedStorageService::class);
+        // Localization: one consistent registry + resolver per request
+        // (config/locales.php is the single source of truth).
+        $this->app->scoped(LanguageRegistryInterface::class, LanguageRegistry::class);
+        $this->app->scoped(LocaleResolverInterface::class, LocaleResolver::class);
+        // Dictionary reader shared by the Inertia boot payload and the
+        // bundle export command.
+        $this->app->scoped(TranslationRepository::class, TranslationRepository::class);
+        // Whole-page translation (Path B): one provider adapter selected
+        // by config; AutoTranslateService resolves it per request.
+        $this->app->bind(TranslationProviderInterface::class, function (): TranslationProviderInterface {
+            return match (strtolower((string) config('auto_translate.provider', 'libretranslate'))) {
+                'deepl' => new DeepLProvider(),
+                'google' => new GoogleCloudTranslationProvider(),
+                default => new LibreTranslateProvider(),
+            };
+        });
     }
 
     public function boot(): void

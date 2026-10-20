@@ -9,6 +9,15 @@ import CompareDrawer from '@/components/compare/CompareDrawer';
 import PushNotificationPrompt from '@/components/notifications/PushNotificationPrompt';
 import WorkspaceSwitcher from '@/components/workspace/WorkspaceSwitcher';
 import { getInitials } from '@/lib/utils';
+import { useLanguage } from '@/lib/use-language';
+/** Camel slug for sidebar labels: 'Job Seekers' -> jobSeekers ('sidebar.*'). */
+const navSlug = (name: string): string => {
+    const slug = name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+(.)/g, (_, c: string) => c.toUpperCase())
+        .replace(/[^a-z0-9]/g, '');
+    return slug === '' ? name.toLowerCase() : slug;
+};
 import {
     LayoutDashboard,
     ShoppingBag,
@@ -154,8 +163,11 @@ function AppLayoutShell({ children, title }: AppLayoutProps) {
     const auth = usePage().props.auth as { id: string; name: string; email: string; roles?: string[] } | null;
     const user = (auth as unknown as { user?: { id: string; name: string; email: string } })?.user ?? auth;
     const page = usePage();
+    const { t } = useLanguage();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [profileOpen, setProfileOpen] = useState(false);
+    const navLabel = (item: { name: string }): string =>
+        t(`sidebar.${navSlug(item.name)}`, { defaultValue: item.name });
 
     useEffect(() => {
         if (!profileOpen) return;
@@ -178,7 +190,7 @@ function AppLayoutShell({ children, title }: AppLayoutProps) {
                                 <Link href="/dashboard" className="text-xl font-bold text-foreground">
                                     EverythingNeed
                                 </Link>
-                                <button type="button" aria-label="Close menu" onClick={() => setSidebarOpen(false)} className="tap-safe rounded-full p-2 text-muted-foreground hover:bg-muted">
+                                <button type="button" aria-label={t('console.closeMenu')} onClick={() => setSidebarOpen(false)} className="tap-safe rounded-full p-2 text-muted-foreground hover:bg-muted">
                                     <X className="h-6 w-6" />
                                 </button>
                             </div>
@@ -194,7 +206,7 @@ function AppLayoutShell({ children, title }: AppLayoutProps) {
                                         }`}
                                     >
                                         <item.icon className="h-5 w-5" />
-                                        {item.name}
+                                        {navLabel(item)}
                                     </Link>
                                 ))}
                             </nav>
@@ -223,7 +235,7 @@ function AppLayoutShell({ children, title }: AppLayoutProps) {
                                     }`}
                                 >
                                     <item.icon className="h-5 w-5" />
-                                    {item.name}
+                                    {navLabel(item)}
                                 </Link>
                             ))}
                         </nav>
@@ -253,7 +265,7 @@ function AppLayoutShell({ children, title }: AppLayoutProps) {
                         type="button"
                         className="tap-safe -m-2.5 rounded-full p-2.5 text-foreground lg:hidden"
                         onClick={() => setSidebarOpen(true)}
-                        aria-label="Open menu"
+                        aria-label={t('console.openMenu')}
                     >
                         <Menu className="h-6 w-6" />
                     </button>
@@ -269,7 +281,7 @@ function AppLayoutShell({ children, title }: AppLayoutProps) {
                                     type="button"
                                     className="-m-1.5 flex items-center p-1.5"
                                     onClick={() => setProfileOpen(!profileOpen)}
-                                    aria-label="Open profile menu"
+                                    aria-label={t('console.openProfile')}
                                     aria-expanded={profileOpen}
                                     aria-haspopup="menu"
                                 >
@@ -288,7 +300,7 @@ function AppLayoutShell({ children, title }: AppLayoutProps) {
                                 {profileOpen && (
                                     <button
                                         type="button"
-                                        aria-label="Close profile menu"
+                                        aria-label={t('console.closeProfile')}
                                         onClick={() => setProfileOpen(false)}
                                         className="fixed inset-0 z-[5] cursor-default bg-transparent"
                                     />
@@ -300,21 +312,21 @@ function AppLayoutShell({ children, title }: AppLayoutProps) {
                                             className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted/70"
                                             onClick={() => setProfileOpen(false)}
                                         >
-                                            <User className="h-4 w-4" /> Profile
+                                            <User className="h-4 w-4" /> {t('console.profile')}
                                         </Link>
                                         <Link
                                             href="/settings"
                                             className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted/70"
                                             onClick={() => setProfileOpen(false)}
                                         >
-                                            <Settings className="h-4 w-4" /> Settings
+                                            <Settings className="h-4 w-4" /> {t('console.settings')}
                                         </Link>
                                         <Link
                                             href="/wallet"
                                             className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted/70"
                                             onClick={() => setProfileOpen(false)}
                                         >
-                                            <CreditCard className="h-4 w-4" /> Wallet
+                                            <CreditCard className="h-4 w-4" /> {t('sidebar.wallet', { defaultValue: 'Wallet' })}
                                         </Link>
                                         <button
                                             type="button"
@@ -324,7 +336,7 @@ function AppLayoutShell({ children, title }: AppLayoutProps) {
                                             }}
                                             className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-foreground hover:bg-muted/70"
                                         >
-                                            <LogOut className="h-4 w-4" /> Sign out
+                                            <LogOut className="h-4 w-4" /> {t('console.signOut')}
                                         </button>
                                     </div>
                                 )}

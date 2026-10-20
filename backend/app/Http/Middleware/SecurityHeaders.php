@@ -4,18 +4,21 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Vite;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Baseline security headers for every response (web, api, module routes).
  *
  * CSP notes:
- * - script-src 'self': all scripts ship as same-origin Vite bundles; no
- *   blade file contains an inline <script>. In dev the HTML document is
- *   served by the Vite dev server, so this header never governs HMR.
- *   External player SDKs (YouTube IFrame API, Vimeo Player, Jitsi
- *   external_api.js) are the only allowlisted script origins so media
- *   plays inside the app instead of bouncing to the provider site.
+ * - script-src 'self' + a per-request nonce: Vite bundles ship
+ *   same-origin; the inline pre-paint scripts in app.blade.php (theme
+ *   tier, locale sync, JSON-LD) carry the nonce. In dev the HTML
+ *   document is served by the Vite dev server, so this header never
+ *   governs HMR. External player SDKs (YouTube IFrame API, Vimeo
+ *   Player, Jitsi external_api.js) are the only allowlisted script
+ *   origins so media plays inside the app instead of bouncing to the
+ *   provider site.
  * - frame-src allowlists the embed players (YouTube/Vimeo/Facebook/TikTok)
  *   and the configured video-room host (Jitsi). No other origin can be
  *   framed, so stored URLs still cannot open arbitrary embeds.
@@ -40,6 +43,13 @@ class SecurityHeaders
 
     public function handle(Request $request, Closure $next): Response
     {
+        // Per-request nonce for the handful of inline scripts in
+        // app.blade.php (theme/quality pre-paint, locale pre-paint,
+        // JSON-LD). Vite::useCspNonce also stamps @vite/dev tags; blade
+        // reads it back via Vite::cspNonce().
+        $nonce = base64_encode(random_bytes(16));
+        Vite::useCspNonce($nonce);
+
         $response = $next($request);
 
         // Video-room host (Jitsi by default) is config-driven so a
@@ -47,12 +57,22 @@ class SecurityHeaders
         $videoHost = parse_url((string) config('services.video.base_url'), PHP_URL_HOST) ?: 'meet.jit.si';
         $videoOrigin = 'https://'.$videoHost;
 
-        $frameSrc = implode(' ', ["'self'", ...self::EMBED_FRAMES, $videoOrigin]);
+        $frameSrc = implode(' ', [
+            "'self'",
+            ...self::EMBED_FRAMES,
+            $videoOrigin,
+            // Path A: Google Translate Website Widget (engine=google).
+            'https://translate.googleapis.com',
+            'https://translate.google.com',
+        ]);
         $scriptSrc = implode(' ', [
             "'self'",
+            "'nonce-".$nonce."'",
             'https://www.youtube.com',
             'https://player.vimeo.com',
             $videoOrigin,
+            'https://translate.googleapis.com',
+            'https://translate.google.com',
         ]);
 
         $headers = [
@@ -81,7 +101,7 @@ class SecurityHeaders
                 "img-src 'self' data: blob: https:",
                 "object-src 'none'",
                 'script-src '.$scriptSrc,
-                "style-src 'self' 'unsafe-inline' https://fonts.bunny.net",
+                "style-src 'self' 'unsafe-inline' https://fonts.bunny.net https://translate.googleapis.com https://translate.google.com",
                 "connect-src 'self' https: ws: wss:",
                 "media-src 'self' blob: https:",
                 "worker-src 'self' blob:",

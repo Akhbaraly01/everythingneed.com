@@ -132,6 +132,13 @@ jobs:
           php artisan key:generate
           php artisan migrate --seed --force
 
+      # public/i18n is gitignored (build artifact); the running app needs
+      # the versioned bundles for i18next, especially the i18n.spec.ts
+      # language-switch tests.
+      - name: Export locale bundles
+        working-directory: backend
+        run: php artisan i18n:export
+
       - name: Install Playwright browser
         working-directory: backend
         run: npx playwright install --with-deps chromium
