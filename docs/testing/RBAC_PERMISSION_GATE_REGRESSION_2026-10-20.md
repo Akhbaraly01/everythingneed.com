@@ -174,6 +174,25 @@ model (RBAC lane) carries the fixes for the pre-existing base failures; the L-H 
 the feature wave. They must land **together** — merging only the L-H branch would re-introduce
 the base failures, and merging only the RBAC lane would keep the 15 regressions above.
 
+### 4.1 The "L-G is green" baseline does not reproduce
+
+Commit `63c3f56` states *"1976 phpunit / 166 e2e clean"*. Re-running the same suite on that
+exact commit, in a pristine detached worktree, gives:
+
+```
+Tests: 1976, Assertions: 11978, Failures: 73, PHPUnit Warnings: 1.
+```
+
+Same test count, but **73 failures** and 784 fewer assertions. The likely reason is that the
+recorded gate run had a seeded permission matrix in the test database, while a suite that never
+seeds (`RefreshDatabase` without `$seed = true`) always starts from an empty `role_permissions`
+table. Whatever the cause, the team should not treat `63c3f56` as a green baseline: the
+"pre-existing" failures are the ones the RBAC lane has been repairing, and they are still
+visible in the shared tree only because that lane's fix is not yet correct for 8 test files.
+
+**Recommendation:** re-baseline the green claim after the RBAC lane lands, and record the
+run command + database name in the commit message so the number is reproducible.
+
 ## 5. Merge gate
 
 `feature/lh-feature-wave` (L-H feature wave) is **held** until:
