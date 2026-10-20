@@ -84,9 +84,9 @@ CATALOG as of `63c3f56`: `brands.brands.view`, `brands.brands.manage`, `products
 add all 5, so this is already handled on the lane side — it is only a trap for anyone
 re-basing onto the old seeder.
 
-## 3. Recommended fix (RBAC lane)
+## 3. The fix that landed (RESOLVED)
 
-The lane has **already applied the right fix pattern** to two files — it is what repaired the
+The lane had already applied the right fix pattern to two files — it is what repaired the
 pre-existing base-commit failures:
 
 ```php
@@ -95,18 +95,14 @@ use Database\Seeders\PermissionSeeder;
 $this->seed(PermissionSeeder::class);
 ```
 
-(added in `tests/Feature/Admin/AdminDetailRoutesTest.php` and
-`tests/Feature/Admin/AdminDomainControllerTest.php`).
-
-The same two-line pattern is what the 15 remaining failures need — they are simply the files the
-seed sweep missed. Punch list (all currently have **no** `seed(PermissionSeeder::class)` call in
-the failing test method):
+The 15 remaining failures were the files that seed sweep missed. **That is now fixed** by seeding
+the matrix explicitly in the affected test methods:
 
 | File | Failing test(s) | Role |
 |---|---|---|
 | `tests/Feature/Healthcare/AidDomainTest.php` | `test_support_approving_a_request_makes_it_public`, `test_support_rejecting_records_reason_and_stays_private`, `test_reviewing_twice_is_422_and_never_double_decides` | `healthcare_admin` |
 | `tests/Feature/Healthcare/HealthcareBookingsTest.php` | 5 cases (content publish/hide, service request advance, unknown content type, medicine CRUD, prescriptions oversight) | `healthcare_admin`, `pharmacy_admin`, content roles |
-| `tests/Feature/Forms/DynamicFormTest.php` | `test_admin_forms_page_renders_for_content_roles_only` — note the file **already seeds** in two other methods (L62, L76); only this method is missing it | `content_manager` |
+| `tests/Feature/Forms/DynamicFormTest.php` | `test_admin_forms_page_renders_for_content_roles_only` — note the file **already seeds** in two other methods (L62, L76); only this method was missing it | `content_manager` |
 | `tests/Feature/WaveO/WaveOMessagingTest.php` | `test_admin_support_detail_requires_the_support_role`, `test_admin_support_console_pages_are_role_gated` | `support_agent` |
 | `tests/Feature/WaveU/WaveUWorkflowTest.php` | `test_healthcare_chain_find_book_consult_review` | `healthcare_admin` |
 | `tests/Feature/Jobs/JobApplicationJourneyTest.php` | `test_admin_applications_queue_is_role_gated` | `jobs_admin` |
@@ -116,19 +112,32 @@ the failing test method):
 Every role involved already holds the required grant in the lane's seeder
 (`healthcare_admin → healthcare.*`, `content_manager → forms.*`, `platform_ops → delivery.*`,
 `jobs_admin → jobs.*`, `support_agent → support.*`), so seeding is sufficient — no matrix change
-is required.
+was required.
 
-**Cache caveat:** `roleMatrix()` memoises under `rbac.matrix` for 300 s. When a test seeds the
-matrix after a request has already resolved permissions, the cache must be cleared
-(`Cache::forget('rbac.matrix')`) or the assertion reads a stale empty matrix. The lane's
-`PermissionService` already flushes it on bulk update/reset; make sure the test-side seed does
-the same.
+### 3.1 Why the matrix must NOT be seeded globally
+
+A first attempt seeded the matrix **once per process** (on its own connection, so it survived the
+per-test transaction rollback). It made the 15 failures disappear, but it broke three other tests
+that assert the opposite contract:
+
+* `LearnPermissionEnforcementTest::test_review_queue_denies_a_reviewer_whose_permission_was_never_seeded`
+  — its sibling `test_review_queue_allows_the_reviewer_once_the_matrix_is_seeded` makes the
+  intent explicit: **the matrix is empty by default**, and a test opts in by seeding it.
+* `CourseReviewTest::test_moderation_requires_the_role_and_the_permission` — same contract.
+* `AuthorizationCoverageTest::test_user_plane_mutating_routes_are_authenticated_or_allowlisted` —
+  the new public `POST api/i18n/auto-translate` proxy is now allowlisted next to the
+  `api/ai/chat` precedent (throttled, no provider credentials exposed).
+
+The landed fix therefore keeps the empty-by-default baseline and adds one more guard: the resolver
+memoises the role matrix for 300 s, so a seeded matrix would leak into the *next* test even
+though its rows roll back with the transaction. `Tests\TestCase::tearDown()` now flushes
+`rbac.matrix` per test.
 
 **Not recommended:** a hard-coded fallback matrix in `EffectivePermissionResolver` — it would
 reintroduce two sources of truth for role grants, which is exactly what that class was created
 to remove.
 
-## 3.1 Verification matrix (measured, not inferred)
+## 3.2 Verification matrix (measured, not inferred)
 
 Three independent full runs on the same machine:
 
