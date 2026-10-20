@@ -106,7 +106,32 @@ prior request has already resolved permissions, ensure the cache is cleared
 would reintroduce two sources of truth for role grants, which is exactly what that class was
 created to remove.
 
-## 4. Merge gate
+## 4. Second finding: the base commit `63c3f56` is not green either
+
+The L-H branch was verified in a detached git worktree at its base commit. Running the same
+Admin matrix test against the untouched base commit reproduces the failure there too:
+
+```
+$ git worktree add --detach wt-base 63c3f56
+$ php -d memory_limit=3072M vendor\bin\phpunit --filter test_every_registry_href_is_role_gated_or_root_alias \
+      tests/Feature/Admin/AdminAuthorizationMatrixTest.php
+→ /admin/users must carry a role: middleware
+  Failed asserting that false is true.
+  Tests: 1, Assertions: 2, Failures: 1
+```
+
+So the branch inherits a set of **pre-existing failures at `63c3f56`** (the L-H work is purely
+additive and introduces none of them). The RBAC lane's WIP actually *repairs* several of them —
+e.g. it renames the test to `test_every_registry_href_is_role_or_permission_gated` and widens the
+assertion to accept `permission:` gates, which is why the test does **not** appear in the
+16-failure list from the shared tree.
+
+**Consequence for the merge:** the two lanes are complementary, not conflicting. The permission
+model (RBAC lane) carries the fixes for the pre-existing base failures; the L-H branch carries
+the feature wave. They must land **together** — merging only the L-H branch would re-introduce
+the base failures, and merging only the RBAC lane would keep the 15 regressions above.
+
+## 5. Merge gate
 
 `feature/lh-feature-wave` (L-H feature wave) is **held** until:
 
@@ -115,7 +140,7 @@ created to remove.
 * [ ] the L-H docs rows (`AUDIT_MATRIX.md`, `FINAL_VALIDATION_CHECKLIST.md`,
       `docs/implementation/MASTER_GAP_REGISTER.md`) carry the final gate numbers.
 
-## 5. Isolation note (L-H lane)
+## 6. Isolation note (L-H lane)
 
 The L-H wave was isolated on `feature/lh-feature-wave` (base `63c3f56`) so that this regression
 could be fixed without entangling the two efforts. The branch contains only L-H work:
