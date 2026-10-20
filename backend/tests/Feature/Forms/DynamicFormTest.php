@@ -223,7 +223,8 @@ class DynamicFormTest extends TestCase
 
     public function test_admin_forms_page_renders_for_content_roles_only(): void
     {
-        $admin = $this->createAdmin();
+
+        $this->seed(PermissionSeeder::class);        $admin = $this->createAdmin();
         $this->actingAs($admin, 'web')
             ->get('/admin/forms')
             ->assertOk()

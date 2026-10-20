@@ -33,6 +33,9 @@ class AuthorizationCoverageTest extends TestCase
         // validated against the published form's schema - guests submit
         // lead/contact forms straight from rendered pages.
         'api/forms/*/submit',
+        // Whole-page translation proxy: throttled, no provider credentials
+        // exposed to the client, and it only echoes translated text back.
+        'api/i18n/auto-translate',
     ];
 
     private function isMutating($route): bool

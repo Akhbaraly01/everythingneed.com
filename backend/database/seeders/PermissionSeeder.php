@@ -58,7 +58,7 @@ class PermissionSeeder extends Seeder
         'cms.pages.view', 'cms.pages.manage', 'cms.pages.publish',
         'cms.home.view', 'cms.home.manage',
         'finance.overview.view', 'finance.payments.manage', 'finance.refunds.process', 'finance.payouts.manage', 'finance.transactions.view',
-        'settings.overview.view', 'settings.system.update', 'settings.features.manage', 'settings.languages.manage',
+        'settings.overview.view', 'settings.system.update', 'settings.features.manage',
         'kyc.applications.view', 'kyc.applications.review',
         'departments.departments.view', 'departments.departments.manage',
         'reports.reports.view', 'reports.reports.export',

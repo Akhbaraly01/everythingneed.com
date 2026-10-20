@@ -6,6 +6,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Healthcare\Entities\Doctor;
 use Modules\Healthcare\Entities\HealthServiceRequest;
 use Tests\TestCase;
+use Database\Seeders\PermissionSeeder;
 
 /**
  * H-D: Health Bookings - professions + home-visit pricing, "Others"
@@ -159,7 +160,8 @@ class HealthcareBookingsTest extends TestCase
 
     public function test_admin_advances_service_request_forward_only(): void
     {
-        $patient = $this->createUser();
+
+        $this->seed(PermissionSeeder::class);        $patient = $this->createUser();
         $request = HealthServiceRequest::create([
             'patient_id' => $patient->id,
             'request_number' => 'HSR-TEST0001',
@@ -199,7 +201,8 @@ class HealthcareBookingsTest extends TestCase
 
     public function test_healthcare_admin_can_publish_and_hide_health_content(): void
     {
-        $admin = $this->actingAsUser('healthcare_admin');
+
+        $this->seed(PermissionSeeder::class);        $admin = $this->actingAsUser('healthcare_admin');
         $this->actingAs($admin, 'sanctum');
 
         $id = $this->postJson('/api/admin/healthcare/content', [
@@ -228,7 +231,8 @@ class HealthcareBookingsTest extends TestCase
 
     public function test_content_store_rejects_unknown_type(): void
     {
-        $admin = $this->actingAsUser('healthcare_admin');
+
+        $this->seed(PermissionSeeder::class);        $admin = $this->actingAsUser('healthcare_admin');
         $this->actingAs($admin, 'sanctum');
 
         $this->postJson('/api/admin/healthcare/content', [
@@ -239,7 +243,8 @@ class HealthcareBookingsTest extends TestCase
 
     public function test_pharmacy_admin_can_add_medicine_but_plain_user_cannot(): void
     {
-        $admin = $this->actingAsUser('pharmacy_admin');
+
+        $this->seed(PermissionSeeder::class);        $admin = $this->actingAsUser('pharmacy_admin');
         $this->actingAs($admin, 'sanctum');
 
         $this->postJson('/api/medicines', [
@@ -261,7 +266,8 @@ class HealthcareBookingsTest extends TestCase
 
     public function test_healthcare_admin_can_read_prescriptions_oversight(): void
     {
-        $admin = $this->actingAsUser('healthcare_admin');
+
+        $this->seed(PermissionSeeder::class);        $admin = $this->actingAsUser('healthcare_admin');
         $this->actingAs($admin, 'sanctum');
 
         $this->getJson('/api/admin/pharmacy/prescriptions')->assertOk();

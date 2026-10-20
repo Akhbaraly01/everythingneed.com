@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Modules\Needs\Entities\TaskPost;
 use Tests\TestCase;
+use Database\Seeders\PermissionSeeder;
 
 class ApiHardeningTest extends TestCase
 {
@@ -161,7 +162,8 @@ class ApiHardeningTest extends TestCase
 
     public function test_delivery_index_strips_user_pii(): void
     {
-        // The roster is a management surface: plain users are denied...
+
+        $this->seed(PermissionSeeder::class);        // The roster is a management surface: plain users are denied...
         $this->actingAsUser();
         $this->getJson('/api/delivery/managers')->assertStatus(403);
 

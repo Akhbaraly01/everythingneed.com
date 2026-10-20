@@ -110,9 +110,10 @@ class ReviewModerationController extends Controller
     }
 
     /**
-     * TODO 17 report queue: open user reports with their reviews, newest
-     * first. Dismissing closes the report; upholding hides the review and
-     * closes the report — both audited, never silent.
+     * Report queue: open user reports with their reviews, newest first.
+     * Dismissing closes the report; upholding hides the review and closes
+     * the report - both audited, never silent. Rendered by the admin
+     * Reviews console "Report queue" tab.
      */
     public function reports(Request $request): JsonResponse
     {

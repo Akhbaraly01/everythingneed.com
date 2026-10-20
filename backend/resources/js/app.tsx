@@ -6,6 +6,7 @@ import { createRoot } from 'react-dom/client';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { ConfirmProvider } from '@/components/shared/ConfirmProvider';
 import AutoTranslateBridge from '@/components/i18n/AutoTranslateBridge';
+import type { AutoTranslateConfig } from '@/lib/auto-translate';
 import { LanguageProvider } from '@/lib/i18n';
 import { persistCurrency, isDisplayCurrency } from '@/lib/currency';
 import type { I18nBoot } from '@/lib/i18n-config';
@@ -71,6 +72,10 @@ createInertiaApp({
         const root = createRoot(el);
         const boot = bootPreferences(props);
         const i18nBoot = buildI18nBoot(props);
+        const autoTranslate = (pageProps(props)['autoTranslate'] ?? {
+            engine: 'off',
+            source: null,
+        }) as AutoTranslateConfig;
 
         // Authenticated server preferences win at boot (login / reload);
         // guests keep their localStorage choice. Mid-session changes go
@@ -89,7 +94,7 @@ createInertiaApp({
         root.render(
             <ThemeProvider defaultTheme="system" storageKey="everythingneed-theme">
                 <LanguageProvider boot={i18nBoot} initialLanguage={boot.language}>
-                    <AutoTranslateBridge />
+                    <AutoTranslateBridge config={autoTranslate} />
                     <ConfirmProvider>
                         <BootScrollTop />
                         <App {...props} />

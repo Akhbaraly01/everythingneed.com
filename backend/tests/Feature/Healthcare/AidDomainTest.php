@@ -7,6 +7,7 @@ use Modules\Healthcare\Entities\AidDonation;
 use Modules\Healthcare\Entities\AidRequest;
 use Modules\Payments\Entities\Payment;
 use Tests\TestCase;
+use Database\Seeders\PermissionSeeder;
 
 /**
  * H-C: Healthcare Aid / Charity - requesters file requests (pending),
@@ -112,7 +113,8 @@ class AidDomainTest extends TestCase
 
     public function test_support_approving_a_request_makes_it_public(): void
     {
-        $aid = $this->makeAid();
+
+        $this->seed(PermissionSeeder::class);        $aid = $this->makeAid();
         $admin = $this->actingAsUser('healthcare_admin');
 
         $this->putJson("/api/admin/healthcare/aid/{$aid->id}", ['action' => 'approve'])
@@ -130,7 +132,8 @@ class AidDomainTest extends TestCase
 
     public function test_support_rejecting_records_reason_and_stays_private(): void
     {
-        $aid = $this->makeAid();
+
+        $this->seed(PermissionSeeder::class);        $aid = $this->makeAid();
         $this->actingAsUser('healthcare_admin');
 
         $this->putJson("/api/admin/healthcare/aid/{$aid->id}", [
@@ -147,7 +150,8 @@ class AidDomainTest extends TestCase
 
     public function test_reviewing_twice_is_422_and_never_double_decides(): void
     {
-        $aid = $this->makeAid();
+
+        $this->seed(PermissionSeeder::class);        $aid = $this->makeAid();
         $this->actingAsUser('healthcare_admin');
 
         $this->putJson("/api/admin/healthcare/aid/{$aid->id}", ['action' => 'approve'])->assertOk();

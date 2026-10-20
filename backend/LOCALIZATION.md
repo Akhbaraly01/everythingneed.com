@@ -67,12 +67,11 @@ DEEPL_ENDPOINT=https://api-free.deepl.com
 GOOGLE_TRANSLATE_API_KEY=
 ```
 
-`auto` (default) resolves per request: the proxy when the configured
-provider has credentials, otherwise the Google widget — selecting a
-language always translates the page, with no server setup required. Set
-`proxy` to force Path B or `google` to force Path A.
+`auto` resolves per request: the proxy when the configured provider has
+credentials, otherwise the Google widget. Set `google` for a zero-backend
+deployment or `proxy` (default) to keep translation server-side.
 
-### Path B — proxy (preferred when configured)
+### Path B — proxy (default)
 
 Browser (`lib/auto-translate/engine.ts`):
 

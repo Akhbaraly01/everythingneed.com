@@ -2,61 +2,32 @@
 
 namespace Tests;
 
-use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 abstract class TestCase extends BaseTestCase
 {
     use RefreshDatabase;
 
-    /**
-     * Seed the canonical permission matrix once per test process.
-     *
-     * Effective-permission resolution reads the role_permissions table. The
-     * suite never seeded it, so every non-super_admin role gate resolved
-     * against an empty matrix (403 / 302) even when the role holds the grant
-     * in the canonical matrix.
-     *
-     * The seed runs on its own connection, outside the per-test transaction,
-     * so the matrix survives every transaction rollback and is available to
-     * the whole run - the same way it exists in production.
-     */
-    protected function seedPermissionMatrixOnce(): void
-    {
-        static $seeded = false;
-
-        if ($seeded) {
-            return;
-        }
-
-        $seeded = true;
-
-        $default = DB::getDefaultConnection();
-        $connection = $default.'_matrix_seed';
-
-        config(['database.connections.'.$connection => array_merge(
-            (array) config('database.connections.'.$default),
-            ['name' => $connection]
-        )]);
-
-        DB::purge($connection);
-        DB::setDefaultConnection($connection);
-
-        try {
-            (new PermissionSeeder())->run();
-        } finally {
-            DB::setDefaultConnection($default);
-            DB::purge($connection);
-        }
-    }
-
     protected function setUp(): void
     {
         parent::setUp();
+    }
 
-        $this->seedPermissionMatrixOnce();
+    /**
+     * The effective-permission resolver memoises the role matrix for 300
+     * seconds. A test that seeds the matrix must not leak it into the next
+     * test: the rows themselves roll back with the transaction, but the
+     * memoised copy would survive. Flushing it per test keeps the "deny by
+     * default" baseline the permission-enforcement tests assert, while a
+     * test that seeds the matrix still sees it.
+     */
+    protected function tearDown(): void
+    {
+        Cache::forget('rbac.matrix');
+
+        parent::tearDown();
     }
 
     protected function createUser(array $attributes = []): \App\Models\User

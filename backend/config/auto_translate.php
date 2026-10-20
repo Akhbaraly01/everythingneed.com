@@ -18,7 +18,7 @@
  */
 return [
 
-    'engine' => env('AUTO_TRANSLATE_ENGINE', 'auto'),
+    'engine' => env('AUTO_TRANSLATE_ENGINE', 'proxy'),
 
     'provider' => env('AUTO_TRANSLATE_PROVIDER', 'libretranslate'),
 

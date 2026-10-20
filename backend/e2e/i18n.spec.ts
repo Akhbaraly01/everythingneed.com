@@ -8,16 +8,20 @@ import { test, expect, type Page } from '@playwright/test';
  */
 
 /**
- * Dispatch the picker selection directly: the home page saturates the
- * single-worker dev server and Playwright's real-click actionability
- * waits can outlive the test budget on this box. el.click() still runs
- * the full React handler path.
+ * Open the language menu and dispatch the selection directly: the home
+ * page saturates the single-worker dev server and Playwright's real-click
+ * actionability waits can outlive the test budget on this box. el.click()
+ * still runs the full React handler path.
  */
 async function tapLocale(page: Page, label: string): Promise<void> {
     await page
-        .locator('details button', { hasText: label })
+        .locator('button[aria-haspopup="menu"]')
         .first()
         .evaluate((el) => (el as HTMLElement).click());
+
+    const item = page.getByRole('menuitemradio', { name: label }).first();
+    await item.waitFor({ state: 'visible' });
+    await item.evaluate((el) => (el as HTMLElement).click());
 }
 
 /** The versioned locale bundle the chrome needs after a switch. */

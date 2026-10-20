@@ -5,6 +5,7 @@ namespace Tests\Feature\Jobs;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Database\Seeders\PermissionSeeder;
 
 /**
  * N-33 applicant pipeline: snake_case job_post on every application
@@ -81,7 +82,8 @@ class ApplicantPipelineTest extends TestCase
 
     public function test_admin_applications_payload_has_job_post(): void
     {
-        $this->seedJobWithApplicant();
+
+        $this->seed(PermissionSeeder::class);        $this->seedJobWithApplicant();
 
         $admin = User::factory()->create();
         \App\Models\UserRole::create(['user_id' => $admin->id, 'role' => 'jobs_admin']);

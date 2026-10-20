@@ -230,7 +230,6 @@ test('super admin opens the reports, analytics, system and audit console pages',
         { path: '/admin/analytics', heading: 'Platform Analytics' },
         { path: '/admin/system', heading: 'System Health' },
         { path: '/admin/audit-logs', heading: 'Audit Logs' },
-        { path: '/admin/languages', heading: 'Language Console' },
     ];
     for (const target of targets) {
         await page.goto(target.path);

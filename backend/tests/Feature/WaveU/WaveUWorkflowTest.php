@@ -8,6 +8,7 @@ use Modules\Learn\Entities\Course;
 use Modules\Learn\Entities\CourseLesson;
 use Modules\Learn\Entities\Quiz;
 use Tests\TestCase;
+use Database\Seeders\PermissionSeeder;
 
 /**
  * Wave U — spec §97 Phase F end-to-end workflows: unbroken chains
@@ -31,7 +32,8 @@ class WaveUWorkflowTest extends TestCase
 
     public function test_healthcare_chain_find_book_consult_review(): void
     {
-        $admin = $this->createUser();
+
+        $this->seed(PermissionSeeder::class);        $admin = $this->createUser();
         $this->assignRole($admin, 'healthcare_admin');
         $this->actingAs($admin, 'sanctum');
 

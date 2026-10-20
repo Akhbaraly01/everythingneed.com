@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { router, usePage } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 import {
     autoTranslator,
     loadGoogleWidget,
@@ -10,7 +10,9 @@ import { useLanguage } from '@/lib/use-language';
 
 /**
  * Mounted once inside LanguageProvider (app.tsx) so every layout, page,
- * modal, and Inertia transition is covered.
+ * modal, and Inertia transition is covered. The server-resolved config
+ * is passed in from the initial Inertia page: usePage() is unavailable
+ * here because the bridge is a sibling of Inertia's <App />.
  *
  * proxy : the DOM engine translates text + attributes and re-applies
  *         after React re-renders and Inertia visits.
@@ -18,14 +20,8 @@ import { useLanguage } from '@/lib/use-language';
  *         selection (dictionary + content).
  * off   : no whole-page translation.
  */
-export default function AutoTranslateBridge() {
+export default function AutoTranslateBridge({ config }: { config: AutoTranslateConfig }) {
     const { language } = useLanguage();
-    const { props } = usePage();
-    const config =
-        ((props as { autoTranslate?: AutoTranslateConfig }).autoTranslate) ?? {
-            engine: 'off' as const,
-            source: null,
-        };
 
     const engine = config.engine;
     const source = config.source ?? 'en';

@@ -8,6 +8,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Jobs\Entities\JobApplication;
 use Modules\Jobs\Entities\JobPost;
 use Tests\TestCase;
+use Database\Seeders\PermissionSeeder;
 
 /**
  * W5 job-board journey: employer posts -> seeker applies (guards: own
@@ -121,7 +122,8 @@ class JobApplicationJourneyTest extends TestCase
 
     public function test_admin_applications_queue_is_role_gated(): void
     {
-        $employer = User::factory()->create();
+
+        $this->seed(PermissionSeeder::class);        $employer = User::factory()->create();
         $seeker = User::factory()->create();
         $jobId = $this->postJob($employer);
 

@@ -8,6 +8,7 @@ use Modules\Messaging\Entities\Ticket;
 use Modules\Reviews\Entities\Review;
 use Modules\Reviews\Entities\ReviewVote;
 use Tests\TestCase;
+use Database\Seeders\PermissionSeeder;
 
 /**
  * Wave O (spec 50 notifications / 51 messaging / 52 reviews / 62 support):
@@ -241,7 +242,8 @@ class WaveOMessagingTest extends TestCase
 
     public function test_admin_support_detail_requires_the_support_role(): void
     {
-        $customer = $this->createUser();
+
+        $this->seed(PermissionSeeder::class);        $customer = $this->createUser();
         $ticketId = $this->actingAs($customer, 'sanctum')
             ->postJson('/api/tickets', [
                 'subject' => 'Refund pending',
@@ -306,7 +308,8 @@ class WaveOMessagingTest extends TestCase
 
     public function test_admin_support_console_pages_are_role_gated(): void
     {
-        // Console convention: plain users get the redirect+error web 403.
+
+        $this->seed(PermissionSeeder::class);        // Console convention: plain users get the redirect+error web 403.
         $stranger = $this->createUser();
         $this->actingAs($stranger, 'web')->get('/admin/support')
             ->assertStatus(302)
