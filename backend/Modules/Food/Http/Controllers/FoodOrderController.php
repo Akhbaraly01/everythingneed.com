@@ -45,6 +45,30 @@ class FoodOrderController extends Controller
     }
 
     /**
+     * Customer-side cancellation: pending orders only. Once the kitchen
+     * confirms, fulfillment has started and staff cancels from the admin
+     * console.
+     */
+    public function cancel(Request $request, string $id): JsonResponse
+    {
+        $order = FoodOrder::where('user_id', $request->user()->id)->find($id);
+
+        if (!$order) {
+            return response()->json(['message' => 'Order not found'], 404);
+        }
+
+        if ($order->status !== FoodOrder::STATUS_PENDING) {
+            return response()->json([
+                'message' => "Only pending orders can be cancelled (current: {$order->status}).",
+            ], 422);
+        }
+
+        $order->update(['status' => FoodOrder::STATUS_CANCELLED]);
+
+        return response()->json(['data' => $order->fresh()]);
+    }
+
+    /**
      * Place a food order.
      */
     public function store(Request $request): JsonResponse

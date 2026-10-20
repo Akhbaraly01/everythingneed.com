@@ -5,6 +5,7 @@ import { MapPin, Star, Leaf, Flame, Plus, ShoppingCart } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import Image from '@/components/shared/Image';
+import ContextualReviews from '@/components/shared/ContextualReviews';
 
 interface CartRow {
     id: string;
@@ -195,6 +196,8 @@ export default function RestaurantShow({ restaurant }: RestaurantShowProps) {
                         )}
                     </div>
                 </div>
+
+                <ContextualReviews reviewableType="restaurant" reviewableId={restaurant.id} title="Restaurant reviews" />
             </div>
         </AppLayout>
     );

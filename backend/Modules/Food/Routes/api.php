@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Modules\Food\Http\Controllers\FoodAdminOrderController;
 use Modules\Food\Http\Controllers\FoodOrderController;
 use Modules\Food\Http\Controllers\RestaurantController;
 
@@ -30,5 +31,16 @@ Route::prefix('api')->group(function () {
         Route::get('/food/orders', [FoodOrderController::class, 'index']);
         Route::get('/food/orders/{id}', [FoodOrderController::class, 'show']);
         Route::post('/food/orders', [FoodOrderController::class, 'store']);
+        Route::post('/food/orders/{id}/cancel', [FoodOrderController::class, 'cancel']);
     });
+
+    // Admin orders queue: fulfillment lifecycle transitions.
+    Route::middleware('auth:sanctum')
+        ->prefix('admin/food')
+        ->group(function () {
+            Route::get('/orders', [FoodAdminOrderController::class, 'orders'])
+                ->middleware('permission:food.orders.view');
+            Route::post('/orders/{id}/transition', [FoodAdminOrderController::class, 'transition'])
+                ->middleware('permission:food.orders.manage');
+        });
 });

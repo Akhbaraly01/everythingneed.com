@@ -540,6 +540,11 @@ Route::get('/learn/watch/{id}', function (string $id) {
 Route::get('/learn/search', function () {
     return inertia('learn/Search');
 })->name('learn.search');
+
+// Learn playlists: personal saved collections of approved knowledge posts.
+Route::get('/learn/playlists', function () {
+    return inertia('learn/Playlists');
+})->name('learn.playlists');
     Route::get('/learn/instructors/{id}', function ($id) {
         $id = (string) $id;
         $name = urldecode($id);
@@ -966,6 +971,10 @@ Route::get('/transportation', function () {
 Route::get('/transportation/ride-booking', function () {
 return inertia('transportation/RideBooking');
 })->name('transportation.ride-booking')->middleware('auth');
+// Driver lifecycle console (register, availability, accept/complete rides)
+Route::get('/transportation/driver', function () {
+    return inertia('transportation/Driver');
+})->name('transportation.driver')->middleware('auth');
 // N-39 driver earnings view
 Route::get('/transportation/driver/earnings', function () {
 return inertia('transportation/DriverEarnings');

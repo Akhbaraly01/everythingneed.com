@@ -1,6 +1,6 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link } from '@inertiajs/react';
-import { Plane, Car, Truck, Bike, Package, MapPin, Wallet } from 'lucide-react';
+import { Plane, Car, Truck, Bike, Package, MapPin, Wallet, CarTaxiFront } from 'lucide-react';
 
 const SERVICES = [
     { name: 'Flights', href: '/flights', icon: Plane, desc: 'Search and book flights', color: 'bg-blue-500' },
@@ -9,6 +9,7 @@ const SERVICES = [
     { name: 'Motorcycles', href: '/transportation/custom-request?vehicle=motorcycle', icon: Bike, desc: 'Quick delivery', color: 'bg-purple-500' },
     { name: 'Logistics', href: '/deliveries', icon: Package, desc: 'Track deliveries', color: 'bg-indigo-500' },
     { name: 'Custom Request', href: '/transportation/custom-request', icon: MapPin, desc: 'Request custom transport', color: 'bg-pink-500' },
+    { name: 'Driver Console', href: '/transportation/driver', icon: CarTaxiFront, desc: 'Go online and accept rides', color: 'bg-cyan-600' },
     { name: 'Driver Earnings', href: '/transportation/driver/earnings', icon: Wallet, desc: 'Your completed-ride payouts', color: 'bg-emerald-600' },
 ];
 

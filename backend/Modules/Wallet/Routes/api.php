@@ -13,6 +13,8 @@ Route::prefix('api')->middleware('auth:sanctum')->group(function () {
         ->middleware('throttle:10,1');
     Route::post('/wallet/transfer', [WalletController::class, 'transfer'])
         ->middleware('throttle:30,1');
+    Route::get('/wallet/recipients/lookup', [WalletController::class, 'recipientLookup'])
+        ->middleware('throttle:30,1');
     Route::get('/wallet/available', [WalletController::class, 'available']);
     Route::get('/wallet/holds', [WalletController::class, 'holds']);
     Route::post('/wallet/holds', [WalletController::class, 'placeHold'])

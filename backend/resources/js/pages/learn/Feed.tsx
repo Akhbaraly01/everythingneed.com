@@ -12,6 +12,7 @@ import {
     CheckCircle2,
     Flag,
     Heart,
+    ListMusic,
     MessageCircle,
     PenLine,
     Search,
@@ -479,6 +480,11 @@ export default function LearnFeed() {
                         <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
                             Guides, ideas and videos shared by learners. Every post is reviewed before publishing.
                         </p>
+                        {authed && (
+                            <Link href="/learn/playlists" className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-indigo-600 hover:underline">
+                                <ListMusic className="h-4 w-4" /> My Playlists
+                            </Link>
+                        )}
                     </div>
                     {authed && (
                         <Button

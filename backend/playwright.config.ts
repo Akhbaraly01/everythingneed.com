@@ -27,11 +27,13 @@ export default defineConfig({
     timeout: 90_000,
     // Wave S: the single-threaded dev server answers slowly under the
     // multi-fetch console pages - 20s assertions, retries stay CI-only.
-    expect: { timeout: 20_000 },
+    // L-H (was 20s): the global locale/session middleware adds per-request
+    // DB work; Inertia navigations occasionally exceed 20s under load.
+    expect: { timeout: 30_000 },
     use: {
         baseURL: process.env.E2E_BASE_URL || 'http://127.0.0.1:8000',
         actionTimeout: 20_000,
-        navigationTimeout: 30_000,
+        navigationTimeout: 45_000,
         trace: 'retain-on-failure',
         screenshot: 'only-on-failure',
         video: 'retain-on-failure',

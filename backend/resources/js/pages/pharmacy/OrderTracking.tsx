@@ -1,8 +1,10 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link } from '@inertiajs/react';
-import { api } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
 import { formatPrice } from '@/lib/currency';
-import {Pill} from 'lucide-react';
+import { toast } from 'sonner';
+import ConfirmDialog from '@/components/shared/Ui';
+import {Pill, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface PharmacyOrder {
@@ -19,6 +21,8 @@ interface PharmacyOrder {
 export default function PharmacyOrderTracking() {
     const [order, setOrder] = useState<PharmacyOrder | null>(null);
     const [loading, setLoading] = useState(true);
+    const [confirmCancel, setConfirmCancel] = useState(false);
+    const [cancelling, setCancelling] = useState(false);
 
     useEffect(() => {
         const path = window.location.pathname;
@@ -46,6 +50,21 @@ export default function PharmacyOrderTracking() {
             .finally(() => setLoading(false));
     }, []);
 
+    const cancelOrder = async () => {
+        if (!order || cancelling) return;
+        setCancelling(true);
+        try {
+            await api.post(`/api/pharmacy/orders/${order.id}/cancel`);
+            toast.success('Order cancelled. Reserved stock has been released.');
+            setOrder({ ...order, status: 'cancelled' });
+        } catch (e) {
+            toast.error(errorMessage(e, 'Failed to cancel order'));
+        } finally {
+            setCancelling(false);
+            setConfirmCancel(false);
+        }
+    };
+
     return (
         <AppLayout>
             <Head title="Pharmacy Order" />
@@ -66,9 +85,19 @@ export default function PharmacyOrderTracking() {
                             <div className="flex items-center justify-between">
                                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{formatPrice(order.total)}</h1>
                                 <span className={`rounded-full px-3 py-1 text-xs font-medium capitalize ${
-                                    order.status === 'delivered' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                                    order.status === 'delivered' ? 'bg-green-100 text-green-800'
+                                    : order.status === 'cancelled' ? 'bg-red-100 text-red-800'
+                                    : 'bg-blue-100 text-blue-800'
                                 }`}>{order.status}</span>
                             </div>
+                            {order.status === 'pending' && (
+                                <button
+                                    onClick={() => setConfirmCancel(true)}
+                                    className="mt-4 inline-flex items-center gap-2 rounded-lg border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/20"
+                                >
+                                    <X className="h-4 w-4" /> Cancel order
+                                </button>
+                            )}
                         </div>
 
                         <div className="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
@@ -96,6 +125,16 @@ export default function PharmacyOrderTracking() {
                         )}
                     </div>
                 )}
+
+                <ConfirmDialog
+                    open={confirmCancel}
+                    title="Cancel order?"
+                    description="Cancel this medicine order? Reserved stock will be released back to the pharmacy."
+                    confirmLabel="Cancel order"
+                    danger
+                    onConfirm={cancelOrder}
+                    onCancel={() => setConfirmCancel(false)}
+                />
             </div>
         </AppLayout>
     );

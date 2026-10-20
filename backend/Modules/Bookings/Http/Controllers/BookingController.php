@@ -15,10 +15,10 @@ class BookingController extends Controller
     public function __construct(private FlightSeatInterface $flights) {}
 
     private const TRANSITIONS = [
-        'confirm' => ['pending', 'confirmed'],
-        'complete' => ['confirmed', 'in_progress'],
-        'check-in' => ['confirmed', 'checked_in'],
-        'check-out' => ['checked_in', 'checked_out'],
+        'confirm' => [['pending'], 'confirmed'],
+        'complete' => [['confirmed', 'in_progress'], 'completed'],
+        'check-in' => [['confirmed'], 'checked_in'],
+        'check-out' => [['checked_in'], 'checked_out'],
     ];
 
     public function index(Request $request): JsonResponse
@@ -36,6 +36,42 @@ class BookingController extends Controller
 
         $bookings = $query->orderBy('created_at', 'desc')
             ->paginate($request->get('per_page', 15));
+
+        return response()->json([
+            'data' => $bookings->items(),
+            'meta' => [
+                'current_page' => $bookings->currentPage(),
+                'last_page' => $bookings->lastPage(),
+                'per_page' => $bookings->perPage(),
+                'total' => $bookings->total(),
+            ],
+        ]);
+    }
+
+    /**
+     * Bookings made against the authenticated user's vendor services, so the
+     * store can confirm/complete them from the vendor portal.
+     */
+    public function vendorBookings(Request $request): JsonResponse
+    {
+        $vendor = \Modules\Vendors\Entities\Vendor::where('user_id', $request->user()->id)->first();
+
+        if (!$vendor) {
+            return response()->json(['data' => [], 'meta' => ['total' => 0]]);
+        }
+
+        $serviceIds = \Modules\Vendors\Entities\VendorService::where('vendor_id', $vendor->id)->pluck('id');
+
+        $query = Booking::with('user:id,name,email')
+            ->whereIn('service_id', $serviceIds)
+            ->where('service_type', 'vendor_service');
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $bookings = $query->orderBy('created_at', 'desc')
+            ->paginate($request->get('per_page', 20));
 
         return response()->json([
             'data' => $bookings->items(),
@@ -160,7 +196,12 @@ class BookingController extends Controller
             throw new NotFoundException('Booking', $id);
         }
 
-        if ($booking->user_id !== $request->user()->id && !$this->isAdmin($request)) {
+        $user = $request->user();
+        $allowed = $booking->user_id === $user->id
+            || $this->isAdmin($request)
+            || $this->isVendorOwner($user, $booking);
+
+        if (!$allowed) {
             return response()->json(['message' => 'You do not have access to this booking'], 403);
         }
 
@@ -182,5 +223,23 @@ class BookingController extends Controller
     {
         return $request->user()->hasRole('super_admin')
             || $request->user()->hasRole('administrator');
+    }
+
+    /**
+     * The vendor that owns a vendor_service booking may run lifecycle
+     * transitions (confirm/complete) on it — the store confirms the request
+     * the customer made from the public services page.
+     */
+    private function isVendorOwner(\App\Models\User $user, Booking $booking): bool
+    {
+        if ($booking->service_type !== 'vendor_service') {
+            return false;
+        }
+
+        $service = \Modules\Vendors\Entities\VendorService::find($booking->service_id);
+
+        return $service !== null
+            && $service->vendor !== null
+            && $service->vendor->user_id === $user->id;
     }
 }

@@ -18,6 +18,7 @@ Route::prefix('api')->group(function () {
         Route::get('/pharmacy/orders', [PharmacyOrderController::class, 'orders']);
         Route::get('/pharmacy/orders/{id}', [PharmacyOrderController::class, 'show']);
         Route::post('/pharmacy/orders', [PharmacyOrderController::class, 'store']);
+        Route::post('/pharmacy/orders/{id}/cancel', [PharmacyOrderController::class, 'cancel']);
     });
 
     // Public reads

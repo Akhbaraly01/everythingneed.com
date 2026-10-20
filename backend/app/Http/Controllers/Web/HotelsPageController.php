@@ -18,6 +18,13 @@ class HotelsPageController extends Controller
             $query->where('city', 'ilike', "%{$city}%");
         }
 
+        if ($q = trim((string) $request->query('q'))) {
+            $query->where(function ($inner) use ($q) {
+                $inner->where('name', 'ilike', "%{$q}%")
+                    ->orWhere('city', 'ilike', "%{$q}%");
+            });
+        }
+
         if ($minStars = (int) $request->query('min_stars', 0)) {
             $query->where('star_rating', '>=', $minStars);
         }
@@ -29,7 +36,7 @@ class HotelsPageController extends Controller
 
         return Inertia::render('hotels/Index', [
             'hotels' => $hotels,
-            'filters' => $request->only(['city', 'min_stars']),
+            'filters' => $request->only(['city', 'min_stars', 'q']),
         ]);
     }
 

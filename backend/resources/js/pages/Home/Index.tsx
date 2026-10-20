@@ -120,6 +120,24 @@ export default function HomeIndex({
 
     const [activeTab, setActiveTab] = useState<ContentTab>('all');
 
+    // L-H-5: the feed below is cartable products ONLY. The non-product pills
+    // act as quick-jumps to their dedicated rails (doctors, courses, deals,
+    // services) so the visitor always lands on the section that owns them.
+    const TAB_JUMPS: Partial<Record<ContentTab, string>> = {
+        needs: 'home-section-deals',
+        healthcare: 'home-section-healthcare',
+        learning: 'home-section-learn',
+        services: 'home-section-services',
+    };
+    const handleTabChange = (tab: ContentTab) => {
+        const target = TAB_JUMPS[tab];
+        if (target) {
+            document.querySelector(`[data-testid="${target}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            return;
+        }
+        setActiveTab(tab);
+    };
+
     const realProducts = useMemo(() => products?.data ?? [], [products]);
     const spotlight = useMemo(
         () => [...realProducts, ...learning, ...healthcareCards],
@@ -163,7 +181,8 @@ export default function HomeIndex({
             case 'services':
                 return rail('home.services', sections.services, '/tasks');
             case 'healthcare':
-                return rail('home.healthcare', healthcareItems, '/healthcare');
+                // L-H-5: providers rail named like the e-healthcare vertical.
+                return rail('home.healthcareProviders', healthcareItems, '/healthcare');
             case 'jobs':
                 return rail('home.jobs', sections.jobs, '/jobs');
             case 'hotels':
@@ -179,7 +198,8 @@ export default function HomeIndex({
             case 'building-services':
                 return rail('home.buildingServices', sections.buildingServices, '/building-services');
             case 'learn':
-                return rail('home.learn', learnItems, '/learn');
+                // L-H-5: skills rail naming ("Learn New Tech").
+                return rail('home.learnNewTech', learnItems, '/learn');
             case 'recently-added':
                 return rail('home.recentlyAdded', recentlyAddedItems, '/products');
             default:
@@ -237,20 +257,22 @@ export default function HomeIndex({
                     />
 
                     {/* Discovery tabs (pills only — search lives in the fixed
-                        header). They filter the product feed below. */}
+                        header). All/Products filter the cartable-product feed;
+                        the other pills jump to their dedicated rails. */}
                     <SearchTabs
                         activeTab={activeTab}
-                        onTabChange={setActiveTab}
+                        onTabChange={handleTabChange}
                         hideSearchBar
                     />
 
-                    {/* Products: batches interleaved between the
-                        admin-ordered category sections. */}
+                    {/* Products: batches interleaved between the admin-ordered
+                        category sections. Cartable products only — doctors,
+                        courses, needs and services render as their own rails
+                        (batch, section, batch, section…). */}
                     <InfiniteProductFeed
                         initial={realProducts}
                         initialPage={products?.current_page ?? 1}
                         lastPage={products?.last_page ?? 1}
-                        extras={[...learning, ...healthcareCards]}
                         tab={activeTab}
                         sections={feedSections}
                         perBatch={productsPerBatch}

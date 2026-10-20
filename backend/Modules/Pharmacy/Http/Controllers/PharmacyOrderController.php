@@ -68,6 +68,39 @@ class PharmacyOrderController extends Controller
     }
 
     /**
+     * Customer-side cancellation. Pending orders only — once the pharmacy
+     * confirms, fulfillment has started and staff must cancel from the
+     * console (which also handles the restock). Mirrors the admin guard
+     * one step stricter and always restocks the reserved medicine units.
+     */
+    public function cancel(Request $request, string $id): JsonResponse
+    {
+        $order = MedicineOrder::with('items')
+            ->where('user_id', $request->user()->id)
+            ->find($id);
+
+        if (!$order) {
+            return response()->json(['message' => 'Order not found'], 404);
+        }
+
+        if ($order->status !== MedicineOrder::STATUS_PENDING) {
+            return response()->json([
+                'message' => "Only pending orders can be cancelled (current: {$order->status}).",
+            ], 422);
+        }
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($order) {
+            foreach ($order->items as $item) {
+                \Modules\Pharmacy\Entities\Medicine::where('id', $item->medicine_id)
+                    ->increment('stock_quantity', $item->quantity);
+            }
+            $order->update(['status' => MedicineOrder::STATUS_CANCELLED]);
+        });
+
+        return response()->json(['data' => $order->fresh('items')]);
+    }
+
+    /**
      * Place a medicine order with line items.
      *
      * Spec 25: prescription-only medicines require an active prescription,

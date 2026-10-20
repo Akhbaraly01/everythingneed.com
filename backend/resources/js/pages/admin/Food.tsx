@@ -3,7 +3,7 @@ import { Head } from '@inertiajs/react';
 import { api, errorMessage, rows } from '@/lib/api';
 import { FormEvent, useEffect, useState } from 'react';
 import DataTable from '@/components/shared/DataTable';
-import { UtensilsCrossed, Star, Plus, Power, Pencil, Trash2, X } from 'lucide-react';
+import { UtensilsCrossed, Star, Plus, Power, Pencil, Trash2, X, Receipt } from 'lucide-react';
 import { toast } from 'sonner';
 import { useConfirm } from '@/lib/confirm';
 
@@ -25,6 +25,35 @@ interface Meta {
     total: number;
 }
 
+interface FoodOrderRow {
+    id: string;
+    order_number: string;
+    status: string;
+    total_amount: string | number;
+    delivery_address?: string | null;
+    created_at: string;
+    restaurant?: { name?: string } | null;
+    user?: { name?: string; email?: string } | null;
+}
+
+/** Next legal transitions for each status (FoodAdminOrderController map). */
+const ORDER_ACTIONS: Record<string, Array<{ action: string; label: string; tone: string }>> = {
+    pending: [
+        { action: 'confirm', label: 'Confirm', tone: 'text-blue-600 border-blue-200 hover:bg-blue-50' },
+        { action: 'cancel', label: 'Cancel', tone: 'text-red-600 border-red-200 hover:bg-red-50' },
+    ],
+    confirmed: [
+        { action: 'prepare', label: 'Start preparing', tone: 'text-orange-600 border-orange-200 hover:bg-orange-50' },
+        { action: 'cancel', label: 'Cancel', tone: 'text-red-600 border-red-200 hover:bg-red-50' },
+    ],
+    preparing: [
+        { action: 'out', label: 'Out for delivery', tone: 'text-purple-600 border-purple-200 hover:bg-purple-50' },
+    ],
+    out_for_delivery: [
+        { action: 'deliver', label: 'Mark delivered', tone: 'text-green-600 border-green-200 hover:bg-green-50' },
+    ],
+};
+
 export default function AdminFood() {
     const ask = useConfirm();
     const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -33,6 +62,37 @@ export default function AdminFood() {
     const [status, setStatus] = useState<'all' | 'active' | 'inactive'>('all');
     const [page, setPage] = useState(1);
     const [tick, setTick] = useState(0);
+    const [orders, setOrders] = useState<FoodOrderRow[]>([]);
+    const [ordersLoading, setOrdersLoading] = useState(false);
+    const [orderStatus, setOrderStatus] = useState('all');
+    const [transitioning, setTransitioning] = useState<string | null>(null);
+
+    const loadOrders = () => {
+        setOrdersLoading(true);
+        const qs = orderStatus === 'all' ? '' : `?status=${orderStatus}`;
+        api.get<{ data: FoodOrderRow[] }>(`/api/admin/food/orders${qs}`)
+            .then((res) => setOrders(rows<FoodOrderRow>(res)))
+            .catch((e) => {
+                setOrders([]);
+                toast.error(errorMessage(e, 'Failed to load orders'));
+            })
+            .finally(() => setOrdersLoading(false));
+    };
+
+    useEffect(loadOrders, [orderStatus]);
+
+    const transitionOrder = async (id: string, action: string) => {
+        setTransitioning(id);
+        try {
+            await api.post(`/api/admin/food/orders/${id}/transition`, { action });
+            toast.success(`Order ${action === 'out' ? 'out for delivery' : action + 'ed'}.`);
+            loadOrders();
+        } catch (e) {
+            toast.error(errorMessage(e, 'Transition failed'));
+        } finally {
+            setTransitioning(null);
+        }
+    };
     const [showForm, setShowForm] = useState(false);
     const [saving, setSaving] = useState(false);
     const [form, setForm] = useState({
@@ -325,6 +385,70 @@ export default function AdminFood() {
                         </div>
                     </div>
                 )}
+
+                {/* Orders queue: the fulfillment lifecycle (confirm → prepare →
+                    out → deliver; cancellable while pending/confirmed). */}
+                <div className="rounded-lg bg-white shadow dark:bg-gray-800">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 px-6 py-4 dark:border-gray-700">
+                        <h2 className="inline-flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white">
+                            <Receipt className="h-5 w-5" /> Orders
+                        </h2>
+                        <select
+                            value={orderStatus}
+                            onChange={(e) => setOrderStatus(e.target.value)}
+                            aria-label="Filter orders by status"
+                            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-700"
+                        >
+                            <option value="all">All statuses</option>
+                            <option value="pending">Pending</option>
+                            <option value="confirmed">Confirmed</option>
+                            <option value="preparing">Preparing</option>
+                            <option value="out_for_delivery">Out for delivery</option>
+                            <option value="delivered">Delivered</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                    <div className="px-6 py-4">
+                        {ordersLoading ? (
+                            <p className="text-sm text-gray-500">Loading orders...</p>
+                        ) : orders.length === 0 ? (
+                            <p className="text-sm text-gray-500">No orders match this filter.</p>
+                        ) : (
+                            <div className="divide-y dark:divide-gray-700">
+                                {orders.map((o) => (
+                                    <div key={o.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                                        <div className="min-w-0">
+                                            <p className="font-medium text-gray-900 dark:text-white">
+                                                #{o.order_number}
+                                                <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold capitalize text-gray-700 dark:bg-gray-700 dark:text-gray-300">{o.status}</span>
+                                            </p>
+                                            <p className="text-xs text-gray-500">
+                                                {o.restaurant?.name ?? 'Restaurant'} · {o.user?.name ?? 'Customer'}
+                                                {o.user?.email ? ` (${o.user.email})` : ''}
+                                            </p>
+                                            {o.delivery_address && <p className="text-xs text-gray-500">{o.delivery_address}</p>}
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-sm font-semibold text-gray-900 dark:text-white">${Number(o.total_amount).toFixed(2)}</span>
+                                            <div className="flex gap-1.5">
+                                                {(ORDER_ACTIONS[o.status] ?? []).map((a) => (
+                                                    <button
+                                                        key={a.action}
+                                                        onClick={() => transitionOrder(o.id, a.action)}
+                                                        disabled={transitioning === o.id}
+                                                        className={`rounded-lg border px-2.5 py-1 text-xs font-semibold disabled:opacity-50 ${a.tone}`}
+                                                    >
+                                                        {a.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
         </AdminLayout>
     );

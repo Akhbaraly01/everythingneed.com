@@ -1,11 +1,24 @@
 import { Head, Link } from '@inertiajs/react';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import AppLayout from '@/layouts/AppLayout';
 import VendorTabs from '@/components/vendor/VendorTabs';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { api, errorMessage } from '@/lib/api';
 import {
     Package, ShoppingCart, Wallet, Star, ArrowRight,
-    BadgeCheck, AlertTriangle, Store,
+    BadgeCheck, AlertTriangle, Store, CalendarCheck,
 } from 'lucide-react';
+
+interface VendorBooking {
+    id: string;
+    scheduled_date?: string | null;
+    scheduled_time?: string | null;
+    status: string;
+    notes?: string | null;
+    created_at: string;
+    user?: { name?: string; email?: string } | null;
+}
 
 interface Props {
     vendor: { id: string; store_name: string; category: string; is_verified: boolean; rating: number };
@@ -29,6 +42,30 @@ interface Props {
 }
 
 export default function VendorDashboard({ vendor, stats, recentOrders }: Props) {
+    const [bookings, setBookings] = useState<VendorBooking[]>([]);
+    const [busyId, setBusyId] = useState<string | null>(null);
+
+    const loadBookings = () => {
+        api.get<{ data: VendorBooking[] }>('/api/vendor/bookings')
+            .then((res) => setBookings((res as { data?: VendorBooking[] }).data ?? []))
+            .catch(() => setBookings([]));
+    };
+
+    useEffect(loadBookings, []);
+
+    const transition = async (id: string, action: 'confirm' | 'complete') => {
+        setBusyId(id);
+        try {
+            await api.post(`/api/bookings/${id}/${action}`);
+            toast.success(action === 'confirm' ? 'Booking confirmed' : 'Booking completed');
+            loadBookings();
+        } catch (err) {
+            toast.error(errorMessage(err, 'Update failed'));
+        } finally {
+            setBusyId(null);
+        }
+    };
+
     return (
         <AppLayout title="Vendor portal">
             <Head title="Vendor dashboard" />
@@ -94,6 +131,52 @@ export default function VendorDashboard({ vendor, stats, recentOrders }: Props) 
                                             {o.status}
                                         </span>
                                         <span className="font-semibold text-gray-900 dark:text-white">{formatCurrency(Number(o.total_price))}</span>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+
+                {/* Service bookings: confirm new requests, complete finished work */}
+                <div className="mt-8 rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+                    <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4 dark:border-gray-700">
+                        <h2 className="flex items-center gap-2 font-bold text-gray-900 dark:text-white">
+                            <CalendarCheck className="h-5 w-5 text-indigo-500" /> Service bookings
+                        </h2>
+                    </div>
+                    {bookings.length === 0 ? (
+                        <p className="px-5 py-10 text-center text-sm text-gray-400">No service bookings yet.</p>
+                    ) : (
+                        <ul className="divide-y divide-gray-100 dark:divide-gray-700">
+                            {bookings.map((b) => (
+                                <li key={b.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+                                    <div>
+                                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                            {b.user?.name ?? 'Customer'}
+                                            <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold capitalize text-gray-700 dark:bg-gray-700 dark:text-gray-300">{b.status}</span>
+                                        </p>
+                                        <p className="text-xs text-gray-400">
+                                            {b.scheduled_date ?? formatDate(b.created_at)}
+                                            {b.scheduled_time ? ` · ${b.scheduled_time}` : ''}
+                                            {b.user?.email ? ` · ${b.user.email}` : ''}
+                                        </p>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        {b.status === 'pending' && (
+                                            <button
+                                                onClick={() => transition(b.id, 'confirm')}
+                                                disabled={busyId === b.id}
+                                                className="rounded-lg border border-blue-200 px-3 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-50 disabled:opacity-50 dark:border-blue-900"
+                                            >Confirm</button>
+                                        )}
+                                        {(b.status === 'confirmed' || b.status === 'in_progress') && (
+                                            <button
+                                                onClick={() => transition(b.id, 'complete')}
+                                                disabled={busyId === b.id}
+                                                className="rounded-lg border border-green-200 px-3 py-1 text-xs font-semibold text-green-600 hover:bg-green-50 disabled:opacity-50 dark:border-green-900"
+                                            >Complete</button>
+                                        )}
                                     </div>
                                 </li>
                             ))}
