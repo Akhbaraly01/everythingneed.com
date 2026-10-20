@@ -47,6 +47,32 @@ class SecurityHeadersTest extends TestCase
         $response->assertHeader('Content-Security-Policy');
     }
 
+    public function test_inline_scripts_carry_the_csp_nonce(): void
+    {
+        $response = $this->get('/login');
+
+        $csp = (string) $response->headers->get('Content-Security-Policy');
+        $this->assertMatchesRegularExpression(
+            "/script-src[^;]*'nonce-[^']+'/",
+            $csp,
+            'script-src must allow the per-request nonce.'
+        );
+
+        preg_match("/'nonce-([^']+)'/", $csp, $matches);
+        $nonce = $matches[1] ?? '';
+        $this->assertNotSame('', $nonce);
+
+        // The theme/locale pre-paint script and the JSON-LD blocks all
+        // execute only when they echo the same nonce (Vite-injected
+        // tags carry it too).
+        $response->assertSee('nonce="'.$nonce.'"', false);
+        $this->assertGreaterThanOrEqual(
+            2,
+            substr_count($response->getContent(), 'nonce="'.$nonce.'"'),
+            'Pre-paint and JSON-LD inline scripts must both carry the nonce.'
+        );
+    }
+
     public function test_hsts_is_not_emitted_over_plain_http(): void
     {
         $response = $this->get('/login');

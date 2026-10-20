@@ -96,28 +96,28 @@ export default function Footer({ socialLinks = {}, appLinks = {} }: FooterProps)
               {
                   title: t('footer.categories'),
                   links: [
-                      { name: 'Electronics', path: '/products?category=electronics' },
-                      { name: 'Fashion', path: '/products?category=fashion' },
-                      { name: 'Healthcare', path: '/healthcare' },
-                      { name: 'Learning', path: '/learn' },
+                      { name: t('footer.catElectronics', { defaultValue: 'Electronics' }), path: '/products?category=electronics' },
+                      { name: t('footer.catFashion', { defaultValue: 'Fashion' }), path: '/products?category=fashion' },
+                      { name: t('footer.catHealthcare', { defaultValue: 'Healthcare' }), path: '/healthcare' },
+                      { name: t('footer.catLearning', { defaultValue: 'Learning' }), path: '/learn' },
                   ],
               },
               {
                   title: t('footer.account'),
                   links: [
-                      { name: 'Dashboard', path: '/dashboard' },
-                      { name: 'My Orders', path: '/orders' },
-                      { name: 'Wishlist', path: '/wishlist' },
-                      { name: 'Wallet', path: '/wallet' },
-                      { name: 'Bills & Utilities', path: '/bills' },
+                      { name: t('footer.accountDashboard', { defaultValue: 'Dashboard' }), path: '/dashboard' },
+                      { name: t('footer.accountOrders', { defaultValue: 'My Orders' }), path: '/orders' },
+                      { name: t('footer.accountWishlist', { defaultValue: 'Wishlist' }), path: '/wishlist' },
+                      { name: t('footer.accountWallet', { defaultValue: 'Wallet' }), path: '/wallet' },
+                      { name: t('footer.accountBills', { defaultValue: 'Bills & Utilities' }), path: '/bills' },
                   ],
               },
               {
                   title: t('footer.support'),
                   links: [
-                      { name: 'Contact Us', path: '/tickets/create' },
-                      { name: 'Help Center', path: '/p/about-everythingneed' },
-                      { name: 'FAQs', path: '/p/faqs' },
+                      { name: t('footer.supportContact', { defaultValue: 'Contact Us' }), path: '/tickets/create' },
+                      { name: t('footer.supportHelp', { defaultValue: 'Help Center' }), path: '/p/about-everythingneed' },
+                      { name: t('footer.supportFaqs', { defaultValue: 'FAQs' }), path: '/p/faqs' },
                   ],
               },
           ];
@@ -146,7 +146,7 @@ export default function Footer({ socialLinks = {}, appLinks = {} }: FooterProps)
                         <div className="space-y-3">
                             <div className="flex items-start gap-3">
                                 <HomeIcon className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-                                <span className="text-sm text-muted-foreground">EverythingNeed Global HQ, Tech City, Worldwide</span>
+                                <span className="text-sm text-muted-foreground">{t('footer.address', { defaultValue: 'EverythingNeed Global HQ, Tech City, Worldwide' })}</span>
                             </div>
                             <div className="flex items-center gap-3">
                                 <Phone className="h-5 w-5 text-primary shrink-0" />
@@ -168,12 +168,12 @@ export default function Footer({ socialLinks = {}, appLinks = {} }: FooterProps)
                                     rel="noreferrer"
                                     className="text-sm text-muted-foreground hover:text-foreground underline"
                                 >
-                                    View on Map
+                                    {t('footer.viewOnMap', { defaultValue: 'View on Map' })}
                                 </a>
                             </div>
                             <div className="flex items-center gap-3">
                                 <Clock className="h-5 w-5 text-primary shrink-0" />
-                                <span className="text-sm text-muted-foreground">24/7 Customer Support</span>
+                                <span className="text-sm text-muted-foreground">{t('footer.support247', { defaultValue: '24/7 Customer Support' })}</span>
                             </div>
                         </div>
                     </div>
@@ -216,7 +216,7 @@ export default function Footer({ socialLinks = {}, appLinks = {} }: FooterProps)
                 {(appLinks.ios || appLinks.android) && (
                     <div className="flex flex-col lg:flex-row justify-between items-center gap-6 mb-8">
                         <div className="text-center lg:text-left">
-                            <h4 className="font-semibold mb-3 text-foreground">Download Our Mobile App</h4>
+                            <h4 className="font-semibold mb-3 text-foreground">{t('footer.downloadApp', { defaultValue: 'Download Our Mobile App' })}</h4>
                             <div className="flex gap-2">
                                 {appLinks.ios && (
                                     <a href={appLinks.ios} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-md border border-border text-foreground hover:bg-muted px-3 py-1.5 text-sm">
@@ -236,7 +236,7 @@ export default function Footer({ socialLinks = {}, appLinks = {} }: FooterProps)
                 <div className="flex flex-col lg:flex-row justify-between items-center gap-6 mb-8">
                     <div aria-hidden className="hidden lg:block lg:w-1/4" />
                     <div className="text-center">
-                        <h4 className="font-semibold mb-3 text-foreground">We Accept</h4>
+                        <h4 className="font-semibold mb-3 text-foreground">{t('footer.weAccept', { defaultValue: 'We Accept' })}</h4>
                         <div className="flex gap-2 flex-wrap justify-center">
                             {paymentMethods.map((method) => (
                                 <div key={method} className="px-3 py-1.5 bg-muted rounded text-xs font-medium text-muted-foreground">
@@ -246,19 +246,19 @@ export default function Footer({ socialLinks = {}, appLinks = {} }: FooterProps)
                         </div>
                     </div>
                     <div className="text-center lg:text-right">
-                        <h4 className="font-semibold mb-3 text-foreground">Security &amp; Trust</h4>
+                        <h4 className="font-semibold mb-3 text-foreground">{t('footer.securityTrust', { defaultValue: 'Security & Trust' })}</h4>
                         <div className="flex gap-2 flex-wrap justify-center lg:justify-end">
                             <span className="inline-flex items-center gap-1 rounded-md border border-border text-muted-foreground px-2 py-1 text-xs">
                                 <Shield className="h-3 w-3" />
-                                SSL Secured
+                                {t('footer.ssl', { defaultValue: 'SSL Secured' })}
                             </span>
                             <span className="inline-flex items-center gap-1 rounded-md border border-border text-muted-foreground px-2 py-1 text-xs">
                                 <CheckCircle className="h-3 w-3" />
-                                Verified Business
+                                {t('footer.verified', { defaultValue: 'Verified Business' })}
                             </span>
                             <span className="inline-flex items-center gap-1 rounded-md border border-border text-muted-foreground px-2 py-1 text-xs">
                                 <Award className="h-3 w-3" />
-                                ISO Certified
+                                {t('footer.iso', { defaultValue: 'ISO Certified' })}
                             </span>
                         </div>
                     </div>
@@ -282,16 +282,16 @@ export default function Footer({ socialLinks = {}, appLinks = {} }: FooterProps)
                         </div>
                     )}
                     <p className="text-sm text-muted-foreground flex items-center gap-1 flex-wrap justify-center">
-                        © {currentYear} {siteName}. Made with
+                        © {currentYear} {siteName}. {t('footer.madeWith', { defaultValue: 'Made with' })}
                         <Heart className="h-4 w-4 text-destructive fill-destructive" />
-                        for humanity. All rights reserved.
+                        {t('footer.forHumanity', { defaultValue: 'for humanity' })}. {t('footer.rights', { defaultValue: 'All rights reserved.' })}
                     </p>
                     <div className="flex gap-4 text-sm text-muted-foreground">
                     <Link href="/p/privacy-policy" className="hover:text-foreground transition-colors">
-                        Privacy Policy
+                        {t('footer.privacy', { defaultValue: 'Privacy Policy' })}
                         </Link>
                     <Link href="/p/terms-of-service" className="hover:text-foreground transition-colors">
-                        Terms of Service
+                        {t('footer.terms', { defaultValue: 'Terms of Service' })}
                         </Link>
                     </div>
                 </div>
@@ -300,7 +300,7 @@ export default function Footer({ socialLinks = {}, appLinks = {} }: FooterProps)
             <button
                 type="button"
                 onClick={scrollToTop}
-                aria-label="Scroll to top"
+                aria-label={t('footer.scrollTop', { defaultValue: 'Scroll to top' })}
                 className="glass-3 glass-edge tap-safe fixed bottom-[calc(var(--dock-clearance)+64px)] right-4 z-cluster hidden h-11 w-11 items-center justify-center rounded-full text-foreground shadow-lg transition-transform duration-fast ease-out-spring hover:scale-105 active:scale-95 md:flex"
             >
                 <ArrowUp className="h-5 w-5" aria-hidden="true" />

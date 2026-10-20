@@ -17,8 +17,6 @@ interface InfiniteProductFeedProps {
     initial: MarketplaceProduct[];
     initialPage: number;
     lastPage: number;
-    /** Static spotlight pools (learning + healthcare cards) for All/other tabs. */
-    extras?: MarketplaceProduct[];
     /** Active discovery tab (SearchTabs pills above the feed). */
     tab?: ContentTab;
     /** Interleaved section blocks in admin order; a batch leads and trails. */
@@ -32,30 +30,32 @@ interface InfiniteProductFeedProps {
     findDoctorsLabel?: string;
 }
 
+/**
+ * The feed is cartable products ONLY (user directive): doctors, courses,
+ * needs and services never mix into product batches — they live in their own
+ * rails between batches. `matchesTab` still guards the pills so a stray
+ * non-product can never leak into a batch.
+ */
 function matchesTab(product: MarketplaceProduct, tab: ContentTab): boolean {
     if (tab === 'all') return true;
-    if (tab === 'products') return (product.type ?? 'product') === 'product';
-    if (tab === 'needs') return product.type === 'need';
-    if (tab === 'services') return product.type === 'service';
-    return (product.type ?? 'product') === tab;
+    return (product.type ?? 'product') === 'product';
 }
 
 /**
  * Interleaved Home feed (Home rebuild): batch(0), section(0), batch(1),
  * section(1) … with a trailing batch, then the Load More button.
  *
- * Batches slice the tab-filtered pool (fetched products + spotlight extras);
- * when the pool is shorter than the page, batches wrap around (spec: loop
- * until more arrive). Load More appends the next `/api/home/feed` page — same
- * card shape, no adapter — so wrapped duplicates resolve into real inventory.
- * Pure fetch: no Inertia visit, no scroll jump, loader while fetching. An
- * empty pool renders the honest empty state instead of blank space.
+ * Batches slice the product pool; when the pool is shorter than the page,
+ * batches wrap around (spec: loop until more arrive). Load More appends the
+ * next `/api/home/feed` page — same card shape, no adapter — so wrapped
+ * duplicates resolve into real inventory. Pure fetch: no Inertia visit, no
+ * scroll jump, loader while fetching. An empty pool renders the honest empty
+ * state instead of blank space.
  */
 export default function InfiniteProductFeed({
     initial,
     initialPage,
     lastPage,
-    extras = [],
     tab = 'all',
     sections,
     perBatch,
@@ -75,8 +75,8 @@ export default function InfiniteProductFeed({
     const batchSize = Math.max(1, perBatch);
 
     const visible = useMemo(
-        () => [...items, ...extras].filter((p) => matchesTab(p, tab)),
-        [items, extras, tab],
+        () => items.filter((p) => matchesTab(p, tab)),
+        [items, tab],
     );
 
     const batch = (index: number): MarketplaceProduct[] => {

@@ -2,7 +2,9 @@
 
 namespace Tests\Feature\Delivery;
 
+use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Modules\Delivery\Entities\Delivery;
 use Modules\Delivery\Entities\DeliveryManager;
 use Modules\Orders\Entities\Order;
@@ -18,6 +20,13 @@ use Tests\TestCase;
 class DeliveryAssignmentTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed(PermissionSeeder::class);
+        Cache::forget('rbac.matrix');
+    }
 
     private function rider(): object
     {

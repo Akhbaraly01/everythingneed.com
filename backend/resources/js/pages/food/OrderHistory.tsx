@@ -1,8 +1,9 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link } from '@inertiajs/react';
 import { api, errorMessage } from '@/lib/api';
+import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
-import { Clock, CheckCircle, XCircle, Truck, ChefHat, RefreshCcw } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, Truck, ChefHat, RefreshCcw, X } from 'lucide-react';
 
 interface FoodOrder {
     id: string;
@@ -43,6 +44,16 @@ export default function FoodOrderHistory() {
 
     useEffect(load, []);
 
+    const cancelOrder = async (id: string) => {
+        try {
+            await api.post(`/api/food/orders/${id}/cancel`);
+            toast.success('Order cancelled.');
+            load();
+        } catch (e) {
+            toast.error(errorMessage(e, 'Failed to cancel order'));
+        }
+    };
+
     return (
         <AppLayout title="Food Orders">
             <Head title="Food Orders" />
@@ -69,25 +80,37 @@ export default function FoodOrderHistory() {
                             const status = STATUS_MAP[order.status] || STATUS_MAP.pending;
                             const Icon = status.icon;
                             return (
-                                <Link
+                                <div
                                     key={order.id}
-                                    href={`/food/orders/${order.id}`}
-                                    className="block rounded-lg bg-white p-4 shadow hover:ring-2 hover:ring-blue-500 dark:bg-gray-800"
+                                    className="rounded-lg bg-white p-4 shadow dark:bg-gray-800"
                                 >
                                     <div className="flex items-center justify-between">
-                                        <div>
+                                        <Link
+                                            href={`/food/orders/${order.id}`}
+                                            className="min-w-0 flex-1 hover:opacity-80"
+                                        >
                                             <p className="font-semibold text-gray-900 dark:text-white">{order.restaurant.name}</p>
                                             <p className="text-sm text-gray-500">#{order.order_number}</p>
-                                        </div>
+                                        </Link>
                                         <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${status.color}`}>
                                             <Icon className="h-3 w-3" /> {status.label}
                                         </span>
                                     </div>
                                     <div className="mt-2 flex items-center justify-between text-sm">
                                         <span className="text-gray-500">{new Date(order.created_at).toLocaleDateString()}</span>
-                                        <span className="font-semibold text-gray-900 dark:text-white">${order.total_amount}</span>
+                                        <div className="flex items-center gap-3">
+                                            <span className="font-semibold text-gray-900 dark:text-white">${order.total_amount}</span>
+                                            {order.status === 'pending' && (
+                                                <button
+                                                    onClick={() => cancelOrder(order.id)}
+                                                    className="inline-flex items-center gap-1 rounded-lg border border-red-300 px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/20"
+                                                >
+                                                    <X className="h-3 w-3" /> Cancel
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
-                                </Link>
+                                </div>
                             );
                         })}
                     </div>

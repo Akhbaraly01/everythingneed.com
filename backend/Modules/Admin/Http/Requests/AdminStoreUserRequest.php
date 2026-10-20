@@ -2,7 +2,7 @@
 
 namespace Modules\Admin\Http\Requests;
 
-use Core\Enums\AppRole;
+use Core\Services\Contracts\RoleRegistryInterface;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -25,7 +25,7 @@ class AdminStoreUserRequest extends FormRequest
                 Rule::unique('users', 'email')->whereNull('deleted_at'),
             ],
             'password' => ['required', 'string', 'min:8', 'max:255'],
-            'role' => ['required', 'string', Rule::in(AppRole::values())],
+            'role' => ['required', 'string', Rule::in(app(RoleRegistryInterface::class)->all())],
         ];
     }
 }

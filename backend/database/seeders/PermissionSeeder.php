@@ -23,10 +23,11 @@ class PermissionSeeder extends Seeder
      *    inventory.stock.view, kyc.applications.review, cms.pages.publish …).
      */
     public const CATALOG = [
-        'products.products.view', 'products.products.create', 'products.products.update', 'products.products.delete', 'products.products.publish', 'products.products.approve',
+        'products.products.view', 'products.products.create', 'products.products.update', 'products.products.delete', 'products.products.publish', 'products.products.approve', 'products.products.manage',
         'orders.orders.view', 'orders.orders.create', 'orders.orders.update', 'orders.orders.manage', 'orders.orders.refund', 'orders.orders.cancel',
         'users.users.view', 'users.users.create', 'users.users.update', 'users.users.delete', 'users.users.suspend', 'users.users.activate',
-        'users.permissions.manage',
+        'users.users.manage', 'users.permissions.manage',
+        'brands.brands.view', 'brands.brands.manage',
         'vendors.vendors.view', 'vendors.vendors.approve', 'vendors.vendors.suspend', 'vendors.vendors.commission', 'vendors.vendors.manage',
         'healthcare.overview.view', 'healthcare.doctors.manage', 'healthcare.appointments.view', 'healthcare.appointments.create', 'healthcare.appointments.manage', 'healthcare.records.view', 'healthcare.prescriptions.manage', 'healthcare.labs.manage', 'healthcare.aid.view', 'healthcare.aid.manage', 'healthcare.content.view', 'healthcare.content.manage',
         'learn.overview.view', 'learn.courses.manage', 'learn.courses.create', 'learn.lessons.manage', 'learn.certificates.issue', 'learn.quizzes.manage', 'learn.posts.review',
@@ -57,7 +58,7 @@ class PermissionSeeder extends Seeder
         'cms.pages.view', 'cms.pages.manage', 'cms.pages.publish',
         'cms.home.view', 'cms.home.manage',
         'finance.overview.view', 'finance.payments.manage', 'finance.refunds.process', 'finance.payouts.manage', 'finance.transactions.view',
-        'settings.overview.view', 'settings.system.update', 'settings.features.manage',
+        'settings.overview.view', 'settings.system.update', 'settings.features.manage', 'settings.languages.manage',
         'kyc.applications.view', 'kyc.applications.review',
         'departments.departments.view', 'departments.departments.manage',
         'reports.reports.view', 'reports.reports.export',
@@ -102,17 +103,19 @@ class PermissionSeeder extends Seeder
         'security_admin' => [
             'kyc.*', 'audit.*',
             'users.users.view', 'users.users.update', 'users.users.suspend', 'users.users.activate',
+            'users.users.manage',
             'settings.overview.view',
         ],
         // L1 — reporting/analytics owner.
         'analytics_admin' => ['analytics.*', 'reports.*'],
 'administrator' => [
   'products.*', 'orders.*', 'users.users.view', 'users.users.create', 'users.users.update', 'users.users.suspend',
+            'users.users.manage', 'users.permissions.manage',
             'vendors.*', 'healthcare.*', 'learn.*', 'hotels.*', 'food.*', 'jobs.*', 'job_seekers.*',
             'real_estate.*', 'rides.*', 'transport.*', 'agriculture.*', 'building_services.*',
             'needs.*', 'tasks.*', 'pharmacy.*', 'messaging.*', 'notifications.*', 'reviews.*',
-            'delivery.*', 'inventory.*', 'categories.*', 'deals.*', 'subscriptions.*', 'payments.*',
-            'analytics.*', 'audit.*', 'support.*', 'cms.*', 'finance.*', 'settings.*', 'departments.*', 'reports.*',
+            'delivery.*', 'inventory.*', 'categories.*', 'deals.*', 'subscriptions.*', 'payments.*', 'brands.*',
+            'analytics.*', 'support.*', 'cms.*', 'finance.*', 'settings.*', 'departments.*', 'reports.*',
             'kyc.*',
             'navigation.*', 'forms.*', 'media.*', 'modules.*', 'services.*',
         ],
@@ -136,23 +139,23 @@ class PermissionSeeder extends Seeder
         'auditor' => ['audit.*', 'reports.*'],
         'analyst' => ['analytics.overview.view', 'reports.reports.view'],
         'vendor_admin' => ['products.products.create', 'products.products.update', 'products.products.view', 'orders.orders.view', 'orders.orders.manage', 'inventory.stock.view', 'inventory.stock.manage'],
-        'moderator' => ['products.products.view', 'products.products.approve', 'categories.categories.view', 'orders.orders.view', 'cms.pages.view', 'cms.blocks.view', 'support.overview.view', 'reviews.reviews.moderate', 'learn.posts.review'],
+        'moderator' => ['products.products.view', 'products.products.approve', 'categories.categories.view', 'orders.orders.view', 'orders.orders.manage', 'cms.pages.view', 'cms.blocks.view', 'support.overview.view', 'reviews.reviews.moderate', 'learn.posts.review'],
         'support_agent' => ['support.*', 'orders.orders.view', 'users.users.view', 'messaging.overview.view'],
         'content_manager' => ['cms.*', 'cms.blocks.*', 'cms.revisions.*', 'navigation.*', 'forms.*', 'media.*', 'modules.*', 'learn.*', 'products.products.view'],
         'finance_admin' => ['finance.*', 'orders.orders.view', 'orders.orders.refund', 'analytics.overview.view', 'audit.logs.view', 'payments.payments.view'],
         'healthcare_admin' => ['healthcare.*', 'pharmacy.overview.view', 'pharmacy.prescriptions.view', 'support.overview.view', 'users.users.view'],
         'learning_admin' => ['learn.*', 'cms.pages.view', 'cms.blocks.view', 'cms.blocks.manage'],
         'customer_service' => ['support.*', 'orders.orders.view', 'users.users.view', 'messaging.overview.view'],
-        'marketplace_admin' => ['products.products.view', 'products.products.approve', 'categories.categories.view', 'categories.categories.manage', 'orders.orders.view'],
+        'marketplace_admin' => ['products.products.view', 'products.products.approve', 'categories.categories.view', 'categories.categories.manage', 'orders.orders.view', 'brands.*'],
         // Spec §65 named admin roles (collections of permissions, least privilege).
-        'category_admin' => ['categories.*', 'products.products.view'],
+        'category_admin' => ['categories.*', 'products.products.view', 'brands.*'],
         'vendor_manager' => ['vendors.*', 'products.products.view'],
         'content_admin' => ['cms.*', 'navigation.*', 'media.*'],
         'hotel_admin' => ['hotels.*', 'support.overview.view'],
         'food_admin' => ['food.*', 'orders.orders.view', 'support.overview.view'],
-        'transport_admin' => ['rides.*', 'transport.*', 'delivery.deliveries.view'],
+        'transport_admin' => ['rides.*', 'transport.*', 'delivery.deliveries.view', 'delivery.deliveries.manage'],
         'agriculture_admin' => ['agriculture.*', 'products.products.view'],
-        'building_admin' => ['building_services.*', 'real_estate.overview.view'],
+        'building_admin' => ['building_services.*', 'real_estate.overview.view', 'real_estate.overview.manage'],
         'jobs_admin' => ['jobs.*', 'job_seekers.*'],
         'pharmacy_admin' => ['pharmacy.*', 'healthcare.overview.view'],
         'kyc_reviewer' => ['kyc.*'],
@@ -163,45 +166,11 @@ class PermissionSeeder extends Seeder
 
     public function run(): void
     {
-        // Normalize the matrix (drop accidental non-string entries)
-        $matrix = array_map(
-            fn ($perms) => array_values(array_filter($perms, 'is_string')),
-            self::MATRIX,
-        );
-
-        foreach ($matrix as $role => $grants) {
-            if ($grants === ['*']) {
-                $rows = array_map(fn ($p) => [
-                    'id' => (string) \Illuminate\Support\Str::uuid(),
-                    'role' => $role,
-                    'permission' => $p,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ], self::CATALOG);
-
-                DB::table('role_permissions')->where('role', $role)->delete();
-                DB::table('role_permissions')->insert($rows);
-
-                continue;
-            }
+        foreach (array_keys(self::MATRIX) as $role) {
+            $resolved = self::defaultsFor($role);
 
             DB::table('role_permissions')->where('role', $role)->delete();
 
-            $resolved = [];
-            foreach ($grants as $grant) {
-                if (str_ends_with($grant, '.*')) {
-                    $prefix = substr($grant, 0, -2) . '.';
-                    foreach (self::CATALOG as $perm) {
-                        if (str_starts_with($perm, $prefix)) {
-                            $resolved[] = $perm;
-                        }
-                    }
-                } elseif (in_array($grant, self::CATALOG, true)) {
-                    $resolved[] = $grant;
-                }
-            }
-
-            $resolved = array_unique($resolved);
             if ($resolved !== []) {
                 DB::table('role_permissions')->insert(array_map(fn ($p) => [
                     'id' => (string) \Illuminate\Support\Str::uuid(),
@@ -209,10 +178,50 @@ class PermissionSeeder extends Seeder
                     'permission' => $p,
                     'created_at' => now(),
                     'updated_at' => now(),
-                ], array_values($resolved)));
+                ], $resolved));
             }
         }
 
         \Illuminate\Support\Facades\Cache::forget('rbac.matrix');
+    }
+
+    /**
+     * The seeded grant set for a canonical role, with 'prefix.*' expanded
+     * against CATALOG and ['*'] expanded to the full catalog. Shared by
+     * the seeder and the admin "reset to defaults" action.
+     *
+     * @return list<string>
+     */
+    public static function defaultsFor(string $role): array
+    {
+        $grants = array_values(array_filter(self::MATRIX[$role] ?? [], 'is_string'));
+
+        if ($grants === ['*']) {
+            return self::CATALOG;
+        }
+
+        $resolved = [];
+
+        foreach ($grants as $grant) {
+            if (str_ends_with($grant, '.*')) {
+                $prefix = substr($grant, 0, -2) . '.';
+
+                foreach (self::CATALOG as $perm) {
+                    if (str_starts_with($perm, $prefix)) {
+                        $resolved[] = $perm;
+                    }
+                }
+            } elseif (in_array($grant, self::CATALOG, true)) {
+                $resolved[] = $grant;
+            }
+        }
+
+        return array_values(array_unique($resolved));
+    }
+
+    /** True when the role has seeded defaults (i.e. a canonical role). */
+    public static function isDefaultRole(string $role): bool
+    {
+        return array_key_exists($role, self::MATRIX);
     }
 }

@@ -1,16 +1,41 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link, usePage } from '@inertiajs/react';
-import { api, errorMessage } from '@/lib/api';
+import { api, errorMessage, rows } from '@/lib/api';
 import { NEED_STATUS_LABELS, needStatusClasses } from '@/lib/needs';
+import { Button } from '@/components/shared/Button';
 import { useConfirm } from '@/lib/confirm';
-import { ArrowLeft, CircleDot, Navigation } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { ArrowLeft, Check, CircleDot, ClipboardList, GitCompare, Navigation, Send, X } from 'lucide-react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import type { NeedRequestDetail } from '@/types';
+
+interface ScopeChange {
+    id: string;
+    requested_by: string;
+    summary: string;
+    price_effect: number | string | null;
+    time_effect?: string | null;
+    status: 'proposed' | 'accepted' | 'rejected';
+    decided_at?: string | null;
+    created_at: string;
+    requester?: { id: string; name: string } | null;
+}
+
+const inputClass =
+    'mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white';
+
+const scopeTone = (status: ScopeChange['status']) =>
+    status === 'accepted'
+        ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+        : status === 'rejected'
+            ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+            : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300';
 
 /**
  * Spec S14 /needs/my-needs/{id}/tracking: the delivery lifecycle as a
  * timeline - every state change recorded server-side (spec S12 activity).
+ * TODO 15 fulfillment: the accepted provider narrates progress and proposes
+ * scope changes here; the requester reviews and decides (counterparty rule).
  */
 export default function MyNeedTracking({ need_id }: { need_id: string }) {
     const { auth } = usePage().props as { auth?: { user?: { id: string } } };
@@ -26,15 +51,37 @@ export default function MyNeedTracking({ need_id }: { need_id: string }) {
         status: string;
         provider?: { name?: string | null } | null;
     } | null>(null);
+    const [scopeChanges, setScopeChanges] = useState<ScopeChange[]>([]);
+    const [note, setNote] = useState('');
+    const [evidenceUrl, setEvidenceUrl] = useState('');
+    const [postingProgress, setPostingProgress] = useState(false);
+    const [summary, setSummary] = useState('');
+    const [priceEffect, setPriceEffect] = useState('');
+    const [timeEffect, setTimeEffect] = useState('');
+    const [proposing, setProposing] = useState(false);
+    const [decidingId, setDecidingId] = useState<string | null>(null);
 
-    useEffect(() => {
+    const loadNeed = useCallback(() => {
         api.get<{ data: NeedRequestDetail }>(`/api/need-requests/${need_id}`)
             .then((res) => setNeed(res.data))
             .catch((e) => setError(errorMessage(e, 'Could not load tracking')));
+    }, [need_id]);
+
+    // Owner, accepted provider and admin only — anyone else gets a 403 and
+    // simply sees the empty state.
+    const loadScopeChanges = useCallback(() => {
+        api.get<{ data: ScopeChange[] }>(`/api/need-requests/${need_id}/scope-changes`)
+            .then((res) => setScopeChanges(rows(res)))
+            .catch(() => setScopeChanges([]));
+    }, [need_id]);
+
+    useEffect(() => {
+        loadNeed();
+        loadScopeChanges();
         api.get<{ data: typeof booking }>(`/api/need-requests/${need_id}/bookings`)
             .then((res) => setBooking(res.data ?? null))
             .catch(() => setBooking(null));
-    }, [need_id]);
+    }, [need_id, loadNeed, loadScopeChanges]);
 
     // TODO 15 owner acceptance of delivered work (releases the payout).
     const acceptWork = async () => {
@@ -52,7 +99,108 @@ export default function MyNeedTracking({ need_id }: { need_id: string }) {
         }
     };
 
-    const isOwner = !!need && auth?.user?.id === need.user_id;
+    const viewerId = auth?.user?.id;
+    const isOwner = !!need && viewerId === need.user_id;
+    // `show` strips competing offers for non-owners, so the accepted provider
+    // only ever sees their own row - matched by id + accepted status.
+    const isAcceptedProvider =
+        !!need &&
+        !!viewerId &&
+        viewerId !== need.user_id &&
+        (need.offers ?? []).some((o) => o.provider_id === viewerId && o.status === 'accepted');
+    const canPostProgress = !!need && isAcceptedProvider && need.status === 'in_progress';
+    const canProposeScope =
+        !!need && isAcceptedProvider && ['accepted', 'paid', 'in_progress', 'fulfilled'].includes(need.status);
+
+    const postProgress = async (e: FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        const trimmed = note.trim();
+        if (!trimmed) return;
+        setPostingProgress(true);
+        try {
+            const payload: { note: string; evidence_url?: string } = { note: trimmed };
+            const url = evidenceUrl.trim();
+            if (url) payload.evidence_url = url;
+            await api.post(`/api/need-requests/${need_id}/progress`, payload);
+            toast.success('Progress update posted.');
+            setNote('');
+            setEvidenceUrl('');
+            loadNeed();
+        } catch (err) {
+            toast.error(errorMessage(err, 'Could not post the progress update'));
+        } finally {
+            setPostingProgress(false);
+        }
+    };
+
+    const proposeChange = async (e: FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        const trimmedSummary = summary.trim();
+        if (!trimmedSummary) {
+            toast.error('Describe what is changing.');
+            return;
+        }
+        const payload: { summary: string; price_effect?: number; time_effect?: string } = { summary: trimmedSummary };
+        const price = priceEffect.trim();
+        if (price !== '') {
+            const value = Number(price);
+            if (!Number.isFinite(value) || value < 0) {
+                toast.error('Enter a valid price effect.');
+                return;
+            }
+            payload.price_effect = value;
+        }
+        const time = timeEffect.trim();
+        if (time !== '') payload.time_effect = time;
+
+        setProposing(true);
+        try {
+            await api.post(`/api/need-requests/${need_id}/scope-changes`, payload);
+            toast.success('Scope change proposed.');
+            setSummary('');
+            setPriceEffect('');
+            setTimeEffect('');
+            loadScopeChanges();
+            loadNeed();
+        } catch (err) {
+            toast.error(errorMessage(err, 'Could not propose the scope change'));
+        } finally {
+            setProposing(false);
+        }
+    };
+
+    // The server refuses any decision from the proposer - mirror that rule
+    // client-side so the buttons only show for the counterparty.
+    const canDecide = (change: ScopeChange) =>
+        change.status === 'proposed' &&
+        !!viewerId &&
+        change.requested_by !== viewerId &&
+        (isOwner || isAcceptedProvider);
+
+    const decide = async (change: ScopeChange, decision: 'accept' | 'reject') => {
+        const ok = await ask({
+            title: decision === 'accept' ? 'Approve this scope change?' : 'Reject this scope change?',
+            description:
+                decision === 'accept'
+                    ? change.price_effect != null
+                        ? `The agreed price moves to ${change.price_effect} and the new terms take effect.`
+                        : 'The new terms take effect immediately.'
+                    : 'The proposal is declined and the original terms stay in place.',
+            danger: decision === 'reject',
+        });
+        if (!ok) return;
+        setDecidingId(change.id);
+        try {
+            const res = await api.post<{ message?: string }>(`/api/need-scope-changes/${change.id}/${decision}`);
+            toast.success(res.message ?? 'Decision saved.');
+            loadScopeChanges();
+            loadNeed();
+        } catch (err) {
+            toast.error(errorMessage(err, 'Could not save your decision'));
+        } finally {
+            setDecidingId(null);
+        }
+    };
 
     const order = [
         'draft', 'pending', 'published', 'offered', 'negotiating', 'accepted',
@@ -133,6 +281,213 @@ export default function MyNeedTracking({ need_id }: { need_id: string }) {
                     )}
                 </div>
 
+                {need && isAcceptedProvider && (
+                    <section className="rounded-lg bg-white p-5 shadow dark:bg-gray-800" aria-label="Fulfillment">
+                        <h2 className="text-sm font-bold text-gray-900 dark:text-white">Your work on this need</h2>
+
+                        <div className="mt-4">
+                            <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-200">
+                                <ClipboardList className="h-4 w-4 text-indigo-500" /> Post progress update
+                            </h3>
+                            {canPostProgress ? (
+                                <form onSubmit={postProgress} className="mt-3 space-y-3">
+                                    <div>
+                                        <label htmlFor="progress-note" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            Progress note *
+                                        </label>
+                                        <textarea
+                                            id="progress-note"
+                                            value={note}
+                                            onChange={(e) => setNote(e.target.value)}
+                                            rows={3}
+                                            maxLength={2000}
+                                            placeholder="What has been done since the last update?"
+                                            className={inputClass}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="progress-evidence" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            Evidence link (optional)
+                                        </label>
+                                        <input
+                                            id="progress-evidence"
+                                            type="url"
+                                            value={evidenceUrl}
+                                            onChange={(e) => setEvidenceUrl(e.target.value)}
+                                            maxLength={500}
+                                            placeholder="https://…"
+                                            className={inputClass}
+                                        />
+                                    </div>
+                                    <Button
+                                        type="submit"
+                                        size="sm"
+                                        loading={postingProgress}
+                                        disabled={!note.trim()}
+                                        data-testid="progress-submit"
+                                        iconLeft={<Send className="h-4 w-4" />}
+                                    >
+                                        Post update
+                                    </Button>
+                                </form>
+                            ) : (
+                                <p className="mt-2 rounded-lg bg-gray-50 p-3 text-sm text-gray-500 dark:bg-gray-900/40 dark:text-gray-400">
+                                    Progress updates open once the work is In progress (currently {NEED_STATUS_LABELS[need.status]}).
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="mt-6 border-t border-gray-100 pt-5 dark:border-gray-700">
+                            <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-200">
+                                <GitCompare className="h-4 w-4 text-indigo-500" /> Propose scope change
+                            </h3>
+                            {canProposeScope ? (
+                                <form onSubmit={proposeChange} className="mt-3 space-y-3">
+                                    <div>
+                                        <label htmlFor="scope-summary" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            What is changing? *
+                                        </label>
+                                        <textarea
+                                            id="scope-summary"
+                                            value={summary}
+                                            onChange={(e) => setSummary(e.target.value)}
+                                            rows={3}
+                                            maxLength={2000}
+                                            placeholder="e.g. Balcony deep clean added at the requester's request."
+                                            className={inputClass}
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                        <div>
+                                            <label htmlFor="scope-price" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                Price effect ({need.currency} · optional)
+                                            </label>
+                                            <input
+                                                id="scope-price"
+                                                type="number"
+                                                min={0}
+                                                step="0.01"
+                                                value={priceEffect}
+                                                onChange={(e) => setPriceEffect(e.target.value)}
+                                                placeholder="e.g. 40"
+                                                className={inputClass}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label htmlFor="scope-time" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                Time effect (optional)
+                                            </label>
+                                            <input
+                                                id="scope-time"
+                                                type="text"
+                                                value={timeEffect}
+                                                onChange={(e) => setTimeEffect(e.target.value)}
+                                                maxLength={255}
+                                                placeholder="e.g. +1 day"
+                                                className={inputClass}
+                                            />
+                                        </div>
+                                    </div>
+                                    <p className="text-xs text-gray-500">
+                                        Nothing changes until the other party approves — the original terms stay in place until then.
+                                    </p>
+                                    <Button
+                                        type="submit"
+                                        size="sm"
+                                        loading={proposing}
+                                        disabled={!summary.trim()}
+                                        data-testid="scope-propose-submit"
+                                        iconLeft={<GitCompare className="h-4 w-4" />}
+                                    >
+                                        Propose change
+                                    </Button>
+                                </form>
+                            ) : (
+                                <p className="mt-2 rounded-lg bg-gray-50 p-3 text-sm text-gray-500 dark:bg-gray-900/40 dark:text-gray-400">
+                                    Scope changes apply while the work is active (currently {NEED_STATUS_LABELS[need.status]}).
+                                </p>
+                            )}
+                        </div>
+                    </section>
+                )}
+
+                {need && (isOwner || isAcceptedProvider) && (
+                    <section className="rounded-lg bg-white p-5 shadow dark:bg-gray-800" aria-label="Scope changes">
+                        <div className="flex items-center justify-between gap-2">
+                            <h2 className="flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white">
+                                <GitCompare className="h-4 w-4 text-indigo-500" /> Scope changes
+                            </h2>
+                            {scopeChanges.length > 0 && <span className="text-xs text-gray-400">{scopeChanges.length} proposed</span>}
+                        </div>
+
+                        {scopeChanges.length === 0 && (
+                            <p className="mt-3 text-sm text-gray-500">No scope changes proposed yet.</p>
+                        )}
+
+                        <ul className="mt-4 space-y-3">
+                            {scopeChanges.map((change) => (
+                                <li key={change.id} className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+                                    <div className="flex flex-wrap items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                                                {change.requester?.name ? `${change.requester.name} · ` : ''}
+                                                <time dateTime={change.created_at}>{new Date(change.created_at).toLocaleString()}</time>
+                                            </p>
+                                            <p className="mt-1 whitespace-pre-line text-sm text-gray-700 dark:text-gray-200">{change.summary}</p>
+                                            <p className="mt-2 flex flex-wrap gap-2 text-xs text-gray-500">
+                                                {change.price_effect != null && (
+                                                    <span className="rounded bg-gray-100 px-1.5 py-0.5 dark:bg-gray-700">
+                                                        Price {need.currency} {change.price_effect}
+                                                    </span>
+                                                )}
+                                                {change.time_effect && (
+                                                    <span className="rounded bg-gray-100 px-1.5 py-0.5 dark:bg-gray-700">Time {change.time_effect}</span>
+                                                )}
+                                            </p>
+                                            <span className={`mt-2 inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${scopeTone(change.status)}`}>
+                                                {change.status === 'proposed' ? 'Awaiting decision' : change.status}
+                                            </span>
+                                            {change.status !== 'proposed' && change.decided_at && (
+                                                <p className="mt-1 text-xs text-gray-400">
+                                                    Decided <time dateTime={change.decided_at}>{new Date(change.decided_at).toLocaleString()}</time>
+                                                </p>
+                                            )}
+                                        </div>
+                                        {canDecide(change) && (
+                                            <div className="flex gap-2">
+                                                <Button
+                                                    type="button"
+                                                    size="sm"
+                                                    variant="success"
+                                                    loading={decidingId === change.id}
+                                                    disabled={decidingId !== null}
+                                                    data-testid={`scope-accept-${change.id}`}
+                                                    onClick={() => decide(change, 'accept')}
+                                                    iconLeft={<Check className="h-4 w-4" />}
+                                                >
+                                                    Approve
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    size="sm"
+                                                    variant="outline"
+                                                    loading={decidingId === change.id}
+                                                    disabled={decidingId !== null}
+                                                    data-testid={`scope-reject-${change.id}`}
+                                                    onClick={() => decide(change, 'reject')}
+                                                    iconLeft={<X className="h-4 w-4" />}
+                                                >
+                                                    Reject
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    </section>
+                )}
+
                 {need && (
                     <section className="rounded-lg bg-white p-5 shadow dark:bg-gray-800">
                         <h2 className="text-sm font-bold text-gray-900 dark:text-white">Activity history</h2>
@@ -149,6 +504,11 @@ export default function MyNeedTracking({ need_id }: { need_id: string }) {
                                     <div className="min-w-0">
                                         <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
                                             {ev.action}
+                                            {ev.action === 'progress' && (
+                                                <span className="ml-1.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                                                    progress note
+                                                </span>
+                                            )}
                                             {ev.from_status && (
                                                 <span className="text-gray-400"> · {ev.from_status} → {ev.to_status}</span>
                                             )}
@@ -157,7 +517,17 @@ export default function MyNeedTracking({ need_id }: { need_id: string }) {
                                             {ev.actor?.name ? `${ev.actor.name} · ` : ''}
                                             <time dateTime={ev.created_at}>{new Date(ev.created_at).toLocaleString()}</time>
                                         </p>
-                                        {ev.note && <p className="mt-1 text-xs text-gray-500">{ev.note}</p>}
+                                        {ev.note && (
+                                            <p
+                                                className={`mt-1 whitespace-pre-line text-xs ${
+                                                    ev.action === 'progress'
+                                                        ? 'rounded-md bg-amber-50 p-2 text-amber-900 dark:bg-amber-900/20 dark:text-amber-100'
+                                                        : 'text-gray-500'
+                                                }`}
+                                            >
+                                                {ev.note}
+                                            </p>
+                                        )}
                                     </div>
                                 </li>
                             ))}

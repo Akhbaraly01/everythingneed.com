@@ -1,5 +1,15 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+@php
+    // Multilingual Phase 0: server-resolved locale (SetLocale/ApplyUserLocale)
+    // plus the registry map used by the pre-paint sync script below.
+    $__locale = app()->getLocale();
+    $__localeDirs = [];
+    foreach (app(\Core\Services\Contracts\LanguageRegistryInterface::class)->all() as $__code => $__meta) {
+        $__localeDirs[$__code] = ($__meta['dir'] ?? 'ltr') === 'rtl' ? 'rtl' : 'ltr';
+    }
+    $__dir = $__localeDirs[$__locale] ?? 'ltr';
+@endphp
+<html lang="{{ str_replace('_', '-', $__locale) }}" dir="{{ $__dir }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -16,7 +26,7 @@
     {{-- No-flash theme + quality tier. Runs before first paint so dark users
          never see the light card (defect D14 / X1). Keep in sync with
          components/ThemeProvider.tsx and lib/quality.ts. --}}
-    <script>
+    <script nonce="{{ Vite::cspNonce() }}">
         (function () {
             try {
                 var root = document.documentElement;
@@ -51,6 +61,40 @@
                 root.setAttribute('data-tier', tier);
             } catch (e) {
                 document.documentElement.setAttribute('data-tier', 'full');
+            }
+
+            try {
+                // Multilingual Phase 0: locale sync. The server already
+                // rendered this document with the resolved locale (cookie >
+                // account > Accept-Language > default); this restores a
+                // guest's local choice that predates the cookie and mirrors
+                // it into the `locale` cookie so the next request agrees.
+                var LOCALE_DIRS = @json($__localeDirs);
+                var LOCALE_KEY = 'everythingneed-language';
+                var has = function (value) {
+                    return typeof value === 'string'
+                        && Object.prototype.hasOwnProperty.call(LOCALE_DIRS, value);
+                };
+                var stored = null;
+                try { stored = localStorage.getItem(LOCALE_KEY); } catch (err) {}
+                if (!has(stored)) { stored = null; }
+                var cookie = null;
+                try {
+                    var match = document.cookie.match(/(?:^|;\s*)locale=([^;]+)/);
+                    cookie = match ? decodeURIComponent(match[1]) : null;
+                } catch (err) {}
+                if (!has(cookie)) { cookie = null; }
+                if (!cookie && stored) {
+                    try {
+                        document.cookie = 'locale=' + encodeURIComponent(stored)
+                            + ';path=/;max-age=31536000;samesite=lax';
+                    } catch (err) {}
+                }
+                var chosen = cookie || stored || @json($__locale);
+                root.setAttribute('lang', chosen);
+                root.setAttribute('dir', LOCALE_DIRS[chosen] || @json($__dir));
+            } catch (e) {
+                // Locale attributes already set server-side; non-fatal.
             }
         })();
     </script>
@@ -113,10 +157,10 @@
     @endif
 
     {{-- Structured data: sitewide WebSite + page-specific blocks (spec 88) --}}
-    <script type="application/ld+json">@json($websiteJsonLd)</script>
+    <script type="application/ld+json" nonce="{{ Vite::cspNonce() }}">@json($websiteJsonLd)</script>
     @foreach ($seoJsonLd as $jsonLdBlock)
         @if (is_array($jsonLdBlock))
-            <script type="application/ld+json">@json($jsonLdBlock)</script>
+            <script type="application/ld+json" nonce="{{ Vite::cspNonce() }}">@json($jsonLdBlock)</script>
         @endif
     @endforeach
 

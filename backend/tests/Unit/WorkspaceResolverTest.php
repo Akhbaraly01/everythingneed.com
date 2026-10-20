@@ -5,10 +5,18 @@ namespace Tests\Unit;
 use App\Models\User;
 use App\Models\UserRole;
 use Core\Services\WorkspaceResolver;
+use Database\Seeders\PermissionSeeder;
 use Tests\TestCase;
 
 class WorkspaceResolverTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed(PermissionSeeder::class);
+        \Illuminate\Support\Facades\Cache::forget('rbac.matrix');
+    }
+
     private function userWithRoles(string ...$roles): User
     {
         $user = User::factory()->create();
@@ -87,10 +95,11 @@ class WorkspaceResolverTest extends TestCase
         $this->assertSame('/admin/dashboard', $resolver->landingPath($adminWorker));
         $this->assertSame(['marketplace', 'admin', 'provider'], $resolver->availableWorkspaces($adminWorker));
 
-        // vendor_admin outranks worker.
+        // vendor_admin outranks worker and also holds scoped admin-read
+        // permissions (orders/inventory), so the admin workspace is available.
         $vendorWorker = $this->userWithRoles('worker', 'vendor_admin');
         $this->assertSame('/vendor', $resolver->landingPath($vendorWorker));
-        $this->assertSame(['marketplace', 'vendor', 'provider'], $resolver->availableWorkspaces($vendorWorker));
+        $this->assertSame(['marketplace', 'admin', 'vendor', 'provider'], $resolver->availableWorkspaces($vendorWorker));
     }
 
     public function test_admin_hrefs_are_scoped_per_role(): void
@@ -131,14 +140,53 @@ class WorkspaceResolverTest extends TestCase
         $atMarketplace = $resolver->workspaceFor($superAdmin, '/dashboard');
         $this->assertSame('marketplace', $atMarketplace['current']);
 
-        // A vendor requesting an admin path is never reported as "admin".
+        // A vendor_admin holder of scoped admin-read permissions enters the
+        // admin workspace, but only sees the hrefs its permissions open
+        // (never users/RBAC).
         $vendor = $this->userWithRoles('vendor_admin');
         $vendorAtAdmin = $resolver->workspaceFor($vendor, '/admin/users');
-        $this->assertSame('marketplace', $vendorAtAdmin['current']);
-        $this->assertSame([], $vendorAtAdmin['adminHrefs']);
+        $this->assertSame('admin', $vendorAtAdmin['current']);
+        $this->assertContains('/admin/orders', $vendorAtAdmin['adminHrefs']);
+        $this->assertNotContains('/admin/users', $vendorAtAdmin['adminHrefs']);
+        $this->assertNotContains('/admin/rbac', $vendorAtAdmin['adminHrefs']);
 
         // Non-admin roles expose no admin hrefs at all.
         $plain = $this->userWithRoles('user');
         $this->assertSame([], $resolver->workspaceFor($plain, '/dashboard')['adminHrefs']);
+    }
+
+    public function test_permission_grants_open_matching_admin_pages(): void
+    {
+        $resolver = new WorkspaceResolver();
+
+        // A plain user granted learn.overview.view can open the learning
+        // console page even though no role list names them.
+        $powered = $this->userWithRoles('user');
+        \Illuminate\Support\Facades\DB::table('user_permissions')->insert([
+            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'user_id' => $powered->id,
+            'permission' => 'learn.overview.view',
+            'state' => 'granted',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->assertContains('admin', $resolver->availableWorkspaces($powered));
+        $this->assertContains('/admin/learning/courses', $resolver->adminHrefs($powered));
+        $this->assertNotContains('/admin/users', $resolver->adminHrefs($powered));
+
+        // A permission with no permission-gated /admin page opens nothing.
+        $unrelated = $this->userWithRoles('user');
+        \Illuminate\Support\Facades\DB::table('user_permissions')->insert([
+            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'user_id' => $unrelated->id,
+            'permission' => 'products.products.view',
+            'state' => 'granted',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->assertSame(['marketplace'], $resolver->availableWorkspaces($unrelated));
+        $this->assertSame([], $resolver->adminHrefs($unrelated));
     }
 }

@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { formatPrice } from '@/lib/currency';
 import ConfirmDialog from '@/components/shared/Ui';
 import PaySheet from '@/components/shared/PaySheet';
-import { CalendarCheck, ArrowLeft, X, CreditCard, RefreshCcw } from 'lucide-react';
+import { CalendarCheck, ArrowLeft, X, CreditCard, RefreshCcw, LogIn, LogOut } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface Reservation {
@@ -55,6 +55,16 @@ export default function ReservationsPage() {
             fetchReservations();
         } catch (e) {
             toast.error(errorMessage(e, 'Failed to cancel reservation'));
+        }
+    };
+
+    const stayAction = async (id: string, action: 'check-in' | 'check-out') => {
+        try {
+            await api.post(`/api/hotels/reservations/${id}/${action}`);
+            toast.success(action === 'check-in' ? 'Checked in. Enjoy your stay!' : 'Checked out. Safe travels!');
+            fetchReservations();
+        } catch (e) {
+            toast.error(errorMessage(e, action === 'check-in' ? 'Failed to check in' : 'Failed to check out'));
         }
     };
 
@@ -118,6 +128,28 @@ export default function ReservationsPage() {
                                             >
                                                 <CreditCard className="h-4 w-4" /> Pay now
                                             </button>
+                                        )}
+                                        {r.status === 'confirmed' && (
+                                            <button
+                                                onClick={() => stayAction(r.id, 'check-in')}
+                                                className="mt-2 inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-500"
+                                            >
+                                                <LogIn className="h-4 w-4" /> Check in
+                                            </button>
+                                        )}
+                                        {r.status === 'checked_in' && (
+                                            <button
+                                                onClick={() => stayAction(r.id, 'check-out')}
+                                                className="mt-2 inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500"
+                                            >
+                                                <LogOut className="h-4 w-4" /> Check out
+                                            </button>
+                                        )}
+                                        {r.checked_in_at && (
+                                            <p className="mt-1 text-xs text-gray-500">Checked in: {new Date(r.checked_in_at).toLocaleString()}</p>
+                                        )}
+                                        {r.checked_out_at && (
+                                            <p className="mt-1 text-xs text-gray-500">Checked out: {new Date(r.checked_out_at).toLocaleString()}</p>
                                         )}
                                     </div>
                                     {['pending', 'confirmed'].includes(r.status) && (

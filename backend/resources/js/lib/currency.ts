@@ -11,6 +11,8 @@
  * documented instead of pretending to be live.
  */
 
+import { getCurrentLocale, intlFor } from '@/lib/i18n-config';
+
 export const DISPLAY_CURRENCIES = [
     'USD',
     'EUR',
@@ -86,12 +88,13 @@ export function convertFromUsd(amountUsd: number, currency: DisplayCurrency): nu
 /**
  * Central price formatter (spec phase 10 `formatPrice`).
  * `amountUsd` is always the stored USD amount; rendering converts + formats
- * per the active display currency with correct symbol and decimals.
+ * per the active display currency with correct symbol and decimals,
+ * localized to the active chrome locale (multilingual Phase 0).
  */
 export function formatPrice(amountUsd: number, currency?: unknown): string {
     const code = activeCurrency(currency);
     const converted = convertFromUsd(Number(amountUsd) || 0, code);
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat(intlFor(getCurrentLocale()), {
         style: 'currency',
         currency: code,
     }).format(converted);

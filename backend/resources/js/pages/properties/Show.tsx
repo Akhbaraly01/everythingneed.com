@@ -4,6 +4,7 @@ import type { Property } from '@/types';
 import { formatPrice } from '@/lib/currency';
 import {MapPin, Bed, Bath, Maximize, Building2, Heart} from 'lucide-react';
 import Image from '@/components/shared/Image';
+import ContextualReviews from '@/components/shared/ContextualReviews';
 import { useWishlist } from '@/hooks/useWishlist';
 import { errorMessage } from '@/lib/api';
 import { toast } from 'sonner';
@@ -146,6 +147,8 @@ export default function PropertyShow({ property }: PropertyShowProps) {
                         </div>
                     </div>
                 )}
+
+                <ContextualReviews reviewableType="property" reviewableId={property.id} title="Property reviews" />
             </div>
         </AppLayout>
     );

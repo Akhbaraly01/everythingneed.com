@@ -99,10 +99,10 @@ export default function DoctorBooking({ doctor, availability }: DoctorBookingPro
                             endpoint={`/api/appointments/${booked.id}/pay`}
                             amount={doctor.consultation_fee ?? null}
                             title="Pay consultation fee"
-                            onPaid={() => router.visit('/healthcare/appointments')}
+                            onPaid={() => router.visit(`/healthcare/appointments/${booked.id}`)}
                         />
                         <Button
-                            onClick={() => router.visit('/healthcare/appointments')}
+                            onClick={() => router.visit(`/healthcare/appointments/${booked.id}`)}
                             variant="outline"
                             size="lg"
                             fullWidth

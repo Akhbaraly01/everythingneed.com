@@ -87,6 +87,28 @@ class WalletController extends Controller
         ], 201);
     }
 
+    /**
+     * Resolve a transfer recipient by email. Returns only the display
+     * fields the transfer sheet needs — never a directory.
+     */
+    public function recipientLookup(Request $request): JsonResponse
+    {
+        $request->validate(['email' => 'required|email|max:255']);
+
+        $user = \App\Models\User::where('email', strtolower($request->string('email')))
+            ->first(['id', 'name', 'email']);
+
+        if (!$user) {
+            return response()->json(['message' => 'No account found for that email'], 404);
+        }
+
+        if ((string) $user->id === (string) $request->user()->id) {
+            return response()->json(['message' => 'You cannot transfer to your own wallet'], 422);
+        }
+
+        return response()->json(['data' => $user]);
+    }
+
     public function deposit(DepositRequest $request): JsonResponse
     {
         $validated = $request->validated();

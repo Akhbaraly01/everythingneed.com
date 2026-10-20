@@ -91,7 +91,7 @@ class AdminConsoleApiParityTest extends TestCase
             'hotel_admin' => ['/api/admin/hotels'],
             'food_admin' => ['/api/admin/restaurants'],
             'transport_admin' => ['/api/admin/transport/rides', '/api/admin/transport/flights'],
-            'jobs_admin' => ['/api/admin/jobs'],
+            'jobs_admin' => ['/api/admin/jobs', '/api/admin/job-seekers', '/api/admin/work-requests'],
             'pharmacy_admin' => ['/api/admin/pharmacy/orders', '/api/medicines'],
             'building_admin' => ['/api/admin/building/bookings', '/api/admin/properties'],
             // Dashboard-only consoles (server-rendered cards, no page API).

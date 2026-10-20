@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
 import { useLanguage } from '@/lib/use-language';
-import { type Language, LANGUAGES, LANGUAGE_NAMES } from '@/lib/i18n-dict';
 import { useTheme } from '@/components/ThemeProvider';
 import { persistCurrency, isDisplayCurrency } from '@/lib/currency';
 import TwoFactorCard from '@/components/account/TwoFactorCard';
@@ -24,7 +23,7 @@ export default function Settings({ user, settings }: SettingsProps) {
     const [activeTab, setActiveTab] = useState<'general' | 'notifications' | 'security' | 'appearance'>('general');
     const [processing, setProcessing] = useState(false);
     const [saved, setSaved] = useState(false);
-    const { setLanguage } = useLanguage();
+    const { setLanguage, availableLocales, t } = useLanguage();
     const { theme, setTheme } = useTheme();
     const { data, setData } = useForm({
         name: user.name,
@@ -41,6 +40,9 @@ export default function Settings({ user, settings }: SettingsProps) {
         await api.put(`/api/users/${user.id}/settings`, { settings: entries });
     };
 
+    const tabLabel = (tab: 'general' | 'notifications' | 'security' | 'appearance'): string =>
+        t(`settings.tab${tab.charAt(0).toUpperCase()}${tab.slice(1)}`, { defaultValue: tab });
+
     const handleSaveGeneral = async () => {
         setProcessing(true);
         setSaved(false);
@@ -52,13 +54,13 @@ export default function Settings({ user, settings }: SettingsProps) {
             ]);
             // Apply immediately: provider + guest fallback stay in sync
             // with what was just persisted server-side.
-            setLanguage(data.language as Language);
+            setLanguage(data.language);
             if (isDisplayCurrency(data.currency)) {
                 persistCurrency(data.currency);
             }
             setSaved(true);
         } catch {
-            toast.error('Failed to save settings');
+            toast.error(t('settings.saveFailed', { defaultValue: 'Failed to save settings' }));
         } finally {
             setProcessing(false);
         }
@@ -75,15 +77,15 @@ export default function Settings({ user, settings }: SettingsProps) {
             ]);
             setSaved(true);
         } catch {
-            toast.error('Failed to save preferences');
+            toast.error(t('settings.prefsFailed', { defaultValue: 'Failed to save preferences' }));
         } finally {
             setProcessing(false);
         }
     };
 
     return (
-        <AppLayout title="Settings">
-            <Head title="Settings" />
+        <AppLayout title={t('nav.settings', { defaultValue: 'Settings' })}>
+            <Head title={t('nav.settings', { defaultValue: 'Settings' })} />
 
             <div className="max-w-4xl">
                 <div className="rounded-lg bg-white shadow dark:bg-gray-800">
@@ -93,13 +95,13 @@ export default function Settings({ user, settings }: SettingsProps) {
                                 <button
                                     key={tab}
                                     onClick={() => setActiveTab(tab)}
-                                    className={`border-b-2 py-4 text-sm font-medium capitalize ${
+                                    className={`border-b-2 py-4 text-sm font-medium ${
                                         activeTab === tab
                                             ? 'border-indigo-500 text-indigo-600'
                                             : 'border-transparent text-gray-500 hover:text-gray-700'
                                     }`}
                                 >
-                                    {tab}
+                                    {tabLabel(tab)}
                                 </button>
                             ))}
                         </nav>
@@ -109,12 +111,12 @@ export default function Settings({ user, settings }: SettingsProps) {
                         {activeTab === 'general' && (
                             <div className="space-y-6">
                                 <div>
-                                    <h3 className="text-lg font-medium text-gray-900 dark:text-white">Profile</h3>
-                                    <p className="mt-1 text-sm text-gray-500">Update your profile information.</p>
+                                    <h3 className="text-lg font-medium text-gray-900 dark:text-white">{t('settings.profile', { defaultValue: 'Profile' })}</h3>
+                                    <p className="mt-1 text-sm text-gray-500">{t('settings.profileText', { defaultValue: 'Update your profile information.' })}</p>
                                 </div>
                                 <div className="space-y-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('settings.name', { defaultValue: 'Name' })}</label>
                                         <input
                                             type="text"
                                             value={data.name}
@@ -123,7 +125,7 @@ export default function Settings({ user, settings }: SettingsProps) {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('settings.email', { defaultValue: 'Email' })}</label>
                                         <input
                                             type="email"
                                             value={data.email}
@@ -132,7 +134,7 @@ export default function Settings({ user, settings }: SettingsProps) {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Phone</label>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('settings.phone', { defaultValue: 'Phone' })}</label>
                                         <input
                                             type="text"
                                             value={data.phone}
@@ -142,20 +144,20 @@ export default function Settings({ user, settings }: SettingsProps) {
                                     </div>
                                     <div className="flex items-center gap-4">
                                         <div className="flex-1">
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Language</label>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('settings.language', { defaultValue: 'Language' })}</label>
                                             <select
                                                 value={data.language}
                                                 onChange={(e) => setData('language', e.target.value)}
                                                 className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                             >
                                                 <option value="en">English</option>
-                                                {LANGUAGES.filter((code) => code !== 'en').map((code) => (
-                                                    <option key={code} value={code}>{LANGUAGE_NAMES[code]}</option>
+                                                {availableLocales.filter((meta) => meta.code !== 'en').map((meta) => (
+                                                    <option key={meta.code} value={meta.code}>{meta.native}</option>
                                                 ))}
                                             </select>
                                         </div>
                                         <div className="flex-1">
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Currency</label>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('settings.currency', { defaultValue: 'Currency' })}</label>
                                             <select
                                                 value={data.currency}
                                                 onChange={(e) => setData('currency', e.target.value)}
@@ -179,7 +181,7 @@ export default function Settings({ user, settings }: SettingsProps) {
                                     disabled={processing}
                                     className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
                                 >
-                                    {processing ? 'Saving...' : 'Save Changes'}{saved && activeTab === 'general' ? ' ?' : ''}
+                                    {processing ? t('settings.saving', { defaultValue: 'Saving...' }) : t('settings.saveChanges', { defaultValue: 'Save Changes' })}{saved && activeTab === 'general' ? ' ?' : ''}
                                 </button>
                             </div>
                         )}
@@ -187,14 +189,14 @@ export default function Settings({ user, settings }: SettingsProps) {
                         {activeTab === 'notifications' && (
                             <div className="space-y-6">
                                 <div>
-                                    <h3 className="text-lg font-medium text-gray-900 dark:text-white">Notification Preferences</h3>
-                                    <p className="mt-1 text-sm text-gray-500">Choose what notifications you receive.</p>
+                                    <h3 className="text-lg font-medium text-gray-900 dark:text-white">{t('settings.notificationPreferences', { defaultValue: 'Notification Preferences' })}</h3>
+                                    <p className="mt-1 text-sm text-gray-500">{t('settings.notificationText', { defaultValue: 'Choose what notifications you receive.' })}</p>
                                 </div>
                                 <div className="space-y-4">
                                     {[
-                                        { key: 'email_notifications' as const, name: 'Email notifications', description: 'Receive notifications via email' },
-                                        { key: 'push_notifications' as const, name: 'Push notifications', description: 'Receive push notifications in browser' },
-                                        { key: 'marketing_emails' as const, name: 'Marketing emails', description: 'Receive deals and promotional offers' },
+                                        { key: 'email_notifications' as const, name: t('settings.emailNotifications', { defaultValue: 'Email notifications' }), description: t('settings.emailNotificationsText', { defaultValue: 'Receive notifications via email' }) },
+                                        { key: 'push_notifications' as const, name: t('settings.pushNotifications', { defaultValue: 'Push notifications' }), description: t('settings.pushNotificationsText', { defaultValue: 'Receive push notifications in browser' }) },
+                                        { key: 'marketing_emails' as const, name: t('settings.marketingEmails', { defaultValue: 'Marketing emails' }), description: t('settings.marketingEmailsText', { defaultValue: 'Receive deals and promotional offers' }) },
                                     ].map((item) => (
                                         <div key={item.key} className="flex items-center justify-between">
                                             <div>
@@ -218,7 +220,7 @@ export default function Settings({ user, settings }: SettingsProps) {
                                     disabled={processing}
                                     className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
                                 >
-                                    {processing ? 'Saving...' : 'Save Preferences'}{saved && activeTab === 'notifications' ? ' ?' : ''}
+                                    {processing ? t('settings.saving', { defaultValue: 'Saving...' }) : t('settings.savePreferences', { defaultValue: 'Save Preferences' })}{saved && activeTab === 'notifications' ? ' ?' : ''}
                                 </button>
                             </div>
                         )}
@@ -226,21 +228,21 @@ export default function Settings({ user, settings }: SettingsProps) {
                         {activeTab === 'security' && (
                             <div className="space-y-6">
                                 <div>
-                                    <h3 className="text-lg font-medium text-gray-900 dark:text-white">Security Settings</h3>
-                                    <p className="mt-1 text-sm text-gray-500">Manage your account security.</p>
+                                    <h3 className="text-lg font-medium text-gray-900 dark:text-white">{t('settings.securitySettings', { defaultValue: 'Security Settings' })}</h3>
+                                    <p className="mt-1 text-sm text-gray-500">{t('settings.securitySettingsText', { defaultValue: 'Manage your account security.' })}</p>
                                 </div>
                                 <div className="space-y-4">
                                     <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <p className="text-sm font-medium text-gray-900 dark:text-white">Change Password</p>
-                                                <p className="text-sm text-gray-500">Update your password regularly.</p>
+                                                <p className="text-sm font-medium text-gray-900 dark:text-white">{t('settings.changePassword', { defaultValue: 'Change Password' })}</p>
+                                                <p className="text-sm text-gray-500">{t('settings.changePasswordText', { defaultValue: 'Update your password regularly.' })}</p>
                                             </div>
                                             <a
                                                 href="/forgot-password"
                                                 className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50 dark:border-gray-600"
                                             >
-                                                Change
+                                                {t('settings.change', { defaultValue: 'Change' })}
                                             </a>
                                         </div>
                                     </div>
@@ -252,14 +254,14 @@ export default function Settings({ user, settings }: SettingsProps) {
                         {activeTab === 'appearance' && (
                             <div className="space-y-6">
                                 <div>
-                                    <h3 className="text-lg font-medium text-gray-900 dark:text-white">Appearance</h3>
-                                    <p className="mt-1 text-sm text-gray-500">Choose how EverythingNeed looks on this device.</p>
+                                    <h3 className="text-lg font-medium text-gray-900 dark:text-white">{t('settings.appearance', { defaultValue: 'Appearance' })}</h3>
+                                    <p className="mt-1 text-sm text-gray-500">{t('settings.appearanceText', { defaultValue: 'Choose how EverythingNeed looks on this device.' })}</p>
                                 </div>
                                 <div className="space-y-2">
                                     {([
-                                        { value: 'light', name: 'Light', description: 'Bright theme' },
-                                        { value: 'dark', name: 'Dark', description: 'Dimmed Binance-style theme' },
-                                        { value: 'system', name: 'System', description: 'Follow your device setting' },
+                                        { value: 'light', name: t('settings.light', { defaultValue: 'Light' }), description: t('settings.lightText', { defaultValue: 'Bright theme' }) },
+                                        { value: 'dark', name: t('settings.dark', { defaultValue: 'Dark' }), description: t('settings.darkText', { defaultValue: 'Dimmed Binance-style theme' }) },
+                                        { value: 'system', name: t('settings.system', { defaultValue: 'System' }), description: t('settings.systemText', { defaultValue: 'Follow your device setting' }) },
                                     ] as const).map((option) => (
                                         <label
                                             key={option.value}

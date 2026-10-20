@@ -2,22 +2,57 @@ import { statusTone } from '@/lib/lifecycle';
 import AppLayout from '@/layouts/AppLayout';
 import { Head, Link } from '@inertiajs/react';
 import { api, errorMessage } from '@/lib/api';
+import { formatPrice } from '@/lib/currency';
+import { formatDate } from '@/lib/utils';
 import { Button, buttonClasses } from '@/components/shared/Button';
-import { Video, FileText, Calendar, Clock, RefreshCcw } from 'lucide-react';
+import { Calendar, Clock, ChevronRight, RefreshCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface Appointment {
     id: string;
-    reference: string;
-    appointment_date: string;
-    appointment_time: string;
+    ticket_number: string;
+    symptoms: string;
+    description?: string | null;
+    consultation_type: string;
+    consultation_fee?: number | string | null;
+    appointment_date: string | null;
+    appointment_time: string | null;
     status: string;
-    type: string;
-    reason?: string;
-    doctor?: { name: string; specialty: string };
-    consultation?: { id: string; diagnosis?: string; notes?: string; prescription?: string };
-    video_room_id?: string;
+    payment_status?: string;
+    doctor?: { full_name?: string; specialization?: string } | null;
     created_at: string;
+}
+
+function paymentBadge(status?: string): { label: string; className: string } {
+    switch (status) {
+        case 'paid':
+            return { label: 'Paid', className: 'bg-emerald-100 text-emerald-800' };
+        case 'refunded':
+            return { label: 'Refunded', className: 'bg-blue-100 text-blue-800' };
+        case 'processing':
+            return { label: 'Payment processing', className: 'bg-indigo-100 text-indigo-800' };
+        default:
+            return { label: 'Payment due', className: 'bg-amber-100 text-amber-800' };
+    }
+}
+
+/**
+ * The API emits `appointment_date` as an ISO datetime (model cast) while
+ * timestamps may also be plain `Y-m-d`; parse both, never throw away a row
+ * because of an unparsable value (fall back to the unscheduled branch).
+ */
+function slotDate(a: Appointment): Date | null {
+    if (!a.appointment_date) return null;
+    const raw = String(a.appointment_date);
+    const iso = raw.includes('T') ? raw : `${raw}T${a.appointment_time ?? '00:00'}`;
+    const parsed = new Date(iso);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function slotLabel(a: Appointment): string {
+    if (!a.appointment_date) return '';
+    const raw = String(a.appointment_date);
+    return raw.includes('T') ? formatDate(raw) : raw;
 }
 
 export default function AppointmentsPage() {
@@ -42,8 +77,15 @@ export default function AppointmentsPage() {
 
     const now = new Date();
     const filtered = appointments.filter((a) => {
-        const d = new Date(a.appointment_date + 'T' + a.appointment_time);
-        return tab === 'upcoming' ? d >= now && a.status !== 'cancelled' : d < now || a.status === 'cancelled' || a.status === 'completed';
+        const d = slotDate(a);
+        // Unscheduled tickets (no confirmed slot yet) stay in Upcoming so a
+        // fresh booking never disappears from both tabs.
+        if (!d) {
+            return tab === 'upcoming' && a.status !== 'cancelled';
+        }
+        return tab === 'upcoming'
+            ? d >= now && a.status !== 'cancelled'
+            : d < now || a.status === 'cancelled' || a.status === 'completed';
     });
 
     return (
@@ -60,6 +102,7 @@ export default function AppointmentsPage() {
                 <div className="flex flex-wrap gap-2 text-sm">
                     <Link href="/healthcare/bookings" className="font-medium text-indigo-600 hover:underline">← Health Bookings</Link>
                     <Link href="/healthcare/records" className="font-medium text-indigo-600 hover:underline">Health Records</Link>
+                    <Link href="/healthcare/prescriptions" className="font-medium text-indigo-600 hover:underline">My Prescriptions</Link>
                 </div>
 
                 <div className="flex gap-2">
@@ -87,47 +130,58 @@ export default function AppointmentsPage() {
                     </div>
                 ) : (
                     <div className="space-y-4">
-                        {filtered.map((a) => (
-                            <div key={a.id} className="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
-                                <div className="flex items-start justify-between">
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-mono text-sm text-gray-500">{a.reference}</span>
-                                            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusTone(a.status)}`}>
-                                                {a.status}
-                                            </span>
+                        {filtered.map((a) => {
+                            const badge = paymentBadge(a.payment_status);
+                            const fee = a.consultation_fee != null ? Number(a.consultation_fee) : null;
+
+                            return (
+                                <div key={a.id} className="rounded-lg bg-white p-6 shadow dark:bg-gray-800" data-testid={`appointment-card-${a.id}`}>
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <span className="font-mono text-sm text-gray-500">{a.ticket_number}</span>
+                                                <span className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${statusTone(a.status)}`}>
+                                                    {a.status.replace(/_/g, ' ')}
+                                                </span>
+                                                <span data-testid={`appointment-payment-${a.id}`} className={`rounded-full px-2 py-0.5 text-xs font-medium ${badge.className}`}>
+                                                    {badge.label}
+                                                </span>
+                                            </div>
+                                            <p className="mt-1 font-semibold text-gray-900 dark:text-white">
+                                                {a.doctor?.full_name
+                                                    ? `Dr. ${a.doctor.full_name}${a.doctor.specialization ? ` — ${a.doctor.specialization}` : ''}`
+                                                    : 'Awaiting doctor assignment'}
+                                            </p>
+                                            <div className="mt-1 flex flex-wrap items-center gap-4 text-sm text-gray-500">
+                                                {slotLabel(a) ? (
+                                                    <span className="flex items-center gap-1">
+                                                        <Calendar className="h-3 w-3" /> {slotLabel(a)}
+                                                    </span>
+                                                ) : (
+                                                    <span className="flex items-center gap-1">
+                                                        <Calendar className="h-3 w-3" /> To be scheduled
+                                                    </span>
+                                                )}
+                                                {a.appointment_time && (
+                                                    <span className="flex items-center gap-1">
+                                                        <Clock className="h-3 w-3" /> {a.appointment_time.slice(0, 5)}
+                                                    </span>
+                                                )}
+                                                {fee != null && fee > 0 && <span>{formatPrice(fee)}</span>}
+                                            </div>
+                                            {a.symptoms && <p className="mt-1 text-sm text-gray-500">{a.symptoms}</p>}
                                         </div>
-                                        <p className="mt-1 font-semibold text-gray-900 dark:text-white">
-                                            {a.doctor?.name ?? 'Doctor'} — {a.doctor?.specialty ?? a.type}
-                                        </p>
-                                        <div className="mt-1 flex items-center gap-4 text-sm text-gray-500">
-                                            <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {a.appointment_date}</span>
-                                            <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {a.appointment_time}</span>
-                                        </div>
-                                        {a.reason && <p className="mt-1 text-sm text-gray-500">{a.reason}</p>}
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        {a.video_room_id && a.status === 'confirmed' && (
-                                            <a href={`/healthcare/virtual?room=${a.video_room_id}`} target="_blank"
-                                                className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-500">
-                                                <Video className="h-4 w-4" /> Join Video
-                                            </a>
-                                        )}
+                                        <Link
+                                            href={`/healthcare/appointments/${a.id}`}
+                                            data-testid={`appointment-track-${a.id}`}
+                                            className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                                        >
+                                            Track schedule & receipt <ChevronRight className="h-3.5 w-3.5" />
+                                        </Link>
                                     </div>
                                 </div>
-
-                                {a.consultation && (
-                                    <div className="mt-4 rounded-lg bg-gray-50 p-4 dark:bg-gray-700">
-                                        <p className="flex items-center gap-1 text-sm font-semibold text-gray-900 dark:text-white">
-                                            <FileText className="h-4 w-4" /> Consultation Notes
-                                        </p>
-                                        {a.consultation.diagnosis && <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Diagnosis: {a.consultation.diagnosis}</p>}
-                                        {a.consultation.notes && <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{a.consultation.notes}</p>}
-                                        {a.consultation.prescription && <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Rx: {a.consultation.prescription}</p>}
-                                    </div>
-                                )}
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
             </div>

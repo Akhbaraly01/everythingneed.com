@@ -4,17 +4,19 @@ import AuthLayout from '@/layouts/AuthLayout';
 import TurnstileWidget from '@/components/auth/TurnstileWidget';
 import { api } from '@/lib/api';
 import { Button } from '@/components/shared/Button';
+import { useLanguage } from '@/lib/use-language';
 import { Mail, Lock, User, Shield, ArrowLeft } from 'lucide-react';
 
 type Tab = 'login' | 'signup' | 'otp';
 
 export default function Login() {
+    const { t } = useLanguage();
     const { uiTexts } = usePage().props as {
         uiTexts?: { ui?: Record<string, { label?: string; value?: string }> };
     };
-    const loginTitle = uiTexts?.ui?.login_title?.value || 'everythingneed.com';
+    const loginTitle = uiTexts?.ui?.login_title?.value || t('auth.loginTitle', { defaultValue: 'everythingneed.com' });
     const loginSubtitle =
-        uiTexts?.ui?.login_subtitle?.value || 'Your one-stop platform for all human needs';
+        uiTexts?.ui?.login_subtitle?.value || t('auth.loginSubtitle', { defaultValue: 'Your one-stop platform for all human needs' });
 
     const [activeTab, setActiveTab] = useState<Tab>('login');
     const [otpChannel, setOtpChannel] = useState<'phone' | 'email'>('phone');
@@ -31,7 +33,9 @@ export default function Login() {
     const requestOtp = async (target: string) => {
         const trimmed = target.trim();
         if (otpChannel === 'email' ? !trimmed.includes('@') : trimmed.length < 7) {
-            setOtpError(otpChannel === 'email' ? 'Enter a valid email first' : 'Enter a valid phone number first');
+            setOtpError(otpChannel === 'email'
+                ? t('auth.otpErrEmail', { defaultValue: 'Enter a valid email first' })
+                : t('auth.otpErrPhone', { defaultValue: 'Enter a valid phone number first' }));
             return;
         }
         setOtpLoading(true);
@@ -45,7 +49,7 @@ export default function Login() {
             setOtpTarget(trimmed);
             setOtpSent(true);
         } catch {
-            setOtpError('Could not send OTP. Try again.');
+            setOtpError(t('auth.otpSendFail', { defaultValue: 'Could not send OTP. Try again.' }));
         } finally {
             setOtpLoading(false);
         }
@@ -54,7 +58,7 @@ export default function Login() {
     const verifyOtp = async () => {
         const code = otp.join('');
         if (code.length !== 6) {
-            setOtpError('Enter all 6 digits');
+            setOtpError(t('auth.otpEnterAll', { defaultValue: 'Enter all 6 digits' }));
             return;
         }
         setOtpLoading(true);
@@ -68,7 +72,7 @@ export default function Login() {
             // Role-aware landing handled by the server's `/` route.
             window.location.href = '/';
         } catch {
-            setOtpError('Invalid or expired code');
+            setOtpError(t('auth.otpInvalid', { defaultValue: 'Invalid or expired code' }));
         } finally {
             setOtpLoading(false);
         }
@@ -88,10 +92,10 @@ export default function Login() {
 
     return (
         <AuthLayout title={loginTitle} description={loginSubtitle}>
-            <Head title="Log in" />
+            <Head title={t('auth.headTitle', { defaultValue: 'Log in' })} />
             <Link href="/" className="mb-4 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
                 <ArrowLeft className="h-4 w-4" />
-                Back to Home
+                {t('common.backHome')}
             </Link>
 
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
@@ -99,16 +103,20 @@ export default function Login() {
             </div>
 
             <div className="mb-6 grid w-full grid-cols-3 rounded-lg bg-muted p-1">
-                {(['login', 'signup', 'otp'] as Tab[]).map((t) => (
+                {(['login', 'signup', 'otp'] as Tab[]).map((tab) => (
                     <Button
-                        key={t}
+                        key={tab}
                         type="button"
-                        onClick={() => setActiveTab(t)}
-                        variant={activeTab === t ? 'primary' : 'ghost'}
+                        onClick={() => setActiveTab(tab)}
+                        variant={activeTab === tab ? 'primary' : 'ghost'}
                         size="sm"
                         className="rounded-md px-3 py-2"
                     >
-                        {t === 'login' ? 'Sign In' : t === 'signup' ? 'Sign Up' : 'OTP'}
+                        {tab === 'login'
+                            ? t('auth.tabSignIn', { defaultValue: 'Sign In' })
+                            : tab === 'signup'
+                                ? t('auth.tabSignUp', { defaultValue: 'Sign Up' })
+                                : t('auth.tabOtp', { defaultValue: 'OTP' })}
                     </Button>
                 ))}
             </div>
@@ -122,13 +130,13 @@ export default function Login() {
                     className="space-y-4"
                 >
                     <div className="space-y-2">
-                        <label htmlFor="login-email" className="text-sm font-medium">Email</label>
+                        <label htmlFor="login-email" className="text-sm font-medium">{t('auth.email', { defaultValue: 'Email' })}</label>
                         <div className="relative">
                             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <input
                                 id="login-email"
                                 type="email"
-                                placeholder="Enter your email"
+                                placeholder={t('auth.emailPh', { defaultValue: 'Enter your email' })}
                                 value={loginForm.data.email}
                                 onChange={(e) => loginForm.setData('email', e.target.value)}
                                 className="h-10 w-full rounded-md border border-input bg-background pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
@@ -137,13 +145,13 @@ export default function Login() {
                         {loginForm.errors.email && <p className="text-sm text-destructive">{loginForm.errors.email}</p>}
                     </div>
                     <div className="space-y-2">
-                        <label htmlFor="login-password" className="text-sm font-medium">Password</label>
+                        <label htmlFor="login-password" className="text-sm font-medium">{t('auth.password', { defaultValue: 'Password' })}</label>
                         <div className="relative">
                             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <input
                                 id="login-password"
                                 type="password"
-                                placeholder="Enter your password"
+                                placeholder={t('auth.passwordPh', { defaultValue: 'Enter your password' })}
                                 value={loginForm.data.password}
                                 onChange={(e) => loginForm.setData('password', e.target.value)}
                                 className="h-10 w-full rounded-md border border-input bg-background pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
@@ -159,9 +167,9 @@ export default function Login() {
                                 onChange={(e) => loginForm.setData('remember', e.target.checked)}
                                 className="rounded border-input"
                             />
-                            Remember me
+                            {t('auth.remember', { defaultValue: 'Remember me' })}
                         </label>
-                        <Link href="/forgot-password" className="text-primary hover:underline">Forgot password?</Link>
+                        <Link href="/forgot-password" className="text-primary hover:underline">{t('auth.forgot', { defaultValue: 'Forgot password?' })}</Link>
                     </div>
                     <TurnstileWidget onToken={(token) => loginForm.setData('cf-turnstile-response', token ?? '')} />
                     <Button
@@ -169,7 +177,7 @@ export default function Login() {
                         loading={loginForm.processing}
                         fullWidth
                     >
-                        Sign In
+                        {t('auth.tabSignIn', { defaultValue: 'Sign In' })}
                     </Button>
                 </form>
             )}
@@ -183,13 +191,13 @@ export default function Login() {
                     className="space-y-4"
                 >
                     <div className="space-y-2">
-                        <label htmlFor="signup-name" className="text-sm font-medium">Full Name</label>
+                        <label htmlFor="signup-name" className="text-sm font-medium">{t('auth.fullName', { defaultValue: 'Full Name' })}</label>
                         <div className="relative">
                             <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <input
                                 id="signup-name"
                                 type="text"
-                                placeholder="Enter your full name"
+                                placeholder={t('auth.fullNamePh', { defaultValue: 'Enter your full name' })}
                                 value={signupForm.data.name}
                                 onChange={(e) => signupForm.setData('name', e.target.value)}
                                 className="h-10 w-full rounded-md border border-input bg-background pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
@@ -197,13 +205,13 @@ export default function Login() {
                         </div>
                     </div>
                     <div className="space-y-2">
-                        <label htmlFor="signup-email" className="text-sm font-medium">Email</label>
+                        <label htmlFor="signup-email" className="text-sm font-medium">{t('auth.email', { defaultValue: 'Email' })}</label>
                         <div className="relative">
                             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <input
                                 id="signup-email"
                                 type="email"
-                                placeholder="Enter your email"
+                                placeholder={t('auth.emailPh', { defaultValue: 'Enter your email' })}
                                 value={signupForm.data.email}
                                 onChange={(e) => signupForm.setData('email', e.target.value)}
                                 className="h-10 w-full rounded-md border border-input bg-background pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
@@ -211,13 +219,13 @@ export default function Login() {
                         </div>
                     </div>
                     <div className="space-y-2">
-                        <label htmlFor="signup-password" className="text-sm font-medium">Password</label>
+                        <label htmlFor="signup-password" className="text-sm font-medium">{t('auth.password', { defaultValue: 'Password' })}</label>
                         <div className="relative">
                             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <input
                                 id="signup-password"
                                 type="password"
-                                placeholder="Create a password"
+                                placeholder={t('auth.passwordCreatePh', { defaultValue: 'Create a password' })}
                                 value={signupForm.data.password}
                                 onChange={(e) => signupForm.setData('password', e.target.value)}
                                 className="h-10 w-full rounded-md border border-input bg-background pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
@@ -230,7 +238,7 @@ export default function Login() {
                         loading={signupForm.processing}
                         fullWidth
                     >
-                        Sign Up
+                        {t('auth.tabSignUp', { defaultValue: 'Sign Up' })}
                     </Button>
                 </form>
             )}
@@ -252,23 +260,23 @@ export default function Login() {
                                         size="sm"
                                         className="rounded-md px-3 py-1.5 text-xs"
                                     >
-                                        {c === 'phone' ? 'Phone' : 'Email'}
+                                        {c === 'phone' ? t('auth.channelPhone', { defaultValue: 'Phone' }) : t('auth.channelEmail', { defaultValue: 'Email' })}
                                     </Button>
                                 ))}
                             </div>
                             <p className="text-xs text-muted-foreground">
-                                No SMS or mail is sent — your code is issued instantly for testing.
+                                {t('auth.otpNote', { defaultValue: 'No SMS or mail is sent — your code is issued instantly for testing.' })}
                             </p>
                             <div className="space-y-2">
                                 <label htmlFor="otp-target" className="text-sm font-medium">
-                                    {otpChannel === 'email' ? 'Email' : 'Phone'}
+                                    {otpChannel === 'email' ? t('auth.channelEmail', { defaultValue: 'Email' }) : t('auth.channelPhone', { defaultValue: 'Phone' })}
                                 </label>
                                 <div className="relative">
                                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                     <input
                                         id="otp-target"
                                         type={otpChannel === 'email' ? 'email' : 'tel'}
-                                        placeholder={otpChannel === 'email' ? 'Enter your email' : 'Enter your phone (e.g. +15551234567)'}
+                                        placeholder={otpChannel === 'email' ? t('auth.emailPh', { defaultValue: 'Enter your email' }) : t('auth.phonePh', { defaultValue: 'Enter your phone (e.g. +15551234567)' })}
                                         value={otpInput}
                                         onChange={(e) => setOtpInput(e.target.value)}
                                         className="h-10 w-full rounded-md border border-input bg-background pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
@@ -281,12 +289,12 @@ export default function Login() {
                                 onClick={() => void requestOtp(otpInput)}
                                 fullWidth
                             >
-                                Send OTP
+                                {t('auth.sendOtp', { defaultValue: 'Send OTP' })}
                             </Button>
                         </>
                     ) : (
                         <>
-                            <p className="text-sm text-muted-foreground">Verify Your Login — OTP sent to {otpTarget}</p>
+                            <p className="text-sm text-muted-foreground">{t('auth.verifySentTo', { target: otpTarget, defaultValue: `Verify Your Login — OTP sent to ${otpTarget}` })}</p>
                             <div className="flex justify-center gap-2">
                                 {otp.map((digit, index) => (
                                     <input
@@ -307,7 +315,7 @@ export default function Login() {
                                 fullWidth
                                 iconLeft={<Shield className="h-4 w-4" />}
                             >
-                                Verify OTP
+                                {t('auth.verifyOtp', { defaultValue: 'Verify OTP' })}
                             </Button>
                             <Button
                                 type="button"
@@ -317,7 +325,7 @@ export default function Login() {
                                 fullWidth
                                 className="text-center text-xs"
                             >
-                                Resend code (60s)
+                                {t('auth.resend', { defaultValue: 'Resend code (60s)' })}
                             </Button>
                         </>
                     )}

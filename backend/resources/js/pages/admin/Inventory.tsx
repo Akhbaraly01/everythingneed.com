@@ -2,7 +2,7 @@ import AdminLayout from '@/layouts/AdminLayout';
 import { Head } from '@inertiajs/react';
 import { api, errorMessage, rows } from '@/lib/api';
 import DataTable from '@/components/shared/DataTable';
-import { AlertTriangle, Pencil, Check, X } from 'lucide-react';
+import { AlertTriangle, Pencil, Check, X, History } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -14,6 +14,17 @@ interface Stock {
     reserved_quantity: number;
     reorder_point: number;
     product?: { name?: string | null; sku?: string | null } | null;
+}
+
+/** StockMovement row (StockController::movements). */
+interface Movement {
+    id: string;
+    product_id: string;
+    type: string;
+    quantity: number;
+    notes?: string | null;
+    created_at: string;
+    product?: { name?: string | null } | null;
 }
 
 interface Meta {
@@ -33,6 +44,18 @@ export default function AdminInventory() {
     const [qty, setQty] = useState('');
     const [reorder, setReorder] = useState('');
     const [saving, setSaving] = useState(false);
+    const [movements, setMovements] = useState<Movement[]>([]);
+    const [showMovements, setShowMovements] = useState(false);
+
+    const loadMovements = () => {
+        api.get<{ data: Movement[] }>('/api/stock-movements?per_page=20')
+            .then((res) => setMovements(rows<Movement>(res)))
+            .catch(() => setMovements([]));
+    };
+
+    useEffect(() => {
+        if (showMovements) loadMovements();
+    }, [showMovements]);
 
     const load = () => {
         setLoading(true);
@@ -69,6 +92,7 @@ export default function AdminInventory() {
             await api.put(`/api/stock/${id}`, payload);
             setStocks(stocks.map((s) => (s.id === id ? { ...s, ...payload } : s)));
             setEditingId(null);
+            if (showMovements) loadMovements();
             toast.success('Stock updated.');
         } catch (e) {
             toast.error(errorMessage(e, 'Update failed'));
@@ -166,6 +190,47 @@ export default function AdminInventory() {
                         </div>
                     </div>
                 )}
+
+                {/* Audit trail: every quantity change (adjust endpoint or the
+                    inline editor) records a StockMovement row. */}
+                <div className="rounded-lg bg-white shadow dark:bg-gray-800">
+                    <button
+                        onClick={() => setShowMovements(!showMovements)}
+                        className="flex w-full items-center justify-between px-6 py-4 text-left"
+                    >
+                        <span className="inline-flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
+                            <History className="h-4 w-4" /> Recent stock movements
+                        </span>
+                        <span className="text-xs text-gray-500">{showMovements ? 'Hide' : 'Show'}</span>
+                    </button>
+                    {showMovements && (
+                        <div className="border-t border-gray-200 px-6 py-4 dark:border-gray-700">
+                            {movements.length === 0 ? (
+                                <p className="text-sm text-gray-500">No movements recorded yet.</p>
+                            ) : (
+                                <div className="divide-y dark:divide-gray-700">
+                                    {movements.map((m) => (
+                                        <div key={m.id} className="flex items-center justify-between py-2 text-sm">
+                                            <div>
+                                                <span className="font-medium text-gray-900 dark:text-white">{m.product?.name ?? m.product_id}</span>
+                                                <span className={`ml-2 rounded-full px-2 py-0.5 text-xs font-medium ${
+                                                    m.type === 'in' ? 'bg-green-100 text-green-800'
+                                                    : m.type === 'out' ? 'bg-red-100 text-red-800'
+                                                    : 'bg-blue-100 text-blue-800'
+                                                }`}>{m.type}</span>
+                                                {m.notes && <span className="ml-2 text-xs text-gray-500">{m.notes}</span>}
+                                            </div>
+                                            <div className="flex items-center gap-3 text-xs text-gray-500">
+                                                <span className="font-semibold">{m.quantity}</span>
+                                                <span>{new Date(m.created_at).toLocaleString()}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
             </div>
         </AdminLayout>
     );

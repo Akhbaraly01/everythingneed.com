@@ -3,7 +3,9 @@
 namespace Tests\Feature\Pharmacy;
 
 use App\Models\User;
+use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Modules\Orders\Entities\MedicineOrder;
 use Modules\Orders\Entities\MedicineOrderItem;
@@ -18,6 +20,13 @@ use Tests\TestCase;
 class AdminMedicineCrudTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed(PermissionSeeder::class);
+        Cache::forget('rbac.matrix');
+    }
 
     private function makeMedicine(array $overrides = []): Medicine
     {

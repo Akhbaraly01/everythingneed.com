@@ -14,7 +14,8 @@ use Tests\TestCase;
  *     single documented exemption — no catalog permission spans all 33
  *     console roles);
  *  2. the permission exists in the canonical catalog;
- *  3. every role on the route's role: middleware holds the permission in
+ *  3. the route gate is either the SAME permission the nav declares, or a
+ *     role: middleware composition whose roles all hold that permission in
  *     the seeded matrix — so the UX filter never hides a page its role can
  *     legitimately open (server middleware stays the authority regardless).
  */
@@ -70,7 +71,7 @@ class ConsoleNavPermissionTest extends TestCase
     }
 
     #[Test]
-    public function test_every_route_role_holds_the_declared_permission(): void
+    public function test_route_gate_matches_the_declared_permission(): void
     {
         $this->seed(PermissionSeeder::class);
 
@@ -80,13 +81,34 @@ class ConsoleNavPermissionTest extends TestCase
             }
 
             $route = Route::getRoutes()->match(Request::create($href, 'GET'));
+            $middleware = collect($route->gatherMiddleware())->filter(fn ($m) => is_string($m));
 
-            $roles = collect($route->gatherMiddleware())
-                ->filter(fn ($m) => is_string($m) && str_starts_with($m, 'role:'))
+            $permissionExpressions = $middleware
+                ->filter(fn ($m) => str_starts_with($m, 'permission:'))
+                ->map(fn ($m) => substr($m, strlen('permission:')))
+                ->values();
+
+            if ($permissionExpressions->isNotEmpty()) {
+                $tokens = $permissionExpressions
+                    ->flatMap(fn ($expression) => preg_split('/[,&]/', $expression))
+                    ->map(fn ($token) => trim($token))
+                    ->all();
+
+                $this->assertContains(
+                    $permission,
+                    $tokens,
+                    "{$href} carries a permission gate that does not include its declared {$permission}",
+                );
+
+                continue;
+            }
+
+            $roles = $middleware
+                ->filter(fn ($m) => str_starts_with($m, 'role:'))
                 ->flatMap(fn ($m) => explode(',', substr($m, 5)))
                 ->values();
 
-            $this->assertNotEmpty($roles, "{$href} must be role-gated");
+            $this->assertNotEmpty($roles, "{$href} must be role- or permission-gated");
 
             foreach ($roles as $role) {
                 $held = \Illuminate\Support\Facades\DB::table('role_permissions')

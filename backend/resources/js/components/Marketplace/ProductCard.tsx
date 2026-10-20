@@ -1,5 +1,5 @@
 import { Link, router, usePage } from '@inertiajs/react';
-import { Star, ShoppingCart, Heart, ChevronRight } from 'lucide-react';
+import { Star, ShoppingCart, Heart, ChevronRight, Package, Stethoscope, GraduationCap, Wrench } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { api, ApiError, errorMessage } from '@/lib/api';
@@ -42,6 +42,39 @@ function getTypeColor(type: MarketplaceProduct['type']): string {
     }
 }
 
+/**
+ * Only real products may be added to the cart. Doctors, courses and other
+ * non-product cards keep the "icon card" presentation from the deals rail
+ * and navigate to their detail page instead of touching /api/cart.
+ */
+function typeCta(type: MarketplaceProduct['type']): { label: string; icon: React.ReactNode } {
+    switch (type) {
+        case 'healthcare':
+            return { label: 'Book now', icon: <Stethoscope className="h-3 w-3 mr-1" /> };
+        case 'learning':
+            return { label: 'View course', icon: <GraduationCap className="h-3 w-3 mr-1" /> };
+        case 'service':
+            return { label: 'Book service', icon: <Wrench className="h-3 w-3 mr-1" /> };
+        case 'need':
+            return { label: 'View', icon: <Package className="h-3 w-3 mr-1" /> };
+        default:
+            return { label: 'View', icon: <Package className="h-3 w-3 mr-1" /> };
+    }
+}
+
+function typeFallbackIcon(type: MarketplaceProduct['type']): React.ReactNode {
+    switch (type) {
+        case 'healthcare':
+            return <Stethoscope className="h-6 w-6" />;
+        case 'learning':
+            return <GraduationCap className="h-6 w-6" />;
+        case 'service':
+            return <Wrench className="h-6 w-6" />;
+        default:
+            return <Package className="h-6 w-6" />;
+    }
+}
+
 export default function ProductCard({ product }: { product: MarketplaceProduct }) {
     const { props } = usePage();
     const { t } = useLanguage();
@@ -51,6 +84,8 @@ export default function ProductCard({ product }: { product: MarketplaceProduct }
     const [wishPending, setWishPending] = useState(false);
     const [cartPending, setCartPending] = useState(false);
     const [cartAdded, setCartAdded] = useState(false);
+    const isProduct = (product.type ?? 'product') === 'product';
+    const cta = typeCta(product.type ?? 'product');
     const discount =
         product.originalPrice && product.originalPrice > product.price
             ? Math.round((1 - product.price / product.originalPrice) * 100)
@@ -119,22 +154,24 @@ export default function ProductCard({ product }: { product: MarketplaceProduct }
                         />
                     ) : (
                         <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                            <ShoppingCart className="h-6 w-6" />
+                            {isProduct ? <ShoppingCart className="h-6 w-6" /> : typeFallbackIcon(product.type)}
                         </div>
                     )}
-                    <button
-                        type="button"
-                        onClick={(e) => void toggleWishlist(e)}
-                        disabled={wishPending}
-                        aria-label={`Toggle wishlist for ${product.name}`}
-                        className={`absolute top-2 right-2 p-1.5 rounded-full transition-all duration-200 ${
-                            inWishlist
-                                ? 'bg-destructive text-destructive-foreground'
-                                : 'bg-background/80 text-muted-foreground hover:bg-background hover:text-destructive'
-                        }`}
-                    >
-                        <Heart className={`h-4 w-4 ${inWishlist ? 'fill-current' : ''}`} />
-                    </button>
+                    {isProduct && (
+                        <button
+                            type="button"
+                            onClick={(e) => void toggleWishlist(e)}
+                            disabled={wishPending}
+                            aria-label={`Toggle wishlist for ${product.name}`}
+                            className={`absolute top-2 right-2 p-1.5 rounded-full transition-all duration-200 ${
+                                inWishlist
+                                    ? 'bg-destructive text-destructive-foreground'
+                                    : 'bg-background/80 text-muted-foreground hover:bg-background hover:text-destructive'
+                            }`}
+                        >
+                            <Heart className={`h-4 w-4 ${inWishlist ? 'fill-current' : ''}`} />
+                        </button>
+                    )}
                     {discount > 0 && (
                         <div className="absolute top-2 left-2 bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5 py-0.5 rounded">
                             -{discount}%
@@ -176,15 +213,25 @@ export default function ProductCard({ product }: { product: MarketplaceProduct }
                     </div>
                 </div>
                 <div className="p-2 pt-0 flex items-center justify-between">
-                    <button
-                        type="button"
-                        onClick={(e) => void addToCart(e)}
-                        disabled={cartPending}
-                        className="btn-3d inline-flex h-7 flex-1 items-center justify-center !rounded-md bg-primary px-2 !text-[11px] font-medium text-primary-foreground !min-h-0 hover:opacity-90 disabled:opacity-60"
-                    >
-                        <ShoppingCart className="h-3 w-3 mr-1" />
-                        {cartAdded ? t('card.added') : cartPending ? t('card.adding') : t('card.addToCart')}
-                    </button>
+                    {isProduct ? (
+                        <button
+                            type="button"
+                            onClick={(e) => void addToCart(e)}
+                            disabled={cartPending}
+                            className="btn-3d inline-flex h-7 flex-1 items-center justify-center !rounded-md bg-primary px-2 !text-[11px] font-medium text-primary-foreground !min-h-0 hover:opacity-90 disabled:opacity-60"
+                        >
+                            <ShoppingCart className="h-3 w-3 mr-1" />
+                            {cartAdded ? t('card.added') : cartPending ? t('card.adding') : t('card.addToCart')}
+                        </button>
+                    ) : (
+                        <span
+                            data-testid={`card-cta-${product.type ?? 'other'}`}
+                            className={`inline-flex h-7 flex-1 items-center justify-center rounded-md px-2 text-[11px] font-medium text-white ${getTypeColor(product.type)}`}
+                        >
+                            {cta.icon}
+                            {cta.label}
+                        </span>
+                    )}
                     <ChevronRight className="h-3 w-3 text-muted-foreground ml-1.5" />
                 </div>
             </div>

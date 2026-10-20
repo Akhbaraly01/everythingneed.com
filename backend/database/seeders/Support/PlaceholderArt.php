@@ -18,6 +18,14 @@ namespace Database\Seeders\Support;
  * Everything is deterministic per seed string; no two adjacent records share
  * a palette. Returns null when GD is unavailable (callers fall back to
  * /placeholder.svg).
+ *
+ * Design v4 adds renderProduct(): an ecommerce-style studio shot — neutral
+ * light backdrop with a soft spotlight, floor line and contact shadow, and
+ * the type-aware glyph rendered as an opaque shaded object (base + highlight
+ * + shadow facets) with no baked-in title text, since the card already shows
+ * the name/category/price under the image. ProductImageSeeder prefers real
+ * photos dropped into database/seeders/assets/products/ and only falls back
+ * to renderProduct() when none is present.
  */
 final class PlaceholderArt
 {
@@ -42,7 +50,9 @@ final class PlaceholderArt
      * @param  string  $seed    Deterministic palette source (usually the row id).
      * @param  string  $title   Big centered headline; empty renders no text.
      * @param  string  $eyebrow Small accent label above the title.
-     * @param  string  $glyph   One of: box, bed, food, book, house, pill, bag, star.
+     * @param  string  $glyph   box, bed, food, book, house, pill, bag, star, shirt,
+     *                          pants, dress, shoe, phone, laptop, headphones, watch,
+     *                          tv, camera, sofa, pot, bottle, plant, ball, toy.
      */
     public static function render(
         string $seed,
@@ -105,6 +115,103 @@ final class PlaceholderArt
         return self::png($img);
     }
 
+    /**
+     * Design v4: studio product shot for catalog cards (800x800 by default).
+     *
+     * Neutral light backdrop + spotlight glow + floor line + soft contact
+     * shadow; the type-aware glyph (productGlyph) is drawn as an opaque
+     * shaded object (base fill, highlight facets, shadow facets) with no
+     * baked-in text. Deterministic per seed; used only when no real photo is
+     * available for the product.
+     */
+    public static function renderProduct(
+        string $seed,
+        string $name,
+        string $category = '',
+        int $w = 800,
+        int $h = 800,
+    ): ?string {
+        if (! extension_loaded('gd')) {
+            return null;
+        }
+
+        $hue = hexdec(substr(md5($seed), 0, 2)) / 255;
+        $img = self::paintStudio($hue, $w, $h);
+        if ($img === null) {
+            return null;
+        }
+
+        self::drawGlyph(
+            $img,
+            self::productGlyph($name, $category),
+            (int) ($w / 2),
+            (int) ($h * 0.43),
+            (int) (min($w, $h) * 0.56),
+            0,
+            self::hslToRgb($hue, 0.55, 0.50),
+            self::hslToRgb($hue, 0.62, 0.66),
+            self::hslToRgb($hue, 0.60, 0.34),
+        );
+
+        return self::png($img);
+    }
+
+    /**
+     * Design v3: pick the glyph that represents a product by keyword-matching
+     * its name first ("Cotton T-Shirt" -> shirt, "Denim Jeans" -> pants) and
+     * falling back to a per-category default. Deterministic and dependency-free.
+     */
+    public static function productGlyph(string $name, string $category = ''): string
+    {
+        $name = strtolower($name);
+        $category = strtolower($category);
+
+        $rules = [
+            'pill' => ['medicine', 'syrup', 'capsule', 'vitamin', 'pharma', 'tablet'],
+            'shoe' => ['shoe', 'sneaker', 'boot', 'sandal', 'slipper', 'loafer', 'heel'],
+            'dress' => ['dress', 'gown', 'skirt'],
+            'pants' => ['jeans', 'trouser', 'pant', 'short', 'legging', 'jogger', 'chino'],
+            'shirt' => ['shirt', 'tee shirt', 't-shirt', 'tshirt', 'polo', 'blouse', 'hoodie', 'sweater', 'sweatshirt', 'jacket', 'coat', 'suit', 'cardigan', 'vest', 'uniform', 'sock', 'underwear', 'cap', 'hat'],
+            'headphones' => ['headphone', 'earphone', 'earbud', 'airpod', 'headset', 'speaker'],
+            'laptop' => ['laptop', 'macbook', 'notebook', 'ultrabook', 'desktop', 'computer'],
+            'phone' => ['phone', 'smartphone', 'iphone', 'android', 'tablet', 'ipad', 'charger', 'power bank', 'powerbank', 'cable', 'keyboard', 'mouse', 'router'],
+            'watch' => ['watch'],
+            'camera' => ['camera', 'dslr', 'drone', 'gopro', 'webcam'],
+            'tv' => ['tv', 'television', 'monitor', 'projector', 'screen', 'soundbar'],
+            'sofa' => ['sofa', 'couch', 'chair', 'table', 'desk', 'shelf', 'cabinet', 'furniture', 'mattress', 'lamp'],
+            'pot' => ['kitchen', 'kettle', 'pot', 'pan', 'blender', 'cooker', 'cookware', 'utensil', 'mug', 'cup', 'plate', 'toaster'],
+            'bottle' => ['cream', 'lotion', 'perfume', 'shampoo', 'serum', 'soap', 'cosmetic', 'makeup', 'lipstick', 'sunscreen'],
+            'ball' => ['ball', 'football', 'basketball', 'soccer', 'tennis', 'gym', 'fitness', 'yoga', 'dumbbell', 'cycle', 'bike'],
+            'toy' => ['toy', 'doll', 'lego', 'puzzle', 'teddy'],
+            'plant' => ['seed', 'seedling', 'fertilizer', 'fertiliser', 'compost', 'soil', 'plant', 'sprayer', 'irrigation', 'maize', 'crop', 'farm'],
+            'food' => ['milk', 'rice', 'oil', 'flour', 'tea', 'coffee', 'snack', 'fruit', 'vegetable', 'juice', 'goat', 'sugar', 'spice'],
+            'book' => ['book', 'novel', 'guide', 'textbook'],
+        ];
+
+        foreach ($rules as $glyph => $keywords) {
+            foreach ($keywords as $keyword) {
+                if (str_contains($name, $keyword)) {
+                    return $glyph;
+                }
+            }
+        }
+
+        foreach (['clothing' => 'shirt', 'fashion' => 'shirt', 'apparel' => 'shirt',
+            'electronics' => 'phone', 'tech' => 'phone', 'computers' => 'laptop',
+            'agriculture' => 'plant', 'farm' => 'plant',
+            'beauty' => 'bottle', 'health-beauty' => 'bottle', 'cosmetics' => 'bottle',
+            'home' => 'sofa', 'home-garden' => 'sofa', 'furniture' => 'sofa',
+            'sports' => 'ball', 'outdoors' => 'ball',
+            'books' => 'book', 'food' => 'food', 'beverages' => 'food',
+            'pharmacy' => 'pill', 'health' => 'pill'] as $needle => $glyph) {
+            if (str_contains($category, $needle)) {
+                return $glyph;
+            }
+        }
+
+        return 'box';
+    }
+
     /** @return \GdImage|null */
     private static function paintBackground(float $hue, int $w, int $h)
     {
@@ -152,6 +259,79 @@ final class PlaceholderArt
         return $img;
     }
 
+    /**
+     * Light studio backdrop for product shots: subtly tinted wall gradient,
+     * a soft spotlight glow behind the subject, a floor band with a faint
+     * seam, and a layered contact shadow the glyph sits on.
+     *
+     * @return \GdImage|null
+     */
+    private static function paintStudio(float $hue, int $w, int $h)
+    {
+        $img = imagecreatetruecolor($w, $h);
+        if ($img === false) {
+            return null;
+        }
+
+        [$wr, $wg, $wb] = self::hslToRgb(fmod($hue + 0.5, 1.0), 0.30, 0.975);
+        [$fr, $fg, $fb] = self::hslToRgb(fmod($hue + 0.5, 1.0), 0.22, 0.88);
+        $floorY = (int) ($h * 0.70);
+
+        // Wall: near-white, easing into the tinted floor line.
+        for ($y = 0; $y < $floorY; $y++) {
+            $k = $y / max(1, $floorY);
+            $row = imagecolorallocate(
+                $img,
+                (int) ($wr - ($wr - $fr) * $k),
+                (int) ($wg - ($wg - $fg) * $k),
+                (int) ($wb - ($wb - $fb) * $k),
+            );
+            imageline($img, 0, $y, $w, $y, $row);
+        }
+
+        // Floor: a touch deeper than the wall so the seam reads.
+        [$br, $bg, $bb] = self::hslToRgb(fmod($hue + 0.5, 1.0), 0.20, 0.78);
+        for ($y = $floorY; $y < $h; $y++) {
+            $k = ($y - $floorY) / max(1, $h - $floorY);
+            $row = imagecolorallocate(
+                $img,
+                (int) ($fr - ($fr - $br) * $k),
+                (int) ($fg - ($fg - $bg) * $k),
+                (int) ($fb - ($fb - $bb) * $k),
+            );
+            imageline($img, 0, $y, $w, $y, $row);
+        }
+
+        // Spotlight glow behind the subject (stacked translucent whites).
+        foreach ([[0.94, 0.62, 121], [0.78, 0.50, 116], [0.62, 0.40, 111]] as [$ew, $eh, $alpha]) {
+            imagefilledellipse(
+                $img,
+                (int) ($w / 2),
+                (int) ($h * 0.40),
+                (int) ($w * $ew),
+                (int) ($h * $eh),
+                imagecolorallocatealpha($img, 255, 255, 255, $alpha),
+            );
+        }
+
+        // Floor seam.
+        imagefilledrectangle($img, 0, $floorY, $w, $floorY + 2, imagecolorallocatealpha($img, 70, 72, 84, 112));
+
+        // Contact shadow under the product (three soft passes).
+        foreach ([[0.52, 0.10, 102], [0.42, 0.08, 96], [0.32, 0.06, 90]] as [$sw, $sh, $alpha]) {
+            imagefilledellipse(
+                $img,
+                (int) ($w / 2),
+                (int) ($h * 0.70),
+                (int) ($w * $sw),
+                (int) ($h * $sh),
+                imagecolorallocatealpha($img, 40, 42, 54, $alpha),
+            );
+        }
+
+        return $img;
+    }
+
     private static function drawHeadline(
         \GdImage $img,
         float $hue,
@@ -189,16 +369,42 @@ final class PlaceholderArt
     }
 
     /**
-     * Subject glyph drawn in translucent white inside the given box.
+     * Subject glyph drawn inside the given box.
      *
-     * @param  int  $alpha  Base alpha (0 opaque .. 127 transparent); details
-     *                      brighten and lines darken relative to it.
+     * Default look: translucent white ink on dark gradients — details
+     * brighten and lines darken relative to the base alpha.
+     *
+     * Pass $inkRgb (opaque color) instead for studio product shots: the glyph
+     * is rendered as a shaded object using $detailRgb as highlight facets and
+     * $lineRgb as shadow facets (they default to the base color).
+     *
+     * @param  int  $alpha  Base alpha (0 opaque .. 127 transparent).
+     * @param  array{0:int,1:int,2:int}|null  $inkRgb
+     * @param  array{0:int,1:int,2:int}|null  $detailRgb
+     * @param  array{0:int,1:int,2:int}|null  $lineRgb
      */
-    private static function drawGlyph(\GdImage $img, string $glyph, int $cx, int $cy, int $size, int $alpha): void
-    {
-        $ink = imagecolorallocatealpha($img, 255, 255, 255, $alpha);
-        $detail = imagecolorallocatealpha($img, 255, 255, 255, max(0, $alpha - 26));
-        $line = imagecolorallocatealpha($img, 255, 255, 255, min(127, $alpha + 14));
+    private static function drawGlyph(
+        \GdImage $img,
+        string $glyph,
+        int $cx,
+        int $cy,
+        int $size,
+        int $alpha,
+        ?array $inkRgb = null,
+        ?array $detailRgb = null,
+        ?array $lineRgb = null,
+    ): void {
+        if ($inkRgb !== null) {
+            $detailRgb ??= $inkRgb;
+            $lineRgb ??= $inkRgb;
+            $ink = imagecolorallocate($img, $inkRgb[0], $inkRgb[1], $inkRgb[2]);
+            $detail = imagecolorallocate($img, $detailRgb[0], $detailRgb[1], $detailRgb[2]);
+            $line = imagecolorallocate($img, $lineRgb[0], $lineRgb[1], $lineRgb[2]);
+        } else {
+            $ink = imagecolorallocatealpha($img, 255, 255, 255, $alpha);
+            $detail = imagecolorallocatealpha($img, 255, 255, 255, max(0, $alpha - 26));
+            $line = imagecolorallocatealpha($img, 255, 255, 255, min(127, $alpha + 14));
+        }
 
         $s = $size;
         $gh = (int) ($size * 0.72);
@@ -208,6 +414,187 @@ final class PlaceholderArt
         $y2 = $cy + (int) ($gh / 2);
 
         switch ($glyph) {
+            case 'shirt':
+                // T-shirt: shoulders, short sleeves, body.
+                imagepolygon($img, [
+                    $cx - (int) ($s * 0.14), $y1,
+                    $cx + (int) ($s * 0.14), $y1,
+                    $x2, $y1 + (int) ($gh * 0.26),
+                    $x2 - (int) ($s * 0.08), $y1 + (int) ($gh * 0.46),
+                    $x1 + (int) ($s * 0.32), $y1 + (int) ($gh * 0.46),
+                    $x1, $y1 + (int) ($gh * 0.26),
+                ], $ink);
+                imagefilledpolygon($img, [
+                    $x1 + (int) ($s * 0.32), $y1 + (int) ($gh * 0.40),
+                    $x2 - (int) ($s * 0.32), $y1 + (int) ($gh * 0.40),
+                    $x2 - (int) ($s * 0.34), $y2,
+                    $x1 + (int) ($s * 0.34), $y2,
+                ], $ink);
+                imagefilledellipse($img, $cx, $y1 + (int) ($gh * 0.06), (int) ($s * 0.26), (int) ($gh * 0.18), $detail);
+                break;
+
+            case 'pants':
+                // Waistband + two legs with a gap.
+                imagefilledrectangle($img, $cx - (int) ($s * 0.30), $y1, $cx + (int) ($s * 0.30), $y1 + (int) ($gh * 0.18), $ink);
+                imagefilledrectangle($img, $cx - (int) ($s * 0.28), $y1 + (int) ($gh * 0.10), $cx - (int) ($s * 0.03), $y2, $ink);
+                imagefilledrectangle($img, $cx + (int) ($s * 0.03), $y1 + (int) ($gh * 0.10), $cx + (int) ($s * 0.28), $y2, $ink);
+                imagefilledrectangle($img, $cx - (int) ($s * 0.30), $y1 + (int) ($gh * 0.06), $cx + (int) ($s * 0.30), $y1 + (int) ($gh * 0.11), $detail);
+                break;
+
+            case 'dress':
+                // Fitted bodice flaring into a skirt.
+                imagepolygon($img, [
+                    $cx - (int) ($s * 0.11), $y1,
+                    $cx + (int) ($s * 0.11), $y1,
+                    $cx + (int) ($s * 0.14), $cy - (int) ($gh * 0.05),
+                    $cx - (int) ($s * 0.14), $cy - (int) ($gh * 0.05),
+                ], $ink);
+                imagepolygon($img, [
+                    $cx - (int) ($s * 0.14), $cy - (int) ($gh * 0.02),
+                    $cx + (int) ($s * 0.14), $cy - (int) ($gh * 0.02),
+                    $x2, $y2,
+                    $x1, $y2,
+                ], $ink);
+                imagearc($img, $cx, $y1 + (int) ($gh * 0.02), (int) ($s * 0.22), (int) ($gh * 0.16), 180, 360, $detail);
+                break;
+
+            case 'shoe':
+                // Sneaker: upper + toe cap + sole.
+                imagepolygon($img, [
+                    $x1 + (int) ($s * 0.14), $cy + (int) ($gh * 0.04),
+                    $x1 + (int) ($s * 0.22), $y1 + (int) ($gh * 0.14),
+                    $cx + (int) ($s * 0.04), $y1 + (int) ($gh * 0.06),
+                    $x2 - (int) ($s * 0.06), $cy - (int) ($gh * 0.02),
+                    $x2 - (int) ($s * 0.04), $cy + (int) ($gh * 0.10),
+                ], $ink);
+                imagefilledellipse($img, $x1 + (int) ($s * 0.20), $cy + (int) ($gh * 0.08), (int) ($s * 0.24), (int) ($gh * 0.22), $ink);
+                imagefilledrectangle($img, $x1, $cy + (int) ($gh * 0.12), $x2, $cy + (int) ($gh * 0.24), $detail);
+                break;
+
+            case 'phone':
+                // Smartphone: rounded body, screen strip, speaker dot.
+                imagefilledrectangle($img, $cx - (int) ($s * 0.17), $y1, $cx + (int) ($s * 0.17), $y2, $ink);
+                imagefilledrectangle($img, $cx - (int) ($s * 0.13), $y1 + (int) ($gh * 0.10), $cx + (int) ($s * 0.13), $y2 - (int) ($gh * 0.10), $line);
+                imagefilledellipse($img, $cx, $y1 + (int) ($gh * 0.05), (int) ($s * 0.05), (int) ($s * 0.05), $detail);
+                imagefilledellipse($img, $cx, $y2 - (int) ($gh * 0.04), (int) ($gh * 0.05), (int) ($gh * 0.05), $detail);
+                break;
+
+            case 'laptop':
+                // Screen + keyboard base.
+                imagefilledrectangle($img, $x1 + (int) ($s * 0.14), $y1, $x2 - (int) ($s * 0.14), $cy - (int) ($gh * 0.02), $ink);
+                imagefilledrectangle($img, $x1 + (int) ($s * 0.18), $y1 + (int) ($gh * 0.06), $x2 - (int) ($s * 0.18), $cy - (int) ($gh * 0.08), $line);
+                imagepolygon($img, [
+                    $x1, $cy + (int) ($gh * 0.22),
+                    $x2, $cy + (int) ($gh * 0.22),
+                    $x2 - (int) ($s * 0.06), $cy,
+                    $x1 + (int) ($s * 0.06), $cy,
+                ], $ink);
+                imagefilledrectangle($img, $cx - (int) ($s * 0.10), $cy + (int) ($gh * 0.06), $cx + (int) ($s * 0.10), $cy + (int) ($gh * 0.10), $detail);
+                break;
+
+            case 'headphones':
+                // Headband arc + ear cups.
+                for ($i = 0; $i < 3; $i++) {
+                    $pad = $i * 7;
+                    imagearc($img, $cx, $cy - (int) ($gh * 0.06), (int) ($s * 0.66) - $pad * 2, (int) ($gh * 0.90) - $pad * 2, 180, 360, $line);
+                }
+                imagefilledellipse($img, $x1 + (int) ($s * 0.16), $cy + (int) ($gh * 0.08), (int) ($s * 0.16), (int) ($gh * 0.44), $ink);
+                imagefilledellipse($img, $x2 - (int) ($s * 0.16), $cy + (int) ($gh * 0.08), (int) ($s * 0.16), (int) ($gh * 0.44), $ink);
+                imagefilledellipse($img, $x1 + (int) ($s * 0.16), $cy + (int) ($gh * 0.08), (int) ($s * 0.06), (int) ($gh * 0.16), $detail);
+                imagefilledellipse($img, $x2 - (int) ($s * 0.16), $cy + (int) ($gh * 0.08), (int) ($s * 0.06), (int) ($gh * 0.16), $detail);
+                break;
+
+            case 'watch':
+                // Round face on a vertical strap.
+                imagefilledrectangle($img, $cx - (int) ($s * 0.09), $y1, $cx + (int) ($s * 0.09), $y2, $detail);
+                imagefilledellipse($img, $cx, $cy, (int) ($s * 0.42), (int) ($s * 0.42), $ink);
+                imagefilledellipse($img, $cx, $cy, (int) ($s * 0.30), (int) ($s * 0.30), $line);
+                imagefilledrectangle($img, $cx - 2, $cy - (int) ($gh * 0.10), $cx + 2, $cy, $ink);
+                imagefilledrectangle($img, $cx, $cy - 2, $cx + (int) ($s * 0.09), $cy + 2, $ink);
+                break;
+
+            case 'tv':
+                // Widescreen panel + stand.
+                imagefilledrectangle($img, $x1, $y1 + (int) ($gh * 0.06), $x2, $cy + (int) ($gh * 0.10), $ink);
+                imagefilledrectangle($img, $x1 + (int) ($s * 0.05), $y1 + (int) ($gh * 0.13), $x2 - (int) ($s * 0.05), $cy + (int) ($gh * 0.02), $line);
+                imagefilledrectangle($img, $cx - (int) ($s * 0.06), $cy + (int) ($gh * 0.10), $cx + (int) ($s * 0.06), $y2, $detail);
+                imagefilledrectangle($img, $cx - (int) ($s * 0.18), $y2, $cx + (int) ($s * 0.18), $y2 + (int) ($gh * 0.06), $detail);
+                break;
+
+            case 'camera':
+                // Body + lens + viewfinder hump.
+                imagefilledrectangle($img, $x1, $cy - (int) ($gh * 0.14), $x2, $cy + (int) ($gh * 0.26), $ink);
+                imagefilledrectangle($img, $cx - (int) ($s * 0.14), $y1 + (int) ($gh * 0.02), $cx + (int) ($s * 0.10), $cy - (int) ($gh * 0.10), $detail);
+                imagefilledellipse($img, $cx, $cy + (int) ($gh * 0.06), (int) ($s * 0.34), (int) ($s * 0.34), $detail);
+                imagefilledellipse($img, $cx, $cy + (int) ($gh * 0.06), (int) ($s * 0.20), (int) ($s * 0.20), $line);
+                imagefilledellipse($img, $cx, $cy + (int) ($gh * 0.06), (int) ($s * 0.08), (int) ($s * 0.08), $ink);
+                break;
+
+            case 'sofa':
+                // Backrest, two arms, seat and legs.
+                imagefilledrectangle($img, $x1 + (int) ($s * 0.08), $y1 + (int) ($gh * 0.04), $x2 - (int) ($s * 0.08), $cy - (int) ($gh * 0.04), $ink);
+                imagefilledrectangle($img, $x1, $cy - (int) ($gh * 0.16), $x1 + (int) ($s * 0.14), $cy + (int) ($gh * 0.18), $detail);
+                imagefilledrectangle($img, $x2 - (int) ($s * 0.14), $cy - (int) ($gh * 0.16), $x2, $cy + (int) ($gh * 0.18), $detail);
+                imagefilledrectangle($img, $x1, $cy + (int) ($gh * 0.02), $x2, $cy + (int) ($gh * 0.24), $ink);
+                imagefilledrectangle($img, $x1 + 6, $cy + (int) ($gh * 0.24), $x1 + (int) ($s * 0.10), $y2, $detail);
+                imagefilledrectangle($img, $x2 - (int) ($s * 0.10), $cy + (int) ($gh * 0.24), $x2 - 6, $y2, $detail);
+                break;
+
+            case 'pot':
+                // Cooking pot: lid, body, side handles.
+                imagefilledellipse($img, $cx, $y1 + (int) ($gh * 0.08), (int) ($s * 0.62), (int) ($gh * 0.22), $ink);
+                imagefilledrectangle($img, $cx - (int) ($s * 0.02), $y1, $cx + (int) ($s * 0.02), $y1 + (int) ($gh * 0.06), $detail);
+                imagefilledrectangle($img, $cx - (int) ($s * 0.32), $y1 + (int) ($gh * 0.16), $cx + (int) ($s * 0.32), $y2 - (int) ($gh * 0.06), $ink);
+                imagefilledellipse($img, $cx - (int) ($s * 0.36), $cy + (int) ($gh * 0.16), (int) ($s * 0.10), (int) ($gh * 0.14), $detail);
+                imagefilledellipse($img, $cx + (int) ($s * 0.36), $cy + (int) ($gh * 0.16), (int) ($s * 0.10), (int) ($gh * 0.14), $detail);
+                imagefilledrectangle($img, $cx - (int) ($s * 0.32), $y2 - (int) ($gh * 0.10), $cx + (int) ($s * 0.32), $y2 - (int) ($gh * 0.06), $detail);
+                break;
+
+            case 'bottle':
+                // Pump bottle: cap, neck, shoulders, body.
+                imagefilledrectangle($img, $cx - (int) ($s * 0.08), $y1, $cx + (int) ($s * 0.08), $y1 + (int) ($gh * 0.12), $detail);
+                imagefilledrectangle($img, $cx - (int) ($s * 0.05), $y1 + (int) ($gh * 0.12), $cx + (int) ($s * 0.05), $y1 + (int) ($gh * 0.22), $ink);
+                imagefilledpolygon($img, [
+                    $cx - (int) ($s * 0.05), $y1 + (int) ($gh * 0.20),
+                    $cx + (int) ($s * 0.05), $y1 + (int) ($gh * 0.20),
+                    $cx + (int) ($s * 0.24), $y1 + (int) ($gh * 0.36),
+                    $cx - (int) ($s * 0.24), $y1 + (int) ($gh * 0.36),
+                ], $ink);
+                imagefilledrectangle($img, $cx - (int) ($s * 0.24), $y1 + (int) ($gh * 0.34), $cx + (int) ($s * 0.24), $y2, $ink);
+                imagefilledrectangle($img, $cx - (int) ($s * 0.14), $cy + (int) ($gh * 0.10), $cx + (int) ($s * 0.14), $cy + (int) ($gh * 0.24), $line);
+                break;
+
+            case 'plant':
+                // Potted seedling: pot + stem + leaves.
+                imagefilledpolygon($img, [
+                    $cx - (int) ($s * 0.22), $cy + (int) ($gh * 0.10),
+                    $cx + (int) ($s * 0.22), $cy + (int) ($gh * 0.10),
+                    $cx + (int) ($s * 0.15), $y2,
+                    $cx - (int) ($s * 0.15), $y2,
+                ], $ink);
+                imagefilledrectangle($img, $cx - 4, $y1 + (int) ($gh * 0.10), $cx + 4, $cy + (int) ($gh * 0.12), $detail);
+                imagefilledellipse($img, $cx - (int) ($s * 0.14), $y1 + (int) ($gh * 0.18), (int) ($s * 0.30), (int) ($gh * 0.16), $ink);
+                imagefilledellipse($img, $cx + (int) ($s * 0.14), $y1 + (int) ($gh * 0.30), (int) ($s * 0.30), (int) ($gh * 0.16), $ink);
+                break;
+
+            case 'ball':
+                // Ball with two seam curves.
+                imagefilledellipse($img, $cx, $cy, (int) ($s * 0.72), (int) ($s * 0.72), $ink);
+                imagearc($img, $cx - (int) ($s * 0.20), $cy, (int) ($s * 0.50), (int) ($s * 0.66), 270, 90, $detail);
+                imagearc($img, $cx + (int) ($s * 0.20), $cy, (int) ($s * 0.50), (int) ($s * 0.66), 90, 270, $detail);
+                break;
+
+            case 'toy':
+                // Teddy bear: ears, head, body, arms.
+                imagefilledellipse($img, $x1 + (int) ($s * 0.24), $y1 + (int) ($gh * 0.12), (int) ($s * 0.22), (int) ($s * 0.22), $ink);
+                imagefilledellipse($img, $x2 - (int) ($s * 0.24), $y1 + (int) ($gh * 0.12), (int) ($s * 0.22), (int) ($s * 0.22), $ink);
+                imagefilledellipse($img, $cx, $y1 + (int) ($gh * 0.26), (int) ($s * 0.42), (int) ($gh * 0.42), $ink);
+                imagefilledellipse($img, $cx, $y2 - (int) ($gh * 0.18), (int) ($s * 0.56), (int) ($gh * 0.60), $ink);
+                imagefilledellipse($img, $cx - (int) ($s * 0.34), $cy + (int) ($gh * 0.06), (int) ($s * 0.20), (int) ($gh * 0.24), $detail);
+                imagefilledellipse($img, $cx + (int) ($s * 0.34), $cy + (int) ($gh * 0.06), (int) ($s * 0.20), (int) ($gh * 0.24), $detail);
+                imagefilledellipse($img, $cx, $cy + (int) ($gh * 0.02), (int) ($s * 0.14), (int) ($gh * 0.12), $line);
+                break;
+
             case 'bed':
                 // Headboard, mattress, pillow, legs.
                 imagefilledrectangle($img, $x1, $y1, $x1 + (int) ($s * 0.06), $y2, $ink);

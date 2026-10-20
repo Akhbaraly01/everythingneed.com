@@ -2,12 +2,21 @@
 
 namespace Tests\Feature\Web;
 
+use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 class PageRenderSmokeTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed(PermissionSeeder::class);
+        Cache::forget('rbac.matrix');
+    }
 
     public function test_iteration_26_pages_render_inertia_components(): void
     {

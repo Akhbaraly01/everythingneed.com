@@ -86,8 +86,16 @@ export async function webLogin(page: Page, creds: LoginCreds, landing = '/dashbo
     const cached = readState(creds.email);
     if (cached && cached.cookies.length > 0) {
         await page.context().addCookies(cached.cookies);
-        await page.goto(landing, { waitUntil: 'domcontentloaded' });
-        if (!page.url().includes('/login')) return;
+        // Validate the cached session against an auth-required route.
+        // Public landings (/healthcare, /healthcare/labs) render fine with a
+        // dead session, so a landing-only check would sign us out silently
+        // and the next auth-only page would bounce to /login. /dashboard
+        // sits in the auth+verified group: 200 = live session, 302 = stale.
+        const probe = await page.request.get('/dashboard', { maxRedirects: 0 });
+        if (probe.status() === 200) {
+            await page.goto(landing, { waitUntil: 'domcontentloaded' });
+            if (!page.url().includes('/login')) return;
+        }
     }
 
     // One context can sign in as several accounts across a chain (customer

@@ -1,9 +1,10 @@
 import { statusTone } from '@/lib/lifecycle';
 import AdminLayout from '@/layouts/AdminLayout';
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import { api, errorMessage, rows } from '@/lib/api';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 import DataTable from '@/components/shared/DataTable';
+import { useConfirm } from '@/lib/confirm';
 import { MapPin } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -33,9 +34,13 @@ interface Meta {
 const STATUSES = ['all', 'pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'rejected'];
 
 export default function AdminBuilding() {
+    const ask = useConfirm();
+    const roles = (usePage().props.auth as { roles?: string[] } | null)?.roles ?? [];
+    const canManage = roles.some((r) => ['super_admin', 'administrator', 'building_admin'].includes(r));
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [meta, setMeta] = useState<Meta | null>(null);
     const [loading, setLoading] = useState(true);
+    const [busy, setBusy] = useState<string | null>(null);
     const [status, setStatus] = useState('all');
     const [page, setPage] = useState(1);
 
@@ -46,6 +51,31 @@ export default function AdminBuilding() {
             .catch((e) => { setBookings([]); toast.error(errorMessage(e, 'Failed to load bookings')); })
             .finally(() => setLoading(false));
     }, [status, page]);
+
+    const transition = async (b: Booking, next: 'confirmed' | 'in_progress' | 'completed' | 'cancelled') => {
+        if (next === 'completed' || next === 'cancelled') {
+            const ok = await ask({
+                title: next === 'cancelled' ? 'Cancel this booking?' : 'Mark this booking completed?',
+                description: next === 'cancelled'
+                    ? `The ${b.worker_type} booking for ${b.requester_name ?? 'this customer'} is closed and cannot be reopened.`
+                    : 'Completion is terminal in the admin console.',
+                confirmLabel: next === 'cancelled' ? 'Cancel booking' : 'Mark completed',
+                danger: next === 'cancelled',
+            });
+            if (!ok) return;
+        }
+
+        setBusy(b.id);
+        try {
+            await api.post(`/api/building-services/bookings/${b.id}/transition`, { status: next });
+            setBookings((prev) => prev.map((x) => x.id === b.id ? { ...x, status: next } : x));
+            toast.success(`Booking ${next.replace('_', ' ')}.`);
+        } catch (e) {
+            toast.error(errorMessage(e, 'Status update failed'));
+        } finally {
+            setBusy(null);
+        }
+    };
 
     return (
         <AdminLayout title="Building Services">
@@ -116,6 +146,43 @@ export default function AdminBuilding() {
                         {
                             key: 'requested', header: 'Requested', accessor: 'created_at', sortable: true,
                             render: (b) => <span className="text-xs text-gray-500">{formatDateTime(b.created_at)}</span>,
+                        },
+                        {
+                            key: 'actions', header: 'Actions',
+                            render: (b) => {
+                                if (!canManage) {
+                                    return <span className="text-xs text-gray-400">View only</span>;
+                                }
+                                if (b.status === 'completed' || b.status === 'cancelled' || b.status === 'rejected') {
+                                    return <span className="text-xs text-gray-400">Closed</span>;
+                                }
+                                return (
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                        {b.status === 'pending' && (
+                                            <button disabled={busy === b.id} onClick={() => void transition(b, 'confirmed')}
+                                                className="rounded-lg bg-indigo-600 px-2 py-1 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-40">
+                                                Confirm
+                                            </button>
+                                        )}
+                                        {b.status === 'confirmed' && (
+                                            <button disabled={busy === b.id} onClick={() => void transition(b, 'in_progress')}
+                                                className="rounded-lg bg-blue-600 px-2 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-40">
+                                                Start
+                                            </button>
+                                        )}
+                                        {b.status === 'in_progress' && (
+                                            <button disabled={busy === b.id} onClick={() => void transition(b, 'completed')}
+                                                className="rounded-lg bg-green-600 px-2 py-1 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-40">
+                                                Complete
+                                            </button>
+                                        )}
+                                        <button disabled={busy === b.id} onClick={() => void transition(b, 'cancelled')}
+                                            className="rounded-lg border border-red-200 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-40 dark:border-red-900 dark:hover:bg-red-950/30">
+                                            Cancel
+                                        </button>
+                                    </div>
+                                );
+                            },
                         },
                     ]}
                     data={bookings}

@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Delivery;
 
+use Database\Seeders\PermissionSeeder;
+use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 /**
@@ -11,6 +13,13 @@ use Tests\TestCase;
  */
 class DeliveryLifecycleTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed(PermissionSeeder::class);
+        Cache::forget('rbac.matrix');
+    }
+
     private function register(array $overrides = []): \Illuminate\Testing\TestResponse
     {
         return $this->postJson('/api/delivery/managers', array_merge([

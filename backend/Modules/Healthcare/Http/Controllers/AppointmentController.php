@@ -308,6 +308,81 @@ class AppointmentController extends Controller
     }
 
     /**
+     * L-H-3: appointment discussion thread (patient, assigned doctor, admin).
+     */
+    public function messages(Request $request, string $id): JsonResponse
+    {
+        $ticket = $this->healthcareService->getTicket($id);
+
+        if (!$ticket) {
+            return response()->json(['message' => 'Appointment not found'], 404);
+        }
+
+        if (!$this->canAccess($request, $ticket)) {
+            return response()->json(['message' => 'You do not have access to this appointment'], 403);
+        }
+
+        $messages = $this->appointmentMessages($ticket->id, (string) $request->user()->id);
+
+        return response()->json(['data' => $messages]);
+    }
+
+    /**
+     * L-H-3: add a message / report an issue on the appointment thread.
+     */
+    public function postMessage(Request $request, string $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'body' => 'required|string|min:2|max:2000',
+        ]);
+
+        $ticket = $this->healthcareService->getTicket($id);
+
+        if (!$ticket) {
+            return response()->json(['message' => 'Appointment not found'], 404);
+        }
+
+        if (!$this->canAccess($request, $ticket)) {
+            return response()->json(['message' => 'You do not have access to this appointment'], 403);
+        }
+
+        if ($ticket->status === 'cancelled') {
+            return response()->json(['message' => 'This appointment was cancelled'], 422);
+        }
+
+        \Modules\Healthcare\Entities\AppointmentMessage::create([
+            'ticket_id' => $ticket->id,
+            'user_id' => $request->user()->id,
+            'body' => $validated['body'],
+        ]);
+
+        return response()->json([
+            'message' => 'Message sent',
+            'data' => $this->appointmentMessages($ticket->id, (string) $request->user()->id),
+        ], 201);
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function appointmentMessages(string $ticketId, string $viewerId): array
+    {
+        return \Modules\Healthcare\Entities\AppointmentMessage::with('user:id,name')
+            ->where('ticket_id', $ticketId)
+            ->orderBy('created_at')
+            ->get()
+            ->map(fn ($message) => [
+                'id' => $message->id,
+                'body' => $message->body,
+                'author' => $message->user?->name ?? 'User',
+                'is_mine' => (string) $message->user_id === $viewerId,
+                'created_at' => $message->created_at?->toIso8601String(),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
      * §21 Virtual-care adapter: returns a joinable room URL for virtual
      * consultations. Provider is config-driven (default: free Jitsi rooms);
      * swapping to Zoom/Meet/Whereby is a config change, not a rewrite.

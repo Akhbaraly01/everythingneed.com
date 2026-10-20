@@ -54,21 +54,25 @@ class AdminRoleAuthorizationSuiteTest extends TestCase
             // manageUsers (super, administrator, security_admin).
             '/api/admin/users' => ['super_admin', 'administrator', 'security_admin'],
             '/api/admin/roles' => ['super_admin', 'administrator', 'security_admin'],
-            // manageVendors.
-            '/api/admin/vendors' => ['super_admin', 'administrator', 'vendor_admin', 'platform_ops', 'vendor_manager'],
-            // manageOrders.
-            '/api/admin/orders' => ['super_admin', 'administrator', 'platform_ops', 'orders_admin', 'refund_agent'],
+            // manageVendors (vendors.vendors.view holders).
+            '/api/admin/vendors' => ['super_admin', 'administrator', 'platform_ops', 'vendor_manager'],
+            // manageOrders (orders.orders.view holders).
+            '/api/admin/orders' => [
+                'super_admin', 'administrator', 'platform_ops', 'orders_admin', 'refund_agent',
+                'finance_admin', 'moderator', 'support_agent', 'customer_service', 'vendor_admin',
+                'marketplace_admin', 'food_admin',
+            ],
             // manageFinance.
             '/api/admin/finance/summary' => ['super_admin', 'administrator', 'finance_admin', 'wallet_admin', 'payout_reviewer'],
             '/api/admin/finance/withdrawals' => ['super_admin', 'administrator', 'finance_admin', 'wallet_admin', 'payout_reviewer'],
             // viewAnalytics.
-            '/api/admin/analytics/overview' => ['super_admin', 'administrator', 'analytics_admin', 'analyst'],
+            '/api/admin/analytics/overview' => ['super_admin', 'administrator', 'analytics_admin', 'analyst', 'finance_admin'],
             // manageCms.
             '/api/admin/cms/pages' => ['super_admin', 'administrator', 'content_manager', 'cms_editor', 'content_admin'],
             // manageSupport.
             '/api/admin/support/tickets' => ['super_admin', 'administrator', 'support_agent', 'customer_service', 'support_admin'],
             // viewAuditLogs (note: administrator intentionally excluded).
-            '/api/admin/audit-logs' => ['super_admin', 'security_admin', 'auditor'],
+            '/api/admin/audit-logs' => ['super_admin', 'security_admin', 'auditor', 'finance_admin'],
             // viewAuditLogs AND audit.logs.export — same allow set; a bare
             // audit.logs.export grant (administrator) is not enough.
             '/api/admin/audit-logs/export' => ['super_admin', 'security_admin', 'auditor'],
@@ -76,26 +80,38 @@ class AdminRoleAuthorizationSuiteTest extends TestCase
             '/api/admin/settings' => ['super_admin', 'administrator'],
             // RBAC core — role:super_admin only.
             '/api/admin/rbac/matrix' => ['super_admin'],
-            // Departments GET — role list on the route.
-            '/api/admin/departments' => ['super_admin', 'administrator', 'customer_service', 'support_agent', 'support_admin'],
+            // Departments GET — permission:support.overview.view.
+            '/api/admin/departments' => [
+                'super_admin', 'administrator', 'customer_service', 'support_agent', 'support_admin',
+                'healthcare_admin', 'moderator', 'hotel_admin', 'food_admin',
+            ],
             // Brands — role list on the route.
             '/api/admin/brands' => ['super_admin', 'administrator', 'marketplace_admin', 'category_admin'],
             // KYC queue — permission:kyc.applications.view.
             '/api/admin/kyc' => ['super_admin', 'administrator', 'kyc_reviewer', 'security_admin'],
             // Product approval — permission:products.products.approve.
             '/api/admin/products/pending' => ['super_admin', 'administrator', 'platform_ops', 'marketplace_admin', 'moderator'],
-            // Disputes / returns / refunds — shared role list.
-            '/api/admin/disputes' => ['super_admin', 'administrator', 'moderator', 'finance_admin', 'platform_ops', 'orders_admin', 'refund_agent'],
-            '/api/admin/returns' => ['super_admin', 'administrator', 'moderator', 'finance_admin', 'platform_ops', 'orders_admin', 'refund_agent'],
-            '/api/admin/refunds' => ['super_admin', 'administrator', 'moderator', 'finance_admin', 'platform_ops', 'orders_admin', 'refund_agent'],
-            // Wallet ledger — role list on the route.
+            // Disputes / returns read: orders.orders.view; refunds requires
+            // an actual refund permission (moderator is view-only here).
+            '/api/admin/disputes' => [
+                'super_admin', 'administrator', 'moderator', 'finance_admin', 'platform_ops',
+                'orders_admin', 'refund_agent', 'support_agent', 'customer_service', 'vendor_admin',
+                'marketplace_admin', 'food_admin',
+            ],
+            '/api/admin/returns' => [
+                'super_admin', 'administrator', 'moderator', 'finance_admin', 'platform_ops',
+                'orders_admin', 'refund_agent', 'support_agent', 'customer_service', 'vendor_admin',
+                'marketplace_admin', 'food_admin',
+            ],
+            '/api/admin/refunds' => ['super_admin', 'administrator', 'finance_admin', 'platform_ops', 'orders_admin', 'refund_agent'],
+            // Wallet ledger — permission:payments.payments.view.
             '/api/admin/wallet/transactions' => ['super_admin', 'administrator', 'finance_admin', 'wallet_admin'],
             // Super+administrator consoles.
             '/api/admin/subscriptions' => ['super_admin', 'administrator'],
             '/api/admin/notifications' => ['super_admin', 'administrator'],
             // Domain consoles.
             '/api/admin/properties' => ['super_admin', 'administrator', 'building_admin', 'real_estate_admin'],
-            '/api/admin/pharmacy/orders' => ['super_admin', 'administrator', 'pharmacy_admin'],
+            '/api/admin/pharmacy/orders' => ['super_admin', 'administrator', 'pharmacy_admin', 'healthcare_admin'],
     // H-D: prescriptions oversight read also serves healthcare_admin
     // (holds pharmacy.prescriptions.view) via the Healthcare console.
     '/api/admin/pharmacy/prescriptions' => ['super_admin', 'administrator', 'pharmacy_admin', 'healthcare_admin'],

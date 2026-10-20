@@ -79,7 +79,7 @@ export default function BannerSlider() {
                         id: b.id,
                         title: b.title,
                         subtitle: '',
-                        cta: 'View',
+                        cta: '',
                         link: b.link_url || '/products',
                         gradient: GRADIENTS[i % GRADIENTS.length],
                         icon: ICONS[i % ICONS.length],
@@ -168,7 +168,7 @@ export default function BannerSlider() {
                                     ) : null}
                                 </div>
                                 <span className="h-8 text-xs px-4 bg-white/20 hover:bg-white/30 text-white border-0 shrink-0 ml-2 inline-flex items-center rounded-md font-medium">
-                                    {campaign.cta || 'View'}
+                                    {campaign.cta || t('floating.view', { defaultValue: 'View' })}
                                 </span>
                             </div>
                         </div>

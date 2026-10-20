@@ -7,6 +7,7 @@ use App\Models\UserRole;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Database\Seeders\PermissionSeeder;
 use Inertia\Testing\AssertableInertia as Assert;
 use Modules\Vendors\Entities\Vendor;
 use Tests\TestCase;
@@ -22,6 +23,13 @@ use Tests\TestCase;
 class AdminDetailRoutesTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed(PermissionSeeder::class);
+        \Illuminate\Support\Facades\Cache::forget('rbac.matrix');
+    }
 
     private function roleUser(string $role): User
     {

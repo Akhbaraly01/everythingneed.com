@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\User;
 use App\Models\UserRole;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class TestUsersSeeder extends Seeder
@@ -40,6 +41,23 @@ class TestUsersSeeder extends Seeder
             ['name' => 'Support Agent', 'email' => 'support@everythingneed.com', 'role' => 'support_agent'],
             ['name' => 'Learning Admin', 'email' => 'learning@everythingneed.com', 'role' => 'learning_admin'],
             ['name' => 'Finance Admin', 'email' => 'finance@everythingneed.com', 'role' => 'finance_admin'],
+            ['name' => 'Learning Reviewer', 'email' => 'learnreviewer@everythingneed.com', 'role' => 'learning_reviewer'],
+            ['name' => 'Marketplace Admin', 'email' => 'marketplace@everythingneed.com', 'role' => 'marketplace_admin'],
+            ['name' => 'Moderator', 'email' => 'moderator@everythingneed.com', 'role' => 'moderator'],
+            ['name' => 'Customer Service', 'email' => 'cs@everythingneed.com', 'role' => 'customer_service'],
+            ['name' => 'Hotel Admin', 'email' => 'hotel@everythingneed.com', 'role' => 'hotel_admin'],
+            ['name' => 'Food Admin', 'email' => 'food@everythingneed.com', 'role' => 'food_admin'],
+            ['name' => 'Transport Admin', 'email' => 'transport@everythingneed.com', 'role' => 'transport_admin'],
+            ['name' => 'Agriculture Admin', 'email' => 'agriculture@everythingneed.com', 'role' => 'agriculture_admin'],
+            ['name' => 'Building Admin', 'email' => 'building@everythingneed.com', 'role' => 'building_admin'],
+            ['name' => 'Jobs Admin', 'email' => 'jobs@everythingneed.com', 'role' => 'jobs_admin'],
+            ['name' => 'Pharmacy Admin', 'email' => 'pharmacy@everythingneed.com', 'role' => 'pharmacy_admin'],
+            ['name' => 'Needs Viewer', 'email' => 'needsviewer@everythingneed.com', 'role' => 'needs_viewer'],
+            ['name' => 'KYC Reviewer', 'email' => 'kyc@everythingneed.com', 'role' => 'kyc_reviewer'],
+            ['name' => 'Category Admin', 'email' => 'categoryadmin@everythingneed.com', 'role' => 'category_admin'],
+            ['name' => 'Vendor Manager', 'email' => 'vendormanager@everythingneed.com', 'role' => 'vendor_manager'],
+            ['name' => 'Content Admin', 'email' => 'contentadmin@everythingneed.com', 'role' => 'content_admin'],
+            ['name' => 'Daniel Mensah (Worker)', 'email' => 'daniel.worker@everythingneed.com', 'role' => 'worker'],
             ['name' => 'Regular User', 'email' => 'user@everythingneed.com', 'role' => 'user'],
             ['name' => 'Test Customer', 'email' => 'customer@everythingneed.com', 'role' => 'user'],
         ];
@@ -65,6 +83,18 @@ class TestUsersSeeder extends Seeder
             );
 
             $this->command->info("{$u['email']} ({$u['role']}) - Password: Password1");
+        }
+
+        // Marketplace admins are scoped by category_id; an unassigned scope
+        // fails closed to an empty approvals queue. Give local dev accounts
+        // a real category so the console has data to show.
+        $assignedCategoryId = DB::table('categories')->orderBy('name')->value('id');
+
+        if ($assignedCategoryId) {
+            UserRole::query()
+                ->where('role', 'marketplace_admin')
+                ->whereNull('category_id')
+                ->update(['category_id' => $assignedCategoryId]);
         }
     }
 }

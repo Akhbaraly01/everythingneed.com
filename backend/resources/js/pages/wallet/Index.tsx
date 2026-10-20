@@ -3,9 +3,10 @@ import { Head, Link, router } from '@inertiajs/react';
 import type { Wallet, WalletTransaction } from '@/types';
 import { formatDateTime } from '@/lib/utils';
 import { formatPrice } from '@/lib/currency';
-import { CreditCard, ArrowUpRight, ArrowDownLeft, Plus, Minus, X } from 'lucide-react';
+import { CreditCard, ArrowUpRight, ArrowDownLeft, Plus, Minus, X, Send } from 'lucide-react';
 import { useState } from 'react';
 import { ApiError, api, errorMessage } from '@/lib/api';
+import { toast } from 'sonner';
 import { Button } from '@/components/shared/Button';
 
 interface WalletProps {
@@ -32,10 +33,57 @@ const newIdempotencyKey = () =>
 export default function WalletPage({ wallet, available, pending, typeFilter, transactions }: WalletProps) {
     const [showDeposit, setShowDeposit] = useState(false);
     const [showWithdraw, setShowWithdraw] = useState(false);
+    const [showTransfer, setShowTransfer] = useState(false);
     const [amount, setAmount] = useState('');
     const [processing, setProcessing] = useState(false);
     const [actionError, setActionError] = useState<string | null>(null);
     const [kycBlocked, setKycBlocked] = useState(false);
+    const [transferEmail, setTransferEmail] = useState('');
+    const [recipient, setRecipient] = useState<{ id: string; name: string; email: string } | null>(null);
+    const [lookupState, setLookupState] = useState<'idle' | 'busy' | 'missing'>('idle');
+
+    const lookupRecipient = async () => {
+        const email = transferEmail.trim();
+        if (!email) return;
+        setLookupState('busy');
+        setRecipient(null);
+        try {
+            const res = await api.get<{ data: { id: string; name: string; email: string } }>(
+                `/api/wallet/recipients/lookup?email=${encodeURIComponent(email)}`,
+            );
+            setRecipient(res.data);
+            setLookupState('idle');
+        } catch {
+            setLookupState('missing');
+        }
+    };
+
+    const handleTransfer = async () => {
+        const value = parseFloat(amount);
+        if (isNaN(value) || value <= 0 || !recipient) return;
+        setProcessing(true);
+        setActionError(null);
+        setKycBlocked(false);
+        try {
+            await api.post('/api/wallet/transfer', {
+                to_user_id: recipient.id,
+                amount: value,
+                idempotency_key: newIdempotencyKey(),
+            });
+            setShowTransfer(false);
+            setAmount('');
+            setTransferEmail('');
+            setRecipient(null);
+            setLookupState('idle');
+            toast.success(`Sent ${formatPrice(value)} to ${recipient.name}.`);
+            router.reload({ only: ['wallet', 'available', 'pending', 'transactions'] });
+        } catch (e) {
+            setActionError(errorMessage(e, 'Transfer failed'));
+            setKycBlocked(e instanceof ApiError && e.status === 403);
+        } finally {
+            setProcessing(false);
+        }
+    };
 
     const handleDeposit = async () => {
         const value = parseFloat(amount);
@@ -115,6 +163,14 @@ export default function WalletPage({ wallet, available, pending, typeFilter, tra
                         >
                             <Minus className="h-4 w-4" />
                             Withdraw
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => { setShowTransfer(true); setAmount(''); setTransferEmail(''); setRecipient(null); setLookupState('idle'); }}
+                        >
+                            <Send className="h-4 w-4" />
+                            Transfer
                         </Button>
                     </div>
                 </div>
@@ -202,6 +258,79 @@ export default function WalletPage({ wallet, available, pending, typeFilter, tra
                                     disabled={processing || !amount || parseFloat(amount) <= 0 || parseFloat(amount) > available}
                                 >
                                     {processing ? 'Processing...' : 'Withdraw'}
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Transfer Modal */}
+                {showTransfer && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                        <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-gray-800">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Send to a Friend</h3>
+                                <Button variant="icon" iconOnly size="sm" aria-label="Close" onClick={() => setShowTransfer(false)}><X className="h-5 w-5" /></Button>
+                            </div>
+                            <p className="mt-1 text-sm text-gray-500">Available: {formatPrice(available)}</p>
+                            <div className="mt-4 space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Recipient email</label>
+                                    <div className="mt-1 flex gap-2">
+                                        <input
+                                            type="email"
+                                            value={transferEmail}
+                                            onChange={(e) => { setTransferEmail(e.target.value); setRecipient(null); setLookupState('idle'); }}
+                                            className="block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                                            placeholder="friend@example.com"
+                                        />
+                                        <Button size="sm" variant="outline" onClick={lookupRecipient} disabled={lookupState === 'busy' || !transferEmail.trim()}>
+                                            {lookupState === 'busy' ? '...' : 'Find'}
+                                        </Button>
+                                    </div>
+                                    {lookupState === 'missing' && (
+                                        <p className="mt-1 text-xs text-red-600">No account found for that email.</p>
+                                    )}
+                                    {recipient && (
+                                        <p className="mt-1 text-xs text-green-700 dark:text-green-400">
+                                            Sending to <span className="font-semibold">{recipient.name}</span> ({recipient.email})
+                                        </p>
+                                    )}
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Amount</label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max={available}
+                                        step="0.01"
+                                        value={amount}
+                                        onChange={(e) => setAmount(e.target.value)}
+                                        className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                                        placeholder="0.00"
+                                    />
+                                </div>
+                            </div>
+                            {actionError && (
+                                <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-900/20 dark:text-red-300">
+                                    {actionError}
+                                    {kycBlocked && (
+                                        <Link href="/kyc" className="mt-1 block font-medium underline">
+                                            Verify your identity to unlock transfers
+                                        </Link>
+                                    )}
+                                </div>
+                            )}
+                            <div className="mt-6 flex gap-3">
+                                <Button variant="ghost" size="sm" className="flex-1" onClick={() => setShowTransfer(false)}>Cancel</Button>
+                                <Button
+                                    variant="primary"
+                                    size="sm"
+                                    className="flex-1"
+                                    onClick={handleTransfer}
+                                    disabled={processing || !recipient || !amount || parseFloat(amount) <= 0 || parseFloat(amount) > available}
+                                >
+                                    {processing ? 'Sending...' : 'Send'}
                                 </Button>
                             </div>
                         </div>

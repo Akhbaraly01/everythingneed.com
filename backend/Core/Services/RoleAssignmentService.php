@@ -3,10 +3,10 @@
 namespace Core\Services;
 
 use App\Models\User;
-use Core\Enums\AppRole;
 use Core\Services\Contracts\AuditServiceInterface;
 use Core\Services\Contracts\PermissionServiceInterface;
 use Core\Services\Contracts\RoleAssignmentInterface;
+use Core\Services\Contracts\RoleRegistryInterface;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -18,6 +18,7 @@ class RoleAssignmentService extends BaseService implements RoleAssignmentInterfa
     public function __construct(
         private PermissionServiceInterface $permissions,
         private AuditServiceInterface $audit,
+        private RoleRegistryInterface $roles,
     ) {
     }
 
@@ -64,7 +65,7 @@ class RoleAssignmentService extends BaseService implements RoleAssignmentInterfa
 
     public function assertAssignable(User $actor, string $targetUserId, string $role): void
     {
-        if (! in_array($role, AppRole::values(), true)) {
+        if (! $this->roles->exists($role)) {
             abort(422, 'Unknown role: '.$role);
         }
 

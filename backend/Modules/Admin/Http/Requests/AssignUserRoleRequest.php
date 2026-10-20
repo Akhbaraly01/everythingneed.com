@@ -2,9 +2,9 @@
 
 namespace Modules\Admin\Http\Requests;
 
+use Core\Services\Contracts\RoleRegistryInterface;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use Modules\Admin\Http\Controllers\AdminRbacController;
 
 class AssignUserRoleRequest extends FormRequest
 {
@@ -22,7 +22,7 @@ class AssignUserRoleRequest extends FormRequest
     {
         return [
             'user_id' => 'required|uuid|exists:users,id',
-            'role' => ['required', 'string', Rule::in(AdminRbacController::ROLES)],
+            'role' => ['required', 'string', Rule::in(app(RoleRegistryInterface::class)->all())],
         ];
     }
 }

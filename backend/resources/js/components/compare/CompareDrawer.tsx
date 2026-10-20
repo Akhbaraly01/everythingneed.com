@@ -3,6 +3,7 @@ import { Link } from '@inertiajs/react';
 import {X, GitCompareArrows, Star, Trash2, ChevronLeft} from 'lucide-react';
 import { api } from '@/lib/api';
 import { formatPrice } from '@/lib/currency';
+import { useLanguage } from '@/lib/use-language';
 import { Button, buttonClasses } from '@/components/shared/Button';
 
 interface CompareProduct {
@@ -24,6 +25,7 @@ interface CompareRow {
 const MAX_COMPARE = 3;
 
 export default function CompareDrawer() {
+    const { t } = useLanguage();
     const [items, setItems] = useState<CompareProduct[]>([]);
     const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -92,7 +94,7 @@ export default function CompareDrawer() {
                             ))}
                         </div>
                         <span className="text-sm font-medium">
-                            {items.length}/{MAX_COMPARE} selected
+                            {t('compare.selected', { n: items.length, max: MAX_COMPARE, defaultValue: `${items.length}/${MAX_COMPARE} selected` })}
                         </span>
                         <Button
                             type="button"
@@ -101,7 +103,7 @@ export default function CompareDrawer() {
                             disabled={items.length < 2}
                         >
                             <GitCompareArrows className="h-3.5 w-3.5" />
-                            Compare
+                            {t('compare.compare', { defaultValue: 'Compare' })}
                         </Button>
                         <Button
                             type="button"
@@ -109,7 +111,7 @@ export default function CompareDrawer() {
                             iconOnly
                             size="sm"
                             onClick={() => void clearCompare()}
-                            aria-label="Clear comparison"
+                            aria-label={t('compare.clearAria', { defaultValue: 'Clear comparison' })}
                         >
                             <Trash2 className="h-4 w-4" />
                         </Button>
@@ -119,13 +121,13 @@ export default function CompareDrawer() {
 
             {/* Comparison sheet */}
             {drawerOpen && (
-                <div className="fixed inset-0 z-50 flex items-end" role="dialog" aria-modal="true" aria-label="Product comparison">
+                <div className="fixed inset-0 z-50 flex items-end" role="dialog" aria-modal="true" aria-label={t('compare.dialogAria', { defaultValue: 'Product comparison' })}>
                     <div className="absolute inset-0 bg-black/50" onClick={() => setDrawerOpen(false)} />
                     <div className="relative max-h-[85vh] w-full overflow-y-auto rounded-t-xl bg-card p-4">
                         <div className="mb-4 flex items-center justify-between">
                             <h2 className="flex items-center gap-2 text-base font-semibold">
                                 <GitCompareArrows className="h-5 w-5" />
-                                Product Comparison
+                                {t('compare.title', { defaultValue: 'Product Comparison' })}
                             </h2>
                             <div className="flex items-center gap-2">
                                 <Button
@@ -134,7 +136,7 @@ export default function CompareDrawer() {
                                     size="sm"
                                     onClick={() => void clearCompare()}
                                 >
-                                    Clear all
+                                    {t('common.clearAll')}
                                 </Button>
                                 <Button
                                     type="button"
@@ -142,7 +144,7 @@ export default function CompareDrawer() {
                                     iconOnly
                                     size="sm"
                                     onClick={() => setDrawerOpen(false)}
-                                    aria-label="Close comparison"
+                                    aria-label={t('common.close')}
                                 >
                                     <X className="h-4 w-4" />
                                 </Button>
@@ -154,7 +156,7 @@ export default function CompareDrawer() {
                                 <thead>
                                     <tr>
                                         <th className="w-28 p-2 text-left text-sm font-medium text-muted-foreground">
-                                            Feature
+                                            {t('compare.feature', { defaultValue: 'Feature' })}
                                         </th>
                                         {items.map((item) => (
                                             <th key={item.id} className="p-2 text-center">
@@ -165,7 +167,7 @@ export default function CompareDrawer() {
                                                         iconOnly
                                                         size="sm"
                                                         onClick={() => void removeFromCompare(item.id)}
-                                                        aria-label={`Remove ${item.name}`}
+                                                        aria-label={t('compare.remove', { name: item.name, defaultValue: `Remove ${item.name}` })}
                                                         className="absolute -top-1 -right-1 z-10 !h-5 !w-5 !min-h-5"
                                                     >
                                                         <X className="h-3 w-3" />
@@ -188,17 +190,17 @@ export default function CompareDrawer() {
                                 </thead>
                                 <tbody>
                                     <tr className="border-t">
-                                        <td className="p-2 text-sm font-medium">Price</td>
+                                        <td className="p-2 text-sm font-medium">{t('compare.price', { defaultValue: 'Price' })}</td>
                                         {items.map((item) => (
                                             <td key={item.id} className="p-2 text-center">
                                                 <span className="font-bold text-primary">
-                                                    {item.price !== undefined ? formatPrice(item.price) : 'N/A'}
+                                                    {item.price !== undefined ? formatPrice(item.price) : t('compare.na', { defaultValue: 'N/A' })}
                                                 </span>
                                             </td>
                                         ))}
                                     </tr>
                                     <tr className="border-t bg-muted/30">
-                                        <td className="p-2 text-sm font-medium">Rating</td>
+                                        <td className="p-2 text-sm font-medium">{t('compare.rating', { defaultValue: 'Rating' })}</td>
                                         {items.map((item) => (
                                             <td key={item.id} className="p-2 text-center">
                                                 <span className="inline-flex items-center gap-1">
@@ -209,7 +211,7 @@ export default function CompareDrawer() {
                                         ))}
                                     </tr>
                                     <tr className="border-t">
-                                        <td className="p-2 text-sm font-medium">Category</td>
+                                        <td className="p-2 text-sm font-medium">{t('compare.category', { defaultValue: 'Category' })}</td>
                                         {items.map((item) => (
                                             <td key={item.id} className="p-2 text-center">
                                                 <span className="rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
@@ -219,11 +221,11 @@ export default function CompareDrawer() {
                                         ))}
                                     </tr>
                                     <tr className="border-t bg-muted/30">
-                                        <td className="p-2 text-sm font-medium">Description</td>
+                                        <td className="p-2 text-sm font-medium">{t('compare.description', { defaultValue: 'Description' })}</td>
                                         {items.map((item) => (
                                             <td key={item.id} className="p-2 text-center">
                                                 <p className="line-clamp-3 text-xs text-muted-foreground">
-                                                    {item.description || 'No description available'}
+                                                    {item.description || t('compare.noDescription', { defaultValue: 'No description available' })}
                                                 </p>
                                             </td>
                                         ))}
@@ -238,7 +240,7 @@ export default function CompareDrawer() {
                                 onClick={() => setDrawerOpen(false)}
                                 className={buttonClasses('primary', 'md')}
                             >
-                                Full comparison page
+                                {t('compare.fullPage', { defaultValue: 'Full comparison page' })}
                             </Link>
                             <Button
                                 type="button"
@@ -247,7 +249,7 @@ export default function CompareDrawer() {
                                 onClick={() => setDrawerOpen(false)}
                             >
                                 <ChevronLeft className="h-4 w-4" />
-                                Keep shopping
+                                {t('compare.keepShopping', { defaultValue: 'Keep shopping' })}
                             </Button>
                         </div>
                     </div>

@@ -57,9 +57,28 @@ class HealthcarePageController extends Controller
 
         $record = Consultation::where('ticket_id', $ticket->id)->first();
 
+        // L-H-3: receipt facts (never the raw Payment row — it carries
+        // encrypted gateway metadata).
+        $payment = null;
+        if ($ticket->payment_id) {
+            $settled = $ticket->payment()->first(['id', 'reference', 'amount', 'currency', 'method', 'status']);
+            if ($settled) {
+                $payment = [
+                    'id' => $settled->id,
+                    'reference' => $settled->reference,
+                    'amount' => (float) $settled->amount,
+                    'currency' => $settled->currency,
+                    'method' => $settled->method,
+                    'status' => $settled->status,
+                    'paid_at' => $ticket->paid_at?->toIso8601String(),
+                ];
+            }
+        }
+
         return Inertia::render('healthcare/AppointmentShow', [
             'appointment' => $ticket,
             'consultation' => $record,
+            'payment' => $payment,
         ]);
     }
 

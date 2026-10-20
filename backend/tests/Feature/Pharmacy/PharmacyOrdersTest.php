@@ -178,4 +178,68 @@ class PharmacyOrdersTest extends TestCase
 
         $this->assertEquals(30.00, (float) $response->json('data.total_amount'));
     }
+
+    public function test_guests_cannot_cancel_orders(): void
+    {
+        $this->postJson('/api/pharmacy/orders/'.str_repeat('a', 36).'/cancel')->assertUnauthorized();
+    }
+
+    public function test_customer_cancels_pending_order_and_stock_is_restocked(): void
+    {
+        $user = User::factory()->create();
+        $medicine = $this->makeMedicine(['stock_quantity' => 10]);
+
+        $order = $this->actingAs($user, 'sanctum')
+            ->postJson('/api/pharmacy/orders', [
+                'items' => [['medicine_id' => $medicine->id, 'quantity' => 4]],
+            ])
+            ->assertStatus(201)
+            ->json('data.id');
+
+        $this->assertEquals(6, $medicine->fresh()->stock_quantity);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson("/api/pharmacy/orders/{$order}/cancel")
+            ->assertOk()
+            ->assertJsonPath('data.status', MedicineOrder::STATUS_CANCELLED);
+
+        $this->assertEquals(10, $medicine->fresh()->stock_quantity);
+    }
+
+    public function test_customer_cannot_cancel_a_confirmed_order(): void
+    {
+        $user = User::factory()->create();
+        $order = MedicineOrder::create([
+            'user_id' => $user->id,
+            'order_number' => 'MED-CONF001',
+            'delivery_address' => 'Addr',
+            'total_amount' => 5,
+            'status' => MedicineOrder::STATUS_CONFIRMED,
+        ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson("/api/pharmacy/orders/{$order->id}/cancel")
+            ->assertStatus(422);
+
+        $this->assertEquals(MedicineOrder::STATUS_CONFIRMED, $order->fresh()->status);
+    }
+
+    public function test_cannot_cancel_a_strangers_order(): void
+    {
+        $me = User::factory()->create();
+        $other = User::factory()->create();
+        $theirs = MedicineOrder::create([
+            'user_id' => $other->id,
+            'order_number' => 'MED-STR001',
+            'delivery_address' => 'Addr',
+            'total_amount' => 5,
+            'status' => MedicineOrder::STATUS_PENDING,
+        ]);
+
+        $this->actingAs($me, 'sanctum')
+            ->postJson("/api/pharmacy/orders/{$theirs->id}/cancel")
+            ->assertNotFound();
+
+        $this->assertEquals(MedicineOrder::STATUS_PENDING, $theirs->fresh()->status);
+    }
 }

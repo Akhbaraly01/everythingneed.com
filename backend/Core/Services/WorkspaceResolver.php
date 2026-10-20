@@ -16,6 +16,14 @@ class WorkspaceResolver implements WorkspaceResolverInterface
      */
     private static ?array $roleHrefs = null;
 
+    /**
+     * Static cache of permission-expression => [admin hrefs] for routes
+     * guarded by the permission: middleware (custom-role parity).
+     *
+     * @var array<string, list<string>>|null
+     */
+    private static ?array $permissionHrefs = null;
+
     public function landingPath(User $user): string
     {
         $roles = $user->roles->pluck('role')->all();
@@ -34,7 +42,12 @@ class WorkspaceResolver implements WorkspaceResolverInterface
         $roles = $user->roles->pluck('role')->all();
         $available = ['marketplace'];
 
-        if (array_intersect((array) config('workspace.admin_console_roles', []), $roles)) {
+        // Admin console: role-based (config lists) or permission-based
+        // (the user holds the permissions of at least one /admin page).
+        if (
+            array_intersect((array) config('workspace.admin_console_roles', []), $roles) ||
+            $this->hasPermissionBasedAdminAccess($user)
+        ) {
             $available[] = 'admin';
         }
         if (array_intersect((array) config('workspace.vendor_console_roles', []), $roles)) {
@@ -60,7 +73,75 @@ class WorkspaceResolver implements WorkspaceResolverInterface
             }
         }
 
+        // Custom roles carry no role-gated hrefs; include pages their
+        // granted permissions can actually open.
+        foreach (self::permissionHrefs() as $expression => $uris) {
+            if ($this->satisfiesPermissionExpression($user, $expression)) {
+                foreach ($uris as $uri) {
+                    $hrefs[$uri] = true;
+                }
+            }
+        }
+
         return array_keys($hrefs);
+    }
+
+    private function hasPermissionBasedAdminAccess(User $user): bool
+    {
+        foreach (self::permissionHrefs() as $expression => $uris) {
+            if ($this->satisfiesPermissionExpression($user, $expression)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Mirrors EnsureUserHasPermission: comma-separated requirements are
+     * OR; '&'-joined tokens within one requirement must ALL pass.
+     */
+    private function satisfiesPermissionExpression(User $user, string $expression): bool
+    {
+        foreach (explode(',', $expression) as $requirement) {
+            if ($this->satisfiesRequirement($user, $requirement)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function satisfiesRequirement(User $user, string $requirement): bool
+    {
+        foreach (explode('&', $requirement) as $token) {
+            if (! $this->satisfiesToken($user, $token)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function satisfiesToken(User $user, string $token): bool
+    {
+        if ($token === '') {
+            return false;
+        }
+
+        if (str_ends_with($token, '.*')) {
+            $prefix = substr($token, 0, -1); // keep the trailing dot
+
+            foreach (\Database\Seeders\PermissionSeeder::CATALOG as $candidate) {
+                if (str_starts_with($candidate, $prefix) && $user->hasPermission($candidate)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        return $user->hasPermission($token);
     }
 
     public function workspaceFor(User $user, string $currentPath): array
@@ -136,5 +217,52 @@ class WorkspaceResolver implements WorkspaceResolverInterface
         );
 
         return self::$roleHrefs;
+    }
+
+    /**
+     * Build (and cache) the permission-expression => concrete /admin URIs
+     * map from routes guarded by `permission:` middleware. Expressions are
+     * kept verbatim (comma OR groups) so each user is evaluated with the
+     * same semantics the middleware applies.
+     *
+     * @return array<string, list<string>>
+     */
+    private static function permissionHrefs(): array
+    {
+        if (self::$permissionHrefs !== null) {
+            return self::$permissionHrefs;
+        }
+
+        $map = [];
+
+        foreach (Route::getRoutes() as $route) {
+            $uri = $route->uri();
+            if (! (str_starts_with($uri, 'admin') || str_starts_with($uri, '/admin'))) {
+                continue;
+            }
+            if (str_contains($uri, '{')) {
+                continue;
+            }
+
+            foreach ($route->gatherMiddleware() as $middleware) {
+                if (! is_string($middleware) || ! str_starts_with($middleware, 'permission:')) {
+                    continue;
+                }
+
+                $expression = trim(substr($middleware, 11));
+                if ($expression === '') {
+                    continue;
+                }
+
+                $map[$expression]['/' . ltrim($uri, '/')] = true;
+            }
+        }
+
+        self::$permissionHrefs = array_map(
+            static fn (array $hrefs): array => array_keys($hrefs),
+            $map
+        );
+
+        return self::$permissionHrefs;
     }
 }

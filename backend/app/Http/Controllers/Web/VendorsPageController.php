@@ -30,8 +30,17 @@ class VendorsPageController extends Controller
 
         $vendors = $query->orderByDesc('created_at')->paginate(20)->withQueryString();
 
+        // Distinct category list for the filter dropdown (cheap: one indexed scan).
+        $categories = Vendor::query()
+            ->whereNotNull('category')
+            ->where('category', '!=', '')
+            ->distinct()
+            ->orderBy('category')
+            ->pluck('category');
+
         return Inertia::render('vendors/Index', [
             'vendors' => $vendors,
+            'categories' => $categories,
             'filters' => $request->only(['search', 'category']),
         ]);
     }

@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\User;
 use App\Models\UserRole;
+use Database\Factories\ProductFactory;
 use Modules\Vendors\Entities\Vendor;
 use Modules\Products\Entities\Product;
 use Modules\Healthcare\Entities\Doctor;
@@ -228,13 +229,20 @@ class DatabaseSeeder extends Seeder
             'rating' => 4.3,
         ]);
 
-        // Create Products
-        Product::factory()->count(20)->create([
+        // Create Products (design v3: real catalogue names matched to the
+        // category so the type-aware seed artwork renders what the product is)
+        $electronicsNames = ProductFactory::catalogNames('electronics');
+        Product::factory()->count(20)->sequence(
+            fn ($sequence) => ['name' => $electronicsNames[$sequence->index % count($electronicsNames)]],
+        )->create([
             'vendor_id' => $vendor1->id,
             'category' => 'electronics',
         ]);
 
-        Product::factory()->count(15)->create([
+        $clothingNames = ProductFactory::catalogNames('clothing');
+        Product::factory()->count(15)->sequence(
+            fn ($sequence) => ['name' => $clothingNames[$sequence->index % count($clothingNames)]],
+        )->create([
             'vendor_id' => $vendor2->id,
             'category' => 'clothing',
         ]);
@@ -288,8 +296,12 @@ class DatabaseSeeder extends Seeder
         // Seed starter no-code modules (W3: proves the dynamic plane live)
         $this->call(DynamicModuleSeeder::class);
 
-        // Seed demo data for all modules
+        // Demo data for all modules
         $this->call(DemoDataSeeder::class);
+
+        // Rename legacy lorem-faker product rows to the real demo catalogue
+        // (design v3 imagery keys off these names).
+        $this->call(DemoCatalogRefreshSeeder::class);
 
         // Local product imagery (W1): replaces dead external image URLs
         // left by faker with GD-generated seed cards + media rows.

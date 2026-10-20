@@ -2,11 +2,20 @@
 
 namespace Tests\Feature\Journeys;
 
+use Database\Seeders\PermissionSeeder;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class AdminSupportJourneyTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed(PermissionSeeder::class);
+        Cache::forget('rbac.matrix');
+    }
+
     private function openTicket(string $subject = 'Order never arrived'): string
     {
         $customer = $this->createUser();

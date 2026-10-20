@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AppealController;
+use App\Http\Controllers\Api\AutoTranslateController;
 
 /*
 |--------------------------------------------------------------------------
@@ -29,6 +30,11 @@ Route::get('/', function () {
         ],
     ]);
 });
+
+// Whole-page translation proxy (Path B). The client chunks visible text
+// under the configured caps; the throttle protects provider quota.
+Route::post('/i18n/auto-translate', AutoTranslateController::class)
+    ->middleware('throttle:'.config('auto_translate.throttle', '120,1'));
 
 Route::get('/health', function () {
     $checks = [
@@ -190,9 +196,9 @@ Route::middleware('auth:sanctum')->prefix('kyc')->group(function () {
     Route::post('/submit', [\App\Http\Controllers\Api\KycController::class, 'submit'])
         ->middleware('throttle:10,1');
     Route::post('/{id}/review', [\App\Http\Controllers\Api\KycController::class, 'review'])
-        ->middleware('role:super_admin,administrator,kyc_reviewer,security_admin');
+        ->middleware('permission:kyc.applications.review');
     Route::get('/{id}/documents/{side}', [\App\Http\Controllers\Api\KycController::class, 'reviewDocument'])
-        ->middleware('role:super_admin,administrator,kyc_reviewer,security_admin');
+        ->middleware('permission:kyc.applications.review');
     Route::get('/{id}/documents/{side}/signed-url', [\App\Http\Controllers\Api\KycController::class, 'reviewDocumentSignedUrl'])
-        ->middleware('role:super_admin,administrator,kyc_reviewer,security_admin');
+        ->middleware('permission:kyc.applications.review');
 });

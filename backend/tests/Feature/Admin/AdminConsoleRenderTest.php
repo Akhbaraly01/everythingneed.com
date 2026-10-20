@@ -44,6 +44,7 @@ class AdminConsoleRenderTest extends TestCase
             '/admin/food' => ['/admin/food', 'admin/Food'],
             '/admin/transport' => ['/admin/transport', 'admin/Transport'],
             '/admin/jobs' => ['/admin/jobs', 'admin/Jobs'],
+            '/admin/job-seekers' => ['/admin/job-seekers', 'admin/JobSeekers'],
             '/admin/payouts' => ['/admin/payouts', 'admin/Payouts'],
             '/admin/finance' => ['/admin/finance', 'admin/Finance'],
             '/admin/support/tickets' => ['/admin/support/tickets', 'admin/Support'],

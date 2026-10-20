@@ -116,4 +116,40 @@ class RbacMatrixTest extends TestCase
             'permission' => 'made.up.permission',
         ])->assertStatus(422);
     }
+
+    public function test_matrix_exposes_console_metadata(): void
+    {
+        $this->seedMatrix();
+
+        $super = User::factory()->create();
+        \App\Models\UserRole::create(['user_id' => $super->id, 'role' => 'super_admin']);
+
+        foreach (range(1, 2) as $_) {
+            $moderator = User::factory()->create();
+            \App\Models\UserRole::create(['user_id' => $moderator->id, 'role' => 'moderator']);
+        }
+
+        $data = collect($this->actingAs($super)->getJson('/api/admin/rbac/matrix')->json('data'));
+
+        $superRow = $data->firstWhere('role', 'super_admin');
+        $this->assertSame('Super Admin', $superRow['label']);
+        $this->assertTrue($superRow['is_core']);
+        $this->assertFalse($superRow['is_custom']);
+        $this->assertSame(1, $superRow['user_count']);
+
+        $moderatorRow = $data->firstWhere('role', 'moderator');
+        $this->assertSame('Moderator', $moderatorRow['label']);
+        $this->assertFalse($moderatorRow['is_core']);
+        $this->assertFalse($moderatorRow['is_custom']);
+        $this->assertSame(2, $moderatorRow['user_count']);
+
+        // Every canonical role appears with the metadata keys present.
+        $this->assertCount(count(\Core\Enums\AppRole::values()), $data);
+        foreach ($data as $row) {
+            $this->assertArrayHasKey('label', $row);
+            $this->assertArrayHasKey('user_count', $row);
+            $this->assertArrayHasKey('is_core', $row);
+            $this->assertArrayHasKey('is_custom', $row);
+        }
+    }
 }

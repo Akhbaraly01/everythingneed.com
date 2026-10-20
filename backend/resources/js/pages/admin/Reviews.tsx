@@ -4,7 +4,8 @@ import { api, errorMessage, rows } from '@/lib/api';
 import { formatDateTime } from '@/lib/utils';
 import ConfirmDialog from '@/components/shared/Ui';
 import DataTable from '@/components/shared/DataTable';
-import { EyeOff, Star, Trash2, ShieldAlert, Undo2 } from 'lucide-react';
+import { useConfirm } from '@/lib/confirm';
+import { CheckCircle2, EyeOff, Flag, Star, Trash2, ShieldAlert, Undo2, XCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -30,8 +31,28 @@ interface Meta {
     total: number;
 }
 
+/** Report queue row (ReviewModerationController::reports). */
+interface ReviewReportRow {
+    id: string;
+    review_id: string;
+    reason: string;
+    status: 'open' | 'reviewed' | 'dismissed';
+    created_at: string;
+    review?: {
+        id: string;
+        reviewable_type?: string;
+        rating: number;
+        title?: string | null;
+        comment?: string | null;
+        status?: string;
+        user?: { id: string; name: string } | null;
+    } | null;
+    reporter?: { id: string; name: string } | null;
+}
+
 const TYPES = ['all', 'product', 'vendor', 'doctor', 'hotel', 'restaurant', 'course', 'property', 'expert'];
 const STATUSES = ['all', 'approved', 'hidden', 'rejected'];
+const REPORT_STATUSES = ['open', 'reviewed', 'dismissed', 'all'];
 
 const STATUS_STYLES: Record<string, string> = {
     approved: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
@@ -40,7 +61,15 @@ const STATUS_STYLES: Record<string, string> = {
     pending: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
 };
 
+const REPORT_STATUS_STYLES: Record<string, string> = {
+    open: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+    reviewed: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
+    dismissed: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+};
+
 export default function AdminReviews() {
+    const ask = useConfirm();
+    const [view, setView] = useState<'reviews' | 'reports'>('reviews');
     const [reviews, setReviews] = useState<Review[]>([]);
     const [meta, setMeta] = useState<Meta | null>(null);
     const [loading, setLoading] = useState(true);
@@ -49,6 +78,13 @@ export default function AdminReviews() {
     const [page, setPage] = useState(1);
     const [deleteFor, setDeleteFor] = useState<Review | null>(null);
     const [busy, setBusy] = useState(false);
+
+    const [reports, setReports] = useState<ReviewReportRow[]>([]);
+    const [reportMeta, setReportMeta] = useState<Meta | null>(null);
+    const [reportStatus, setReportStatus] = useState('open');
+    const [reportPage, setReportPage] = useState(1);
+    const [reportLoading, setReportLoading] = useState(false);
+    const [reportBusy, setReportBusy] = useState<string | null>(null);
 
     useEffect(() => {
         setLoading(true);
@@ -75,6 +111,23 @@ export default function AdminReviews() {
             .catch((e) => { setReviews([]); toast.error(errorMessage(e, 'Failed to load reviews')); })
             .finally(() => setLoading(false));
     }, [type, status, page]);
+
+    useEffect(() => {
+        if (view !== 'reports') return;
+        setReportLoading(true);
+        const qs = new URLSearchParams({ page: String(reportPage), per_page: '15' });
+        if (reportStatus !== 'all') qs.set('status', reportStatus);
+        api.get<{ data: ReviewReportRow[]; meta: Meta }>(`/api/admin/reviews/reports?${qs}`)
+            .then((res) => {
+                setReports(rows<ReviewReportRow>(res));
+                setReportMeta(res.meta);
+            })
+            .catch((e) => {
+                setReports([]);
+                toast.error(errorMessage(e, 'Failed to load review reports'));
+            })
+            .finally(() => setReportLoading(false));
+    }, [view, reportStatus, reportPage]);
 
     /** Idempotent moderation transition (L-B.5) - hidden rows can come back. */
     const moderate = async (r: Review, next: 'approved' | 'hidden' | 'rejected') => {
@@ -108,15 +161,73 @@ export default function AdminReviews() {
         }
     };
 
+    /** Close a report queue case: dismiss keeps the review, uphold hides it. */
+    const decideReport = async (r: ReviewReportRow, decision: 'dismiss' | 'uphold') => {
+        const ok = await ask({
+            title: decision === 'uphold' ? 'Uphold report and hide review?' : 'Dismiss this report?',
+            description: decision === 'uphold'
+                ? 'The review is hidden immediately and the report is closed.'
+                : 'The report is closed and the review stays visible.',
+            confirmLabel: decision === 'uphold' ? 'Uphold & hide' : 'Dismiss',
+            danger: decision === 'uphold',
+        });
+        if (!ok) return;
+
+        setReportBusy(r.id);
+        try {
+            const res = await api.post<{ data: ReviewReportRow }>(
+                `/api/admin/reviews/reports/${r.id}/decide`,
+                { decision },
+            );
+            toast.success(decision === 'uphold' ? 'Report upheld; review hidden.' : 'Report dismissed.');
+            if (reportStatus === 'open') {
+                setReports((prev) => prev.filter((x) => x.id !== r.id));
+                setReportMeta((prev) => prev ? { ...prev, total: Math.max(0, prev.total - 1) } : prev);
+            } else {
+                setReports((prev) => prev.map((x) => x.id === r.id ? { ...x, ...res.data } : x));
+            }
+        } catch (e) {
+            toast.error(errorMessage(e, 'Report decision failed'));
+        } finally {
+            setReportBusy(null);
+        }
+    };
+
     return (
         <AdminLayout title="Reviews Moderation">
             <Head title="Reviews Moderation" />
             <div className="space-y-6">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Reviews Moderation</h1>
-                    {meta && <span className="text-sm text-gray-500">{meta.total} reviews</span>}
+                    <span className="text-sm text-gray-500">
+                        {view === 'reviews'
+                            ? (meta ? `${meta.total} reviews` : '')
+                            : (reportMeta ? `${reportMeta.total} reports` : '')}
+                    </span>
                 </div>
 
+                <div className="flex gap-2 border-b border-gray-200 pb-2 dark:border-gray-700" role="tablist" aria-label="Reviews console sections">
+                    <button
+                        role="tab"
+                        aria-selected={view === 'reviews'}
+                        onClick={() => setView('reviews')}
+                        className={`rounded-full px-4 py-1.5 text-sm font-medium ${view === 'reviews' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200'}`}
+                    >
+                        Reviews
+                    </button>
+                    <button
+                        role="tab"
+                        aria-selected={view === 'reports'}
+                        onClick={() => setView('reports')}
+                        className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium ${view === 'reports' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200'}`}
+                    >
+                        <Flag className="h-3.5 w-3.5" aria-hidden="true" />
+                        Report queue
+                    </button>
+                </div>
+
+                {view === 'reviews' && (
+                    <>
                 <div className="flex flex-wrap gap-2">
                     {TYPES.map((t) => (
                         <button key={t} onClick={() => { setType(t); setPage(1); }}
@@ -232,6 +343,109 @@ export default function AdminReviews() {
                                 className="rounded-lg border border-gray-300 px-3 py-1 disabled:opacity-40 dark:border-gray-600">Next</button>
                         </div>
                     </div>
+                )}
+                    </>
+                )}
+
+                {view === 'reports' && (
+                    <>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-xs font-semibold uppercase text-gray-500">Status</span>
+                            {REPORT_STATUSES.map((s) => (
+                                <button key={s} onClick={() => { setReportStatus(s); setReportPage(1); }}
+                                    className={`rounded-full px-3 py-1 text-sm font-medium capitalize ${reportStatus === s ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'}`}>
+                                    {s}
+                                </button>
+                            ))}
+                        </div>
+
+                        <DataTable
+                            columns={[
+                                {
+                                    key: 'reporter', header: 'Reporter',
+                                    render: (r) => (
+                                        <>
+                                            <p className="font-medium text-gray-900 dark:text-white">{r.reporter?.name ?? 'Unknown'}</p>
+                                            <p className="text-xs text-gray-500">{formatDateTime(r.created_at)}</p>
+                                        </>
+                                    ),
+                                },
+                                {
+                                    key: 'review', header: 'Reported review',
+                                    render: (r) => (
+                                        <>
+                                            <span className="flex items-center gap-0.5 text-amber-500">
+                                                {Array.from({ length: r.review?.rating ?? 0 }).map((_, i) => <Star key={i} className="h-3.5 w-3.5 fill-current" />)}
+                                            </span>
+                                            <span className="block text-xs text-gray-600 dark:text-gray-300">
+                                                {r.review?.comment || r.review?.title || 'Review no longer available'}
+                                            </span>
+                                            {r.review?.reviewable_type && (
+                                                <span className="mt-1 inline-block rounded bg-gray-100 px-1.5 py-0.5 text-[11px] capitalize text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+                                                    {r.review.reviewable_type}
+                                                </span>
+                                            )}
+                                        </>
+                                    ),
+                                },
+                                {
+                                    key: 'reason', header: 'Reason',
+                                    render: (r) => <span className="text-xs text-gray-600 dark:text-gray-300">{r.reason}</span>,
+                                },
+                                {
+                                    key: 'status', header: 'Status', accessor: 'status', sortable: true,
+                                    render: (r) => (
+                                        <span className={`rounded px-1.5 py-0.5 text-xs font-medium capitalize ${REPORT_STATUS_STYLES[r.status] ?? ''}`}>
+                                            {r.status}
+                                        </span>
+                                    ),
+                                },
+                                {
+                                    key: 'actions', header: 'Actions',
+                                    render: (r) => r.status === 'open' ? (
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                disabled={reportBusy === r.id}
+                                                onClick={() => void decideReport(r, 'dismiss')}
+                                                className="rounded-lg border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+                                            >
+                                                Dismiss
+                                            </button>
+                                            <button
+                                                disabled={reportBusy === r.id}
+                                                onClick={() => void decideReport(r, 'uphold')}
+                                                className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-40"
+                                            >
+                                                <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+                                                Uphold &amp; hide
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <span className="inline-flex items-center gap-1 text-xs text-gray-400">
+                                            <XCircle className="h-3.5 w-3.5" aria-hidden="true" />
+                                            Closed
+                                        </span>
+                                    ),
+                                },
+                            ]}
+                            data={reports}
+                            loading={reportLoading}
+                            emptyTitle="No review reports"
+                            emptyDescription={reportStatus === 'open' ? 'No open reports need a decision.' : `No ${reportStatus === 'all' ? '' : reportStatus + ' '}reports.`}
+                        />
+
+                        {reportMeta && reportMeta.last_page > 1 && (
+                            <div className="flex items-center justify-between text-sm text-gray-500">
+                                <span>Page {reportMeta.current_page} of {reportMeta.last_page}</span>
+                                <div className="flex gap-2">
+                                    <button disabled={reportMeta.current_page <= 1} onClick={() => setReportPage(reportPage - 1)}
+                                        className="rounded-lg border border-gray-300 px-3 py-1 disabled:opacity-40 dark:border-gray-600">Previous</button>
+                                    <button disabled={reportMeta.current_page >= reportMeta.last_page} onClick={() => setReportPage(reportPage + 1)}
+                                        className="rounded-lg border border-gray-300 px-3 py-1 disabled:opacity-40 dark:border-gray-600">Next</button>
+                                </div>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
         </AdminLayout>

@@ -4,7 +4,9 @@ namespace Tests\Feature\Pharmacy;
 
 use App\Models\User;
 use App\Models\UserRole;
+use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Modules\Orders\Entities\MedicineOrder;
 use Modules\Pharmacy\Entities\Medicine;
 use Tests\TestCase;
@@ -17,6 +19,13 @@ use Tests\TestCase;
 class PharmacyFulfillmentTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed(PermissionSeeder::class);
+        Cache::forget('rbac.matrix');
+    }
 
     private function makeMedicine(array $overrides = []): Medicine
     {

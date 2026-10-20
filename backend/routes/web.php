@@ -41,6 +41,14 @@ Route::get('/robots.txt', function () {
     return response("User-agent: *\nDisallow: /api/\n", 200, ['Content-Type' => 'text/plain']);
 });
 
+// Multilingual Phase 0: explicit language selection (dropdown / settings).
+// Guests get the long-lived `locale` cookie; signed-in users also persist
+// the choice to their account. Throttled: this endpoint is a beacon, not
+// a page.
+Route::post('/locale', [\App\Http\Controllers\Web\LocaleController::class, 'update'])
+    ->middleware('throttle:30,1')
+    ->name('locale.update');
+
 // Web (Inertia) authentication & controllers
 use App\Http\Controllers\Web\WebAuthController;
 use App\Http\Controllers\Web\VerificationController;
@@ -540,6 +548,11 @@ Route::get('/learn/watch/{id}', function (string $id) {
 Route::get('/learn/search', function () {
     return inertia('learn/Search');
 })->name('learn.search');
+
+// Learn playlists: personal saved collections of approved knowledge posts.
+Route::get('/learn/playlists', function () {
+    return inertia('learn/Playlists');
+})->name('learn.playlists');
     Route::get('/learn/instructors/{id}', function ($id) {
         $id = (string) $id;
         $name = urldecode($id);
@@ -966,6 +979,10 @@ Route::get('/transportation', function () {
 Route::get('/transportation/ride-booking', function () {
 return inertia('transportation/RideBooking');
 })->name('transportation.ride-booking')->middleware('auth');
+// Driver lifecycle console (register, availability, accept/complete rides)
+Route::get('/transportation/driver', function () {
+    return inertia('transportation/Driver');
+})->name('transportation.driver')->middleware('auth');
 // N-39 driver earnings view
 Route::get('/transportation/driver/earnings', function () {
 return inertia('transportation/DriverEarnings');
@@ -1039,21 +1056,21 @@ Route::middleware('role:' . $adminConsoleRoles)->prefix('admin')->group(function
     Route::get('/', [AdminPageController::class, 'dashboard'])->name('admin.root');
 });
 
-Route::middleware('role:super_admin,administrator,marketplace_admin,platform_ops,moderator')->prefix('admin')->group(function () {
+Route::middleware('permission:products.products.approve')->prefix('admin')->group(function () {
     Route::get('/approvals', [AdminPageController::class, 'approvals'])->name('admin.approvals');
 });
 
 // Categories (spec §65 Category Admin): split from /approvals so the
 // category console does not implicitly reach product approvals.
-Route::middleware('role:super_admin,administrator,marketplace_admin,platform_ops,moderator,category_admin')->prefix('admin')->group(function () {
+Route::middleware('permission:categories.categories.view')->prefix('admin')->group(function () {
     Route::get('/categories', [AdminPageController::class, 'categories'])->name('admin.categories');
 });
 
-Route::middleware('role:super_admin,administrator,customer_service,support_agent,support_admin')->prefix('admin')->group(function () {
+Route::middleware('permission:support.overview.view')->prefix('admin')->group(function () {
     Route::get('/departments', [AdminPageController::class, 'departments'])->name('admin.departments');
 });
 
-Route::middleware('role:super_admin,security_admin,auditor')->prefix('admin')->group(function () {
+Route::middleware('permission:audit.logs.view')->prefix('admin')->group(function () {
     Route::get('/audit-logs', function () {
         return inertia('admin/AuditLogs');
     })->name('admin.audit-logs');
@@ -1064,9 +1081,8 @@ Route::middleware('role:super_admin')->prefix('admin')->group(function () {
     Route::get('/roles', [AdminPageController::class, 'rbac'])->name('admin.roles');
 });
 
-// Settings + system health: super_admin and administrator (both hold
-// settings.* in the role matrix — the nav declares settings.system.update).
-Route::middleware('role:super_admin,administrator')->prefix('admin')->group(function () {
+// Settings + system health.
+Route::middleware('permission:settings.system.update')->prefix('admin')->group(function () {
     Route::get('/system', function () {
         return inertia('admin/System');
     })->name('admin.system');
@@ -1075,22 +1091,21 @@ Route::middleware('role:super_admin,administrator')->prefix('admin')->group(func
     })->name('admin.settings');
 });
 
-Route::middleware('role:super_admin,administrator,security_admin')->prefix('admin')->group(function () {
+Route::middleware('permission:users.users.manage')->prefix('admin')->group(function () {
     Route::get('/users', function () {
         return inertia('admin/Users');
     })->name('admin.users');
     Route::get('/users/{id}', [AdminDetailPageController::class, 'user'])->name('admin.users.show');
 });
 
-Route::middleware('role:super_admin,administrator,analytics_admin,analyst')->prefix('admin')->group(function () {
+Route::middleware('permission:analytics.overview.view')->prefix('admin')->group(function () {
     Route::get('/analytics', function () {
         return inertia('admin/Analytics');
     })->name('admin.analytics');
 });
 
-// Reports — every role here holds reports.reports.view in the role matrix
-// (auditor/analyst are view-only; CSV export stays permission-gated).
-Route::middleware('role:super_admin,administrator,analytics_admin,auditor,analyst')->prefix('admin')->group(function () {
+// Reports — CSV export stays permission-gated on the API.
+Route::middleware('permission:reports.reports.view')->prefix('admin')->group(function () {
     Route::get('/reports', function () {
         return inertia('admin/Reports');
     })->name('admin.reports');
@@ -1098,131 +1113,144 @@ Route::middleware('role:super_admin,administrator,analytics_admin,auditor,analys
 
 // Vendors (spec §65 Vendor Manager) split from /products: the vendor
 // console never implies product management.
-Route::middleware('role:super_admin,administrator,platform_ops,vendor_manager')->prefix('admin')->group(function () {
+Route::middleware('permission:vendors.vendors.view')->prefix('admin')->group(function () {
     Route::get('/vendors', function () {
         return inertia('admin/Vendors');
     })->name('admin.vendors');
     Route::get('/vendors/{id}', [AdminDetailPageController::class, 'vendor'])->name('admin.vendors.show');
 });
 
-Route::middleware('role:super_admin,administrator,platform_ops')->prefix('admin')->group(function () {
+Route::middleware('permission:products.products.manage')->prefix('admin')->group(function () {
     Route::get('/products', function () {
         return inertia('admin/Products');
     })->name('admin.products');
 });
 
-Route::middleware('role:super_admin,administrator,platform_ops,inventory_manager')->prefix('admin')->group(function () {
+Route::middleware('permission:inventory.stock.view')->prefix('admin')->group(function () {
     Route::get('/inventory', function () {
         return inertia('admin/Inventory');
     })->name('admin.inventory');
 });
 
-Route::middleware('role:super_admin,administrator,platform_ops,orders_admin,refund_agent')->prefix('admin')->group(function () {
+Route::middleware('permission:orders.orders.view')->prefix('admin')->group(function () {
     Route::get('/orders', function () {
         return inertia('admin/Orders');
     })->name('admin.orders');
     Route::get('/orders/{id}', [AdminDetailPageController::class, 'order'])->name('admin.orders.show');
 });
 
-Route::middleware('role:super_admin,administrator,content_manager,cms_editor,content_admin')->prefix('admin')->group(function () {
+Route::middleware('permission:cms.pages.manage')->prefix('admin')->group(function () {
     Route::get('/cms', function () {
         return inertia('admin/Cms');
     })->name('admin.cms');
-    // Home page builder (Home rebuild): order/visibility console for the
-    // storefront sections. Same content roles as CMS; create/delete stay
-    // Super Admin-only on the API.
-    Route::get('/home-sections', function () {
-        return inertia('admin/HomeSections');
-    })->name('admin.home-sections');
     Route::get('/newsletter', function () {
         return inertia('admin/Newsletter');
     })->name('admin.newsletter');
-    // Plan G4: no-code navigation menu manager (same content roles as CMS).
+});
+
+// Home page builder (Home rebuild): order/visibility console for the
+// storefront sections. Same content roles as CMS; create/delete stay
+// Super Admin-only on the API.
+Route::middleware('permission:cms.home.view')->prefix('admin')->group(function () {
+    Route::get('/home-sections', function () {
+        return inertia('admin/HomeSections');
+    })->name('admin.home-sections');
+});
+
+// Plan G4: no-code navigation menu manager.
+Route::middleware('permission:navigation.view')->prefix('admin')->group(function () {
     Route::get('/navigation', function () {
         return inertia('admin/Navigation');
     })->name('admin.navigation');
 });
 
-// Media library (W1): every role here holds media.view in the seeded
-// matrix (super_admin *, administrator/content_manager media.*,
-// cms_editor media.view) - mirrors the AdminMediaController gates.
-Route::middleware('role:super_admin,administrator,content_manager,cms_editor')->prefix('admin')->group(function () {
+// Media library (W1) — mirrors the AdminMediaController media.view gate.
+Route::middleware('permission:media.view')->prefix('admin')->group(function () {
     Route::get('/media', function () {
         return inertia('admin/Media');
     })->name('admin.media');
 });
 
-// No-code dynamic modules (W3 / plan G5): console mirrors the granular
-// modules.view API gate - only roles holding modules.* in the seeded
-// matrix (super_admin *, administrator/content_manager modules.*).
-Route::middleware('role:super_admin,administrator,content_manager')->prefix('admin')->group(function () {
+// No-code dynamic modules (W3 / plan G5).
+Route::middleware('permission:modules.view')->prefix('admin')->group(function () {
     Route::get('/modules', function () {
         return inertia('admin/Modules');
     })->name('admin.modules');
+});
+
+Route::middleware('permission:forms.view')->prefix('admin')->group(function () {
     Route::get('/forms', function () {
         return inertia('admin/Forms');
     })->name('admin.forms');
 });
 
-// Admin-defined service catalogue (spec 39/100): only roles that hold
-// services.overview.view in the seeded matrix (super_admin *, administrator services.*).
-Route::middleware('role:super_admin,administrator')->prefix('admin')->group(function () {
+// Admin-defined service catalogue (spec 39/100).
+Route::middleware('permission:services.overview.view')->prefix('admin')->group(function () {
     Route::get('/services', function () {
         return inertia('admin/Services');
     })->name('admin.services');
 });
 
-Route::middleware('role:super_admin,administrator,marketplace_admin,category_admin')->prefix('admin')->group(function () {
+Route::middleware('permission:categories.categories.view')->prefix('admin')->group(function () {
     Route::get('/category', [AdminPageController::class, 'categories'])->name('admin.category');
+});
+
+Route::middleware('permission:brands.brands.view')->prefix('admin')->group(function () {
     Route::get('/brands', function () {
         return inertia('admin/Brands');
     })->name('admin.brands');
 });
 
-Route::middleware('role:super_admin,administrator,kyc_reviewer,security_admin')->prefix('admin')->group(function () {
+Route::middleware('permission:kyc.applications.view')->prefix('admin')->group(function () {
     Route::get('/kyc', function () {
         return inertia('admin/Kyc');
     })->name('admin.kyc');
 });
 
-Route::middleware('role:super_admin,administrator,hotel_admin')->prefix('admin')->group(function () {
+Route::middleware('permission:hotels.overview.view')->prefix('admin')->group(function () {
     Route::get('/hotels', function () {
         return inertia('admin/Hotels');
     })->name('admin.hotels');
 });
 
-Route::middleware('role:super_admin,administrator,food_admin')->prefix('admin')->group(function () {
+Route::middleware('permission:food.overview.view')->prefix('admin')->group(function () {
     Route::get('/food', function () {
         return inertia('admin/Food');
     })->name('admin.food');
 });
 
-Route::middleware('role:super_admin,administrator,transport_admin')->prefix('admin')->group(function () {
+Route::middleware('permission:transport.overview.view')->prefix('admin')->group(function () {
     Route::get('/transport', function () {
         return inertia('admin/Transport');
     })->name('admin.transport');
 });
 
-Route::middleware('role:super_admin,administrator,jobs_admin')->prefix('admin')->group(function () {
+Route::middleware('permission:jobs.overview.view')->prefix('admin')->group(function () {
     Route::get('/jobs', function () {
         return inertia('admin/Jobs');
     })->name('admin.jobs');
 });
 
-Route::middleware('role:super_admin,administrator,finance_admin,wallet_admin,payout_reviewer')->prefix('admin')->group(function () {
+Route::middleware('permission:job_seekers.overview.view')->prefix('admin')->group(function () {
+    Route::get('/job-seekers', function () {
+        return inertia('admin/JobSeekers');
+    })->name('admin.job-seekers');
+});
+
+Route::middleware('permission:finance.payouts.manage')->prefix('admin')->group(function () {
     Route::get('/payouts', function () {
         return inertia('admin/Payouts');
     })->name('admin.payouts');
     Route::get('/payouts/{id}', [AdminDetailPageController::class, 'payout'])->name('admin.payouts.show');
 });
 
-Route::middleware('role:super_admin,administrator,finance_admin')->prefix('admin')->group(function () {
+Route::middleware('permission:finance.overview.view')->prefix('admin')->group(function () {
     Route::get('/finance', function () {
         return inertia('admin/Finance');
     })->name('admin.finance');
 });
 
-Route::middleware('role:super_admin,administrator,support_agent,support_admin,customer_service')->prefix('admin')->group(function () {
+Route::middleware('permission:support.tickets.view')->prefix('admin')->group(function () {
     Route::get('/support/tickets', function () {
         return inertia('admin/Support');
     })->name('admin.support');
@@ -1236,26 +1264,27 @@ Route::middleware('role:super_admin,administrator,support_agent,support_admin,cu
     })->name('admin.support-show');
 });
 
-Route::middleware('role:super_admin,administrator,healthcare_admin')->prefix('admin')->group(function () {
+Route::middleware('permission:healthcare.overview.view')->prefix('admin')->group(function () {
     Route::get('/healthcare/doctors', function () {
         return inertia('admin/Healthcare');
     })->name('admin.healthcare');
+});
 
+Route::middleware('permission:healthcare.aid.view')->prefix('admin')->group(function () {
     Route::get('/healthcare/aid', function () {
         return inertia('admin/HealthcareAid');
     })->name('admin.healthcare.aid');
 });
 
-// Spec 2682: role gate + granular permission on every admin surface.
-Route::middleware(['role:super_admin,administrator,learning_admin', 'permission:learn.overview.view'])->prefix('admin')->group(function () {
+// Spec 2682: granular permission is the only authority on every admin surface.
+Route::middleware('permission:learn.overview.view')->prefix('admin')->group(function () {
     Route::get('/learning/courses', function () {
         return inertia('admin/Learning');
     })->name('admin.learning');
 });
 
 // Learn 2.0 moderation queue - reviewers approve/reject feed posts and videos.
-// every route role holds learn.posts.review in the seeded matrix.
-Route::middleware(['role:super_admin,administrator,learning_admin,learning_reviewer,moderator', 'permission:learn.posts.review'])->prefix('admin')->group(function () {
+Route::middleware('permission:learn.posts.review')->prefix('admin')->group(function () {
     Route::get('/learning/review', function () {
         return inertia('admin/LearnReview');
     })->name('admin.learning.review');
@@ -1263,58 +1292,61 @@ Route::middleware(['role:super_admin,administrator,learning_admin,learning_revie
 
 // ─── Domain consoles (tables from Phases/Modules) ─────────────────────────────
 
-Route::middleware('role:super_admin,administrator,pharmacy_admin')->prefix('admin')->group(function () {
+Route::middleware('permission:pharmacy.overview.view')->prefix('admin')->group(function () {
     Route::get('/pharmacy', function () {
         return inertia('admin/Pharmacy');
     })->name('admin.pharmacy');
 });
 
-Route::middleware('role:super_admin,administrator,building_admin')->prefix('admin')->group(function () {
+Route::middleware('permission:building_services.overview.view')->prefix('admin')->group(function () {
     Route::get('/building', function () {
         return inertia('admin/Building');
     })->name('admin.building');
 });
 
-Route::middleware('role:super_admin,administrator,building_admin,real_estate_admin')->prefix('admin')->group(function () {
+Route::middleware('permission:real_estate.overview.view')->prefix('admin')->group(function () {
     Route::get('/real-estate', function () {
         return inertia('admin/RealEstate');
     })->name('admin.real-estate');
 });
 
-Route::middleware('role:super_admin,administrator,needs_admin,needs_viewer,platform_ops')->prefix('admin')->group(function () {
+Route::middleware('permission:needs.overview.view')->prefix('admin')->group(function () {
     Route::get('/needs', function () {
         return inertia('admin/Needs');
     })->name('admin.needs');
 });
 
-Route::middleware('role:super_admin,administrator,moderator,finance_admin,platform_ops,orders_admin,refund_agent')->prefix('admin')->group(function () {
+Route::middleware('permission:orders.orders.view')->prefix('admin')->group(function () {
     Route::get('/returns', function () {
         return inertia('admin/Returns');
     })->name('admin.returns');
 });
 
-Route::middleware('role:super_admin,administrator,moderator')->prefix('admin')->group(function () {
+Route::middleware('permission:reviews.reviews.moderate')->prefix('admin')->group(function () {
     Route::get('/reviews', function () {
         return inertia('admin/Reviews');
     })->name('admin.reviews');
 });
 
-Route::middleware('role:super_admin,administrator')->prefix('admin')->group(function () {
+Route::middleware('permission:subscriptions.subscriptions.view')->prefix('admin')->group(function () {
     Route::get('/subscriptions', function () {
         return inertia('admin/Subscriptions');
     })->name('admin.subscriptions');
+});
+
+Route::middleware('permission:notifications.overview.view')->prefix('admin')->group(function () {
     Route::get('/notifications', function () {
         return inertia('admin/Notifications');
     })->name('admin.notifications');
 });
 
-Route::middleware('role:super_admin,administrator,finance_admin,wallet_admin')->prefix('admin')->group(function () {
+Route::middleware('permission:payments.payments.view')->prefix('admin')->group(function () {
     Route::get('/wallet', function () {
         return inertia('admin/Wallet');
     })->name('admin.wallet');
 });
 
-Route::middleware('role:super_admin,administrator,transport_admin,platform_ops,orders_admin')->prefix('admin')->group(function () {
+Route::middleware('permission:delivery.deliveries.view')->prefix('admin')->group(function () {
     Route::get('/deliveries', function () {
         return inertia('admin/Deliveries');
     })->name('admin.deliveries');

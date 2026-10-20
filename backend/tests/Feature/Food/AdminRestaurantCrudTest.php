@@ -3,7 +3,9 @@
 namespace Tests\Feature\Food;
 
 use App\Models\User;
+use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Modules\Food\Entities\Restaurant;
@@ -17,6 +19,13 @@ use Tests\TestCase;
 class AdminRestaurantCrudTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed(PermissionSeeder::class);
+        Cache::forget('rbac.matrix');
+    }
 
     private function makeRestaurant(array $overrides = []): Restaurant
     {

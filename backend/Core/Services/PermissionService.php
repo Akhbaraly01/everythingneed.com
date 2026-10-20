@@ -139,6 +139,61 @@ class PermissionService extends BaseService implements PermissionServiceInterfac
      */
     public function grantRolePermission(string $role, string $permission): void
     {
+        $this->upsertGrantedRoleRow($role, $permission);
+
+        \Illuminate\Support\Facades\Cache::forget('rbac.matrix');
+    }
+
+    /**
+     * Bulk variant: all writes inside one transaction so a failure never
+     * leaves a half-applied matrix, then a single cache flush.
+     */
+    public function bulkUpdateRolePermissions(string $role, array $grant, array $revoke): void
+    {
+        \Illuminate\Support\Facades\DB::transaction(function () use ($role, $grant, $revoke) {
+            foreach (array_values(array_unique($grant)) as $permission) {
+                $this->upsertGrantedRoleRow($role, $permission);
+            }
+
+            foreach (array_values(array_unique($revoke)) as $permission) {
+                \Illuminate\Support\Facades\DB::table('role_permissions')
+                    ->where('role', $role)
+                    ->where('permission', $permission)
+                    ->update(['state' => 'denied', 'updated_at' => now()]);
+            }
+        });
+
+        \Illuminate\Support\Facades\Cache::forget('rbac.matrix');
+    }
+
+    public function resetRolePermissions(string $role): void
+    {
+        $defaults = \Database\Seeders\PermissionSeeder::defaultsFor($role);
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($role, $defaults) {
+            \Illuminate\Support\Facades\DB::table('role_permissions')->where('role', $role)->delete();
+
+            if ($defaults !== []) {
+                \Illuminate\Support\Facades\DB::table('role_permissions')->insert(array_map(fn ($permission) => [
+                    'id' => (string) \Illuminate\Support\Str::uuid(),
+                    'role' => $role,
+                    'permission' => $permission,
+                    'state' => 'granted',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ], $defaults));
+            }
+        });
+
+        \Illuminate\Support\Facades\Cache::forget('rbac.matrix');
+    }
+
+    /**
+     * Shared single-row upsert: flip an existing (denied) row back to
+     * granted, otherwise insert it. Callers own transaction/cache concerns.
+     */
+    private function upsertGrantedRoleRow(string $role, string $permission): void
+    {
         $existing = \Illuminate\Support\Facades\DB::table('role_permissions')
             ->where('role', $role)
             ->where('permission', $permission)
@@ -159,8 +214,6 @@ class PermissionService extends BaseService implements PermissionServiceInterfac
                 'updated_at' => now(),
             ]);
         }
-
-        \Illuminate\Support\Facades\Cache::forget('rbac.matrix');
     }
 
     public function rolePermissionExists(string $role, string $permission): bool

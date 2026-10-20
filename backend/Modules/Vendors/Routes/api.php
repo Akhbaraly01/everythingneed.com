@@ -26,7 +26,7 @@ Route::prefix('api')->group(function () {
 
         Route::post('/vendors', [VendorController::class, 'store']);
         Route::post('/vendors/{id}/approve', [VendorController::class, 'approve'])->middleware('permission:vendors.vendors.approve');
-        Route::post('/vendors/{id}/suspend', [VendorController::class, 'suspend'])->middleware('permission:vendors.vendors.approve');
+        Route::post('/vendors/{id}/suspend', [VendorController::class, 'suspend'])->middleware('permission:vendors.vendors.suspend');
     });
 
     // Public reads

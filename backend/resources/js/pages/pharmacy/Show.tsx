@@ -41,11 +41,23 @@ export default function PharmacyShow({ product_id }: ShowProps) {
     const addToCart = () => {
         if (!medicine) return;
         const cart = JSON.parse(localStorage.getItem('pharmacy_cart') ?? '[]') as {
-            medicine_id: string; name: string; price: number; quantity: number; image_url?: string | null;
+            medicine_id: string; name: string; price: number; quantity: number; image_url?: string | null; requires_prescription?: boolean;
         }[];
         const existing = cart.find((item) => item.medicine_id === medicine.id);
-        if (existing) existing.quantity += 1;
-        else cart.push({ medicine_id: medicine.id, name: medicine.name, price: Number(medicine.price), quantity: 1, image_url: medicine.image_url });
+        if (existing) {
+            existing.quantity += 1;
+            // Sync the gate flag so the cart can warn even for legacy rows.
+            existing.requires_prescription = medicine.requires_prescription;
+        } else {
+            cart.push({
+                medicine_id: medicine.id,
+                name: medicine.name,
+                price: Number(medicine.price),
+                quantity: 1,
+                image_url: medicine.image_url,
+                requires_prescription: medicine.requires_prescription,
+            });
+        }
         localStorage.setItem('pharmacy_cart', JSON.stringify(cart));
         setAdded(true);
     };
@@ -70,7 +82,14 @@ export default function PharmacyShow({ product_id }: ShowProps) {
                     </div>
                 ) : (
                     <div className="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
-                        <h1 className="text-xl font-bold text-gray-900 dark:text-white">{medicine.name}</h1>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <h1 className="text-xl font-bold text-gray-900 dark:text-white">{medicine.name}</h1>
+                            {medicine.requires_prescription && (
+                                <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
+                                    Prescription required
+                                </span>
+                            )}
+                        </div>
                         {medicine.generic_name && <p className="text-sm text-gray-500">{medicine.generic_name}</p>}
                         <p className="mt-3 text-2xl font-bold text-gray-900 dark:text-white">{formatPrice(medicine.price)}</p>
                         {medicine.description && <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">{medicine.description}</p>}

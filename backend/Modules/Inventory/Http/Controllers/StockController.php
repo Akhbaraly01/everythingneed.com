@@ -98,6 +98,7 @@ class StockController extends Controller
             'quantity' => 'required|integer|min:0',
             'reserved_quantity' => 'integer|min:0',
             'reorder_point' => 'integer|min:0',
+            'notes' => 'nullable|string|max:500',
         ]);
 
         $stock = StockLevel::findOrFail($id);
@@ -105,7 +106,21 @@ class StockController extends Controller
         if (!$this->ownsProduct($request, (string) $stock->product_id)) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
+
+        $previous = (int) $stock->quantity;
         $stock->update($request->only(['quantity', 'reserved_quantity', 'reorder_point']));
+
+        // Audit trail: direct quantity edits record an adjustment movement
+        // so every change is traceable, matching POST /api/stock/adjust.
+        $new = (int) $stock->quantity;
+        if ($new !== $previous) {
+            StockMovement::create([
+                'product_id' => $stock->product_id,
+                'type' => 'adjustment',
+                'quantity' => $new,
+                'notes' => $request->input('notes') ?? sprintf('Manual update: %d → %d', $previous, $new),
+            ]);
+        }
 
         return response()->json([
             'message' => 'Stock updated successfully',

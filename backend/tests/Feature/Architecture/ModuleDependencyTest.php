@@ -31,6 +31,10 @@ class ModuleDependencyTest extends TestCase
         'Modules/Admin/Routes/api.php' => ['Modules\Orders\Http'],
         'Modules/Admin/Services/Cms/BlockResolver.php' => ['Modules\BuildingServices\Entities', 'Modules\Categories\Entities', 'Modules\Healthcare\Entities', 'Modules\Learn\Entities', 'Modules\Needs\Entities', 'Modules\Products\Entities', 'Modules\Vendors\Entities'],
         'Modules/Bills/Actions/PurchaseBill.php' => ['Modules\Payments\Entities'],
+        // Vendor owns the service a booking was made against (vendor_service
+        // lifecycle) - relation traversal for authorization, same pattern as
+        // NeedController => Vendors\Entities and FlightController => Bookings.
+        'Modules/Bookings/Http/Controllers/BookingController.php' => ['Modules\Vendors\Entities'],
         'Modules/Checkout/Http/Controllers/CartController.php' => ['Modules\Inventory\Entities', 'Modules\Pharmacy\Entities', 'Modules\Products\Entities'],
         'Modules/Delivery/Http/Controllers/DeliveryController.php' => ['Modules\Orders\Entities'],
         // Saved-jobs snapshots: engagement's own read model, batched by type.

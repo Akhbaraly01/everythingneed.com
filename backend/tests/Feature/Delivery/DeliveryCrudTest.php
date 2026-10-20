@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Delivery;
 
+use Database\Seeders\PermissionSeeder;
+use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 use Modules\Orders\Entities\Order;
 use Modules\Delivery\Entities\Delivery;
@@ -15,6 +17,13 @@ use Modules\Delivery\Entities\DeliveryManager;
  */
 class DeliveryCrudTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed(PermissionSeeder::class);
+        Cache::forget('rbac.matrix');
+    }
+
     private function registerFor(\App\Models\User $user): string
     {
         return $this->actingAs($user, 'sanctum')

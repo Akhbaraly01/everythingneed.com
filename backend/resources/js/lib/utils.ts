@@ -1,19 +1,33 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { getCurrentLocale, intlFor } from '@/lib/i18n-config';
 
 export function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
 }
 
+/**
+ * BCP 47 tag of the active chrome locale for Intl formatting
+ * (multilingual Phase 0: dates/numbers/currency follow the selected
+ * language; falls back to en before the i18n boot runs).
+ */
+export function activeIntlLocale(): string {
+    try {
+        return intlFor(getCurrentLocale());
+    } catch {
+        return 'en';
+    }
+}
+
 export function formatCurrency(amount: number, currency = 'USD'): string {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat(activeIntlLocale(), {
         style: 'currency',
         currency,
     }).format(amount);
 }
 
 export function formatDate(date: string | Date): string {
-    return new Intl.DateTimeFormat('en-US', {
+    return new Intl.DateTimeFormat(activeIntlLocale(), {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
@@ -21,7 +35,7 @@ export function formatDate(date: string | Date): string {
 }
 
 export function formatDateTime(date: string | Date): string {
-    return new Intl.DateTimeFormat('en-US', {
+    return new Intl.DateTimeFormat(activeIntlLocale(), {
         year: 'numeric',
         month: 'short',
         day: 'numeric',

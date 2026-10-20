@@ -1,6 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Modules\JobSeekers\Http\Controllers\AdminWorkerProfileController;
+use Modules\JobSeekers\Http\Controllers\AdminWorkRequestController;
 use Modules\JobSeekers\Http\Controllers\WorkerProfileController;
 use Modules\JobSeekers\Http\Controllers\WorkRequestController;
 
@@ -22,6 +24,21 @@ Route::prefix('api')->group(function () {
         Route::post('/work-requests/{id}/start', [WorkRequestController::class, 'startProgress']);
         Route::post('/work-requests/{id}/complete', [WorkRequestController::class, 'complete']);
         Route::post('/work-requests/{id}/rate', [WorkRequestController::class, 'rate']);
+    });
+
+    // Admin console: every profile (incl. unverified/deleted) + moderation.
+    Route::prefix('admin')->group(function () {
+        Route::get('/job-seekers', [AdminWorkerProfileController::class, 'index'])
+            ->middleware('permission:job_seekers.overview.view');
+        Route::put('/job-seekers/{id}', [AdminWorkerProfileController::class, 'update'])
+            ->middleware('permission:job_seekers.overview.manage');
+        Route::delete('/job-seekers/{id}', [AdminWorkerProfileController::class, 'destroy'])
+            ->middleware('permission:job_seekers.overview.manage');
+        Route::post('/job-seekers/{id}/restore', [AdminWorkerProfileController::class, 'restore'])
+            ->middleware('permission:job_seekers.overview.manage');
+
+        Route::get('/work-requests', [AdminWorkRequestController::class, 'index'])
+            ->middleware('permission:job_seekers.requests.manage');
     });
 
     // Public reads

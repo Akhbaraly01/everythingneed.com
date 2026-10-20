@@ -22,11 +22,18 @@ class FoodPageController extends Controller
             $query->where('cuisine_type', 'ilike', "%{$cuisine}%");
         }
 
+        if ($q = trim((string) $request->query('q'))) {
+            $query->where(function ($inner) use ($q) {
+                $inner->where('name', 'ilike', "%{$q}%")
+                    ->orWhere('city', 'ilike', "%{$q}%");
+            });
+        }
+
         $restaurants = $query->orderByDesc('created_at')->paginate(20)->withQueryString();
 
         return Inertia::render('food/Index', [
             'restaurants' => $restaurants,
-            'filters' => $request->only(['city', 'cuisine']),
+            'filters' => $request->only(['city', 'cuisine', 'q']),
         ]);
     }
 

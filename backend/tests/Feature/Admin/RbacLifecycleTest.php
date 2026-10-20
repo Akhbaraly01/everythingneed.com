@@ -140,8 +140,16 @@ class RbacLifecycleTest extends TestCase
 
         // administrator holds users.users.view -> alias users.view resolves.
         $this->assertTrue($admin->hasPermission('users.view'));
-        // users.manage only matches users.permissions.manage (not held).
-        $this->assertFalse($admin->hasPermission('users.manage'));
+        // administrator also holds users.permissions.manage -> alias resolves.
+        $this->assertTrue($admin->hasPermission('users.manage'));
+
+        // support_agent holds users.users.view only: view alias resolves but
+        // the manage alias does not (users.manage only matches
+        // users.permissions.manage, which it does not hold).
+        $support = User::factory()->create();
+        UserRole::create(['user_id' => $support->id, 'role' => 'support_agent']);
+        $this->assertTrue($support->hasPermission('users.view'));
+        $this->assertFalse($support->hasPermission('users.manage'));
     }
 
     public function test_grant_authorization_is_downhill_only(): void
@@ -154,13 +162,14 @@ class RbacLifecycleTest extends TestCase
         $allowed->setUserResolver(fn () => $admin);
         $this->assertTrue($allowed->authorize());
 
-        // Administrator does NOT hold users.permissions.manage -> refused.
-        $refused = GrantPermissionRequest::create('/x', 'POST', ['permission' => 'users.permissions.manage']);
+        // Administrator does NOT hold audit.logs.view (removed from its
+        // matrix) -> refused.
+        $refused = GrantPermissionRequest::create('/x', 'POST', ['permission' => 'audit.logs.view']);
         $refused->setUserResolver(fn () => $admin);
         $this->assertFalse($refused->authorize());
 
         // Same rule on the per-user grant request.
-        $userGrant = GrantUserPermissionRequest::create('/x', 'POST', ['permission' => 'users.permissions.manage']);
+        $userGrant = GrantUserPermissionRequest::create('/x', 'POST', ['permission' => 'audit.logs.view']);
         $userGrant->setUserResolver(fn () => $admin);
         $this->assertFalse($userGrant->authorize());
 
