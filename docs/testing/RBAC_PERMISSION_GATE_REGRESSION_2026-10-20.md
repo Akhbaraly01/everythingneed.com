@@ -1,9 +1,9 @@
 # RBAC permission-gate regression — 15 test failures (2026-10-20)
 
-**Status:** OPEN — blocks the L-H feature wave merge into `main`.
-**Owner:** RBAC / roles-access lane (uncommitted work in the shared working tree).
+**Status:** **RESOLVED** — fixed and merged into `main` (2026-10-20).
+**Owner:** RBAC / roles-access lane (the uncommitted work in the shared working tree).
 **Reported by:** L-H feature lane (branch `feature/lh-feature-wave`).
-**Severity:** high — every non-`super_admin` role-gated surface is unreachable in the test env.
+**Severity:** high — every non-`super_admin` role-gated surface was unreachable in the test env.
 
 ---
 
@@ -146,6 +146,7 @@ Three independent full runs on the same machine:
 | `63c3f56` (pristine base, detached worktree) | 1976 | **73** | the base commit is **not** green |
 | `feature/lh-feature-wave` (base + L-H wave) | 1996 | **72** | failing set is a **strict subset** of base |
 | shared working tree (base + all lanes' WIP) | 2102 | **16** | 15 RBAC regressions + 1 L-H (now fixed) |
+| **`main` after the fix and the merge** | **2073** | **0** | 13,261 assertions, 0 failures (72 directory chunks) |
 
 Diffing the failing-test sets of the first two runs:
 
