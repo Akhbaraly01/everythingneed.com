@@ -86,25 +86,68 @@ re-basing onto the old seeder.
 
 ## 3. Recommended fix (RBAC lane)
 
-The grant matrix the lane ships is already correct for every failing case
-(`healthcare_admin` → `healthcare.*`, `content_manager` → `forms.*`, `platform_ops` → `delivery.*`,
-`jobs_admin` → `jobs.*`, `support_agent` → `support.*`). The gap is **test-side seeding**, so
-either of these closes it:
+The lane has **already applied the right fix pattern** to two files — it is what repaired the
+pre-existing base-commit failures:
 
-1. **Per-test seeding (minimal, matches the existing convention in `tests/Feature/Admin/*`)** —
-   add `$this->seed(PermissionSeeder::class);` to the 15 affected test methods/files.
-2. **Shared helper** — add a `seedPermissionMatrix()` helper to `Tests\TestCase` (or a
-   `protected $seed = true` variant that seeds only `PermissionSeeder`, not the whole
-   `DatabaseSeeder`, to keep the 2102-test runtime flat) and call it from the affected tests.
+```php
+use Database\Seeders\PermissionSeeder;
+...
+$this->seed(PermissionSeeder::class);
+```
 
-Note the cache: `roleMatrix()` memoises under `rbac.matrix` for 300 s and
-`PermissionService` now flushes it on bulk update/reset — when a test seeds the matrix after a
-prior request has already resolved permissions, ensure the cache is cleared
-(`Cache::forget('rbac.matrix')`) or the assertions will read a stale empty matrix.
+(added in `tests/Feature/Admin/AdminDetailRoutesTest.php` and
+`tests/Feature/Admin/AdminDomainControllerTest.php`).
 
-**Not recommended:** adding a hard-coded fallback matrix to `EffectivePermissionResolver` — it
-would reintroduce two sources of truth for role grants, which is exactly what that class was
-created to remove.
+The same two-line pattern is what the 15 remaining failures need — they are simply the files the
+seed sweep missed. Punch list (all currently have **no** `seed(PermissionSeeder::class)` call in
+the failing test method):
+
+| File | Failing test(s) | Role |
+|---|---|---|
+| `tests/Feature/Healthcare/AidDomainTest.php` | `test_support_approving_a_request_makes_it_public`, `test_support_rejecting_records_reason_and_stays_private`, `test_reviewing_twice_is_422_and_never_double_decides` | `healthcare_admin` |
+| `tests/Feature/Healthcare/HealthcareBookingsTest.php` | 5 cases (content publish/hide, service request advance, unknown content type, medicine CRUD, prescriptions oversight) | `healthcare_admin`, `pharmacy_admin`, content roles |
+| `tests/Feature/Forms/DynamicFormTest.php` | `test_admin_forms_page_renders_for_content_roles_only` — note the file **already seeds** in two other methods (L62, L76); only this method is missing it | `content_manager` |
+| `tests/Feature/WaveO/WaveOMessagingTest.php` | `test_admin_support_detail_requires_the_support_role`, `test_admin_support_console_pages_are_role_gated` | `support_agent` |
+| `tests/Feature/WaveU/WaveUWorkflowTest.php` | `test_healthcare_chain_find_book_consult_review` | `healthcare_admin` |
+| `tests/Feature/Jobs/JobApplicationJourneyTest.php` | `test_admin_applications_queue_is_role_gated` | `jobs_admin` |
+| `tests/Feature/Jobs/ApplicantPipelineTest.php` | `test_admin_applications_payload_has_job_post` | `jobs_admin` |
+| `tests/Feature/Api/ApiHardeningTest.php` | `test_delivery_index_strips_user_pii` | `platform_ops` |
+
+Every role involved already holds the required grant in the lane's seeder
+(`healthcare_admin → healthcare.*`, `content_manager → forms.*`, `platform_ops → delivery.*`,
+`jobs_admin → jobs.*`, `support_agent → support.*`), so seeding is sufficient — no matrix change
+is required.
+
+**Cache caveat:** `roleMatrix()` memoises under `rbac.matrix` for 300 s. When a test seeds the
+matrix after a request has already resolved permissions, the cache must be cleared
+(`Cache::forget('rbac.matrix')`) or the assertion reads a stale empty matrix. The lane's
+`PermissionService` already flushes it on bulk update/reset; make sure the test-side seed does
+the same.
+
+**Not recommended:** a hard-coded fallback matrix in `EffectivePermissionResolver` — it would
+reintroduce two sources of truth for role grants, which is exactly what that class was created
+to remove.
+
+## 3.1 Verification matrix (measured, not inferred)
+
+Three independent full runs on the same machine:
+
+| Tree | Tests | Failures | Notes |
+|---|---|---|---|
+| `63c3f56` (pristine base, detached worktree) | 1976 | **73** | the base commit is **not** green |
+| `feature/lh-feature-wave` (base + L-H wave) | 1996 | **72** | failing set is a **strict subset** of base |
+| shared working tree (base + all lanes' WIP) | 2102 | **16** | 15 RBAC regressions + 1 L-H (now fixed) |
+
+Diffing the failing-test sets of the first two runs:
+
+```
+in MY BRANCH but NOT in base (caused by my changes):   NONE
+in BASE but fixed on my branch:
+  - Tests\Feature\Architecture\ModuleDependencyTest::test_cross_module_logic_references_stay_within_allowlist
+```
+
+So the L-H wave introduces **zero** new failures, and the RBAC lane's rewrite in fact takes the
+tree from 73 failures down to 16 — of which 15 are the regressions described above.
 
 ## 4. Second finding: the base commit `63c3f56` is not green either
 
