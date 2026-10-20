@@ -202,7 +202,28 @@ run command + database name in the commit message so the number is reproducible.
 * [ ] the L-H docs rows (`AUDIT_MATRIX.md`, `FINAL_VALIDATION_CHECKLIST.md`,
       `docs/implementation/MASTER_GAP_REGISTER.md`) carry the final gate numbers.
 
-## 6. Isolation note (L-H lane)
+## 6. Shared-working-tree protocol (all lanes)
+
+All lanes share **one** working tree, so the branch you are on is the branch everyone commits to.
+The L-H lane is currently checked out on `feature/lh-feature-wave` with the other lanes' work
+still uncommitted in the working tree.
+
+**Before committing, create your own branch** (this keeps the working tree and the index intact):
+
+```bash
+git switch -c feature/<your-lane>     # e.g. feature/rbac-wave, feature/i18n-wave
+git add -p                             # stage only your own hunks
+git commit
+```
+
+Do not run `git switch main` while other lanes have uncommitted changes in the shared files
+(`backend/routes/web.php`, `backend/Modules/*/Routes/api.php`, `backend/resources/js/lib/i18n.tsx`,
+`backend/resources/js/lib/i18n-dict.ts`, `backend/playwright.config.ts`, `backend/e2e/*`) —
+the checkout will be refused, and forcing it would discard another lane's work.
+
+**Merge order:** `feature/lh-feature-wave` and the RBAC lane must land together (see section 4).
+
+## 7. Isolation note (L-H lane)
 
 The L-H wave was isolated on `feature/lh-feature-wave` (base `63c3f56`) so that this regression
 could be fixed without entangling the two efforts. The branch contains only L-H work:
