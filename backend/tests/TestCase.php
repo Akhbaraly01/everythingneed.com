@@ -2,16 +2,61 @@
 
 namespace Tests;
 
+use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Facades\DB;
 
 abstract class TestCase extends BaseTestCase
 {
     use RefreshDatabase;
 
+    /**
+     * Seed the canonical permission matrix once per test process.
+     *
+     * Effective-permission resolution reads the role_permissions table. The
+     * suite never seeded it, so every non-super_admin role gate resolved
+     * against an empty matrix (403 / 302) even when the role holds the grant
+     * in the canonical matrix.
+     *
+     * The seed runs on its own connection, outside the per-test transaction,
+     * so the matrix survives every transaction rollback and is available to
+     * the whole run - the same way it exists in production.
+     */
+    protected function seedPermissionMatrixOnce(): void
+    {
+        static $seeded = false;
+
+        if ($seeded) {
+            return;
+        }
+
+        $seeded = true;
+
+        $default = DB::getDefaultConnection();
+        $connection = $default.'_matrix_seed';
+
+        config(['database.connections.'.$connection => array_merge(
+            (array) config('database.connections.'.$default),
+            ['name' => $connection]
+        )]);
+
+        DB::purge($connection);
+        DB::setDefaultConnection($connection);
+
+        try {
+            (new PermissionSeeder())->run();
+        } finally {
+            DB::setDefaultConnection($default);
+            DB::purge($connection);
+        }
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->seedPermissionMatrixOnce();
     }
 
     protected function createUser(array $attributes = []): \App\Models\User
