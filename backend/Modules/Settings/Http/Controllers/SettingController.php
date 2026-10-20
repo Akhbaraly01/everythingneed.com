@@ -3,6 +3,8 @@
 namespace Modules\Settings\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Services\UserPreferencesService;
+use Core\Services\Contracts\LanguageRegistryInterface;
 use Modules\Settings\Entities\UserSetting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,9 +29,15 @@ class SettingController extends Controller
         ]);
 
         foreach ($validated['settings'] as $setting) {
+            $value = $this->normalizeSettingValue($setting['key'], $setting['value']);
+
+            if ($value === null) {
+                return response()->json(['message' => 'Unsupported locale.'], 422);
+            }
+
             UserSetting::updateOrCreate(
                 ['user_id' => $request->user()->id, 'key' => $setting['key']],
-                ['value' => $setting['value']]
+                ['value' => $value]
             );
         }
 
@@ -125,13 +133,36 @@ class SettingController extends Controller
         ]);
 
         foreach ($validated['settings'] as $setting) {
+            $value = $this->normalizeSettingValue($setting['key'], $setting['value']);
+
+            if ($value === null) {
+                return response()->json(['message' => 'Unsupported locale.'], 422);
+            }
+
             UserSetting::updateOrCreate(
                 ['user_id' => $userId, 'key' => $setting['key']],
-                ['value' => $setting['value']]
+                ['value' => $value]
             );
         }
 
         return response()->json(['message' => 'Settings updated successfully']);
+    }
+
+    /**
+     * Registry-validate known locale settings (general.language). Other
+     * keys pass through untouched. Returns null for an unknown/disabled
+     * locale so the caller can reject the write.
+     */
+    private function normalizeSettingValue(string $key, string $value): ?string
+    {
+        if ($key !== UserPreferencesService::LANGUAGE_KEY) {
+            return $value;
+        }
+
+        $registry = app(LanguageRegistryInterface::class);
+        $code = $registry->normalize($value);
+
+        return $code !== null && $registry->enabledCode($code) ? $code : null;
     }
 
     public function destroyForUser(Request $request, string $userId, string $key): JsonResponse

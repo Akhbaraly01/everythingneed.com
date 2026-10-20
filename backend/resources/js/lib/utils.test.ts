@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+    activeIntlLocale,
     cn,
     formatCurrency,
     formatDate,
@@ -29,6 +30,11 @@ describe('formatters', () => {
         const noonUtc = new Date(Date.UTC(2026, 0, 15, 12));
         expect(formatDate(noonUtc)).toBe('January 15, 2026');
         expect(formatDateTime(noonUtc)).toContain('Jan 15, 2026');
+    });
+
+    it('defaults Intl formatting to en before the i18n boot runs', () => {
+        expect(activeIntlLocale()).toBe('en');
+        expect(formatDate(new Date(Date.UTC(2026, 0, 15, 12)))).not.toMatch(/[٠-٩]/);
     });
 });
 

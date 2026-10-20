@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\SetLocale;
+use Core\Services\Contracts\LanguageRegistryInterface;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -32,7 +34,12 @@ class SettingsPageController extends Controller
                 'phone' => $user->phone,
             ],
             'settings' => [
-                'language' => $stored['general.language'] ?? 'en',
+                // Registry-validated: a tampered stored value never
+                // renders as a selectable language; the resolved request
+                // locale is the honest fallback.
+                'language' => app(LanguageRegistryInterface::class)
+                    ->normalize((string) ($stored['general.language'] ?? ''))
+                    ?? SetLocale::locale($request),
                 'currency' => $stored['general.currency'] ?? \Core\Support\Currencies::default(),
                 'email_notifications' => ($stored['notifications.email_notifications'] ?? '1') === '1',
                 'push_notifications' => ($stored['notifications.push_notifications'] ?? '1') === '1',
