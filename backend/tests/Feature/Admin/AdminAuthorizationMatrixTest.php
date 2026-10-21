@@ -113,8 +113,8 @@ class AdminAuthorizationMatrixTest extends TestCase
             'deny' => ['/admin/dashboard', '/admin/users'],
         ],
         'vendor_admin' => [
-            'allow' => [],
-            'deny' => ['/admin/dashboard', '/admin/users'],
+            'allow' => ['/admin/dashboard'],
+            'deny' => ['/admin/users'],
         ],
         'user' => [
             'allow' => [],
@@ -297,9 +297,11 @@ class AdminAuthorizationMatrixTest extends TestCase
 
             $gated = collect($route->gatherMiddleware())
                 ->contains(fn ($middleware) => is_string($middleware)
-                    && (str_starts_with($middleware, 'role:') || str_starts_with($middleware, 'permission:')));
+                    && (str_starts_with($middleware, 'role:')
+                        || str_starts_with($middleware, 'permission:')
+                        || str_starts_with($middleware, 'admin.access')));
 
-            $this->assertTrue($gated, "{$href} must carry a role: or permission: middleware");
+            $this->assertTrue($gated, "{$href} must carry a role:, permission: or admin.access middleware");
         }
     }
 }

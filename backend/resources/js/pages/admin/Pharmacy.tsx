@@ -1,8 +1,9 @@
 import { statusTone } from '@/lib/lifecycle';
 import AdminLayout from '@/layouts/AdminLayout';
-import { Head, usePage } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import { api, errorMessage, rows } from '@/lib/api';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
+import { useAuthPermissions } from '@/lib/permissions';
 import DataTable from '@/components/shared/DataTable';
 import { useConfirm } from '@/lib/confirm';
 import { Pill, ClipboardList, FileText, Pencil, Plus, Trash2, X } from 'lucide-react';
@@ -55,13 +56,9 @@ interface Prescription {
 type Tab = 'orders' | 'medicines' | 'prescriptions';
 
 export default function AdminPharmacy() {
-    const { auth } = usePage().props as unknown as { auth: { roles?: string[] } };
-    const isSuper = (auth?.roles ?? []).includes('super_admin');
-    // H-D: medicine catalogue management follows the seeded matrix
-    // (pharmacy.medicines.manage holders), not super-admin-only.
-    const canManageMeds = isSuper
-        || (auth?.roles ?? []).includes('administrator')
-        || (auth?.roles ?? []).includes('pharmacy_admin');
+    const { can } = useAuthPermissions();
+    const canManageMeds = can('pharmacy.medicines.manage');
+    const canManageOrders = can('pharmacy.overview.manage');
 
     const ask = useConfirm();
     const [tab, setTab] = useState<Tab>('orders');
@@ -336,6 +333,7 @@ export default function AdminPharmacy() {
                             {
                                 key: 'actions', header: 'Actions',
                                 render: (o) => {
+                                    if (!canManageOrders) return <span className="text-xs text-gray-400">View only</span>;
                                     const next = nextAction(o.status);
                                     const cancellable = o.status === 'pending' || o.status === 'confirmed';
                                     if (!next && !cancellable) return <span className="text-xs text-gray-400">Done</span>;
@@ -470,7 +468,7 @@ export default function AdminPharmacy() {
                     </div>
                 )}
 
-                {editMed && (
+                {canManageMeds && editMed && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setEditMed(null)}>
                         <form data-testid="medicine-edit-modal" onClick={(e) => e.stopPropagation()} onSubmit={submitEditMed}
                             className="w-full max-w-lg space-y-4 rounded-xl bg-white p-6 shadow-xl dark:bg-gray-800">

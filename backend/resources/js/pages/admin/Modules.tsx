@@ -3,6 +3,7 @@ import { Head } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 import { Plus, Pencil, Trash2, Rows3, X, Globe, RefreshCw, FileText } from 'lucide-react';
 import { api, errorMessage, rows } from '@/lib/api';
+import { useAuthPermissions } from '@/lib/permissions';
 import { toast } from 'sonner';
 import ConfirmDialog, { EmptyState, StatusBadge, TableSkeleton } from '@/components/shared/Ui';
 
@@ -82,6 +83,9 @@ const slugify = (value: string): string =>
  * readable publicly via /api/modules/{slug}.
  */
 export default function AdminModules() {
+    const { can } = useAuthPermissions();
+    const canManage = can('modules.manage');
+
     const [modules, setModules] = useState<ModuleRow[]>([]);
     const [loading, setLoading] = useState(true);
     const [form, setForm] = useState<ModuleFormState | null>(null);
@@ -380,13 +384,15 @@ export default function AdminModules() {
                             Declare content schemas, manage entries and publish them to the storefront API.
                         </p>
                     </div>
-                    <button
-                        type="button"
-                        onClick={openCreate}
-                        className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
-                    >
-                        <Plus className="h-4 w-4" /> New Module
-                    </button>
+                    {canManage && (
+                        <button
+                            type="button"
+                            onClick={openCreate}
+                            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+                        >
+                            <Plus className="h-4 w-4" /> New Module
+                        </button>
+                    )}
                 </div>
 
                 {loading ? (
@@ -397,13 +403,15 @@ export default function AdminModules() {
                         title="No modules yet"
                         description="Create your first schema (FAQs, testimonials, link lists...) to start filling it with entries."
                         action={
-                            <button
-                                type="button"
-                                onClick={openCreate}
-                                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
-                            >
-                                New Module
-                            </button>
+                            canManage ? (
+                                <button
+                                    type="button"
+                                    onClick={openCreate}
+                                    className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+                                >
+                                    New Module
+                                </button>
+                            ) : undefined
                         }
                     />
                 ) : (
@@ -429,22 +437,26 @@ export default function AdminModules() {
                                         </td>
                                         <td className="px-4 py-3">
                                             <div className="flex justify-end gap-2">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => void toggleStatus(row)}
-                                                    title={row.status === 'published' ? 'Unpublish' : 'Publish'}
-                                                    className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-                                                >
-                                                    <RefreshCw className="h-3.5 w-3.5" />
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => void openEdit(row)}
-                                                    title="Edit schema"
-                                                    className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-                                                >
-                                                    <Pencil className="h-3.5 w-3.5" />
-                                                </button>
+                                                {canManage && (
+                                                    <>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => void toggleStatus(row)}
+                                                            title={row.status === 'published' ? 'Unpublish' : 'Publish'}
+                                                            className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                                                        >
+                                                            <RefreshCw className="h-3.5 w-3.5" />
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => void openEdit(row)}
+                                                            title="Edit schema"
+                                                            className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                                                        >
+                                                            <Pencil className="h-3.5 w-3.5" />
+                                                        </button>
+                                                    </>
+                                                )}
                                                 <button
                                                     type="button"
                                                     onClick={() => void loadDetail(row.id)}
@@ -457,14 +469,16 @@ export default function AdminModules() {
                                                 >
                                                     <Rows3 className="h-3.5 w-3.5" />
                                                 </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setConfirm({ kind: 'module', id: row.id, name: row.name })}
-                                                    title="Delete module"
-                                                    className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-red-600 hover:bg-red-50 dark:border-gray-600 dark:text-red-400 dark:hover:bg-red-900/20"
-                                                >
-                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                </button>
+                                                {canManage && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setConfirm({ kind: 'module', id: row.id, name: row.name })}
+                                                        title="Delete module"
+                                                        className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-red-600 hover:bg-red-50 dark:border-gray-600 dark:text-red-400 dark:hover:bg-red-900/20"
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -501,13 +515,15 @@ export default function AdminModules() {
                                 >
                                     Close
                                 </button>
-                                <button
-                                    type="button"
-                                    onClick={openEntryCreate}
-                                    className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
-                                >
-                                    <Plus className="h-4 w-4" /> New Entry
-                                </button>
+                                {canManage && (
+                                    <button
+                                        type="button"
+                                        onClick={openEntryCreate}
+                                        className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+                                    >
+                                        <Plus className="h-4 w-4" /> New Entry
+                                    </button>
+                                )}
                             </div>
                         </div>
 
@@ -550,22 +566,27 @@ export default function AdminModules() {
                                                 </td>
                                                 <td className="px-3 py-2">
                                                     <div className="flex justify-end gap-2">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => openEntryEdit(entry)}
-                                                            title="Edit entry"
-                                                            className="rounded-lg border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300"
-                                                        >
-                                                            <Pencil className="h-3.5 w-3.5" />
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setConfirm({ kind: 'entry', id: entry.id, name: entry.slug ?? 'entry' })}
-                                                            title="Delete entry"
-                                                            className="rounded-lg border border-gray-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50 dark:border-gray-600 dark:text-red-400"
-                                                        >
-                                                            <Trash2 className="h-3.5 w-3.5" />
-                                                        </button>
+                                                        {canManage && (
+                                                            <>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => openEntryEdit(entry)}
+                                                                    title="Edit entry"
+                                                                    className="rounded-lg border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300"
+                                                                >
+                                                                    <Pencil className="h-3.5 w-3.5" />
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setConfirm({ kind: 'entry', id: entry.id, name: entry.slug ?? 'entry' })}
+                                                                    title="Delete entry"
+                                                                    className="rounded-lg border border-gray-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50 dark:border-gray-600 dark:text-red-400"
+                                                                >
+                                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                        {!canManage && <span className="text-xs text-gray-400">View only</span>}
                                                     </div>
                                                 </td>
                                             </tr>

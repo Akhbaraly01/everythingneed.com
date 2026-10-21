@@ -8,6 +8,7 @@ import { BadgeCheck, Briefcase, Handshake, MapPin, RotateCcw, Star, Trash2 } fro
 import { toast } from 'sonner';
 import { useConfirm } from '@/lib/confirm';
 import { formatDate } from '@/lib/utils';
+import { useAuthPermissions } from '@/lib/permissions';
 
 interface Worker {
     id: string;
@@ -70,6 +71,8 @@ const statusLabel = (s: string) => s.replace(/_/g, ' ');
 
 export default function AdminJobSeekers() {
     const ask = useConfirm();
+    const { can } = useAuthPermissions();
+    const canManage = can('job_seekers.overview.manage');
     const [view, setView] = useState<'workers' | 'requests'>('workers');
 
     const [workers, setWorkers] = useState<Worker[]>([]);
@@ -296,7 +299,7 @@ export default function AdminJobSeekers() {
                                 },
                                 {
                                     key: 'actions', header: 'Actions',
-                                    render: (w: Worker) => (
+                                    render: (w: Worker) => (canManage ? (
                                         <div className="flex flex-wrap items-center gap-2">
                                             {!w.deleted_at && (
                                                 <button onClick={() => void toggleVerified(w)} data-testid={`worker-verify-${w.id}`}
@@ -316,7 +319,9 @@ export default function AdminJobSeekers() {
                                                 </button>
                                             )}
                                         </div>
-                                    ),
+                                    ) : (
+                                        <span className="text-xs text-gray-400">View only</span>
+                                    )),
                                 },
                             ]}
                             data={workers}

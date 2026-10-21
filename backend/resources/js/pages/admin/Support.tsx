@@ -7,6 +7,7 @@ import DataTable from '@/components/shared/DataTable';
 import { Search } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { useAuthPermissions } from '@/lib/permissions';
 
 /**
  * Unified support desk over the LIVE tickets queue (tickets + departments),
@@ -35,6 +36,8 @@ const priorityTone: Record<string, string> = {
 };
 
 export default function AdminSupport() {
+    const { can } = useAuthPermissions();
+    const canManage = can('support.tickets.manage');
     const [tickets, setTickets] = useState<DeskTicket[]>([]);
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(true);
@@ -161,19 +164,25 @@ export default function AdminSupport() {
                         {
                             key: 'status', header: 'Status', accessor: 'status', sortable: true,
                             render: (t) => (
-                                <>
-                                    <label className="sr-only" htmlFor={`status-${t.id}`}>Status for {t.ticket_number}</label>
-                                    <select
-                                        id={`status-${t.id}`}
-                                        value={t.status}
-                                        onChange={(e) => changeStatus(t, e.target.value as DeskTicket['status'])}
-                                        className={`rounded-full border-0 px-2 py-0.5 text-xs font-medium ${statusTone(t.status)}`}
-                                    >
-                                        {(['open', 'in_progress', 'pending', 'resolved', 'closed'] as const).map((s) => (
-                                            <option key={s} value={s}>{s.replace('_', ' ')}</option>
-                                        ))}
-                                    </select>
-                                </>
+                                canManage ? (
+                                    <>
+                                        <label className="sr-only" htmlFor={`status-${t.id}`}>Status for {t.ticket_number}</label>
+                                        <select
+                                            id={`status-${t.id}`}
+                                            value={t.status}
+                                            onChange={(e) => changeStatus(t, e.target.value as DeskTicket['status'])}
+                                            className={`rounded-full border-0 px-2 py-0.5 text-xs font-medium ${statusTone(t.status)}`}
+                                        >
+                                            {(['open', 'in_progress', 'pending', 'resolved', 'closed'] as const).map((s) => (
+                                                <option key={s} value={s}>{s.replace('_', ' ')}</option>
+                                            ))}
+                                        </select>
+                                    </>
+                                ) : (
+                                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${statusTone(t.status)}`}>
+                                        {t.status.replace('_', ' ')}
+                                    </span>
+                                )
                             ),
                         },
                     ]}

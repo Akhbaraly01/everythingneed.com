@@ -1,8 +1,9 @@
 import { statusTone } from '@/lib/lifecycle';
 import AdminLayout from '@/layouts/AdminLayout';
-import { Head, usePage } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import { api, errorMessage, rows } from '@/lib/api';
 import { useConfirm } from '@/lib/confirm';
+import { useAuthPermissions } from '@/lib/permissions';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 import { Stethoscope, Plus, CalendarCheck, ClipboardList, Search, X, Check, FlaskConical, Pencil, Trash2 } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
@@ -129,8 +130,11 @@ type Tab = 'doctors' | 'appointments' | 'consultations' | 'labs' | 'lab-bookings
 const PAGE = 15;
 
 export default function AdminHealthcare() {
-    const { auth } = usePage().props as unknown as { auth: { roles?: string[] } };
-    const isSuper = (auth?.roles ?? []).includes('super_admin');
+    const { can } = useAuthPermissions();
+    const canManageDoctors = can('healthcare.doctors.manage');
+    const canManageLabs = can('healthcare.labs.manage');
+    const canManageContent = can('healthcare.content.manage');
+    const canManageAppointments = can('healthcare.appointments.manage');
     const ask = useConfirm();
 
     const [tab, setTab] = useState<Tab>('doctors');
@@ -702,19 +706,19 @@ const submitDoctor = async (e: FormEvent) => {
             <div className="space-y-6">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Healthcare Management</h1>
-                    {tab === 'doctors' && (
+                    {tab === 'doctors' && canManageDoctors && (
                         <button onClick={() => setShowForm(!showForm)}
                             className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500">
                             <Plus className="h-4 w-4" /> New Doctor
                         </button>
                     )}
-                    {tab === 'labs' && (
+                    {tab === 'labs' && canManageLabs && (
                         <button onClick={() => setShowLabForm(!showLabForm)}
                             className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500">
                             <Plus className="h-4 w-4" /> New Lab Test
                         </button>
                     )}
-                    {tab === 'content' && (
+                    {tab === 'content' && canManageContent && (
                         <button onClick={() => setShowContentForm(!showContentForm)}
                             className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500">
                             <Plus className="h-4 w-4" /> New Content
@@ -733,7 +737,7 @@ const submitDoctor = async (e: FormEvent) => {
                     ))}
                 </div>
 
-{tab === 'doctors' && showForm && (
+{tab === 'doctors' && canManageDoctors && showForm && (
                     <form onSubmit={submitDoctor} className="space-y-4 rounded-lg bg-white p-4 shadow dark:bg-gray-800">
                         <div className="flex items-center justify-between">
                             <h2 className="font-semibold text-gray-900 dark:text-white">Add Doctor</h2>
@@ -785,7 +789,7 @@ const submitDoctor = async (e: FormEvent) => {
                     </form>
                 )}
 
-                {tab === 'labs' && showLabForm && (
+                {tab === 'labs' && canManageLabs && showLabForm && (
                     <form onSubmit={submitLab} className="space-y-4 rounded-lg bg-white p-4 shadow dark:bg-gray-800">
                         <div className="flex items-center justify-between">
                             <h2 className="font-semibold text-gray-900 dark:text-white">Add Lab Test</h2>
@@ -883,7 +887,7 @@ const submitDoctor = async (e: FormEvent) => {
                     </div>
                 )}
 
-                {tab === 'content' && showContentForm && (
+                {tab === 'content' && canManageContent && showContentForm && (
                     <form onSubmit={submitContent} className="space-y-4 rounded-lg bg-white p-4 shadow dark:bg-gray-800">
                         <div className="flex items-center justify-between">
                             <h2 className="font-semibold text-gray-900 dark:text-white">Publish Content</h2>
@@ -963,18 +967,22 @@ const submitDoctor = async (e: FormEvent) => {
                                         <td className="px-4 py-3">{d.rating != null ? Number(d.rating).toFixed(1) : '—'}</td>
                                         <td className="px-4 py-3">{d.experience_years ?? '—'} yrs</td>
                                         <td className="px-4 py-3">
-                                            <div className="flex gap-1.5">
-                                                <button data-testid={`doctor-edit-${d.id}`} onClick={() => openEditDoctor(d)}
-                                                    className="rounded-lg border border-gray-300 p-1.5 text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300"
-                                                    title="Edit doctor">
-                                                    <Pencil className="h-3.5 w-3.5" />
-                                                </button>
-                                                <button data-testid={`doctor-delete-${d.id}`} onClick={() => deleteDoctor(d)}
-                                                    className="rounded-lg border border-red-300 p-1.5 text-red-600 hover:bg-red-50"
-                                                    title="Delete doctor">
-                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                </button>
-                                            </div>
+                                            {canManageDoctors ? (
+                                                <div className="flex gap-1.5">
+                                                    <button data-testid={`doctor-edit-${d.id}`} onClick={() => openEditDoctor(d)}
+                                                        className="rounded-lg border border-gray-300 p-1.5 text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300"
+                                                        title="Edit doctor">
+                                                        <Pencil className="h-3.5 w-3.5" />
+                                                    </button>
+                                                    <button data-testid={`doctor-delete-${d.id}`} onClick={() => deleteDoctor(d)}
+                                                        className="rounded-lg border border-red-300 p-1.5 text-red-600 hover:bg-red-50"
+                                                        title="Delete doctor">
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <span className="text-xs text-gray-400">View only</span>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}
@@ -1013,7 +1021,7 @@ const submitDoctor = async (e: FormEvent) => {
                                         </td>
                                         <td className="px-4 py-3">
                                             {t.status === 'pending' && (
-                                                isSuper ? (
+                                                canManageAppointments ? (
                                                     assigning === t.id ? (
                                                         <div className="flex items-center gap-1.5">
                                                             <select value={doctorChoice} onChange={(e) => setDoctorChoice(e.target.value)}
@@ -1071,22 +1079,26 @@ const submitDoctor = async (e: FormEvent) => {
                                             </span>
                                         </td>
                                         <td className="px-4 py-3">
-                                            <div className="flex gap-1.5">
-                                                <button onClick={() => toggleLabActive(lab)}
-                                                    className="rounded-lg bg-gray-800 px-2.5 py-1 text-xs font-semibold text-white hover:bg-gray-700 dark:bg-gray-600">
-                                                    {lab.is_active ? 'Deactivate' : 'Activate'}
-                                                </button>
-                                                <button data-testid={`lab-edit-${lab.id}`} onClick={() => openEditLab(lab)}
-                                                    className="rounded-lg border border-gray-300 p-1.5 text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300"
-                                                    title="Edit lab test">
-                                                    <Pencil className="h-3.5 w-3.5" />
-                                                </button>
-                                                <button data-testid={`lab-delete-${lab.id}`} onClick={() => deleteLab(lab)}
-                                                    className="rounded-lg border border-red-300 p-1.5 text-red-600 hover:bg-red-50"
-                                                    title="Delete lab test">
-                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                </button>
-                                            </div>
+                                            {canManageLabs ? (
+                                                <div className="flex gap-1.5">
+                                                    <button onClick={() => toggleLabActive(lab)}
+                                                        className="rounded-lg bg-gray-800 px-2.5 py-1 text-xs font-semibold text-white hover:bg-gray-700 dark:bg-gray-600">
+                                                        {lab.is_active ? 'Deactivate' : 'Activate'}
+                                                    </button>
+                                                    <button data-testid={`lab-edit-${lab.id}`} onClick={() => openEditLab(lab)}
+                                                        className="rounded-lg border border-gray-300 p-1.5 text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300"
+                                                        title="Edit lab test">
+                                                        <Pencil className="h-3.5 w-3.5" />
+                                                    </button>
+                                                    <button data-testid={`lab-delete-${lab.id}`} onClick={() => deleteLab(lab)}
+                                                        className="rounded-lg border border-red-300 p-1.5 text-red-600 hover:bg-red-50"
+                                                        title="Delete lab test">
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <span className="text-xs text-gray-400">View only</span>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}
@@ -1172,32 +1184,36 @@ const submitDoctor = async (e: FormEvent) => {
                                         </td>
                                         <td className="px-4 py-3">
                                             {!['closed', 'cancelled'].includes(r.status) && (
-                                                deciding === r.id ? (
-                                                    <div className="min-w-52 space-y-1.5">
-                                                        <select value={decideAction} onChange={(e) => setDecideAction(e.target.value)}
-                                                            className="w-full rounded border border-gray-300 px-2 py-1 text-xs dark:border-gray-600 dark:bg-gray-700">
-                                                            {['contacted', 'scheduled', 'closed', 'cancelled']
-                                                                .filter((s) => s !== r.status)
-                                                                .map((s) => <option key={s} value={s}>{s}</option>)}
-                                                        </select>
-                                                        <select value={doctorChoice} onChange={(e) => setDoctorChoice(e.target.value)}
-                                                            className="w-full rounded border border-gray-300 px-2 py-1 text-xs dark:border-gray-600 dark:bg-gray-700">
-                                                            <option value="">No professional</option>
-                                                            {allDoctors.map((d) => <option key={d.id} value={d.id}>{d.full_name}</option>)}
-                                                        </select>
-                                                        <input value={decideNote} onChange={(e) => setDecideNote(e.target.value)}
-                                                            placeholder="Note for patient (optional)"
-                                                            className="w-full rounded border border-gray-300 px-2 py-1 text-xs dark:border-gray-600 dark:bg-gray-700" />
-                                                        <div className="flex items-center gap-1.5">
-                                                            <button onClick={decide} title="Confirm"
-                                                                className="rounded p-1 text-green-600"><Check className="h-4 w-4" /></button>
-                                                            <button onClick={() => setDeciding(null)} title="Cancel"
-                                                                className="rounded p-1 text-gray-500"><X className="h-4 w-4" /></button>
+                                                canManageAppointments ? (
+                                                    deciding === r.id ? (
+                                                        <div className="min-w-52 space-y-1.5">
+                                                            <select value={decideAction} onChange={(e) => setDecideAction(e.target.value)}
+                                                                className="w-full rounded border border-gray-300 px-2 py-1 text-xs dark:border-gray-600 dark:bg-gray-700">
+                                                                {['contacted', 'scheduled', 'closed', 'cancelled']
+                                                                    .filter((s) => s !== r.status)
+                                                                    .map((s) => <option key={s} value={s}>{s}</option>)}
+                                                            </select>
+                                                            <select value={doctorChoice} onChange={(e) => setDoctorChoice(e.target.value)}
+                                                                className="w-full rounded border border-gray-300 px-2 py-1 text-xs dark:border-gray-600 dark:bg-gray-700">
+                                                                <option value="">No professional</option>
+                                                                {allDoctors.map((d) => <option key={d.id} value={d.id}>{d.full_name}</option>)}
+                                                            </select>
+                                                            <input value={decideNote} onChange={(e) => setDecideNote(e.target.value)}
+                                                                placeholder="Note for patient (optional)"
+                                                                className="w-full rounded border border-gray-300 px-2 py-1 text-xs dark:border-gray-600 dark:bg-gray-700" />
+                                                            <div className="flex items-center gap-1.5">
+                                                                <button onClick={decide} title="Confirm"
+                                                                    className="rounded p-1 text-green-600"><Check className="h-4 w-4" /></button>
+                                                                <button onClick={() => setDeciding(null)} title="Cancel"
+                                                                    className="rounded p-1 text-gray-500"><X className="h-4 w-4" /></button>
+                                                            </div>
                                                         </div>
-                                                    </div>
+                                                    ) : (
+                                                        <button onClick={() => startDecide(r.id)}
+                                                            className="rounded-lg bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-blue-500">Review</button>
+                                                    )
                                                 ) : (
-                                                    <button onClick={() => startDecide(r.id)}
-                                                        className="rounded-lg bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-blue-500">Review</button>
+                                                    <span className="text-xs text-gray-400">View only</span>
                                                 )
                                             )}
                                         </td>
@@ -1238,22 +1254,26 @@ const submitDoctor = async (e: FormEvent) => {
                                             </span>
                                         </td>
                                         <td className="px-4 py-3">
-                                            <div className="flex gap-1.5">
-                                                <button onClick={() => toggleContentActive(c)}
-                                                    className="rounded-lg bg-gray-800 px-2.5 py-1 text-xs font-semibold text-white hover:bg-gray-700 dark:bg-gray-600">
-                                                    {c.is_active ? 'Unpublish' : 'Publish'}
-                                                </button>
-                                                <button data-testid={`content-edit-${c.id}`} onClick={() => openEditContent(c)}
-                                                    className="rounded-lg border border-gray-300 p-1.5 text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300"
-                                                    title="Edit item">
-                                                    <Pencil className="h-3.5 w-3.5" />
-                                                </button>
-                                                <button data-testid={`content-delete-${c.id}`} onClick={() => deleteContent(c)}
-                                                    className="rounded-lg border border-red-300 p-1.5 text-red-600 hover:bg-red-50"
-                                                    title="Delete item">
-                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                </button>
-                                            </div>
+                                            {canManageContent ? (
+                                                <div className="flex gap-1.5">
+                                                    <button onClick={() => toggleContentActive(c)}
+                                                        className="rounded-lg bg-gray-800 px-2.5 py-1 text-xs font-semibold text-white hover:bg-gray-700 dark:bg-gray-600">
+                                                        {c.is_active ? 'Unpublish' : 'Publish'}
+                                                    </button>
+                                                    <button data-testid={`content-edit-${c.id}`} onClick={() => openEditContent(c)}
+                                                        className="rounded-lg border border-gray-300 p-1.5 text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300"
+                                                        title="Edit item">
+                                                        <Pencil className="h-3.5 w-3.5" />
+                                                    </button>
+                                                    <button data-testid={`content-delete-${c.id}`} onClick={() => deleteContent(c)}
+                                                        className="rounded-lg border border-red-300 p-1.5 text-red-600 hover:bg-red-50"
+                                                        title="Delete item">
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <span className="text-xs text-gray-400">View only</span>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}
@@ -1337,7 +1357,7 @@ const submitDoctor = async (e: FormEvent) => {
                     </div>
                 )}
 
-                {editDoctor && (
+                {canManageDoctors && editDoctor && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setEditDoctor(null)}>
                         <form data-testid="doctor-edit-modal" onClick={(e) => e.stopPropagation()} onSubmit={submitDoctorEdit}
                             className="max-h-[90vh] w-full max-w-2xl overflow-y-auto space-y-4 rounded-xl bg-white p-6 shadow-xl dark:bg-gray-800">
@@ -1401,7 +1421,7 @@ const submitDoctor = async (e: FormEvent) => {
                     </div>
                 )}
 
-                {editLab && (
+                {canManageLabs && editLab && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setEditLab(null)}>
                         <form data-testid="lab-edit-modal" onClick={(e) => e.stopPropagation()} onSubmit={submitLabEdit}
                             className="w-full max-w-lg space-y-4 rounded-xl bg-white p-6 shadow-xl dark:bg-gray-800">
@@ -1447,7 +1467,7 @@ const submitDoctor = async (e: FormEvent) => {
                     </div>
                 )}
 
-                {editContent && (
+                {canManageContent && editContent && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setEditContent(null)}>
                         <form data-testid="content-edit-modal" onClick={(e) => e.stopPropagation()} onSubmit={submitContentEdit}
                             className="w-full max-w-lg space-y-4 rounded-xl bg-white p-6 shadow-xl dark:bg-gray-800">

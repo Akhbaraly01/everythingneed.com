@@ -27,4 +27,17 @@ interface ProductQueryInterface
      * @return object|null fresh product, or null when missing/out of scope
      */
     public function decide(string $id, bool $approve, ?string $reason = null, ?string $categoryScope = null): ?object;
+
+    /**
+     * Approve or reject many products in one pass (console bulk action).
+     *
+     * @param  list<string>  $ids
+     * @return array{processed: int, skipped: int, ids: list<string>}
+     */
+    public function decideMany(
+        array $ids,
+        bool $approve,
+        ?string $reason = null,
+        ?string $categoryScope = null,
+    ): array;
 }

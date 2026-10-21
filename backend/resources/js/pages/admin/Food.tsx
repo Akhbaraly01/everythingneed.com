@@ -6,6 +6,7 @@ import DataTable from '@/components/shared/DataTable';
 import { UtensilsCrossed, Star, Plus, Power, Pencil, Trash2, X, Receipt } from 'lucide-react';
 import { toast } from 'sonner';
 import { useConfirm } from '@/lib/confirm';
+import { useAuthPermissions } from '@/lib/permissions';
 
 interface Restaurant {
     id: string;
@@ -56,6 +57,9 @@ const ORDER_ACTIONS: Record<string, Array<{ action: string; label: string; tone:
 
 export default function AdminFood() {
     const ask = useConfirm();
+    const { can } = useAuthPermissions();
+    const canManageMenu = can('food.menu.manage');
+    const canManageOrders = can('food.orders.manage');
     const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
     const [meta, setMeta] = useState<Meta | null>(null);
     const [loading, setLoading] = useState(true);
@@ -212,14 +216,16 @@ export default function AdminFood() {
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2"><UtensilsCrossed className="h-6 w-6" /> Restaurant Management</h1>
                     <div className="flex items-center gap-3">
                         {meta && <span className="text-sm text-gray-500">{meta.total} restaurants</span>}
-                        <button onClick={() => setShowForm(!showForm)}
-                            className="flex items-center gap-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
-                            <Plus className="h-4 w-4" /> {showForm ? 'Close' : 'Add restaurant'}
-                        </button>
+                        {canManageMenu && (
+                            <button onClick={() => setShowForm(!showForm)}
+                                className="flex items-center gap-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
+                                <Plus className="h-4 w-4" /> {showForm ? 'Close' : 'Add restaurant'}
+                            </button>
+                        )}
                     </div>
                 </div>
 
-                {showForm && (
+                {canManageMenu && showForm && (
                     <form onSubmit={submitCreate} className="rounded-lg bg-white p-5 shadow dark:bg-gray-800">
                         <h2 className="mb-4 font-semibold text-gray-900 dark:text-white">New restaurant</h2>
                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -292,7 +298,7 @@ export default function AdminFood() {
                         },
                         {
                             key: 'actions', header: 'Actions',
-                            render: (r) => (
+                            render: (r) => (canManageMenu ? (
                                 <div className="flex items-center gap-2">
                                     <button onClick={() => toggle(r)} title={r.is_active ? 'Deactivate' : 'Activate'}
                                         className="flex items-center gap-1 rounded-lg border border-gray-300 px-2 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300">
@@ -307,7 +313,9 @@ export default function AdminFood() {
                                         <Trash2 className="h-3 w-3" /> Delete
                                     </button>
                                 </div>
-                            ),
+                            ) : (
+                                <span className="text-xs text-gray-400">View only</span>
+                            )),
                         },
                     ]}
                     data={restaurants}
@@ -315,7 +323,7 @@ export default function AdminFood() {
                     emptyTitle="No restaurants"
                 />
 
-                {editRestaurant && (
+                {canManageMenu && editRestaurant && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" data-testid="restaurant-edit-modal">
                         <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-gray-200 bg-white p-5 shadow-xl dark:border-gray-700 dark:bg-gray-800">
                             <div className="mb-4 flex items-start justify-between">
@@ -430,18 +438,20 @@ export default function AdminFood() {
                                         </div>
                                         <div className="flex items-center gap-3">
                                             <span className="text-sm font-semibold text-gray-900 dark:text-white">${Number(o.total_amount).toFixed(2)}</span>
-                                            <div className="flex gap-1.5">
-                                                {(ORDER_ACTIONS[o.status] ?? []).map((a) => (
-                                                    <button
-                                                        key={a.action}
-                                                        onClick={() => transitionOrder(o.id, a.action)}
-                                                        disabled={transitioning === o.id}
-                                                        className={`rounded-lg border px-2.5 py-1 text-xs font-semibold disabled:opacity-50 ${a.tone}`}
-                                                    >
-                                                        {a.label}
-                                                    </button>
-                                                ))}
-                                            </div>
+                                            {canManageOrders && (
+                                                <div className="flex gap-1.5">
+                                                    {(ORDER_ACTIONS[o.status] ?? []).map((a) => (
+                                                        <button
+                                                            key={a.action}
+                                                            onClick={() => transitionOrder(o.id, a.action)}
+                                                            disabled={transitioning === o.id}
+                                                            className={`rounded-lg border px-2.5 py-1 text-xs font-semibold disabled:opacity-50 ${a.tone}`}
+                                                        >
+                                                            {a.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 ))}

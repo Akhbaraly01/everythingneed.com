@@ -1,7 +1,8 @@
 import AdminLayout from '@/layouts/AdminLayout';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import { api, errorMessage } from '@/lib/api';
 import { formatDateTime } from '@/lib/utils';
+import { useAuthPermissions } from '@/lib/permissions';
 import { useCallback, useEffect, useState } from 'react';
 import DataTable from '@/components/shared/DataTable';
 import SearchInput from '@/components/shared/SearchInput';
@@ -32,15 +33,12 @@ const labelize = (role: string): string =>
     role.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
 export default function AdminUsers() {
-    const auth = usePage().props.auth as { roles?: string[]; permissions?: string[] } | null;
-    const permissions = auth?.permissions ?? [];
-    const authRoles = auth?.roles ?? [];
-    const canCreate = permissions.includes('*') || permissions.includes('users.users.create') || permissions.includes('users.users.manage');
-    const canEdit = permissions.includes('*') || permissions.includes('users.users.update') || permissions.includes('users.users.manage');
-    const canDelete = permissions.includes('*') || permissions.includes('users.users.delete');
-    const canSuspend = permissions.includes('*') || permissions.includes('users.users.suspend') || permissions.includes('users.users.manage');
-    const canManageRoles = permissions.includes('*') || permissions.includes('users.permissions.manage');
-    const isSuperAdmin = authRoles.includes('super_admin');
+    const { can } = useAuthPermissions();
+    const canCreate = can('users.users.create', 'users.users.manage');
+    const canEdit = can('users.users.update', 'users.users.manage');
+    const canDelete = can('users.users.delete');
+    const canSuspend = can('users.users.suspend', 'users.users.manage');
+    const canManageRoles = can('users.permissions.manage');
     const ask = useConfirm();
 
     const [users, setUsers] = useState<User[]>([]);
@@ -328,7 +326,7 @@ export default function AdminUsers() {
                             header: 'Actions',
                             render: (u: User) => (
                                 <div className="flex items-center gap-3">
-                                    {isSuperAdmin && (
+                                    {canManageRoles && (
                                         <button
                                             onClick={() => void openPerms(u)}
                                             title="Per-user permissions"

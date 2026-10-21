@@ -123,7 +123,7 @@ class AdminProductManagementTest extends TestCase
         ]);
         Cache::forget("user.permissions.{$manager->id}");
 
-        $debug = $this->actingAs($manager, 'sanctum')
+        $this->actingAs($manager, 'sanctum')
             ->postJson('/api/products', [
                 'vendor_id' => $vendor->id,
                 'name' => 'Custom Role Product',
@@ -132,8 +132,7 @@ class AdminProductManagementTest extends TestCase
                 'price' => 12.5,
                 'stock_quantity' => 3,
             ])
-            ; fwrite(STDERR, $debug->getContent());
-        $debug->assertStatus(201)
+            ->assertStatus(201)
             ->assertJsonPath('data.name', 'Custom Role Product')
             ->assertJsonPath('data.is_active', true);
     }

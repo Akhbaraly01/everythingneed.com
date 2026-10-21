@@ -1,6 +1,7 @@
 import AdminLayout from '@/layouts/AdminLayout';
 import { Head } from '@inertiajs/react';
 import { api, errorMessage } from '@/lib/api';
+import { useAuthPermissions } from '@/lib/permissions';
 import { formatDateTime } from '@/lib/utils';
 import ConfirmDialog from '@/components/shared/Ui';
 import DataTable from '@/components/shared/DataTable';
@@ -22,6 +23,9 @@ interface Brand {
 }
 
 export default function AdminBrands() {
+    const { can } = useAuthPermissions();
+    const canManage = can('brands.brands.manage');
+
     const { items: brands, setItems: setBrands, meta, loading, search, setSearch, submitSearch, page, setPage, reload: load } =
         useResourceList<Brand>('/api/admin/brands');
 
@@ -104,19 +108,21 @@ export default function AdminBrands() {
             <div className="space-y-6">
                 <div className="flex items-center justify-between">
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Brands</h1>
-                    <button
-                        onClick={() => {
-                            setEditing(null);
-                            resetForm();
-                            setShowForm(!showForm);
-                        }}
-                        className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500"
-                    >
-                        <Plus className="h-4 w-4" /> New Brand
-                    </button>
+                    {canManage && (
+                        <button
+                            onClick={() => {
+                                setEditing(null);
+                                resetForm();
+                                setShowForm(!showForm);
+                            }}
+                            className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500"
+                        >
+                            <Plus className="h-4 w-4" /> New Brand
+                        </button>
+                    )}
                 </div>
 
-                {showForm && (
+                {canManage && showForm && (
                     <form onSubmit={submit} className="space-y-4 rounded-lg bg-white p-4 shadow dark:bg-gray-800">
                         <h2 className="font-semibold text-gray-900 dark:text-white">{editing ? 'Edit Brand' : 'Create Brand'}</h2>
                         <div className="grid gap-4 sm:grid-cols-3">
@@ -190,7 +196,7 @@ export default function AdminBrands() {
                         },
                         {
                             key: 'actions', header: 'Actions',
-                            render: (b) => (
+                            render: (b) => (canManage ? (
                                 <div className="flex gap-2">
                                     <button onClick={() => startEdit(b)} title="Edit"
                                         className="rounded p-1 text-blue-600 hover:bg-blue-50"><Pencil className="h-4 w-4" /></button>
@@ -199,7 +205,9 @@ export default function AdminBrands() {
                                     <button onClick={() => setDeleteFor(b)} title="Delete"
                                         className="rounded p-1 text-red-600 hover:bg-red-50"><Trash2 className="h-4 w-4" /></button>
                                 </div>
-                            ),
+                            ) : (
+                                <span className="text-xs text-gray-400">View only</span>
+                            )),
                         },
                     ]}
                     data={brands}

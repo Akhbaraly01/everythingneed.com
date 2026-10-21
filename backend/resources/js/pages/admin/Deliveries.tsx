@@ -2,6 +2,7 @@ import AdminLayout from '@/layouts/AdminLayout';
 import { Head } from '@inertiajs/react';
 import { useConfirm } from '@/lib/confirm';
 import { api, errorMessage, rows } from '@/lib/api';
+import { useAuthPermissions } from '@/lib/permissions';
 import { formatDateTime } from '@/lib/utils';
 import DataTable from '@/components/shared/DataTable';
 import { Pencil, Plus, Star, ToggleLeft, ToggleRight, Trash2, X } from 'lucide-react';
@@ -34,6 +35,9 @@ interface EditForm {
 }
 
 export default function AdminDeliveries() {
+    const { can } = useAuthPermissions();
+    const canManage = can('delivery.deliveries.manage');
+
     const ask = useConfirm();
     const [managers, setManagers] = useState<DeliveryManager[]>([]);
     const [meta, setMeta] = useState<Meta | null>(null);
@@ -143,10 +147,12 @@ export default function AdminDeliveries() {
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Delivery Managers</h1>
                     <div className="flex items-center gap-3">
                         {meta && <span className="text-sm text-gray-500">{meta.total} managers</span>}
-                        <button data-testid="delivery-create" onClick={() => setShowCreate(true)}
-                            className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500">
-                            <Plus className="h-4 w-4" /> New Manager
-                        </button>
+                        {canManage && (
+                            <button data-testid="delivery-create" onClick={() => setShowCreate(true)}
+                                className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500">
+                                <Plus className="h-4 w-4" /> New Manager
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -194,7 +200,7 @@ export default function AdminDeliveries() {
                         },
                         {
                             key: 'actions', header: 'Actions',
-                            render: (m) => (
+                            render: (m) => (canManage ? (
                                 <div className="flex items-center gap-1">
                                     <button onClick={() => toggle(m)} title="Toggle availability" data-testid={`delivery-toggle-${m.id}`}
                                         className={`rounded p-1 ${m.is_available ? 'text-green-600 hover:bg-green-50' : 'text-gray-400 hover:bg-gray-100'}`}>
@@ -209,7 +215,9 @@ export default function AdminDeliveries() {
                                         <Trash2 className="h-4 w-4" />
                                     </button>
                                 </div>
-                            ),
+                            ) : (
+                                <span className="text-xs text-gray-400">View only</span>
+                            )),
                         },
                     ]}
                     data={managers}

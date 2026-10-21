@@ -5,8 +5,9 @@ import { formatCurrency } from '@/lib/utils';
 import ConfirmDialog, { PromptDialog } from '@/components/shared/Ui';
 import DataTable from '@/components/shared/DataTable';
 import MediaUploadInput from '@/components/shared/MediaUploadInput';
+import { Button } from '@/components/shared/Button';
 import { CheckCircle, ChevronLeft, ChevronRight, Star, XCircle, Eye, Pencil, Plus, Trash2, X } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 interface Product {
@@ -145,6 +146,9 @@ export default function AdminProducts() {
     const [statusFilter, setStatusFilter] = useState('all');
     const [rejectFor, setRejectFor] = useState<Product | null>(null);
     const [archiveFor, setArchiveFor] = useState<Product | null>(null);
+    // Bulk moderation: which action the toolbar wants confirmed.
+    const [bulkAction, setBulkAction] = useState<'approve' | 'reject' | null>(null);
+    const [bulkBusy, setBulkBusy] = useState(false);
 
     // Create/edit dialog state (null = closed, 'new' or a product = edit).
     const [formTarget, setFormTarget] = useState<'new' | Product | null>(null);
@@ -192,6 +196,47 @@ export default function AdminProducts() {
         } catch (e) {
             toast.error(errorMessage(e, 'Failed to reject product'));
             return false;
+        }
+    };
+
+    /** Products still waiting for a moderation decision. */
+    const pendingRows = useMemo(
+        () => products.filter((p) => labelizeStatus(p) === 'pending'),
+        [products],
+    );
+
+    /**
+     * Bulk moderation: approve or reject the whole pending queue in one
+     * request (the console toolbar).
+     */
+    const bulkModerate = async (action: 'approve' | 'reject'): Promise<void> => {
+        const ids = pendingRows.map((p) => p.id);
+
+        if (ids.length === 0) {
+            return;
+        }
+
+        setBulkBusy(true);
+
+        try {
+            const res = await api.post<{ data: { processed: number; skipped: number } }>(
+                '/api/admin/products/bulk',
+                { ids, action },
+            );
+            const processed = res.data?.processed ?? 0;
+            const skipped = res.data?.skipped ?? 0;
+
+            toast.success(
+                skipped > 0
+                    ? `${processed} product(s) updated, ${skipped} skipped (outside your scope).`
+                    : `${processed} product(s) ${action === 'approve' ? 'approved' : 'rejected'}.`,
+            );
+            await loadProducts();
+        } catch (e) {
+            toast.error(errorMessage(e, 'Bulk action failed'));
+        } finally {
+            setBulkBusy(false);
+            setBulkAction(null);
         }
     };
 
@@ -412,6 +457,34 @@ export default function AdminProducts() {
                     ))}
                 </div>
 
+                {/* Bulk moderation (Alibaba/Amazon style): clear the whole
+                    pending queue in one action. */}
+                {canApprove && pendingRows.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800">
+                        <span className="text-gray-600 dark:text-gray-300">
+                            {pendingRows.length} product{pendingRows.length === 1 ? '' : 's'} awaiting review
+                        </span>
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="primary"
+                            disabled={bulkBusy}
+                            onClick={() => setBulkAction('approve')}
+                        >
+                            <CheckCircle className="h-4 w-4" /> Approve all
+                        </Button>
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={bulkBusy}
+                            onClick={() => setBulkAction('reject')}
+                        >
+                            <XCircle className="h-4 w-4" /> Reject all
+                        </Button>
+                    </div>
+                )}
+
                 <DataTable
                     columns={[
                         {
@@ -494,6 +567,24 @@ export default function AdminProducts() {
                         });
                     }}
                     onCancel={() => setRejectFor(null)}
+                />
+
+                <ConfirmDialog
+                    open={bulkAction !== null}
+                    title={bulkAction === 'approve'
+                        ? `Approve ${pendingRows.length} product(s)?`
+                        : `Reject ${pendingRows.length} product(s)?`}
+                    description={bulkAction === 'approve'
+                        ? 'Every listed product becomes published and visible in the storefront.'
+                        : 'Every listed product is hidden from the storefront and recorded as rejected.'}
+                    confirmLabel={bulkAction === 'approve' ? 'Approve all' : 'Reject all'}
+                    danger={bulkAction === 'reject'}
+                    onConfirm={() => {
+                        const action = bulkAction;
+                        setBulkAction(null);
+                        if (action) void bulkModerate(action);
+                    }}
+                    onCancel={() => setBulkAction(null)}
                 />
 
                 <ConfirmDialog

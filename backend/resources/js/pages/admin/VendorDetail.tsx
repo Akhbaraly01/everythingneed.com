@@ -7,6 +7,7 @@ import Breadcrumb from '@/components/shared/Breadcrumb';
 import { StatusBadge } from '@/components/shared/Ui';
 import { toast } from 'sonner';
 import { ArrowLeft, CheckCircle, XCircle } from 'lucide-react';
+import { useAuthPermissions } from '@/lib/permissions';
 
 interface VendorRow {
     id: string;
@@ -71,6 +72,9 @@ interface Props {
 export default function AdminVendorDetail({ vendor, owner, stats, recentProducts, recentOrders, withdrawals }: Props) {
     const { workspace } = usePage().props as { workspace?: { adminHrefs?: string[] } };
     const canSee = (href: string) => (workspace?.adminHrefs ?? []).includes(href);
+    const { can } = useAuthPermissions();
+    const canApprove = can('vendors.vendors.approve');
+    const canSuspend = can('vendors.vendors.suspend');
     const [busy, setBusy] = useState(false);
 
     const act = async (action: 'approve' | 'reject' | 'suspend' | 'restore', done: string) => {
@@ -106,7 +110,7 @@ export default function AdminVendorDetail({ vendor, owner, stats, recentProducts
                     </div>
 
                     <div className="flex items-center gap-3">
-                        {!vendor.is_verified && (
+                        {!vendor.is_verified && canApprove && (
                             <>
                                 <button
                                     onClick={() => void act('approve', `${vendor.store_name} approved.`)}
@@ -124,7 +128,7 @@ export default function AdminVendorDetail({ vendor, owner, stats, recentProducts
                                 </button>
                             </>
                         )}
-                        {vendor.is_verified && (
+                        {vendor.is_verified && canSuspend && (
                             <button
                                 onClick={() => void act('suspend', `${vendor.store_name} suspended (unverified).`)}
                                 disabled={busy}

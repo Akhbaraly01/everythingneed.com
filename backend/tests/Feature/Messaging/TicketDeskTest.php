@@ -150,4 +150,29 @@ class TicketDeskTest extends TestCase
         $this->actingAs($owner)->postJson("/api/tickets/{$ticket->id}/satisfaction", ['rating' => 1])
             ->assertStatus(409);
     }
+
+    public function test_manage_permission_holder_can_move_any_ticket(): void
+    {
+        [, $ticket] = $this->makeTicket();
+
+        $consoleUser = User::factory()->create();
+        \Illuminate\Support\Facades\DB::table('user_permissions')->insert([
+            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'user_id' => $consoleUser->id,
+            'permission' => 'support.tickets.manage',
+            'granted_by' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        \Illuminate\Support\Facades\Cache::forget("user.permissions.{$consoleUser->id}");
+
+        $this->actingAs($consoleUser)
+            ->patchJson("/api/tickets/{$ticket->id}/status", ['status' => 'in_progress'])
+            ->assertOk();
+
+        $this->assertDatabaseHas('tickets', [
+            'id' => $ticket->id,
+            'status' => 'in_progress',
+        ]);
+    }
 }

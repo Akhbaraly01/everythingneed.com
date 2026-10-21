@@ -63,6 +63,22 @@ class RoleAssignmentService extends BaseService implements RoleAssignmentInterfa
         return true;
     }
 
+    public function reassignRoleHolders(string $from, string $to): void
+    {
+        $alreadyHoldsTarget = DB::table('user_roles')
+            ->where('role', $to)
+            ->select('user_id');
+
+        DB::table('user_roles')
+            ->where('role', $from)
+            ->whereIn('user_id', $alreadyHoldsTarget)
+            ->delete();
+
+        DB::table('user_roles')
+            ->where('role', $from)
+            ->update(['role' => $to, 'updated_at' => now()]);
+    }
+
     public function assertAssignable(User $actor, string $targetUserId, string $role): void
     {
         if (! $this->roles->exists($role)) {
@@ -78,9 +94,18 @@ class RoleAssignmentService extends BaseService implements RoleAssignmentInterfa
             ->pluck('role')
             ->all();
 
-        // Defense in depth: endpoints are already gate-restricted to
-        // super_admin/administrator, but the guard never trusts that alone.
-        if (array_intersect(['super_admin', 'administrator'], $actorRoles) === []) {
+        $targetRoles = DB::table('user_roles')
+            ->where('user_id', $targetUserId)
+            ->pluck('role')
+            ->all();
+
+        $isPrivilegedActor = array_intersect(['super_admin', 'administrator'], $actorRoles) !== [];
+
+        $mayCreatePlainUser = $targetRoles === []
+            && $role === 'user'
+            && $actor->hasPermission('users.users.manage');
+
+        if (! $isPrivilegedActor && ! $mayCreatePlainUser) {
             abort(403, 'Only administrators may assign roles.');
         }
 
@@ -92,11 +117,6 @@ class RoleAssignmentService extends BaseService implements RoleAssignmentInterfa
 
         // Demoting a current super admin is allowed (no privilege is gained)
         // except when it would remove the last super admin from the system.
-        $targetRoles = DB::table('user_roles')
-            ->where('user_id', $targetUserId)
-            ->pluck('role')
-            ->all();
-
         if (in_array('super_admin', $targetRoles, true) && $role !== 'super_admin') {
             $superAdminCount = DB::table('user_roles')
                 ->join('users', 'users.id', '=', 'user_roles.user_id')

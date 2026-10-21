@@ -7,6 +7,7 @@ import { Briefcase, MapPin, Pencil, Power, Trash2, Users, X } from 'lucide-react
 import { toast } from 'sonner';
 import { useConfirm } from '@/lib/confirm';
 import { formatDateTime } from '@/lib/utils';
+import { useAuthPermissions } from '@/lib/permissions';
 
 interface Job {
     id: string;
@@ -43,6 +44,8 @@ const typeLabel = (t: string) => t.replace(/_/g, ' ');
 
 export default function AdminJobs() {
     const ask = useConfirm();
+    const { can } = useAuthPermissions();
+    const canManage = can('jobs.overview.manage');
     const [view, setView] = useState<'posts' | 'applications'>('posts');
     const [jobs, setJobs] = useState<Job[]>([]);
     const [meta, setMeta] = useState<Meta | null>(null);
@@ -241,7 +244,7 @@ export default function AdminJobs() {
                         },
                         {
                             key: 'actions', header: 'Actions',
-                            render: (j) => (
+                            render: (j) => (canManage ? (
                                 <div className="flex items-center gap-2">
                                     <button onClick={() => toggle(j)} title={j.is_active ? 'Deactivate' : 'Activate'}
                                         className="flex items-center gap-1 rounded-lg border border-gray-300 px-2 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300">
@@ -256,7 +259,9 @@ export default function AdminJobs() {
                                         <Trash2 className="h-3 w-3" /> Delete
                                     </button>
                                 </div>
-                            ),
+                            ) : (
+                                <span className="text-xs text-gray-400">View only</span>
+                            )),
                         },
                     ]}
                     data={jobs}
@@ -340,7 +345,7 @@ export default function AdminJobs() {
                     </div>
                 )}
 
-                {editJob && (
+                {canManage && editJob && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" data-testid="job-edit-modal">
                         <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-gray-200 bg-white p-5 shadow-xl dark:border-gray-700 dark:bg-gray-800">
                             <div className="mb-4 flex items-start justify-between">

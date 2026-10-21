@@ -24,4 +24,10 @@ interface RoleAssignmentInterface
      * is not permitted for this actor/target/role combination.
      */
     public function assertAssignable(User $actor, string $targetUserId, string $role): void;
+
+    /**
+     * Moves every holder of $from onto $to, dropping the duplicate rows for
+     * users who already hold $to. Used when deleting/retiring a role.
+     */
+    public function reassignRoleHolders(string $from, string $to): void;
 }

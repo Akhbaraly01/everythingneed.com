@@ -8,6 +8,7 @@ import { StatusBadge, PromptDialog } from '@/components/shared/Ui';
 import { toast } from 'sonner';
 import { ArrowLeft } from 'lucide-react';
 import { settableOptionsFor } from '@/lib/orderStatus';
+import { useAuthPermissions } from '@/lib/permissions';
 
 interface OrderRow {
     id: string;
@@ -63,6 +64,9 @@ interface Props {
 export default function AdminOrderDetail({ order, items, payments, refunds }: Props) {
     const { workspace } = usePage().props as { workspace?: { adminHrefs?: string[] } };
     const canSee = (href: string) => (workspace?.adminHrefs ?? []).includes(href);
+    const { can } = useAuthPermissions();
+    const canUpdate = can('orders.orders.update');
+    const canRefund = can('orders.orders.refund', 'finance.refunds.process');
     const [busy, setBusy] = useState(false);
     const [refundOpen, setRefundOpen] = useState(false);
 
@@ -125,24 +129,28 @@ export default function AdminOrderDetail({ order, items, payments, refunds }: Pr
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <label className="sr-only" htmlFor="order-status">Order status</label>
-                        <select
-                            id="order-status"
-                            value={order.status}
-                            disabled={busy || statusOptions.length === 0}
-                            onChange={(e) => void updateStatus(e.target.value)}
-                            className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                        >
-                            {/* Only legal transitions (order state machine); 'paid' is provider-owned. */}
-                            {order.status === 'paid' && <option value="paid">paid (locked)</option>}
-                            {statusOptions.length === 0 && order.status !== 'paid' && (
-                                <option value={order.status}>{order.status} (final)</option>
-                            )}
-                            {statusOptions.map((s) => (
-                                <option key={s} value={s}>{s}</option>
-                            ))}
-                        </select>
-                        {order.status !== 'refunded' && (
+                        {canUpdate && (
+                            <>
+                                <label className="sr-only" htmlFor="order-status">Order status</label>
+                                <select
+                                    id="order-status"
+                                    value={order.status}
+                                    disabled={busy || statusOptions.length === 0}
+                                    onChange={(e) => void updateStatus(e.target.value)}
+                                    className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                >
+                                    {/* Only legal transitions (order state machine); 'paid' is provider-owned. */}
+                                    {order.status === 'paid' && <option value="paid">paid (locked)</option>}
+                                    {statusOptions.length === 0 && order.status !== 'paid' && (
+                                        <option value={order.status}>{order.status} (final)</option>
+                                    )}
+                                    {statusOptions.map((s) => (
+                                        <option key={s} value={s}>{s}</option>
+                                    ))}
+                                </select>
+                            </>
+                        )}
+                        {canRefund && order.status !== 'refunded' && (
                             <button
                                 onClick={() => setRefundOpen(true)}
                                 disabled={busy}

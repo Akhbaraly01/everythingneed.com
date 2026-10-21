@@ -3,6 +3,7 @@ import { Head } from '@inertiajs/react';
 import { useConfirm } from '@/lib/confirm';
 import { api, errorMessage, rows } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
+import { useAuthPermissions } from '@/lib/permissions';
 import { Home, Pencil, Plus, Power, Search, Trash2 } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -45,6 +46,10 @@ interface EditForm {
 
 export default function AdminRealEstate() {
     const ask = useConfirm();
+    const { can, roles } = useAuthPermissions();
+    const canManage = can('real_estate.overview.manage');
+    const canCreate = canManage
+        && (roles.includes('super_admin') || roles.includes('administrator') || roles.includes('building_admin') || roles.includes('real_estate_admin'));
     const [items, setItems] = useState<Property[]>([]);
     const [meta, setMeta] = useState<Meta | null>(null);
     const [loading, setLoading] = useState(true);
@@ -184,14 +189,16 @@ export default function AdminRealEstate() {
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Real Estate Listings</h1>
                     <div className="flex items-center gap-3">
                         {meta && <span className="text-sm text-gray-500">{meta.total} properties</span>}
-                        <button onClick={() => setShowForm(!showForm)}
-                            className="flex items-center gap-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
-                            <Plus className="h-4 w-4" /> {showForm ? 'Close' : 'Add property'}
-                        </button>
+                        {canCreate && (
+                            <button onClick={() => setShowForm(!showForm)}
+                                className="flex items-center gap-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
+                                <Plus className="h-4 w-4" /> {showForm ? 'Close' : 'Add property'}
+                            </button>
+                        )}
                     </div>
                 </div>
 
-                {showForm && (
+                {canCreate && showForm && (
                     <form onSubmit={submitCreate} className="rounded-lg bg-white p-5 shadow dark:bg-gray-800">
                         <h2 className="mb-4 font-semibold text-gray-900 dark:text-white">New listing</h2>
                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -313,20 +320,24 @@ export default function AdminRealEstate() {
                                             </span>
                                         </td>
                                         <td className="px-4 py-3">
-                                            <div className="flex items-center gap-1">
-                                                <button onClick={() => toggle(p)} title={p.is_active ? 'Deactivate' : 'Activate'} data-testid={`property-toggle-${p.id}`}
-                                                    className="flex items-center gap-1 rounded-lg border border-gray-300 px-2 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300">
-                                                    <Power className="h-3 w-3" /> {p.is_active ? 'Disable' : 'Enable'}
-                                                </button>
-                                                <button onClick={() => openEdit(p)} title="Edit listing" data-testid={`property-edit-${p.id}`}
-                                                    className="rounded-lg border border-gray-300 p-1.5 text-blue-600 hover:bg-blue-50 dark:border-gray-600 dark:text-blue-400">
-                                                    <Pencil className="h-3 w-3" />
-                                                </button>
-                                                <button onClick={() => remove(p)} title="Delete listing" data-testid={`property-delete-${p.id}`}
-                                                    className="rounded-lg border border-gray-300 p-1.5 text-red-600 hover:bg-red-50 dark:border-gray-600 dark:text-red-400">
-                                                    <Trash2 className="h-3 w-3" />
-                                                </button>
-                                            </div>
+                                            {canManage ? (
+                                                <div className="flex items-center gap-1">
+                                                    <button onClick={() => toggle(p)} title={p.is_active ? 'Deactivate' : 'Activate'} data-testid={`property-toggle-${p.id}`}
+                                                        className="flex items-center gap-1 rounded-lg border border-gray-300 px-2 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300">
+                                                        <Power className="h-3 w-3" /> {p.is_active ? 'Disable' : 'Enable'}
+                                                    </button>
+                                                    <button onClick={() => openEdit(p)} title="Edit listing" data-testid={`property-edit-${p.id}`}
+                                                        className="rounded-lg border border-gray-300 p-1.5 text-blue-600 hover:bg-blue-50 dark:border-gray-600 dark:text-blue-400">
+                                                        <Pencil className="h-3 w-3" />
+                                                    </button>
+                                                    <button onClick={() => remove(p)} title="Delete listing" data-testid={`property-delete-${p.id}`}
+                                                        className="rounded-lg border border-gray-300 p-1.5 text-red-600 hover:bg-red-50 dark:border-gray-600 dark:text-red-400">
+                                                        <Trash2 className="h-3 w-3" />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <span className="text-xs text-gray-400">View only</span>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}
@@ -347,7 +358,7 @@ export default function AdminRealEstate() {
                     </div>
                 )}
 
-                {editing && (
+                {canManage && editing && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" data-testid="property-edit-modal">
                         <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-lg dark:bg-gray-800">
                             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Edit listing</h2>

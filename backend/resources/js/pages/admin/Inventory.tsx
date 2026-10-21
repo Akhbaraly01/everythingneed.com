@@ -1,6 +1,7 @@
 import AdminLayout from '@/layouts/AdminLayout';
 import { Head } from '@inertiajs/react';
 import { api, errorMessage, rows } from '@/lib/api';
+import { useAuthPermissions } from '@/lib/permissions';
 import DataTable from '@/components/shared/DataTable';
 import { AlertTriangle, Pencil, Check, X, History } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -34,6 +35,9 @@ interface Meta {
 }
 
 export default function AdminInventory() {
+    const { can } = useAuthPermissions();
+    const canManage = can('inventory.stock.manage');
+
     const [stocks, setStocks] = useState<Stock[]>([]);
     const [meta, setMeta] = useState<Meta | null>(null);
     const [loading, setLoading] = useState(true);
@@ -160,7 +164,9 @@ export default function AdminInventory() {
                         },
                         {
                             key: 'actions', header: 'Actions',
-                            render: (s) => (editingId === s.id ? (
+                            render: (s) => (!canManage ? (
+                                <span className="text-xs text-gray-400">View only</span>
+                            ) : editingId === s.id ? (
                                 <div className="flex gap-1.5">
                                     <button onClick={() => save(s.id)} disabled={saving}
                                         className="rounded p-1 text-green-600 hover:bg-green-50 disabled:opacity-50"><Check className="h-4 w-4" /></button>

@@ -4,6 +4,7 @@ import { Head } from '@inertiajs/react';
 import DataTable, { type Column } from '@/components/shared/DataTable';
 import { api, errorMessage, rows } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
+import { useAuthPermissions } from '@/lib/permissions';
 import { Plane, Car, Search, Power } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -40,6 +41,8 @@ interface PageMeta {
 }
 
 export default function AdminTransport() {
+    const { can } = useAuthPermissions();
+    const canManage = can('rides.flights.manage');
     const [flights, setFlights] = useState<Flight[]>([]);
     const [rides, setRides] = useState<Ride[]>([]);
     const [rideMeta, setRideMeta] = useState<PageMeta | null>(null);
@@ -105,12 +108,14 @@ export default function AdminTransport() {
         {
             key: 'actions',
             header: 'Actions',
-            render: (f) => (
+            render: (f) => (canManage ? (
                 <button onClick={() => toggleFlight(f)} title={f.is_active ? 'Deactivate' : 'Activate'}
                     className="flex items-center gap-1 rounded-lg border border-gray-300 px-2 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300">
                     <Power className="h-3 w-3" /> {f.is_active ? 'Disable' : 'Enable'}
                 </button>
-            ),
+            ) : (
+                <span className="text-xs text-gray-400">View only</span>
+            )),
         },
     ];
 

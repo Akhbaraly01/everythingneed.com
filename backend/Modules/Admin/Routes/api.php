@@ -341,6 +341,9 @@ Route::prefix('api/admin')->middleware(['api', 'auth:sanctum', EnsureAccountActi
         ->middleware('permission:products.products.approve');
     Route::post('/products/{id}/reject', [AdminProductApprovalController::class, 'reject'])
         ->middleware('permission:products.products.approve');
+    // Bulk moderation for the console toolbar.
+    Route::post('/products/bulk', [AdminProductApprovalController::class, 'bulk'])
+        ->middleware('permission:products.products.approve');
 
     // Departments (shared by support + healthcare)
     Route::get('/departments', [AdminDepartmentController::class, 'index'])

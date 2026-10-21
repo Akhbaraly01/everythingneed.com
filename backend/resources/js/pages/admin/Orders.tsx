@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { ORDER_STATUSES, settableOptionsFor } from '@/lib/orderStatus';
 import { statusTone } from '@/lib/lifecycle';
+import { useAuthPermissions } from '@/lib/permissions';
 
 interface Order {
     id: string;
@@ -22,6 +23,8 @@ export default function AdminOrders() {
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
     const [statusFilter, setStatusFilter] = useState('all');
+    const { can } = useAuthPermissions();
+    const canUpdate = can('orders.orders.update');
 
     useEffect(() => {
         setLoading(true);
@@ -106,6 +109,10 @@ export default function AdminOrders() {
                         {
                             key: 'actions', header: 'Actions',
                             render: (o) => {
+                                if (!canUpdate) {
+                                    return <span className="text-xs text-gray-400">View only</span>;
+                                }
+
                                 const options = settableOptionsFor(o.status).filter((s) => s !== o.status);
                                 return (
                                     <>

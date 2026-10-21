@@ -3,6 +3,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { api, errorMessage } from '@/lib/api';
 import { formatDateTime } from '@/lib/utils';
+import { useAuthPermissions } from '@/lib/permissions';
 import Breadcrumb from '@/components/shared/Breadcrumb';
 import { StatusBadge } from '@/components/shared/Ui';
 import { toast } from 'sonner';
@@ -50,6 +51,9 @@ const labelize = (role: string): string =>
 export default function AdminUserDetail({ user, roles, grants, vendor, stats }: Props) {
     const { workspace } = usePage().props as { workspace?: { adminHrefs?: string[] } };
     const canSee = (href: string) => (workspace?.adminHrefs ?? []).includes(href);
+    const { can } = useAuthPermissions();
+    const canManageUsers = can('users.users.manage', 'users.users.suspend', 'users.users.activate');
+    const canManageRoles = can('users.permissions.manage');
     const [busy, setBusy] = useState(false);
     const [roleOptions, setRoleOptions] = useState<string[]>([]);
 
@@ -118,26 +122,36 @@ export default function AdminUserDetail({ user, roles, grants, vendor, stats }: 
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <label className="sr-only" htmlFor="user-role">Role for {user.name}</label>
-                        <select
-                            id="user-role"
-                            value={user.role ?? ''}
-                            disabled={busy}
-                            onChange={(e) => void changeRole(e.target.value)}
-                            className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                        >
-                            {!user.role && <option value="">(no role)</option>}
-                            {options.map((r) => (
-                                <option key={r} value={r}>{labelize(r)}</option>
-                            ))}
-                        </select>
-                        <button
-                            onClick={() => void toggleSuspend()}
-                            disabled={busy}
-                            className={`rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-50 ${suspended ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
-                        >
-                            {suspended ? 'Restore' : 'Suspend'}
-                        </button>
+                        {canManageRoles ? (
+                            <>
+                                <label className="sr-only" htmlFor="user-role">Role for {user.name}</label>
+                                <select
+                                    id="user-role"
+                                    value={user.role ?? ''}
+                                    disabled={busy}
+                                    onChange={(e) => void changeRole(e.target.value)}
+                                    className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                >
+                                    {!user.role && <option value="">(no role)</option>}
+                                    {options.map((r) => (
+                                        <option key={r} value={r}>{labelize(r)}</option>
+                                    ))}
+                                </select>
+                            </>
+                        ) : (
+                            <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium capitalize text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+                                {user.role ? labelize(user.role) : 'No role'}
+                            </span>
+                        )}
+                        {canManageUsers && (
+                            <button
+                                onClick={() => void toggleSuspend()}
+                                disabled={busy}
+                                className={`rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-50 ${suspended ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
+                            >
+                                {suspended ? 'Restore' : 'Suspend'}
+                            </button>
+                        )}
                     </div>
                 </div>
 

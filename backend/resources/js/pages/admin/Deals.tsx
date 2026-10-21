@@ -1,6 +1,7 @@
 import AdminLayout from '@/layouts/AdminLayout';
-import { Head, usePage } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import { api, errorMessage, rows } from '@/lib/api';
+import { useAuthPermissions } from '@/lib/permissions';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import DataTable from '@/components/shared/DataTable';
 import SearchInput from '@/components/shared/SearchInput';
@@ -40,8 +41,8 @@ const STATUSES = ['all', 'draft', 'submitted', 'approved', 'published', 'rejecte
 
 export default function AdminDeals() {
     const ask = useConfirm();
-    const roles = (usePage().props.auth as { roles?: string[] } | null)?.roles ?? [];
-    const canManage = roles.some((r) => ['super_admin', 'administrator'].includes(r));
+    const { can } = useAuthPermissions();
+    const canManage = can('deals.deals.manage');
 
     const [items, setItems] = useState<Deal[]>([]);
     const [stats, setStats] = useState<DealStats | null>(null);

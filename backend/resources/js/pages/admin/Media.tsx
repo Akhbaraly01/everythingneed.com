@@ -6,6 +6,7 @@ import Image from '@/components/shared/Image';
 import MediaPicker from '@/components/shared/MediaPicker';
 import { libraryUrl, isImageItem, type LibraryItem, type LibraryPage } from '@/lib/media';
 import { prepareForUpload } from '@/lib/media-compress';
+import { useAuthPermissions } from '@/lib/permissions';
 import { FileText, Images, Link2, Plus, Search, Trash2, Upload } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -13,6 +14,8 @@ import { toast } from 'sonner';
 const FOLDERS = ['library', 'banners', 'cms', 'products'];
 
 export default function AdminMedia() {
+    const { can } = useAuthPermissions();
+    const canManage = can('media.manage');
     const [items, setItems] = useState<LibraryItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -117,14 +120,16 @@ export default function AdminMedia() {
                             className="flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300">
                             <Link2 className="h-4 w-4" /> Pick URL
                         </button>
-                        <button onClick={() => setShowUpload(!showUpload)}
-                            className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500">
-                            {showUpload ? <Upload className="h-4 w-4" /> : <Plus className="h-4 w-4" />} Upload
-                        </button>
+                        {canManage && (
+                            <button onClick={() => setShowUpload(!showUpload)}
+                                className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500">
+                                {showUpload ? <Upload className="h-4 w-4" /> : <Plus className="h-4 w-4" />} Upload
+                            </button>
+                        )}
                     </div>
                 </div>
 
-                {showUpload && (
+                {canManage && showUpload && (
                     <div className="space-y-4 rounded-lg bg-white p-4 shadow dark:bg-gray-800">
                         <h2 className="font-semibold text-gray-900 dark:text-white">Upload to the shared library</h2>
                         <div className="grid gap-4 sm:grid-cols-3">
@@ -195,8 +200,10 @@ export default function AdminMedia() {
                                         <div className="flex gap-1">
                                             <button onClick={() => copyUrl(item)} title="Copy URL"
                                                 className="rounded p-1 text-blue-600 hover:bg-blue-50 dark:hover:bg-gray-700"><Link2 className="h-4 w-4" /></button>
-                                            <button onClick={() => setDeleteFor(item)} title="Delete"
-                                                className="rounded p-1 text-red-600 hover:bg-red-50 dark:hover:bg-gray-700"><Trash2 className="h-4 w-4" /></button>
+                                            {canManage && (
+                                                <button onClick={() => setDeleteFor(item)} title="Delete"
+                                                    className="rounded p-1 text-red-600 hover:bg-red-50 dark:hover:bg-gray-700"><Trash2 className="h-4 w-4" /></button>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

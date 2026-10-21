@@ -7,6 +7,7 @@ import { StatusBadge } from '@/components/shared/Ui';
 import { Paperclip, Send, ShieldAlert } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { useAuthPermissions } from '@/lib/permissions';
 
 interface TicketMessage {
     id: string;
@@ -67,6 +68,10 @@ const priorityTone: Record<string, string> = {
 const href = (path: string): string => `/storage/${path.replace(/^\//, '')}`;
 
 export default function AdminSupportDetail({ ticket_id }: { ticket_id: string }) {
+    const { can } = useAuthPermissions();
+    const canManage = can('support.tickets.manage');
+    const canAssign = can('support.tickets.assign');
+    const canEscalate = can('support.tickets.escalate');
     const [ticket, setTicket] = useState<TicketRow | null>(null);
     const [events, setEvents] = useState<TicketEventRow[]>([]);
     const [agents, setAgents] = useState<UserLite[]>([]);
@@ -191,25 +196,30 @@ export default function AdminSupportDetail({ ticket_id }: { ticket_id: string })
                 <div className="grid gap-4 md:grid-cols-3">
                     <div className="rounded-lg bg-white p-4 shadow dark:bg-gray-800">
                         <label htmlFor="status-select" className="block text-xs font-medium uppercase text-gray-500">Status</label>
-                        <select
-                            id="status-select"
-                            value={ticket.status}
-                            disabled={busy}
-                            onChange={(e) =>
-                                void run(
-                                    () => api.patch(`/api/tickets/${ticket_id}/status`, { status: e.target.value }),
-                                    'Status updated',
-                                )
-                            }
-                            className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-                        >
-                            {STATUSES.map((s) => (
-                                <option key={s} value={s}>{s.replace('_', ' ')}</option>
-                            ))}
-                        </select>
+                        {canManage ? (
+                            <select
+                                id="status-select"
+                                value={ticket.status}
+                                disabled={busy}
+                                onChange={(e) =>
+                                    void run(
+                                        () => api.patch(`/api/tickets/${ticket_id}/status`, { status: e.target.value }),
+                                        'Status updated',
+                                    )
+                                }
+                                className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+                            >
+                                {STATUSES.map((s) => (
+                                    <option key={s} value={s}>{s.replace('_', ' ')}</option>
+                                ))}
+                            </select>
+                        ) : (
+                            <p className="mt-2 text-sm capitalize text-gray-700 dark:text-gray-300">{ticket.status.replace('_', ' ')}</p>
+                        )}
                     </div>
 
-                    <div className="rounded-lg bg-white p-4 shadow dark:bg-gray-800">
+                    {canAssign && (
+                        <div className="rounded-lg bg-white p-4 shadow dark:bg-gray-800">
                         <label htmlFor="assignee-select" className="block text-xs font-medium uppercase text-gray-500">Assignee</label>
                         <select
                             id="assignee-select"
@@ -231,8 +241,10 @@ export default function AdminSupportDetail({ ticket_id }: { ticket_id: string })
                             ))}
                         </select>
                     </div>
+                    )}
 
-                    <div className="rounded-lg bg-white p-4 shadow dark:bg-gray-800">
+                    {canManage && (
+                        <div className="rounded-lg bg-white p-4 shadow dark:bg-gray-800">
                         <label htmlFor="department-select" className="block text-xs font-medium uppercase text-gray-500">Department</label>
                         <select
                             id="department-select"
@@ -253,6 +265,7 @@ export default function AdminSupportDetail({ ticket_id }: { ticket_id: string })
                             ))}
                         </select>
                     </div>
+                    )}
                 </div>
 
                 {(ticket.satisfaction_rating != null || ticket.escalated_at) && (
@@ -343,19 +356,21 @@ export default function AdminSupportDetail({ ticket_id }: { ticket_id: string })
                                 File as internal note
                             </label>
                             <div className="flex gap-2">
-                                <button
-                                    type="button"
-                                    disabled={busy}
-                                    onClick={() =>
-                                        void run(
-                                            () => api.post(`/api/tickets/${ticket_id}/escalate`, { reason: 'Escalated from ticket detail' }),
-                                            'Ticket escalated',
-                                        )
-                                    }
-                                    className="rounded-lg border border-red-300 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
-                                >
-                                    Escalate
-                                </button>
+                                {canEscalate && (
+                                    <button
+                                        type="button"
+                                        disabled={busy}
+                                        onClick={() =>
+                                            void run(
+                                                () => api.post(`/api/tickets/${ticket_id}/escalate`, { reason: 'Escalated from ticket detail' }),
+                                                'Ticket escalated',
+                                            )
+                                        }
+                                        className="rounded-lg border border-red-300 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+                                    >
+                                        Escalate
+                                    </button>
+                                )}
                                 <button
                                     type="button"
                                     disabled={busy || !reply.trim()}

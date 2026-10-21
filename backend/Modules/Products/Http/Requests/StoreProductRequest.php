@@ -22,6 +22,10 @@ class StoreProductRequest extends FormRequest
             return true;
         }
 
+        if ($user->hasPermission('products.products.manage')) {
+            return true;
+        }
+
         $vendorId = $this->input('vendor_id');
 
         // Missing value is a validation concern (422); ownership/format is authorization (403)

@@ -238,18 +238,7 @@ class AdminRbacController extends Controller
 
         DB::transaction(function () use ($slug, $reassignTo, $isCore, $request, $validated) {
             if ($reassignTo !== null) {
-                $alreadyHoldsTarget = DB::table('user_roles')
-                    ->where('role', $reassignTo)
-                    ->select('user_id');
-
-                DB::table('user_roles')
-                    ->where('role', $slug)
-                    ->whereIn('user_id', $alreadyHoldsTarget)
-                    ->delete();
-
-                DB::table('user_roles')
-                    ->where('role', $slug)
-                    ->update(['role' => $reassignTo, 'updated_at' => now()]);
+                $this->assignments->reassignRoleHolders($slug, $reassignTo);
             }
 
             if ($isCore) {

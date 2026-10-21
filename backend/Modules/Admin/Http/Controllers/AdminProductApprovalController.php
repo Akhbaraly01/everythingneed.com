@@ -40,6 +40,35 @@ class AdminProductApprovalController extends Controller
     }
 
     /**
+     * Bulk moderation: approve or reject many products in one request
+     * (the console toolbar). Out-of-scope ids are skipped, never failed.
+     */
+    public function bulk(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1', 'max:100'],
+            'ids.*' => ['required', 'string', 'max:64'],
+            'action' => ['required', 'in:approve,reject'],
+            'reason' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $approve = $validated['action'] === 'approve';
+        $result = $this->products->decideMany(
+            $validated['ids'],
+            $approve,
+            $validated['reason'] ?? null,
+            $this->scope($request),
+        );
+
+        return response()->json([
+            'message' => $approve
+                ? "{$result['processed']} product(s) approved"
+                : "{$result['processed']} product(s) rejected",
+            'data' => $result,
+        ]);
+    }
+
+    /**
      * Server-side category scope for the caller (super_admin/administrator
      * and non-category viewers get null = unrestricted; a scoped
      * marketplace_admin is confined to products.category).

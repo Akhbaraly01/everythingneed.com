@@ -7,6 +7,7 @@ import MediaUploadInput from '@/components/shared/MediaUploadInput';
 import { BookOpen, ListChecks, Pencil, Plus, Search, Star, Trash2, X } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { useAuthPermissions } from '@/lib/permissions';
 
 type CourseStatus = 'draft' | 'published' | 'archived';
 
@@ -67,6 +68,9 @@ const STATUS_STYLES: Record<CourseStatus, string> = {
 };
 
 export default function AdminLearning() {
+    const { can } = useAuthPermissions();
+    const canCreate = can('learn.courses.create');
+    const canManage = can('learn.courses.manage');
     const [courses, setCourses] = useState<Course[]>([]);
     const [meta, setMeta] = useState<Meta | null>(null);
     const [loading, setLoading] = useState(true);
@@ -209,10 +213,12 @@ export default function AdminLearning() {
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Learning Management</h1>
                     <div className="flex items-center gap-3">
                         {meta && <span className="text-sm text-gray-500">{meta.total} courses</span>}
-                        <button onClick={() => (showForm ? closeForm() : setShowForm(true))}
-                            className="flex items-center gap-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
-                            <Plus className="h-4 w-4" /> {showForm ? 'Close' : 'Add course'}
-                        </button>
+                        {canCreate && (
+                            <button onClick={() => (showForm ? closeForm() : setShowForm(true))}
+                                className="flex items-center gap-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
+                                <Plus className="h-4 w-4" /> {showForm ? 'Close' : 'Add course'}
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -284,8 +290,8 @@ export default function AdminLearning() {
                                 className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300">
                                 Cancel
                             </button>
-                        </div>
-                    </form>
+                    </div>
+                </form>
                 )}
 
                 <div className="flex flex-wrap gap-2">
@@ -357,22 +363,26 @@ export default function AdminLearning() {
                                                 </span>
                                             </td>
                                             <td className="px-4 py-3">
-                                                <div className="flex items-center gap-1">
-                                                    <button onClick={() => setLessonCourse(c)} title="Manage lessons" data-testid="manage-lessons"
-                                                        className="rounded p-1 text-indigo-600 hover:bg-indigo-50"><ListChecks className="h-4 w-4" /></button>
-                                                    <button onClick={() => startEdit(c)} title="Edit"
-                                                        className="rounded p-1 text-blue-600 hover:bg-blue-50"><Pencil className="h-4 w-4" /></button>
-                                                    {courseStatus !== 'published' && (
-                                                        <button onClick={() => void changeStatus(c, 'published')} title="Publish"
-                                                            className="rounded px-2 py-1 text-xs font-semibold text-green-700 hover:bg-green-50">Publish</button>
-                                                    )}
-                                                    {courseStatus === 'published' && (
-                                                        <button onClick={() => void changeStatus(c, 'draft')} title="Unpublish"
-                                                            className="rounded px-2 py-1 text-xs font-semibold text-amber-700 hover:bg-amber-50">Unpublish</button>
-                                                    )}
-                                                    <button onClick={() => setDeleteFor(c)} title="Delete"
-                                                        className="rounded p-1 text-red-600 hover:bg-red-50"><Trash2 className="h-4 w-4" /></button>
-                                                </div>
+                                                {canManage ? (
+                                                    <div className="flex items-center gap-1">
+                                                        <button onClick={() => setLessonCourse(c)} title="Manage lessons" data-testid="manage-lessons"
+                                                            className="rounded p-1 text-indigo-600 hover:bg-indigo-50"><ListChecks className="h-4 w-4" /></button>
+                                                        <button onClick={() => startEdit(c)} title="Edit"
+                                                            className="rounded p-1 text-blue-600 hover:bg-blue-50"><Pencil className="h-4 w-4" /></button>
+                                                        {courseStatus !== 'published' && (
+                                                            <button onClick={() => void changeStatus(c, 'published')} title="Publish"
+                                                                className="rounded px-2 py-1 text-xs font-semibold text-green-700 hover:bg-green-50">Publish</button>
+                                                        )}
+                                                        {courseStatus === 'published' && (
+                                                            <button onClick={() => void changeStatus(c, 'draft')} title="Unpublish"
+                                                                className="rounded px-2 py-1 text-xs font-semibold text-amber-700 hover:bg-amber-50">Unpublish</button>
+                                                        )}
+                                                        <button onClick={() => setDeleteFor(c)} title="Delete"
+                                                            className="rounded p-1 text-red-600 hover:bg-red-50"><Trash2 className="h-4 w-4" /></button>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-xs text-gray-400">View only</span>
+                                                )}
                                             </td>
                                         </tr>
                                     );
@@ -417,6 +427,8 @@ export default function AdminLearning() {
 
 /** Phase 16 moderation queue: pending community posts -> approve / reject. */
 function CommunityQueue() {
+    const { can } = useAuthPermissions();
+    const canReview = can('learn.posts.review');
     const [queue, setQueue] = useState<CommunityQueueItem[]>([]);
     const [loadingQueue, setLoadingQueue] = useState(true);
 
@@ -428,7 +440,12 @@ function CommunityQueue() {
             .finally(() => setLoadingQueue(false));
     };
 
-    useEffect(loadQueue, []);
+    useEffect(() => {
+        if (canReview) loadQueue();
+        else setLoadingQueue(false);
+    }, [canReview]);
+
+    if (!canReview) return null;
 
     const decide = async (id: string, action: 'approve' | 'reject') => {
         try {
@@ -515,6 +532,8 @@ const EMPTY_LESSON_FORM: LessonForm = {
  * learner lesson page.
  */
 function LessonManager({ course, onClose }: { course: Course; onClose: () => void }) {
+    const { can } = useAuthPermissions();
+    const canManage = can('learn.courses.manage');
     const [lessons, setLessons] = useState<Lesson[]>([]);
     const [loading, setLoading] = useState(true);
     const [form, setForm] = useState<LessonForm>(EMPTY_LESSON_FORM);
@@ -608,7 +627,8 @@ function LessonManager({ course, onClose }: { course: Course; onClose: () => voi
                     </button>
                 </div>
 
-                <form onSubmit={submit} className="mt-4 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+                {canManage && (
+                    <form onSubmit={submit} className="mt-4 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
                     <p className="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
                         {editing ? `Edit lesson: ${editing.title}` : 'Add a lesson'}
                     </p>
@@ -658,6 +678,7 @@ function LessonManager({ course, onClose }: { course: Course; onClose: () => voi
                         )}
                     </div>
                 </form>
+                )}
 
                 <div className="mt-4">
                     {loading ? (
@@ -680,10 +701,16 @@ function LessonManager({ course, onClose }: { course: Course; onClose: () => voi
                                         </p>
                                     </div>
                                     <div className="flex shrink-0 items-center gap-1">
-                                        <button onClick={() => startEdit(lesson)} title="Edit lesson"
-                                            className="rounded p-1 text-blue-600 hover:bg-blue-50"><Pencil className="h-4 w-4" /></button>
-                                        <button onClick={() => setDeleteFor(lesson)} title="Delete lesson"
-                                            className="rounded p-1 text-red-600 hover:bg-red-50"><Trash2 className="h-4 w-4" /></button>
+                                        {canManage ? (
+                                            <>
+                                                <button onClick={() => startEdit(lesson)} title="Edit lesson"
+                                                    className="rounded p-1 text-blue-600 hover:bg-blue-50"><Pencil className="h-4 w-4" /></button>
+                                                <button onClick={() => setDeleteFor(lesson)} title="Delete lesson"
+                                                    className="rounded p-1 text-red-600 hover:bg-red-50"><Trash2 className="h-4 w-4" /></button>
+                                            </>
+                                        ) : (
+                                            <span className="text-xs text-gray-400">View only</span>
+                                        )}
                                     </div>
                                 </li>
                             ))}

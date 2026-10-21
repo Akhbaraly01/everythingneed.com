@@ -3,6 +3,7 @@ import { Head } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, ClipboardList, X, Globe, RefreshCw, FileText, ChevronUp, ChevronDown, Inbox } from 'lucide-react';
 import { api, errorMessage, rows } from '@/lib/api';
+import { useAuthPermissions } from '@/lib/permissions';
 import { toast } from 'sonner';
 import ConfirmDialog, { EmptyState, StatusBadge, TableSkeleton } from '@/components/shared/Ui';
 
@@ -95,6 +96,9 @@ const slugify = (value: string): string =>
         .replace(/^-+|-+$/g, '');
 
 export default function AdminForms() {
+    const { can } = useAuthPermissions();
+    const canManage = can('forms.manage');
+
     const [forms, setForms] = useState<FormRow[]>([]);
     const [loading, setLoading] = useState(true);
     const [form, setForm] = useState<FormEditorState | null>(null);
@@ -322,13 +326,15 @@ export default function AdminForms() {
                             Build no-code forms from controlled field types; server validation is generated from your schema.
                         </p>
                     </div>
-                    <button
-                        type="button"
-                        onClick={openCreate}
-                        className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
-                    >
-                        <Plus className="h-4 w-4" /> New Form
-                    </button>
+                    {canManage && (
+                        <button
+                            type="button"
+                            onClick={openCreate}
+                            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+                        >
+                            <Plus className="h-4 w-4" /> New Form
+                        </button>
+                    )}
                 </div>
 
                 {loading ? (
@@ -339,13 +345,15 @@ export default function AdminForms() {
                         title="No forms yet"
                         description="Create your first form (contact, application, survey...) and publish it to start collecting submissions."
                         action={
-                            <button
-                                type="button"
-                                onClick={openCreate}
-                                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
-                            >
-                                New Form
-                            </button>
+                            canManage ? (
+                                <button
+                                    type="button"
+                                    onClick={openCreate}
+                                    className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+                                >
+                                    New Form
+                                </button>
+                            ) : undefined
                         }
                     />
                 ) : (
@@ -373,22 +381,26 @@ export default function AdminForms() {
                                         </td>
                                         <td className="px-4 py-3">
                                             <div className="flex justify-end gap-2">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => void toggleStatus(row)}
-                                                    title={row.status === 'published' ? 'Unpublish' : 'Publish'}
-                                                    className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-                                                >
-                                                    <RefreshCw className="h-3.5 w-3.5" />
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => void openEdit(row)}
-                                                    title="Edit form"
-                                                    className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-                                                >
-                                                    <Pencil className="h-3.5 w-3.5" />
-                                                </button>
+                                                {canManage && (
+                                                    <>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => void toggleStatus(row)}
+                                                            title={row.status === 'published' ? 'Unpublish' : 'Publish'}
+                                                            className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                                                        >
+                                                            <RefreshCw className="h-3.5 w-3.5" />
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => void openEdit(row)}
+                                                            title="Edit form"
+                                                            className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                                                        >
+                                                            <Pencil className="h-3.5 w-3.5" />
+                                                        </button>
+                                                    </>
+                                                )}
                                                 <button
                                                     type="button"
                                                     onClick={() => void loadDetail(row.id)}
@@ -401,14 +413,16 @@ export default function AdminForms() {
                                                 >
                                                     <Inbox className="h-3.5 w-3.5" />
                                                 </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setConfirm({ id: row.id, name: row.name })}
-                                                    title="Delete form"
-                                                    className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-red-600 hover:bg-red-50 dark:border-gray-600 dark:text-red-400 dark:hover:bg-red-900/20"
-                                                >
-                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                </button>
+                                                {canManage && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setConfirm({ id: row.id, name: row.name })}
+                                                        title="Delete form"
+                                                        className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-red-600 hover:bg-red-50 dark:border-gray-600 dark:text-red-400 dark:hover:bg-red-900/20"
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>

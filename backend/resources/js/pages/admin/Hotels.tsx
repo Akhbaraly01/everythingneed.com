@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { Hotel, MapPin, Pencil, Plus, Power, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useConfirm } from '@/lib/confirm';
+import { useAuthPermissions } from '@/lib/permissions';
 
 interface HotelItem {
     id: string;
@@ -29,6 +30,9 @@ interface Meta {
 
 export default function AdminHotels() {
     const ask = useConfirm();
+    const { can, roles } = useAuthPermissions();
+    const canManage = can('hotels.overview.manage')
+        && (roles.includes('super_admin') || roles.includes('administrator') || roles.includes('hotel_admin'));
     const [hotels, setHotels] = useState<HotelItem[]>([]);
     const [meta, setMeta] = useState<Meta | null>(null);
     const [loading, setLoading] = useState(true);
@@ -165,14 +169,16 @@ export default function AdminHotels() {
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2"><Hotel className="h-6 w-6" /> Hotel Management</h1>
                     <div className="flex items-center gap-3">
                         {meta && <span className="text-sm text-gray-500">{meta.total} hotels</span>}
-                        <button onClick={() => setShowForm(!showForm)}
-                            className="flex items-center gap-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
-                            <Plus className="h-4 w-4" /> {showForm ? 'Close' : 'Add hotel'}
-                        </button>
+                        {canManage && (
+                            <button onClick={() => setShowForm(!showForm)}
+                                className="flex items-center gap-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
+                                <Plus className="h-4 w-4" /> {showForm ? 'Close' : 'Add hotel'}
+                            </button>
+                        )}
                     </div>
                 </div>
 
-                {showForm && (
+                {canManage && showForm && (
                     <form onSubmit={submitCreate} className="rounded-lg bg-white p-5 shadow dark:bg-gray-800">
                         <h2 className="mb-4 font-semibold text-gray-900 dark:text-white">New hotel</h2>
                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -261,20 +267,24 @@ export default function AdminHotels() {
                                             </span>
                                         </td>
                                         <td className="px-4 py-3">
-                                            <div className="flex items-center gap-2">
-                                                <button onClick={() => toggle(h)} title={h.is_active ? 'Deactivate' : 'Activate'}
-                                                    className="flex items-center gap-1 rounded-lg border border-gray-300 px-2 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300">
-                                                    <Power className="h-3 w-3" /> {h.is_active ? 'Disable' : 'Enable'}
-                                                </button>
-                                                <button onClick={() => openEdit(h)} title="Edit hotel" data-testid={`hotel-edit-${h.id}`}
-                                                    className="flex items-center gap-1 rounded-lg border border-gray-300 px-2 py-1 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 dark:border-gray-600">
-                                                    <Pencil className="h-3 w-3" /> Edit
-                                                </button>
-                                                <button onClick={() => void deleteHotel(h)} title="Delete hotel" data-testid={`hotel-delete-${h.id}`}
-                                                    className="flex items-center gap-1 rounded-lg border border-red-200 px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 dark:border-red-800">
-                                                    <Trash2 className="h-3 w-3" /> Delete
-                                                </button>
-                                            </div>
+                                            {canManage ? (
+                                                <div className="flex items-center gap-2">
+                                                    <button onClick={() => toggle(h)} title={h.is_active ? 'Deactivate' : 'Activate'}
+                                                        className="flex items-center gap-1 rounded-lg border border-gray-300 px-2 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300">
+                                                        <Power className="h-3 w-3" /> {h.is_active ? 'Disable' : 'Enable'}
+                                                    </button>
+                                                    <button onClick={() => openEdit(h)} title="Edit hotel" data-testid={`hotel-edit-${h.id}`}
+                                                        className="flex items-center gap-1 rounded-lg border border-gray-300 px-2 py-1 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 dark:border-gray-600">
+                                                        <Pencil className="h-3 w-3" /> Edit
+                                                    </button>
+                                                    <button onClick={() => void deleteHotel(h)} title="Delete hotel" data-testid={`hotel-delete-${h.id}`}
+                                                        className="flex items-center gap-1 rounded-lg border border-red-200 px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 dark:border-red-800">
+                                                        <Trash2 className="h-3 w-3" /> Delete
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <span className="text-xs text-gray-400">View only</span>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}
@@ -284,7 +294,7 @@ export default function AdminHotels() {
                     </div>
                 )}
 
-                {editHotel && (
+                {canManage && editHotel && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" data-testid="hotel-edit-modal">
                         <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-gray-200 bg-white p-5 shadow-xl dark:border-gray-700 dark:bg-gray-800">
                             <div className="mb-4 flex items-start justify-between">

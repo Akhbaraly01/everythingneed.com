@@ -148,7 +148,8 @@ class TicketController extends Controller
         $user = $request->user();
         $isStaff = $user->hasRole('super_admin') || $user->hasRole('administrator')
             || $user->hasRole('support_agent') || $user->hasRole('support_admin')
-            || $user->hasRole('customer_service');
+            || $user->hasRole('customer_service')
+            || $user->hasPermission('support.tickets.manage');
 
         if (!$isStaff) {
             return response()->json(['message' => 'Only support staff can transfer tickets'], 403);
@@ -186,7 +187,8 @@ class TicketController extends Controller
         $user = $request->user();
         $isStaff = $user->hasRole('super_admin') || $user->hasRole('administrator')
             || $user->hasRole('support_agent') || $user->hasRole('support_admin')
-            || $user->hasRole('customer_service');
+            || $user->hasRole('customer_service')
+            || $user->hasPermission('support.tickets.manage');
 
         if ((string) $ticket->user_id !== (string) $user->id && !$isStaff) {
             return response()->json(['message' => 'You do not have access to this ticket'], 403);
@@ -332,7 +334,8 @@ class TicketController extends Controller
             || $roles?->contains('administrator')
             || $roles?->contains('support_agent')
             || $roles?->contains('support_admin')
-            || $roles?->contains('customer_service');
+            || $roles?->contains('customer_service')
+            || $request->user()?->hasPermission('support.tickets.manage');
     }
 
     private function canAccess(Request $request, object $ticket): bool

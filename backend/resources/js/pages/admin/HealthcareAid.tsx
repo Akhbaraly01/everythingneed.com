@@ -6,6 +6,7 @@ import { PromptDialog } from '@/components/shared/Ui';
 import { HeartHandshake, Check, X, Search, RotateCcw } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { useAuthPermissions } from '@/lib/permissions';
 
 interface AidRow {
     id: string;
@@ -35,6 +36,8 @@ const STATUS_TONE: Record<string, string> = {
 const STATUSES = ['', 'pending', 'approved', 'rejected', 'funded', 'closed'];
 
 export default function HealthcareAid() {
+    const { can } = useAuthPermissions();
+    const canDecide = can('healthcare.aid.manage');
     const [aids, setAids] = useState<AidRow[]>([]);
     const [status, setStatus] = useState('pending');
     const [loading, setLoading] = useState(true);
@@ -191,7 +194,7 @@ export default function HealthcareAid() {
                                         </td>
                                         <td className="px-4 py-3 text-xs text-gray-500">{formatDateTime(r.created_at)}</td>
                                         <td className="px-4 py-3">
-                                            {r.status === 'pending' ? (
+                                            {canDecide && r.status === 'pending' ? (
                                                 <div className="flex gap-2">
                                                     <button
                                                         onClick={() => setPrompt({ r, action: 'approve' })}

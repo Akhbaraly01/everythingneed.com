@@ -4,6 +4,7 @@ import { Head } from '@inertiajs/react';
 import { api, errorMessage, rows } from '@/lib/api';
 import { useConfirm } from '@/lib/confirm';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
+import { useAuthPermissions } from '@/lib/permissions';
 import DataTable from '@/components/shared/DataTable';
 import { CreditCard, Layers, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
@@ -51,6 +52,9 @@ type Tab = 'subscriptions' | 'plans';
 
 export default function AdminSubscriptions() {
     const ask = useConfirm();
+    const { can, roles } = useAuthPermissions();
+    const canManagePlans = can('subscriptions.subscriptions.manage')
+        && (roles.includes('super_admin') || roles.includes('administrator'));
     const [tab, setTab] = useState<Tab>('subscriptions');
 
     const [subs, setSubs] = useState<Subscription[]>([]);
@@ -198,7 +202,7 @@ export default function AdminSubscriptions() {
                         className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium ${tab === 'plans' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'}`}>
                         <Layers className="h-4 w-4" /> Plans
                     </button>
-                    {tab === 'plans' && (
+                    {tab === 'plans' && canManagePlans && (
                         <button data-testid="new-plan" onClick={openCreatePlan}
                             className="ml-auto flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500">
                             <Plus className="h-4 w-4" /> New Plan
@@ -316,7 +320,7 @@ export default function AdminSubscriptions() {
                             },
                             {
                                 key: 'actions', header: 'Actions',
-                                render: (p) => (
+                                render: (p) => (canManagePlans ? (
                                     <div className="flex gap-1.5">
                                         <button onClick={() => togglePlanActive(p)}
                                             className="rounded-lg bg-gray-800 px-2.5 py-1 text-xs font-semibold text-white hover:bg-gray-700 dark:bg-gray-600">
@@ -333,7 +337,9 @@ export default function AdminSubscriptions() {
                                             <Trash2 className="h-3.5 w-3.5" />
                                         </button>
                                     </div>
-                                ),
+                                ) : (
+                                    <span className="text-xs text-gray-400">View only</span>
+                                )),
                             },
                         ]}
                         data={plans}
@@ -342,7 +348,7 @@ export default function AdminSubscriptions() {
                     />
                 )}
 
-                {showPlanModal && (
+                {canManagePlans && showPlanModal && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowPlanModal(false)}>
                         <form data-testid="plan-edit-modal" onClick={(e) => e.stopPropagation()} onSubmit={submitPlan}
                             className="max-h-[90vh] w-full max-w-lg overflow-y-auto space-y-4 rounded-xl bg-white p-6 shadow-xl dark:bg-gray-800">

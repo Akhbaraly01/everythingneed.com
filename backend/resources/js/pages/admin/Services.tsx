@@ -3,6 +3,7 @@ import { Head } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, ClipboardList, X, RefreshCw, Inbox } from 'lucide-react';
 import { api, errorMessage, rows } from '@/lib/api';
+import { useAuthPermissions } from '@/lib/permissions';
 import { useConfirm } from '@/lib/confirm';
 import { toast } from 'sonner';
 import ConfirmDialog, { EmptyState, StatusBadge, TableSkeleton } from '@/components/shared/Ui';
@@ -142,6 +143,9 @@ const emptyCategoryEditor = (): CategoryEditorState => ({
 const money = (value: string | number, currency: string): string => `${currency} ${Number(value).toFixed(2)}`;
 
 export default function AdminServices() {
+    const { can } = useAuthPermissions();
+    const canManage = can('services.overview.manage');
+
     const ask = useConfirm();
     const [tab, setTab] = useState<'services' | 'bookings' | 'categories'>('services');
     const [services, setServices] = useState<ServiceRow[]>([]);
@@ -439,13 +443,15 @@ export default function AdminServices() {
                         >
                             <RefreshCw className="h-4 w-4" />
                         </button>
-                        <button
-                            type="button"
-                            onClick={openCreate}
-                            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
-                        >
-                            <Plus className="h-4 w-4" /> New Service
-                        </button>
+                        {canManage && (
+                            <button
+                                type="button"
+                                onClick={openCreate}
+                                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+                            >
+                                <Plus className="h-4 w-4" /> New Service
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -477,13 +483,15 @@ export default function AdminServices() {
                             title="No services yet"
                             description="Create your first service (e.g. Home Cleaning in Building Services, Bauchi) with pricing, availability and booking rules."
                             action={
-                                <button
-                                    type="button"
-                                    onClick={openCreate}
-                                    className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
-                                >
-                                    New Service
-                                </button>
+                                canManage ? (
+                                    <button
+                                        type="button"
+                                        onClick={openCreate}
+                                        className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+                                    >
+                                        New Service
+                                    </button>
+                                ) : undefined
                             }
                         />
                     ) : (
@@ -517,24 +525,28 @@ export default function AdminServices() {
                                                 <StatusBadge status={row.status} />
                                             </td>
                                             <td className="px-4 py-3">
-                                                <div className="flex justify-end gap-2">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => openEdit(row)}
-                                                        title="Edit service"
-                                                        className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-                                                    >
-                                                        <Pencil className="h-3.5 w-3.5" />
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setConfirm({ id: row.id, name: row.name })}
-                                                        title="Delete service"
-                                                        className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-red-600 hover:bg-red-50 dark:border-gray-600 dark:text-red-400 dark:hover:bg-red-900/20"
-                                                    >
-                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                    </button>
-                                                </div>
+                                                {canManage ? (
+                                                    <div className="flex justify-end gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => openEdit(row)}
+                                                            title="Edit service"
+                                                            className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                                                        >
+                                                            <Pencil className="h-3.5 w-3.5" />
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setConfirm({ id: row.id, name: row.name })}
+                                                            title="Delete service"
+                                                            className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-red-600 hover:bg-red-50 dark:border-gray-600 dark:text-red-400 dark:hover:bg-red-900/20"
+                                                        >
+                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-xs text-gray-400">View only</span>
+                                                )}
                                             </td>
                                         </tr>
                                     ))}
@@ -548,14 +560,16 @@ export default function AdminServices() {
                             <p className="text-sm text-gray-500">
                                 Categories and subcategories power the icon grids on the public services pages (spec 39/100).
                             </p>
-                            <button
-                                type="button"
-                                data-testid="new-service-category"
-                                onClick={() => openCategoryEditor()}
-                                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
-                            >
-                                <Plus className="h-4 w-4" /> New Category
-                            </button>
+                            {canManage && (
+                                <button
+                                    type="button"
+                                    data-testid="new-service-category"
+                                    onClick={() => openCategoryEditor()}
+                                    className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+                                >
+                                    <Plus className="h-4 w-4" /> New Category
+                                </button>
+                            )}
                         </div>
                         <div className="overflow-x-auto rounded-lg bg-white shadow dark:bg-gray-800">
                             <table className="min-w-full text-left text-sm">
@@ -615,29 +629,33 @@ export default function AdminServices() {
                                                 {cat.services_count ?? 0} services · {cat.children_count ?? 0} subcategories
                                             </td>
                                             <td className="px-4 py-3">
-                                                <div className="flex justify-end gap-2">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => openCategoryEditor(cat)}
-                                                        className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-                                                    >
-                                                        Edit
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => void toggleCategoryActive(cat)}
-                                                        className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-                                                    >
-                                                        {cat.is_active ? 'Deactivate' : 'Activate'}
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => void deleteCategory(cat)}
-                                                        className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-red-600 hover:bg-red-50 dark:border-gray-600 dark:text-red-400 dark:hover:bg-red-900/20"
-                                                    >
-                                                        Delete
-                                                    </button>
-                                                </div>
+                                                {canManage ? (
+                                                    <div className="flex justify-end gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => openCategoryEditor(cat)}
+                                                            className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                                                        >
+                                                            Edit
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => void toggleCategoryActive(cat)}
+                                                            className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                                                        >
+                                                            {cat.is_active ? 'Deactivate' : 'Activate'}
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => void deleteCategory(cat)}
+                                                            className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-red-600 hover:bg-red-50 dark:border-gray-600 dark:text-red-400 dark:hover:bg-red-900/20"
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-xs text-gray-400">View only</span>
+                                                )}
                                             </td>
                                         </tr>
                                     ))}
@@ -798,35 +816,39 @@ export default function AdminServices() {
                                             <StatusBadge status={row.payment_status} />
                                         </td>
                                         <td className="px-4 py-3">
-                                            <div className="flex justify-end gap-2">
-                                                {row.status === 'pending' && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => void updateBooking(row, 'confirmed')}
-                                                        className="rounded-lg border border-green-200 px-2.5 py-1.5 text-xs text-green-700 hover:bg-green-50 dark:border-green-800 dark:text-green-400"
-                                                    >
-                                                        Confirm
-                                                    </button>
-                                                )}
-                                                {row.status === 'confirmed' && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => void updateBooking(row, 'completed')}
-                                                        className="rounded-lg border border-blue-200 px-2.5 py-1.5 text-xs text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400"
-                                                    >
-                                                        Complete
-                                                    </button>
-                                                )}
-                                                {(row.status === 'pending' || row.status === 'confirmed') && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => void updateBooking(row, 'cancelled')}
-                                                        className="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400"
-                                                    >
-                                                        Cancel
-                                                    </button>
-                                                )}
-                                            </div>
+                                            {canManage ? (
+                                                <div className="flex justify-end gap-2">
+                                                    {row.status === 'pending' && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => void updateBooking(row, 'confirmed')}
+                                                            className="rounded-lg border border-green-200 px-2.5 py-1.5 text-xs text-green-700 hover:bg-green-50 dark:border-green-800 dark:text-green-400"
+                                                        >
+                                                            Confirm
+                                                        </button>
+                                                    )}
+                                                    {row.status === 'confirmed' && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => void updateBooking(row, 'completed')}
+                                                            className="rounded-lg border border-blue-200 px-2.5 py-1.5 text-xs text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400"
+                                                        >
+                                                            Complete
+                                                        </button>
+                                                    )}
+                                                    {(row.status === 'pending' || row.status === 'confirmed') && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => void updateBooking(row, 'cancelled')}
+                                                            className="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <span className="text-xs text-gray-400">View only</span>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}

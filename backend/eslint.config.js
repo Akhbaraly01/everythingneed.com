@@ -18,6 +18,9 @@ export default tseslint.config(
             'e2e/.auth/**',
             'resources/js/**/*.d.ts',
             'resources/js/types/**',
+            // Local scratch scripts (tmp-*) are not project code: they must
+            // never be able to break the lint gate.
+            'tmp-*',
         ],
     },
     js.configs.recommended,

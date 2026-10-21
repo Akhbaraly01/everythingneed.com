@@ -1,6 +1,7 @@
 import AdminLayout from '@/layouts/AdminLayout';
 import { Head, usePage } from '@inertiajs/react';
 import { api, errorMessage, rows } from '@/lib/api';
+import { useAuthPermissions } from '@/lib/permissions';
 import ConfirmDialog from '@/components/shared/Ui';
 import { ArrowUp, ArrowDown, LayoutList, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -18,6 +19,9 @@ interface HomeSection {
 export default function AdminHomeSections() {
     const { auth } = usePage().props as unknown as { auth: { roles?: string[] } };
     const isSuper = (auth?.roles ?? []).includes('super_admin');
+    const { can } = useAuthPermissions();
+    const canManage = can('cms.home.manage');
+    const canCreateDelete = isSuper && canManage;
 
     const [sections, setSections] = useState<HomeSection[]>([]);
     const [loading, setLoading] = useState(true);
@@ -134,7 +138,7 @@ export default function AdminHomeSections() {
                     Super Admin only.
                 </p>
 
-                {isSuper && (
+                {isSuper && canManage && (
                     <div className="rounded-xl border border-border bg-card p-4">
                         <h2 className="mb-3 text-sm font-semibold text-foreground">New section</h2>
                         <div className="flex flex-col gap-2 sm:flex-row">
@@ -191,57 +195,61 @@ export default function AdminHomeSections() {
                                         <p className="truncate text-xs text-gray-500">/{section.slug}</p>
                                     </div>
                                     <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs text-gray-500">
-                                        <button
-                                            type="button"
-                                            role="switch"
-                                            aria-checked={section.is_active}
-                                            aria-label={`Toggle ${section.name}`}
-                                            data-testid={`home-admin-toggle-${section.slug}`}
-                                            onClick={() => void toggle(section)}
-                                            disabled={saving}
-                                            className={`relative h-6 w-11 rounded-full transition-colors disabled:opacity-50 ${
-                                                section.is_active ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-600'
-                                            }`}
-                                        >
-                                            <span
-                                                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${
-                                                    section.is_active ? 'left-[22px]' : 'left-0.5'
-                                                }`}
-                                            />
-                                        </button>
-                                        {section.is_active ? 'On' : 'Off'}
-                                    </label>
-                                    <div className="flex shrink-0 gap-1">
-                                        <button
-                                            type="button"
-                                            aria-label={`Move ${section.name} up`}
-                                            onClick={() => void move(index, -1)}
-                                            disabled={saving || index === 0}
-                                            className="rounded-md border border-border p-1.5 disabled:opacity-40"
-                                        >
-                                            <ArrowUp className="h-4 w-4" />
-                                        </button>
-                                        <button
-                                            type="button"
-                                            aria-label={`Move ${section.name} down`}
-                                            onClick={() => void move(index, 1)}
-                                            disabled={saving || index === sections.length - 1}
-                                            className="rounded-md border border-border p-1.5 disabled:opacity-40"
-                                        >
-                                            <ArrowDown className="h-4 w-4" />
-                                        </button>
-                                        {isSuper && (
+                                        {canManage && (
                                             <button
                                                 type="button"
-                                                aria-label={`Delete ${section.name}`}
-                                                onClick={() => setDeleteFor(section)}
+                                                role="switch"
+                                                aria-checked={section.is_active}
+                                                aria-label={`Toggle ${section.name}`}
+                                                data-testid={`home-admin-toggle-${section.slug}`}
+                                                onClick={() => void toggle(section)}
                                                 disabled={saving}
-                                                className="rounded-md border border-destructive/40 p-1.5 text-destructive disabled:opacity-40"
+                                                className={`relative h-6 w-11 rounded-full transition-colors disabled:opacity-50 ${
+                                                    section.is_active ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-600'
+                                                }`}
                                             >
-                                                <Trash2 className="h-4 w-4" />
+                                                <span
+                                                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${
+                                                        section.is_active ? 'left-[22px]' : 'left-0.5'
+                                                    }`}
+                                                />
                                             </button>
                                         )}
-                                    </div>
+                                        {section.is_active ? 'On' : 'Off'}
+                                    </label>
+                                    {canManage && (
+                                        <div className="flex shrink-0 gap-1">
+                                            <button
+                                                type="button"
+                                                aria-label={`Move ${section.name} up`}
+                                                onClick={() => void move(index, -1)}
+                                                disabled={saving || index === 0}
+                                                className="rounded-md border border-border p-1.5 disabled:opacity-40"
+                                            >
+                                                <ArrowUp className="h-4 w-4" />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                aria-label={`Move ${section.name} down`}
+                                                onClick={() => void move(index, 1)}
+                                                disabled={saving || index === sections.length - 1}
+                                                className="rounded-md border border-border p-1.5 disabled:opacity-40"
+                                            >
+                                                <ArrowDown className="h-4 w-4" />
+                                            </button>
+                                            {canCreateDelete && (
+                                                <button
+                                                    type="button"
+                                                    aria-label={`Delete ${section.name}`}
+                                                    onClick={() => setDeleteFor(section)}
+                                                    disabled={saving}
+                                                    className="rounded-md border border-destructive/40 p-1.5 text-destructive disabled:opacity-40"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
                                 </li>
                             ))}
                         </ul>

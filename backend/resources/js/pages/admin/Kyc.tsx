@@ -8,6 +8,7 @@ import DataTable from '@/components/shared/DataTable';
 import { Search, CheckCircle, XCircle } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { useAuthPermissions } from '@/lib/permissions';
 
 /** Real kyc_verifications row + requester (AdminKycController::index). */
 interface KycRow {
@@ -36,6 +37,8 @@ const STATUS_TABS = ['all', 'pending', 'submitted', 'requires_action', 'approved
 type StatusTab = (typeof STATUS_TABS)[number];
 
 export default function AdminKyc() {
+    const { can } = useAuthPermissions();
+    const canReview = can('kyc.applications.review');
     const [items, setItems] = useState<KycRow[]>([]);
     const [meta, setMeta] = useState<Meta | null>(null);
     const [loading, setLoading] = useState(true);
@@ -177,24 +180,30 @@ export default function AdminKyc() {
                         },
                         {
                             key: 'actions', header: 'Actions',
-                            render: (row) => (
-                                (row.status === 'pending' || row.status === 'submitted' || row.status === 'requires_action') ? (
-                                    <div className="flex flex-wrap gap-2">
-                                        <button onClick={() => setApproveFor(row)}
-                                            className="flex items-center gap-1 rounded-lg bg-green-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-green-500">
-                                            <CheckCircle className="h-3 w-3" /> Approve
-                                        </button>
-                                        <button onClick={() => setRejectFor(row)}
-                                            className="flex items-center gap-1 rounded-lg bg-red-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-red-500">
-                                            <XCircle className="h-3 w-3" /> Reject
-                                        </button>
-                                        <button onClick={() => setRequestFor(row)}
-                                            className="flex items-center gap-1 rounded-lg bg-orange-500 px-2.5 py-1 text-xs font-semibold text-white hover:bg-orange-400">
-                                            Request changes
-                                        </button>
-                                    </div>
-                                ) : <span className="text-xs text-gray-400">Reviewed</span>
-                            ),
+                            render: (row) => {
+                                if (!canReview) {
+                                    return <span className="text-xs text-gray-400">View only</span>;
+                                }
+
+                                return (
+                                    (row.status === 'pending' || row.status === 'submitted' || row.status === 'requires_action') ? (
+                                        <div className="flex flex-wrap gap-2">
+                                            <button onClick={() => setApproveFor(row)}
+                                                className="flex items-center gap-1 rounded-lg bg-green-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-green-500">
+                                                <CheckCircle className="h-3 w-3" /> Approve
+                                            </button>
+                                            <button onClick={() => setRejectFor(row)}
+                                                className="flex items-center gap-1 rounded-lg bg-red-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-red-500">
+                                                <XCircle className="h-3 w-3" /> Reject
+                                            </button>
+                                            <button onClick={() => setRequestFor(row)}
+                                                className="flex items-center gap-1 rounded-lg bg-orange-500 px-2.5 py-1 text-xs font-semibold text-white hover:bg-orange-400">
+                                                Request changes
+                                            </button>
+                                        </div>
+                                    ) : <span className="text-xs text-gray-400">Reviewed</span>
+                                );
+                            },
                         },
                     ]}
                     data={items}

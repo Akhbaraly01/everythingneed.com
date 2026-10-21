@@ -28,6 +28,40 @@ class ProductQueryService extends BaseService implements ProductQueryInterface
         ];
     }
 
+    /**
+     * Approve or reject many products in one pass.
+     *
+     * @param  list<string>  $ids
+     * @return array{processed: int, skipped: int, ids: list<string>}
+     */
+    public function decideMany(
+        array $ids,
+        bool $approve,
+        ?string $reason = null,
+        ?string $categoryScope = null,
+    ): array {
+        $processed = [];
+        $skipped = 0;
+
+        foreach (array_slice(array_unique($ids), 0, 100) as $id) {
+            $product = $this->decide($id, $approve, $reason, $categoryScope);
+
+            if ($product === null) {
+                $skipped++;
+
+                continue;
+            }
+
+            $processed[] = $id;
+        }
+
+        return [
+            'processed' => count($processed),
+            'skipped' => $skipped,
+            'ids' => $processed,
+        ];
+    }
+
     public function decide(string $id, bool $approve, ?string $reason = null, ?string $categoryScope = null): ?object
     {
         $product = Product::withTrashed()->find($id);
