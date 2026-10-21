@@ -1143,6 +1143,9 @@ Route::middleware('permission:cms.pages.manage')->prefix('admin')->group(functio
     Route::get('/cms', function () {
         return inertia('admin/Cms');
     })->name('admin.cms');
+});
+
+Route::middleware('permission:newsletter.subscriptions.view')->prefix('admin')->group(function () {
     Route::get('/newsletter', function () {
         return inertia('admin/Newsletter');
     })->name('admin.newsletter');
@@ -1217,6 +1220,24 @@ Route::middleware('permission:food.overview.view')->prefix('admin')->group(funct
     Route::get('/food', function () {
         return inertia('admin/Food');
     })->name('admin.food');
+});
+
+Route::middleware('permission:agriculture.overview.view')->prefix('admin')->group(function () {
+    Route::get('/agriculture', function () {
+        return inertia('admin/Agriculture');
+    })->name('admin.agriculture');
+});
+
+Route::middleware('permission:deals.deals.view')->prefix('admin')->group(function () {
+    Route::get('/deals', function () {
+        return inertia('admin/Deals');
+    })->name('admin.deals');
+});
+
+Route::middleware('permission:messaging.overview.view')->prefix('admin')->group(function () {
+    Route::get('/messaging', function () {
+        return inertia('admin/Messaging');
+    })->name('admin.messaging');
 });
 
 Route::middleware('permission:transport.overview.view')->prefix('admin')->group(function () {

@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
 import {
+    changeDictionaryLanguage,
     changeI18nLanguage,
     dirFor,
     getI18n,
     initI18n,
     isI18nReady,
+    setCurrentLocale,
     type I18nBoot,
 } from '@/lib/i18n-config';
 import {
@@ -84,6 +86,16 @@ export function LanguageProvider({
         ),
     );
 
+    /**
+     * Google widget mode: the widget translates the whole document
+     * (chrome + database content) in one pass, so the dictionary must
+     * keep rendering the source language. Pre-translating the chrome
+     * here would make the widget translate Spanish into Arabic.
+     */
+    const widgetMode = boot?.autoTranslate?.engine === 'google';
+    const sourceLanguage = boot?.autoTranslate?.source || boot?.fallback || 'en';
+    const dictionaryLanguage = widgetMode ? sourceLanguage : language;
+
     // Locale bundles arrive asynchronously (i18next backend); context
     // consumers translate during render, so the context value must
     // change identity once a language finishes loading — otherwise the
@@ -133,7 +145,8 @@ export function LanguageProvider({
         setLanguageState(resolved);
         persistLanguage(resolved);
         syncLanguageCookie(resolved);
-        void changeI18nLanguage(resolved);
+        // The dictionary/current locale follow in the effect below so the
+        // widget mode can keep rendering the source language.
         void pushLocaleToServer(resolved);
     }, []);
 
@@ -145,8 +158,8 @@ export function LanguageProvider({
     // an English default so unknown keys resolve to visible UI text
     // instead of a raw dotted key path.
     const t = useCallback(
-        (key: string, options?: TranslateOptions) => translate(language, key, options),
-        [language, i18nRevision],
+        (key: string, options?: TranslateOptions) => translate(dictionaryLanguage, key, options),
+        [dictionaryLanguage, i18nRevision],
     );
 
     // Document attributes + i18next follow the selection (the pre-paint
@@ -159,8 +172,15 @@ export function LanguageProvider({
             // Non-DOM renderers (tests) have no document.
         }
 
-        void changeI18nLanguage(language);
-    }, [language]);
+        if (widgetMode) {
+            // The document locale follows the choice; the dictionary keeps
+            // the source language so the widget can translate the page.
+            setCurrentLocale(language);
+            void changeDictionaryLanguage(sourceLanguage);
+        } else {
+            void changeI18nLanguage(language);
+        }
+    }, [language, widgetMode, sourceLanguage]);
 
     const availableLocales = useMemo(
         () => boot?.availableLocales ?? [],

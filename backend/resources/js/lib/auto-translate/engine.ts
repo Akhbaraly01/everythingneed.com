@@ -1,4 +1,5 @@
 import { chunkTexts, translateBatch } from './proxy';
+import { broadcastTranslateState } from './state';
 import type { AutoTranslateConfig } from './types';
 
 const TEXT_SKIP_SELECTOR = 'script,style,noscript,code,pre,textarea,svg,canvas,iframe';
@@ -17,6 +18,7 @@ const ATTRIBUTES = ['placeholder', 'aria-label', 'title', 'alt'] as const;
 
 const LETTER = /\p{L}/u;
 const URL_ONLY = /^(?:https?:\/\/|mailto:|tel:|\/\/)\S+$/i;
+const DOMAIN_LIKE = /^[\w-]+(?:\.[\w-]+)+$/;
 
 const MAX_TEXT = 1000;
 const FLUSH_DELAY = 120;
@@ -43,9 +45,11 @@ function parts(text: string): Parts | null {
 
     if (
         core === '' ||
+        core.length < 2 ||
         core.length > MAX_TEXT ||
         !LETTER.test(core) ||
-        URL_ONLY.test(core)
+        URL_ONLY.test(core) ||
+        DOMAIN_LIKE.test(core)
     ) {
         return null;
     }
@@ -81,6 +85,7 @@ export class AutoTranslator {
     private rescanTimer: number | null = null;
     private clearTimer: number | null = null;
     private startTimer: number | null = null;
+    private flushing = false;
     private generation = 0;
 
     start(config: AutoTranslateConfig, target: string): void {
@@ -408,7 +413,10 @@ export class AutoTranslator {
     }
 
     private scheduleFlush(): void {
-        if (this.flushTimer !== null) {
+        // One flush at a time: a running flush picks up whatever arrives
+        // while it waits, so a burst of new text cannot pile up parallel
+        // request storms against the proxy.
+        if (this.flushTimer !== null || this.flushing) {
             return;
         }
 
@@ -419,6 +427,25 @@ export class AutoTranslator {
     }
 
     private async flush(): Promise<void> {
+        if (this.flushing) {
+            return;
+        }
+
+        this.flushing = true;
+
+        try {
+            await this.runFlush();
+        } finally {
+            this.flushing = false;
+
+            // Text that arrived while the batches were in flight.
+            if (this.started && this.pending.size > 0) {
+                this.scheduleFlush();
+            }
+        }
+    }
+
+    private async runFlush(): Promise<void> {
         if (!this.started || this.target === this.source) {
             return;
         }
@@ -436,18 +463,19 @@ export class AutoTranslator {
             return;
         }
 
+        broadcastTranslateState(true);
+
         for (const chunk of chunkTexts(todo)) {
             chunk.forEach((text) => this.inflight.add(text));
 
             try {
                 const results = await translateBatch(chunk, target);
 
-                if (generation !== this.generation) {
-                    return;
-                }
-
+                // The cache is keyed by target, so a locale switch during
+                // the request must not throw the batch away: keep the
+                // translations under the target they were requested for.
                 for (const [text, translated] of results) {
-                    this.cache.set(this.key(text), translated);
+                    this.cache.set(this.keyFor(target, text), translated);
 
                     if (this.cache.size > CACHE_LIMIT) {
                         const oldest = this.cache.keys().next().value;
@@ -464,6 +492,11 @@ export class AutoTranslator {
 
         if (generation === this.generation) {
             this.apply();
+        }
+
+        // The pass is done (or superseded) - the switcher stops its spinner.
+        if (generation === this.generation) {
+            broadcastTranslateState(false);
         }
     }
 
@@ -563,7 +596,12 @@ export class AutoTranslator {
     }
 
     private key(text: string): string {
-        return `${this.target}\u0000${text}`;
+        return this.keyFor(this.target, text);
+    }
+
+    /** Cache keys are target-scoped so a switch never mixes languages. */
+    private keyFor(target: string, text: string): string {
+        return `${target}\u0000${text}`;
     }
 
     private writeText(node: Text, value: string): void {

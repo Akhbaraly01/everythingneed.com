@@ -32,9 +32,7 @@ test('home interleaves product batches between sections, banners precede recentl
     expect(rvY).toBeGreaterThan(bannersY);
 });
 
-test('home top order: banners, icons, need carousel, need banner, pills, feed', async ({
-    page,
-}) => {
+test('home top order: banners, icons, promo slot, pills, feed', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await expect(page.getByTestId('home-feed-batch-0')).toBeVisible({ timeout: 30_000 });
 
@@ -51,8 +49,10 @@ test('home top order: banners, icons, need carousel, need banner, pills, feed', 
 
     expect(bannersY).toBeLessThan(iconsY);
     expect(iconsY).toBeLessThan(carouselY);
-    expect(carouselY).toBeLessThan(needY);
-    expect(needY).toBeLessThan(pillsY);
+    expect(iconsY).toBeLessThan(needY);
+    // The promo block order rotates per browser session, but both blocks
+    // always sit above the discovery pills and the feed.
+    expect(Math.max(carouselY, needY)).toBeLessThan(pillsY);
     expect(pillsY).toBeLessThan(feedY);
 
     // No duplicate in-page search (the fixed header owns search).
@@ -93,20 +93,38 @@ test('icon row shows 8 tiles (4+4 with SeeMore) above the feed', async ({ page }
     await expect(grid.getByRole('heading', { name: 'All Categories' })).toBeVisible();
 });
 
-test('language switch translates chrome globally', async ({ page }) => {
+test('language switch translates chrome globally', async ({ page, context }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await expect(page.getByTestId('home-feed-batch-0')).toBeVisible({ timeout: 30_000 });
 
     await expect(page.getByPlaceholder('Search everything...')).toBeVisible();
     await expect(page.getByText('Featured Products').first()).toBeVisible();
 
-    await page.getByLabel('Language').click();
+    // The whole-page engine decides who translates the chrome: the curated
+    // dictionary (proxy/off) or the Google widget (google).
+    const engine = await page
+        .locator('script[data-page]')
+        .first()
+        .textContent()
+        .then((data) => data?.match(/"autoTranslate":\{"engine":"([a-z]+)"/)?.[1] ?? 'off');
+
+    await page.getByRole('button', { name: /Language and currency/ }).click();
     // The switcher is an ARIA menu: the options are menuitemradio, not buttons.
     await page.getByRole('menuitemradio', { name: 'Español' }).click();
 
-    await expect(page.getByPlaceholder('Buscar todo...')).toBeVisible();
-    await expect(page.getByText('Productos destacados').first()).toBeVisible();
-    await expect(page.getByText('Ver todo >').first()).toBeVisible();
+    if (engine === 'google') {
+        // Widget mode: the classic cookie keeps the choice across reloads.
+        await expect
+            .poll(async () =>
+                (await context.cookies()).find((c) => c.name === 'googtrans')?.value ?? '',
+            )
+            .toContain('/en/es');
+    } else {
+        await expect(page.getByPlaceholder('Buscar todo...')).toBeVisible();
+        await expect(page.getByText('Productos destacados').first()).toBeVisible();
+        await expect(page.getByText('Ver todo >').first()).toBeVisible();
+    }
+
     await expect.poll(async () => page.evaluate(() => document.documentElement.lang)).toBe('es');
 });
 

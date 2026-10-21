@@ -37,6 +37,18 @@ export interface I18nBoot {
     availableLocales: LocaleMeta[];
     /** First-paint dictionaries: locale -> namespace -> tree. */
     bootTranslations: Record<string, Record<string, Record<string, unknown>>>;
+    /**
+     * Language the i18next dictionary renders in. Equals `locale` in
+     * normal mode; in Google widget mode it stays the source language
+     * so the widget performs a single whole-page translation instead of
+     * translating an already-translated chrome.
+     */
+    dictionaryLocale?: string;
+    /** Whole-page auto-translation strategy shared by the server. */
+    autoTranslate?: {
+        engine: string;
+        source: string | null;
+    };
 }
 
 const FALLBACK_DEFAULT = 'en';
@@ -91,7 +103,7 @@ export function initI18n(boot: I18nBoot): I18nInstance {
             .use(initReactI18next)
             .use(BundleBackend)
             .init({
-                lng: currentLocale,
+                lng: boot.dictionaryLocale || currentLocale,
                 fallbackLng: fallbackLocale,
                 defaultNS: 'common',
                 ns: ['common'],
@@ -178,6 +190,15 @@ export function normalizeToKnown(value: unknown): string | null {
 export async function changeI18nLanguage(code: string): Promise<void> {
     currentLocale = code;
 
+    await changeDictionaryLanguage(code);
+}
+
+/**
+ * Switch only the dictionary language. Google widget mode renders the
+ * chrome in the source language (the widget translates the whole page),
+ * while the document locale still follows the user's choice.
+ */
+export async function changeDictionaryLanguage(code: string): Promise<void> {
     if (!ready || i18next.language === code) {
         return;
     }
@@ -187,4 +208,9 @@ export async function changeI18nLanguage(code: string): Promise<void> {
     } catch {
         // Bundle fetch failures fall back to the boot translations.
     }
+}
+
+/** Record the resolved document locale without touching the dictionary. */
+export function setCurrentLocale(code: string): void {
+    currentLocale = code;
 }

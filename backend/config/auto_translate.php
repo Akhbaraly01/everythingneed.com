@@ -1,11 +1,12 @@
 <?php
 
 /**
- * Whole-page machine translation (Path B - server proxy).
+ * Whole-page machine translation.
  *
  * The curated lang/{locale} dictionaries still provide the first paint.
- * The proxy translates everything else on the page (DB content: menus,
- * CMS banners, category and product titles) in the browser.
+ * On top of that the selected language converts the ENTIRE page (DB
+ * content: menus, CMS banners, category and product titles) through
+ * one of two engines.
  *
  * engine:
  *   auto   - proxy when a provider is configured, otherwise google
@@ -13,12 +14,16 @@
  *   google - Google Translate Website Widget (Path A, no backend)
  *   off    - disable the auto-translate layer
  *
+ * `auto` is the default so the page is always fully translated: with a
+ * provider configured the server proxy does the work (cached, no
+ * third-party script); without one the Google widget takes over.
+ *
  * `source` is null by default: the UI dictionary may already have
  * rendered the page in the target locale, so providers auto-detect.
  */
 return [
 
-    'engine' => env('AUTO_TRANSLATE_ENGINE', 'proxy'),
+    'engine' => env('AUTO_TRANSLATE_ENGINE', 'auto'),
 
     'provider' => env('AUTO_TRANSLATE_PROVIDER', 'libretranslate'),
 

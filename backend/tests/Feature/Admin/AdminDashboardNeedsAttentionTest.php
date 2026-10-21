@@ -194,4 +194,16 @@ class AdminDashboardNeedsAttentionTest extends TestCase
                 ->where('needsAttention.0.count', 1)
                 ->where('needsAttention.0.href', '/admin/kyc'));
     }
+
+    public function test_super_admin_stats_render_once_without_duplicate_cards(): void
+    {
+        $admin = $this->roleUser('super_admin');
+
+        $this->actingAs($admin, 'web')->get('/admin')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('admin/Dashboard')
+                ->has('stats', 6)
+                ->has('cards', 0));
+    }
 }

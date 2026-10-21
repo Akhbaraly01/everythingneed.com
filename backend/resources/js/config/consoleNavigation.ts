@@ -40,6 +40,9 @@ import {
     FormInput,
     HeartHandshake,
     Flag,
+    Tractor,
+    Tag,
+    MessageSquare,
     type LucideIcon,
 } from 'lucide-react';
 
@@ -79,6 +82,7 @@ export const adminNavigation: ConsoleNavItem[] = [
     { label: 'Vendors', href: '/admin/vendors', icon: Store, group: 'Commerce', permission: 'vendors.vendors.view' },
     { label: 'Orders', href: '/admin/orders', icon: ShoppingCart, group: 'Commerce', permission: 'orders.orders.view' },
     { label: 'Brands', href: '/admin/brands', icon: ShoppingBag, group: 'Commerce', permission: 'brands.brands.view' },
+    { label: 'Deals', href: '/admin/deals', icon: Tag, group: 'Commerce', permission: 'deals.deals.view' },
     { label: 'Inventory', href: '/admin/inventory', icon: Boxes, group: 'Commerce', permission: 'inventory.stock.view' },
 
     // Finance
@@ -102,7 +106,7 @@ export const adminNavigation: ConsoleNavItem[] = [
     { label: 'Modules', href: '/admin/modules', icon: LayoutGrid, group: 'Content', permission: 'modules.view' },
     { label: 'Forms', href: '/admin/forms', icon: FormInput, group: 'Content', permission: 'forms.view' },
     { label: 'Media Library', href: '/admin/media', icon: Images, group: 'Content', permission: 'media.view' },
-    { label: 'Newsletter', href: '/admin/newsletter', icon: Mail, group: 'Content', permission: 'cms.pages.manage' },
+    { label: 'Newsletter', href: '/admin/newsletter', icon: Mail, group: 'Content', permission: 'newsletter.subscriptions.view' },
 
     // Operations
     { label: 'Hotels', href: '/admin/hotels', icon: Hotel, group: 'Operations', permission: 'hotels.overview.view' },
@@ -116,6 +120,8 @@ export const adminNavigation: ConsoleNavItem[] = [
     { label: 'Services', href: '/admin/services', icon: Building2, group: 'Operations', permission: 'services.overview.view' },
     { label: 'Real Estate', href: '/admin/real-estate', icon: Home, group: 'Operations', permission: 'real_estate.overview.view' },
     { label: 'Needs & Tasks', href: '/admin/needs', icon: Flag, group: 'Operations', permission: 'needs.overview.view' },
+    { label: 'Agriculture', href: '/admin/agriculture', icon: Tractor, group: 'Operations', permission: 'agriculture.overview.view' },
+    { label: 'Messaging', href: '/admin/messaging', icon: MessageSquare, group: 'Operations', permission: 'messaging.overview.view' },
 
     // Support
     { label: 'Tickets', href: '/admin/support/tickets', icon: HelpCircle, group: 'Support', permission: 'support.tickets.view' },

@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import {
     autoTranslator,
+    broadcastTranslateState,
     loadGoogleWidget,
     setGoogleLanguage,
     type AutoTranslateConfig,
@@ -45,6 +46,7 @@ export default function AutoTranslateBridge({ config }: { config: AutoTranslateC
         if (engine === 'proxy') {
             autoTranslator.setTarget(language);
         } else if (engine === 'google') {
+            broadcastTranslateState(true);
             setGoogleLanguage(language, source);
         }
     }, [engine, language, source]);
@@ -64,10 +66,40 @@ export default function AutoTranslateBridge({ config }: { config: AutoTranslateC
             if (engine === 'proxy') {
                 autoTranslator.rescan();
             } else {
-                setGoogleLanguage(language, source);
+                // The widget only translated the DOM it saw; force a new
+                // pass so the freshly rendered Inertia content is
+                // converted too.
+                broadcastTranslateState(true);
+                setGoogleLanguage(language, source, true);
             }
         });
     }, [engine, language, source]);
+
+    // The widget marks the document as translated; that is our cue that
+    // the pass finished (the switcher shows a spinner meanwhile).
+    useEffect(() => {
+        if (engine !== 'google' || typeof MutationObserver === 'undefined') {
+            return;
+        }
+
+        const observer = new MutationObserver(() => {
+            const root = document.documentElement;
+
+            if (root.classList.contains('translated-ltr') || root.classList.contains('translated-rtl')) {
+                broadcastTranslateState(false);
+            }
+        });
+
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
+        // Safety net: never leave the spinner running.
+        const timer = window.setTimeout(() => broadcastTranslateState(false), 15000);
+
+        return () => {
+            observer.disconnect();
+            window.clearTimeout(timer);
+        };
+    }, [engine]);
 
     return null;
 }

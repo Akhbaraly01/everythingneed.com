@@ -71,7 +71,7 @@ function setGoogtrans(value: string | null): void {
     document.cookie = `googtrans=${cookie}; path=/; domain=${window.location.hostname}${expires}`;
 }
 
-function applyPending(): boolean {
+function applyPending(force = false): boolean {
     const combo = document.querySelector<HTMLSelectElement>('select.goog-te-combo');
 
     if (!combo || pending === null) {
@@ -80,7 +80,16 @@ function applyPending(): boolean {
 
     if (combo.value !== pending) {
         combo.value = pending;
-        combo.dispatchEvent(new Event('change'));
+        // The widget listens on the document, so the event must bubble.
+        combo.dispatchEvent(new Event('change', { bubbles: true }));
+    } else if (force) {
+        // Inertia replaced part of the DOM: reset the widget to its idle
+        // state first, otherwise it keeps the stale translation and the
+        // new nodes stay in the source language.
+        combo.value = '';
+        combo.dispatchEvent(new Event('change', { bubbles: true }));
+        combo.value = pending;
+        combo.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
     pending = null;
@@ -161,7 +170,7 @@ export function loadGoogleWidget(pageLanguage = 'en'): void {
 }
 
 /** Select a target locale in the widget (or queue it until ready). */
-export function setGoogleLanguage(code: string, source = 'en'): void {
+export function setGoogleLanguage(code: string, source = 'en', force = false): void {
     if (typeof document === 'undefined') {
         return;
     }
@@ -183,7 +192,7 @@ export function setGoogleLanguage(code: string, source = 'en'): void {
     pending = code;
     setGoogtrans(code);
 
-    if (!applyPending()) {
+    if (!applyPending(force)) {
         retryApply();
     }
 }

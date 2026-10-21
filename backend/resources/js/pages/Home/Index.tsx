@@ -15,6 +15,7 @@ import InfiniteProductFeed from '@/components/home/InfiniteProductFeed';
 import PromoCard from '@/components/home/PromoCard';
 import SeoMeta, { type LearnSeo } from '@/components/learn/SeoMeta';
 import { useLanguage } from '@/lib/use-language';
+import { rotate, sessionSeed } from '@/lib/session-rotation';
 import type { HomeSectionItem } from '@/types';
 
 interface TopExpert {
@@ -144,6 +145,21 @@ export default function HomeIndex({
         [realProducts, learning, healthcareCards],
     );
 
+    // Promotional blocks rotate per browser session: the page keeps the
+    // same content but stops looking identical on every visit.
+    const rotationSeed = useMemo(() => sessionSeed(), []);
+    const trending = useMemo(
+        () =>
+            rotate(
+                [...spotlight]
+                    .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
+                    .slice(0, 8),
+                rotationSeed,
+                1,
+            ),
+        [spotlight, rotationSeed],
+    );
+
     const healthcareItems = useMemo(() => healthcareCards.map(toSectionItem), [healthcareCards]);
     const learnItems = useMemo(() => learning.map(toSectionItem), [learning]);
     const recentlyAddedItems = useMemo(
@@ -225,6 +241,74 @@ export default function HomeIndex({
         [orderedSlugs, sections, healthcareItems, learnItems, recentlyAddedItems, t],
     );
 
+    // Promotional blocks. Their order rotates per browser session, so the
+    // arrangement is lively between visits but stable while browsing.
+    const aboveFeed = useMemo(
+        () =>
+            rotate(
+                [
+                    <NeedCarousel key="need-carousel-top" />,
+                    <PromoCard
+                        key="submit-need"
+                        testId="home-section-submit-need"
+                        title={uiValue('home_need_title', 'Need something?')}
+                        text={uiValue(
+                            'home_need_text',
+                            'Post a request and receive offers from providers across every category.',
+                        )}
+                        cta={uiValue('home_need_cta', 'Submit your need')}
+                        href="/needs/request"
+                        icon={Send}
+                    />,
+                ],
+                rotationSeed,
+                2,
+            ),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [rotationSeed, ui],
+    );
+
+    const belowFeed = useMemo(
+        () =>
+            rotate(
+                [
+                    <TripleBanner
+                        key="trending"
+                        trending={trending.map((p) => ({
+                            id: p.id,
+                            name: p.name,
+                            price: p.price,
+                            originalPrice: p.originalPrice ?? p.price,
+                            image: p.image ?? '',
+                            rating: p.rating ?? 0,
+                            link: p.link ?? `/products/${p.id}`,
+                        }))}
+                    />,
+                    <NeedCarousel key="need-carousel-bottom" />,
+                    ...(auth
+                        ? []
+                        : [
+                              <PromoCard
+                                  key="new-user-bonus"
+                                  testId="home-section-new-user-bonus"
+                                  title={uiValue('home_bonus_title', 'New here?')}
+                                  text={uiValue(
+                                      'home_bonus_text',
+                                      'Create your free account to shop, learn, book and request services in one place.',
+                                  )}
+                                  cta={uiValue('home_bonus_cta', 'Create free account')}
+                                  href="/register"
+                                  icon={Gift}
+                              />,
+                          ]),
+                ],
+                rotationSeed,
+                3,
+            ),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [rotationSeed, trending, auth, ui],
+    );
+
     return (
         <MarketplaceLayout title="Home" cartCount={cartCount}>
             <SeoMeta seo={seo} />
@@ -238,23 +322,9 @@ export default function HomeIndex({
                         <CategoryGrid categories={categories} />
                     </section>
 
-                    {/* Submit-Your-Need carousel (instance 1 of 2 — both render
-                        the same component over /api/need-categories, so admin
-                        manages them as one surface). */}
-                    <NeedCarousel />
-
-                    {/* Need-something banner. */}
-                    <PromoCard
-                        testId="home-section-submit-need"
-                        title={uiValue('home_need_title', 'Need something?')}
-                        text={uiValue(
-                            'home_need_text',
-                            'Post a request and receive offers from providers across every category.',
-                        )}
-                        cta={uiValue('home_need_cta', 'Submit your need')}
-                        href="/needs/request"
-                        icon={Send}
-                    />
+                    {/* Rotating promo slot above the feed (Submit-Your-Need
+                        carousel / need banner). */}
+                    {aboveFeed}
 
                     {/* Discovery tabs (pills only — search lives in the fixed
                         header). All/Products filter the cartable-product feed;
@@ -287,40 +357,9 @@ export default function HomeIndex({
                     {/* Recently Viewed — highly visible. */}
                     <RecentlyViewedSection />
 
-                    {/* More to explore (kept features, stable test hooks). */}
-                    {!auth && (
-                        <PromoCard
-                            testId="home-section-new-user-bonus"
-                            title={uiValue('home_bonus_title', 'New here?')}
-                            text={uiValue(
-                                'home_bonus_text',
-                                'Create your free account to shop, learn, book and request services in one place.',
-                            )}
-                            cta={uiValue('home_bonus_cta', 'Create free account')}
-                            href="/register"
-                            icon={Gift}
-                        />
-                    )}
-
-                    {/* Submit-Your-Need carousel (instance 2 of 2 — same
-                        single component/source as instance 1). */}
-                    <NeedCarousel />
-
-                    {/* Trending Items sliding banners. */}
-                    <TripleBanner
-                        trending={[...spotlight]
-                            .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
-                            .slice(0, 4)
-                            .map((p) => ({
-                                id: p.id,
-                                name: p.name,
-                                price: p.price,
-                                originalPrice: p.originalPrice ?? p.price,
-                                image: p.image ?? '',
-                                rating: p.rating ?? 0,
-                                link: p.link ?? `/products/${p.id}`,
-                            }))}
-                    />
+                    {/* Rotating promo slot below the feed (trending banners /
+                        Submit-Your-Need carousel / new-user bonus). */}
+                    {belowFeed}
 
                     <section data-testid="home-section-experts">
                         <ExpertsShowcase experts={topExperts} title={t('home.topExperts')} limit={8} />

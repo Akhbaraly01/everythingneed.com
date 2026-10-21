@@ -4,6 +4,7 @@ const ENDPOINT = '/api/i18n/auto-translate';
 const MAX_BATCH = 40;
 const MAX_BATCH_CHARS = 3500;
 const MAX_TEXT_LENGTH = 1000;
+const REQUEST_TIMEOUT = 20000;
 
 function xsrfToken(): string {
     const match = document.cookie.match(/(?:^|; )XSRF-TOKEN=([^;]*)/);
@@ -69,35 +70,45 @@ export async function translateBatch(
     }
 
     try {
-        const response = await fetch(ENDPOINT, {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: {
-                Accept: 'application/json',
-                'Content-Type': 'application/json',
-                'X-XSRF-TOKEN': xsrfToken(),
-            },
-            body: JSON.stringify({ target, texts }),
-        });
+        // The engine keeps a single request in flight; a hung proxy must
+        // not block the queue forever.
+        const controller = new AbortController();
+        const timeout = globalThis.setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
 
-        if (!response.ok) {
-            return translations;
-        }
+        try {
+            const response = await fetch(ENDPOINT, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-XSRF-TOKEN': xsrfToken(),
+                },
+                body: JSON.stringify({ target, texts }),
+                signal: controller.signal,
+            });
 
-        const payload = (await response.json()) as AutoTranslateResponse;
-        const values = payload?.translations;
-
-        if (!Array.isArray(values)) {
-            return translations;
-        }
-
-        texts.forEach((text, index) => {
-            const value = values[index];
-
-            if (typeof value === 'string' && value.trim() !== '') {
-                translations.set(text, value);
+            if (!response.ok) {
+                return translations;
             }
-        });
+
+            const payload = (await response.json()) as AutoTranslateResponse;
+            const values = payload?.translations;
+
+            if (!Array.isArray(values)) {
+                return translations;
+            }
+
+            texts.forEach((text, index) => {
+                const value = values[index];
+
+                if (typeof value === 'string' && value.trim() !== '') {
+                    translations.set(text, value);
+                }
+            });
+        } finally {
+            globalThis.clearTimeout(timeout);
+        }
     } catch {
         // Offline / aborted / disabled: keep the source text.
     }

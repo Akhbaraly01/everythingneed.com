@@ -23,6 +23,21 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="{{ config('app.name', 'EverythingNeed') }}">
 
+    {{-- Whole-page translation (Google widget): warm the connection while
+         the page is still parsing so the switch to another language
+         starts translating immediately. "auto" resolves to the widget
+         whenever no translation provider is configured. --}}
+    @php
+        $__atEngine = (string) config('auto_translate.engine', 'auto');
+        $__atGoogle = $__atEngine === 'google'
+            || ($__atEngine === 'auto' && ! app(\Core\Localization\AutoTranslateService::class)->enabled());
+    @endphp
+    @if ($__atGoogle)
+        <link rel="preconnect" href="https://translate.google.com" crossorigin>
+        <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+        <link rel="dns-prefetch" href="https://translate-pa.googleapis.com">
+    @endif
+
     {{-- No-flash theme + quality tier. Runs before first paint so dark users
          never see the light card (defect D14 / X1). Keep in sync with
          components/ThemeProvider.tsx and lib/quality.ts. --}}

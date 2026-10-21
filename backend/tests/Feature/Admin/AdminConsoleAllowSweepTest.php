@@ -62,6 +62,9 @@ class AdminConsoleAllowSweepTest extends TestCase
             '/admin/building' => ['super_admin', 'building_admin'],
             '/admin/real-estate' => ['super_admin', 'real_estate_admin'],
             '/admin/needs' => ['super_admin', 'needs_admin', 'needs_viewer'],
+            '/admin/deals' => ['super_admin', 'administrator'],
+            '/admin/agriculture' => ['super_admin', 'agriculture_admin'],
+            '/admin/messaging' => ['super_admin', 'support_admin'],
             '/admin/returns' => ['super_admin', 'refund_agent'],
             '/admin/reviews' => ['super_admin', 'moderator'],
             '/admin/subscriptions' => ['super_admin', 'administrator'],
@@ -128,6 +131,10 @@ class AdminConsoleAllowSweepTest extends TestCase
             '/api/admin/courses' => [['learning_admin'], ['food_admin']],
             '/api/admin/job-seekers' => [['jobs_admin'], ['food_admin']],
             '/api/admin/work-requests' => [['jobs_admin'], ['food_admin']],
+            '/api/admin/agriculture/overview' => [['agriculture_admin'], ['food_admin']],
+            '/api/admin/deals' => [['administrator'], ['food_admin']],
+            '/api/admin/messaging/conversations' => [['support_admin'], ['food_admin']],
+            '/api/admin/notifications/audiences' => [['administrator'], ['food_admin']],
         ];
 
         $failures = [];

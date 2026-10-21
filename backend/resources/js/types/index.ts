@@ -206,6 +206,14 @@ export interface Product {
     variants?: ProductVariant[];
     created_at: string;
     vendor?: Vendor;
+    /** Catalogue extras used by the product page. */
+    sku?: string | null;
+    currency?: string | null;
+    tax_rate?: number | string | null;
+    discount_percent?: number | string | null;
+    specifications?: Record<string, unknown> | null;
+    attributes?: Record<string, unknown> | null;
+    shipping?: Record<string, unknown> | null;
 }
 
 export interface Vendor {

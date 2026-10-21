@@ -2,7 +2,9 @@
 
 namespace Tests\Feature\Web;
 
+use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
@@ -10,11 +12,18 @@ use Tests\TestCase;
  * W15: newsletter subscription flow.
  *
  * Pins the public subscribe endpoint (validation, normalization,
- * idempotent re-subscribe) and the role-gated subscriptions index.
+ * idempotent re-subscribe) and the permission-gated subscriptions console.
  */
 class NewsletterSubscriptionTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed(PermissionSeeder::class);
+        Cache::forget('rbac.matrix');
+    }
 
     public function test_guest_can_subscribe_and_email_is_normalized(): void
     {
@@ -48,7 +57,7 @@ class NewsletterSubscriptionTest extends TestCase
         $this->assertEquals(0, DB::table('newsletter_subscriptions')->count());
     }
 
-    public function test_subscriptions_index_is_role_gated(): void
+    public function test_subscriptions_console_is_permission_gated(): void
     {
         DB::table('newsletter_subscriptions')->insert([
             'id' => (string) \Illuminate\Support\Str::uuid(),
@@ -63,11 +72,35 @@ class NewsletterSubscriptionTest extends TestCase
         // Plain customer: forbidden.
         $this->actingAsUser();
         $this->getJson('/api/newsletter/subscriptions')->assertStatus(403);
+        $this->getJson('/api/newsletter/subscriptions/export')->assertStatus(403);
 
-        // Content manager: sees the list.
+        // Content manager: sees the list and searches it.
         $this->actingAsUser('content_manager');
-        $this->getJson('/api/newsletter/subscriptions')
+        $this->getJson('/api/newsletter/subscriptions?search=listed')
             ->assertOk()
             ->assertJsonFragment(['email' => 'listed@example.com']);
+        $this->getJson('/api/newsletter/subscriptions?search=missing')
+            ->assertOk()
+            ->assertJsonPath('meta.total', 0);
+    }
+
+    public function test_content_manager_can_export_and_remove_subscribers(): void
+    {
+        $id = (string) \Illuminate\Support\Str::uuid();
+        DB::table('newsletter_subscriptions')->insert([
+            'id' => $id,
+            'email' => 'remove@example.com',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->actingAsUser('content_manager');
+
+        $export = $this->get('/api/newsletter/subscriptions/export');
+        $export->assertOk();
+        $this->assertStringContainsString('remove@example.com', $export->streamedContent());
+
+        $this->deleteJson("/api/newsletter/subscriptions/{$id}")->assertOk();
+        $this->assertDatabaseMissing('newsletter_subscriptions', ['id' => $id]);
     }
 }

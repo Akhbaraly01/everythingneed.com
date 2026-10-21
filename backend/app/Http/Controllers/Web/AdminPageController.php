@@ -173,14 +173,9 @@ class AdminPageController extends Controller
                 'pending_approvals' => DB::table('products')->whereNull('approved_at')->count(),
                 'open_tickets' => DB::table('tickets')->where('status', 'open')->count(),
             ];
-            $cards = [
-                ['label' => 'Total Users', 'value' => $stats['total_users'], 'href' => '/admin/users', 'icon' => 'users'],
-                ['label' => 'Total Vendors', 'value' => $stats['total_vendors'], 'href' => '/admin/vendors', 'icon' => 'vendors'],
-                ['label' => 'Total Orders', 'value' => $stats['total_orders'], 'href' => '/admin/orders', 'icon' => 'orders'],
-                ['label' => 'Revenue', 'value' => $stats['total_revenue'], 'href' => '/admin/finance', 'icon' => 'revenue', 'format' => 'currency'],
-                ['label' => 'Pending Approvals', 'value' => $stats['pending_approvals'], 'href' => '/admin/approvals', 'icon' => 'approvals'],
-                ['label' => 'Open Tickets', 'value' => $stats['open_tickets'], 'href' => '/admin/support/tickets', 'icon' => 'tickets'],
-            ];
+            // Rendered once as the dashboard stat tiles; omitting cards here
+            // avoids duplicating the same six figures further down the page.
+            $cards = [];
         } elseif ($has('finance_admin')) {
             $cards = [
                 ['label' => 'Revenue (succeeded)', 'value' => (float) (DB::table('payments')->where('status', 'succeeded')->sum('amount') ?? 0), 'href' => '/admin/finance', 'icon' => 'revenue', 'format' => 'currency'],

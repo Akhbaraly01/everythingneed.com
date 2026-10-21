@@ -2,7 +2,6 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { Link, router, usePage } from '@inertiajs/react';
 import {
     User,
-    Search,
     Headphones,
     Moon,
     Sun,
@@ -12,9 +11,9 @@ import {
 } from 'lucide-react';
 import { useTheme } from '@/components/ThemeProvider';
 import { useLanguage } from '@/lib/use-language';
-import LanguageSwitcher from '@/components/i18n/LanguageSwitcher';
+import LocaleCurrencySwitcher from '@/components/i18n/LocaleCurrencySwitcher';
+import GlobalSearch from '@/components/shared/GlobalSearch';
 import { getInitials } from '@/lib/utils';
-import { Button } from '@/components/shared/Button';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import { useCartDrawer } from '@/components/cart/CartDrawerContext';
 import type { SiteNav, SiteNavItem } from '@/types';
@@ -96,14 +95,6 @@ export default function Header({
         );
     };
 
-    const initialQuery = (() => {
-        const qIndex = url.indexOf('?');
-        if (qIndex === -1) return '';
-        const params = new URLSearchParams(url.slice(qIndex + 1));
-        return params.get('q') ?? params.get('search') ?? '';
-    })();
-    const [query, setQuery] = useState(initialQuery);
-
     const isDark = theme === 'dark';
 
     // Fixed chrome: the bar never scrolls, so a measured spacer keeps page
@@ -124,14 +115,6 @@ export default function Header({
         if (user?.name) return getInitials(user.name);
         if (user?.email) return user.email[0].toUpperCase();
         return 'U';
-    };
-
-    const submitSearch = (value: string) => {
-        onSearch?.(value);
-        const q = value.trim();
-        router.visit(q ? `/search?q=${encodeURIComponent(q)}` : '/search', {
-            preserveState: false,
-        });
     };
 
     return (
@@ -173,33 +156,14 @@ export default function Header({
                         </Link>
                     )}
 
-                    <form
-                        className="search-capsule flex-1"
-                        onSubmit={(e) => {
-                            e.preventDefault();
-                            submitSearch(query);
+                    <GlobalSearch
+                        onSubmit={(value) => {
+                            onSearch?.(value);
+                            router.visit(value ? `/search?q=${encodeURIComponent(value)}` : '/search', {
+                                preserveState: false,
+                            });
                         }}
-                    >
-                        <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                        <input
-                            type="search"
-                            value={query}
-                            onChange={(e) => {
-                                setQuery(e.target.value);
-                                onSearch?.(e.target.value);
-                            }}
-                            placeholder={t('nav.searchPlaceholder')}
-                            aria-label={t('nav.searchLabel')}
-                        />
-                        <Button
-                            type="submit"
-                            size="sm"
-                            className="!h-8 !min-h-8 !w-8 !rounded-full !px-0"
-                            aria-label={t('nav.searchLabel')}
-                        >
-                            <Search className="h-3.5 w-3.5" aria-hidden="true" />
-                        </Button>
-                    </form>
+                    />
 
                     <button
                         type="button"
@@ -218,7 +182,7 @@ export default function Header({
                         <ScanQrCode className="h-[18px] w-[18px]" />
                     </Link>
 
-                    <LanguageSwitcher />
+                    <LocaleCurrencySwitcher />
 
                     <Link
                         href={user ? '/tickets' : '/login'}

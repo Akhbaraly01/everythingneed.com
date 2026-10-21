@@ -21,7 +21,7 @@ class AdminAuthorizationMatrixTest extends TestCase
                 '/admin/brands', '/admin/newsletter', '/admin/kyc', '/admin/inventory',
                 '/admin/pharmacy', '/admin/building', '/admin/real-estate', '/admin/returns', '/admin/reviews',
                 '/admin/subscriptions', '/admin/notifications', '/admin/wallet', '/admin/deliveries',
-                '/admin/reports',
+                '/admin/reports', '/admin/agriculture', '/admin/deals', '/admin/messaging',
             ],
             'deny' => [],
         ],
@@ -36,7 +36,7 @@ class AdminAuthorizationMatrixTest extends TestCase
                 // settings.system.update).
                 '/admin/settings', '/admin/system',
                 // W5.4: administrator holds reports.* in the role matrix.
-                '/admin/reports',
+                '/admin/reports', '/admin/agriculture', '/admin/deals', '/admin/messaging',
             ],
             'deny' => ['/admin/rbac', '/admin/audit-logs'],
         ],
@@ -97,8 +97,8 @@ class AdminAuthorizationMatrixTest extends TestCase
             'deny' => ['/admin/users', '/admin/finance'],
         ],
         'agriculture_admin' => [
-            'allow' => ['/admin/dashboard'],
-            'deny' => ['/admin/users', '/admin/finance'],
+            'allow' => ['/admin/dashboard', '/admin/agriculture'],
+            'deny' => ['/admin/users', '/admin/finance', '/admin/deals', '/admin/messaging'],
         ],
         'building_admin' => [
             'allow' => ['/admin/dashboard', '/admin/building', '/admin/real-estate'],
@@ -147,8 +147,8 @@ class AdminAuthorizationMatrixTest extends TestCase
             'deny' => ['/admin/users', '/admin/finance', '/admin/orders', '/admin/categories', '/admin/kyc'],
         ],
         'support_admin' => [
-            'allow' => ['/admin/dashboard', '/admin/support/tickets', '/admin/departments'],
-            'deny' => ['/admin/users', '/admin/finance', '/admin/orders', '/admin/categories'],
+            'allow' => ['/admin/dashboard', '/admin/support/tickets', '/admin/departments', '/admin/messaging'],
+            'deny' => ['/admin/users', '/admin/finance', '/admin/orders', '/admin/categories', '/admin/deals', '/admin/agriculture'],
         ],
         'real_estate_admin' => [
             'allow' => ['/admin/dashboard', '/admin/real-estate'],

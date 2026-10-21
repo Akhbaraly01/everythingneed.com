@@ -105,6 +105,7 @@ export default function ConsoleLayout({ children, title, nav, kind }: ConsoleLay
                                 <Link
                                     key={item.href}
                                     href={item.href}
+                                    onClick={() => setSidebarOpen(false)}
                                     className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium ${
                                         currentPath === item.href || currentPath.startsWith(`${item.href}/`)
                                             ? 'bg-primary/[0.12] text-primary'

@@ -25,7 +25,8 @@ registry; locale behaviour is controlled by config + env.
 | Dictionary runtime | `resources/js/lib/i18n-config.ts`, `lib/i18n.tsx` (`LanguageProvider`) | i18next singleton; boot translations are a head start, remaining chunks load from the versioned bundles. `setLanguage()` updates i18next, localStorage, the cookie and `POST /locale`. |
 | Whole-page engine | `resources/js/lib/auto-translate/` + `components/i18n/AutoTranslateBridge.tsx` | Mounted once inside `LanguageProvider` in `app.tsx`. Chooses proxy / Google / off from the shared prop and re-applies after React and Inertia updates. |
 | Translation proxy | `POST /api/i18n/auto-translate` (`AutoTranslateController` → `AutoTranslateService`) | Chunked, deduplicated, server-cached; provider selected by `config/auto_translate.php`. 503 on outage so the source text stays visible. |
-| Language menu | `resources/js/components/i18n/LanguageSwitcher.tsx` | Accessible menu (`aria-haspopup`, `menuitemradio`, Arrow/Home/End/Escape); used by the storefront header. |
+| Language + currency menu | `resources/js/components/i18n/LocaleCurrencySwitcher.tsx` | Alibaba-style single popover: the trigger shows the active combination (`English-USD`), the menu holds two radio groups (language, currency). Accessible (`aria-haspopup`, `menuitemradio`, Arrow/Home/End/Escape). Used by the storefront header. |
+| Currency runtime | `resources/js/lib/currency-context.ts` + `lib/currency-provider.tsx` (`CurrencyProvider`) | Owns the display currency (stored amounts stay USD-major). `setCurrency()` persists to localStorage and, for signed-in users, to `general.currency` on the account (`PUT /api/users/{id}/settings`), so every price re-renders in the new currency. |
 | Export pipeline | `App\Console\Commands\ExportI18nCommand` (`i18n:export [--check\|--prune\|--path=]`) | Writes `public/i18n/{version}/{locale}/{namespace}.json` + `manifest.json`. `version` is a 12-char sha1 of the content. |
 | Formatting | `lib/utils.ts`, `lib/currency.ts` | BCP 47 tags from the registry `intl` column. |
 
@@ -67,24 +68,30 @@ DEEPL_ENDPOINT=https://api-free.deepl.com
 GOOGLE_TRANSLATE_API_KEY=
 ```
 
-`auto` resolves per request: the proxy when the configured provider has
-credentials, otherwise the Google widget. Set `google` for a zero-backend
-deployment or `proxy` (default) to keep translation server-side.
+`auto` is the default: it resolves per request to the proxy when the
+configured provider has credentials, otherwise to the Google widget. The
+selected language therefore always converts the **whole page** (DB menus,
+CMS banners, categories, product/job titles), not only the curated UI
+strings. Pin `google` for a zero-backend deployment, `proxy` to keep
+translation server-side, or `off` to run on dictionaries alone.
 
-### Path B — proxy (default)
+### Path B — proxy (provider configured)
 
 Browser (`lib/auto-translate/engine.ts`):
 
 - Walks text nodes and `placeholder`, `aria-label`, `title`, `alt`.
 - Skips `script/style/noscript/code/pre/textarea/svg/canvas/iframe`,
   `[translate="no"]`, `[data-no-translate]`, `[data-auto-translate="off"]`,
-  `.notranslate`, contenteditable, URLs and strings without letters.
+  `.notranslate`, contenteditable, URLs, domain-like strings, one-character
+  strings and strings without letters.
 - Batches unseen strings (≤40) to `POST /api/i18n/auto-translate`, caches
   results in memory, and re-applies them when React replaces nodes.
+- One batch stays in flight at a time; the request has a 20s timeout, so a
+  slow provider can never block the queue.
 - Tracks per-node originals: switching back to the source locale restores
-  the exact React-rendered text. A generation counter discards in-flight
-  responses after a language switch; a recent-writes set prevents
-  MutationObserver feedback loops.
+  the exact React-rendered text. A generation counter invalidates in-flight
+  work after a language switch (results stay cached under their own
+  target); a recent-writes set prevents MutationObserver feedback loops.
 - Listens to Inertia `router.on('finish')` to rescan after navigation.
 
 Server (`AutoTranslateService`):
@@ -98,6 +105,10 @@ Server (`AutoTranslateService`):
   client silently keeps the source text.
 - Only enabled locales (`LanguageRegistry::enabledCode`) are accepted.
 
+The curated dictionary keeps rendering the chrome in the target language;
+the provider sees those strings with `source=auto` and returns them
+unchanged, so the hand-written translations survive.
+
 Recommended default: self-hosted LibreTranslate (free, no quotas);
 DeepL for quality; Google Cloud Translation if already provisioned.
 Provider language coverage differs — DeepL does not cover every locale
@@ -108,10 +119,23 @@ Provider language coverage differs — DeepL does not cover every locale
 `AUTO_TRANSLATE_ENGINE=google` (or `auto` without a configured provider)
 loads Google's `element.js`, keeps a hidden
 mount slot, hides the banner/tooltip/highlight chrome, and drives the
-widget's hidden `<select>` from `LanguageSwitcher`; the `googtrans`
-cookie makes the choice reload-safe. `SecurityHeaders` allows
-`translate.google.com` / `translate.googleapis.com` in `script-src`,
-`style-src` and `frame-src`.
+widget's hidden `<select>` from the combined language/currency switcher;
+the `googtrans` cookie makes the choice reload-safe. `SecurityHeaders`
+allows `translate.google.com`, `translate.googleapis.com`,
+`translate-pa.googleapis.com` and `www.gstatic.com` in `script-src`,
+`style-src`, `font-src` and `frame-src` (element.js loads its stylesheet
+from gstatic and its language list from translate-pa).
+
+Two rules make the widget behave:
+
+- The dictionary stays in the **source** language in widget mode
+  (`I18nBoot.dictionaryLocale`). Translating the chrome first and then
+  handing Spanish text to a widget that assumes English would mangle it;
+  the widget translates the complete page in one pass instead.
+- The `change` event the switcher dispatches must bubble — the widget
+  listens on the document. A forced re-translation (reset to the idle
+  state, then re-select) runs after each Inertia navigation so freshly
+  rendered content is converted too.
 
 Limitations: external dependency + Google branding/quality, and Google
 owns the DOM rewriting (custom per-node restore is unavailable). Switching
@@ -147,7 +171,16 @@ are additionally allowed for Path A (see `SecurityHeaders`).
   caps, disabled engine and provider failure (fake provider, no network).
 - `tests/Feature/Admin/` — console routes no longer include a language page.
 - `e2e/i18n.spec.ts` — rendered locale, pre-paint restore + cookie sync,
-  picker switch + reload persistence, RTL flip.
+  picker switch + reload persistence, currency switch, RTL flip. The
+  whole-page assertions follow the resolved engine (dictionary mode
+  checks the translated chrome, widget mode checks the `googtrans`
+  cookie).
+- `resources/js/lib/auto-translate/*.test.ts` — proxy batching/failure
+  handling, the DOM engine (skip rules, single-flight batches, restore on
+  source switch) and the widget driver (bubbling change event, forced
+  re-translation, cookie handling).
+- `resources/js/components/i18n/LocaleCurrencySwitcher.test.tsx` — the
+  combined menu (trigger label, both radio groups, selection handlers).
 - `npm run test:unit` covers the dict helpers and Intl formatters.
 
 ## Adding a language

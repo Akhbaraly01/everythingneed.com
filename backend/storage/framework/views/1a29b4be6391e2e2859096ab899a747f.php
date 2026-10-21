@@ -24,6 +24,18 @@
     <meta name="apple-mobile-web-app-title" content="<?php echo e(config('app.name', 'EverythingNeed')); ?>">
 
     
+    <?php
+        $__atEngine = (string) config('auto_translate.engine', 'auto');
+        $__atGoogle = $__atEngine === 'google'
+            || ($__atEngine === 'auto' && ! app(\Core\Localization\AutoTranslateService::class)->enabled());
+    ?>
+    <?php if($__atGoogle): ?>
+        <link rel="preconnect" href="https://translate.google.com" crossorigin>
+        <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+        <link rel="dns-prefetch" href="https://translate-pa.googleapis.com">
+    <?php endif; ?>
+
+    
     <script nonce="<?php echo e(Vite::cspNonce()); ?>">
         (function () {
             try {

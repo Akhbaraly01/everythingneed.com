@@ -270,7 +270,14 @@ function AppLayoutShell({ children, title }: AppLayoutProps) {
                         <Menu className="h-6 w-6" />
                     </button>
                     <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
-                        <GlobalSearch />
+                        <GlobalSearch
+                            onSubmit={(value) => {
+                                router.visit(
+                                    value ? `/search?q=${encodeURIComponent(value)}` : '/search',
+                                    { preserveState: false },
+                                );
+                            }}
+                        />
                         <div className="flex flex-1" />
                         <div className="flex items-center gap-x-4 lg:gap-x-6">
                             <WorkspaceSwitcher />

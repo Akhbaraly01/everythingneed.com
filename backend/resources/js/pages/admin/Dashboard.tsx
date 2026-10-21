@@ -152,60 +152,25 @@ export default function AdminDashboard({ cards = [], stats = null, needsAttentio
         <AdminLayout title={dashboardTitle}>
             <Head title={dashboardTitle} />
 
-            <div className="mb-8 rounded-xl bg-white shadow-sm ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700">
-                <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4 dark:border-gray-700">
-                    <div>
-                        <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Needs Attention</h2>
-                        <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                            Live work queues for your role
-                        </p>
-                    </div>
-                    {needsAttention.length > 0 && (
-                        <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-                            {attentionTotal} item{attentionTotal === 1 ? '' : 's'}
-                        </span>
-                    )}
+            {statTiles.length > 0 && (
+                <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {statTiles.map((tile) => (
+                        <Link
+                            key={tile.label}
+                            href={tile.href}
+                            className="flex items-center gap-4 rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200 transition hover:shadow dark:bg-gray-800 dark:ring-gray-700"
+                        >
+                            <span className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-gray-50 dark:bg-gray-700">
+                                <tile.icon className="h-6 w-6 text-gray-600 dark:text-gray-300" />
+                            </span>
+                            <span>
+                                <span className="block text-sm text-gray-500 dark:text-gray-400">{tile.label}</span>
+                                <span className="block text-xl font-semibold text-gray-900 dark:text-white">{tile.value}</span>
+                            </span>
+                        </Link>
+                    ))}
                 </div>
-
-                {needsAttention.length === 0 ? (
-                    <div className="flex items-center gap-3 px-5 py-5">
-                        <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-green-50 dark:bg-green-900/30">
-                            <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
-                        </span>
-                        <div>
-                            <p className="text-sm font-medium text-gray-900 dark:text-white">Nothing needs your attention</p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                                No open work items in your assigned areas right now.
-                            </p>
-                        </div>
-                    </div>
-                ) : (
-                    <ul className="divide-y divide-gray-100 dark:divide-gray-700">
-                        {needsAttention.map((item) => {
-                            const Icon = ICONS[item.icon ?? ''] ?? Package;
-                            return (
-                                <li key={`${item.href}-${item.label}`}>
-                                    <Link
-                                        href={item.href}
-                                        className="flex items-center gap-3 px-5 py-3.5 transition hover:bg-gray-50 dark:hover:bg-gray-700/50"
-                                    >
-                                        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gray-50 dark:bg-gray-700">
-                                            <Icon className="h-4 w-4 text-gray-600 dark:text-gray-300" />
-                                        </span>
-                                        <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900 dark:text-white">
-                                            {item.label}
-                                        </span>
-                                        <span className="inline-flex min-w-[2rem] items-center justify-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-                                            {item.count}
-                                        </span>
-                                        <ChevronRight className="h-4 w-4 shrink-0 text-gray-400" />
-                                    </Link>
-                                </li>
-                            );
-                        })}
-                    </ul>
-                )}
-            </div>
+            )}
 
             {access.length > 0 && (
                 <div className="mb-8 rounded-xl bg-white shadow-sm ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700">
@@ -282,25 +247,60 @@ export default function AdminDashboard({ cards = [], stats = null, needsAttentio
                 </div>
             )}
 
-            {statTiles.length > 0 && (
-                <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {statTiles.map((tile) => (
-                        <Link
-                            key={tile.label}
-                            href={tile.href}
-                            className="flex items-center gap-4 rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200 transition hover:shadow dark:bg-gray-800 dark:ring-gray-700"
-                        >
-                            <span className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-gray-50 dark:bg-gray-700">
-                                <tile.icon className="h-6 w-6 text-gray-600 dark:text-gray-300" />
-                            </span>
-                            <span>
-                                <span className="block text-sm text-gray-500 dark:text-gray-400">{tile.label}</span>
-                                <span className="block text-xl font-semibold text-gray-900 dark:text-white">{tile.value}</span>
-                            </span>
-                        </Link>
-                    ))}
+            <div className="mb-8 rounded-xl bg-white shadow-sm ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700">
+                <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4 dark:border-gray-700">
+                    <div>
+                        <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Needs Attention</h2>
+                        <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                            Live work queues for your role
+                        </p>
+                    </div>
+                    {needsAttention.length > 0 && (
+                        <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                            {attentionTotal} item{attentionTotal === 1 ? '' : 's'}
+                        </span>
+                    )}
                 </div>
-            )}
+
+                {needsAttention.length === 0 ? (
+                    <div className="flex items-center gap-3 px-5 py-5">
+                        <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-green-50 dark:bg-green-900/30">
+                            <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                        </span>
+                        <div>
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">Nothing needs your attention</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                No open work items in your assigned areas right now.
+                            </p>
+                        </div>
+                    </div>
+                ) : (
+                    <ul className="divide-y divide-gray-100 dark:divide-gray-700">
+                        {needsAttention.map((item) => {
+                            const Icon = ICONS[item.icon ?? ''] ?? Package;
+                            return (
+                                <li key={`${item.href}-${item.label}`}>
+                                    <Link
+                                        href={item.href}
+                                        className="flex items-center gap-3 px-5 py-3.5 transition hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                                    >
+                                        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gray-50 dark:bg-gray-700">
+                                            <Icon className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+                                        </span>
+                                        <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900 dark:text-white">
+                                            {item.label}
+                                        </span>
+                                        <span className="inline-flex min-w-[2rem] items-center justify-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                                            {item.count}
+                                        </span>
+                                        <ChevronRight className="h-4 w-4 shrink-0 text-gray-400" />
+                                    </Link>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                )}
+            </div>
 
             {cards.length > 0 ? (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -335,7 +335,7 @@ export default function AdminDashboard({ cards = [], stats = null, needsAttentio
                         );
                     })}
                 </div>
-            ) : (
+            ) : statTiles.length === 0 ? (
                 <div className="rounded-xl bg-white p-12 text-center shadow-sm ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700">
                     <LayoutDashboard className="mx-auto h-10 w-10 text-gray-400" />
                     <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">No role-specific metrics yet</h3>
@@ -350,7 +350,7 @@ export default function AdminDashboard({ cards = [], stats = null, needsAttentio
                         Back to Marketplace
                     </Link>
                 </div>
-            )}
+            ) : null}
         </AdminLayout>
     );
 }

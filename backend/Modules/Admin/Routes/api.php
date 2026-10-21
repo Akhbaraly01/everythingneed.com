@@ -23,8 +23,12 @@ use Modules\Admin\Http\Controllers\AdminDepartmentController;
 use Modules\Admin\Http\Controllers\AdminHomeSectionController;
 use Modules\Admin\Http\Controllers\AdminBrandController;
 use Modules\Admin\Http\Controllers\AdminKycController;
+use Modules\Admin\Http\Controllers\AdminNeedsArbitrationController;
 use Modules\Admin\Http\Controllers\AdminNeedsController;
+use App\Http\Controllers\Api\AdminAgricultureController;
+use App\Http\Controllers\Api\AdminDealsController;
 use App\Http\Controllers\Api\AdminDomainController;
+use App\Http\Controllers\Api\AdminMessagingController;
 use App\Http\Middleware\EnsureAccountActive;
 
 /*
@@ -413,6 +417,14 @@ Route::prefix('api/admin')->middleware(['api', 'auth:sanctum', EnsureAccountActi
         ->middleware('permission:payments.payments.view');
     Route::get('/notifications', [AdminDomainController::class, 'notifications'])
         ->middleware('permission:notifications.overview.view');
+    Route::get('/notifications/recipients', [AdminDomainController::class, 'notificationRecipients'])
+        ->middleware('permission:notifications.overview.manage');
+    Route::get('/notifications/audiences', [AdminDomainController::class, 'notificationAudiences'])
+        ->middleware('permission:notifications.overview.manage');
+    Route::post('/notifications/send', [AdminDomainController::class, 'sendNotification'])
+        ->middleware('permission:notifications.overview.manage');
+    Route::delete('/notifications/{id}', [AdminDomainController::class, 'destroyNotification'])
+        ->middleware('permission:notifications.overview.manage');
     Route::get('/properties', [AdminDomainController::class, 'properties'])
         ->middleware('permission:real_estate.overview.view');
     Route::put('/properties/{id}', [AdminDomainController::class, 'updateProperty'])
@@ -421,6 +433,42 @@ Route::prefix('api/admin')->middleware(['api', 'auth:sanctum', EnsureAccountActi
         ->middleware('permission:real_estate.overview.manage');
     Route::delete('/reviews/{id}', [AdminDomainController::class, 'destroyReview'])
         ->middleware('permission:reviews.reviews.moderate');
+
+    // Agriculture console: products, farmer stores, and farm worker profiles.
+    Route::prefix('agriculture')->middleware('permission:agriculture.overview.view')->group(function () {
+        Route::get('/overview', [AdminAgricultureController::class, 'overview']);
+        Route::get('/products', [AdminAgricultureController::class, 'products']);
+        Route::get('/farmers', [AdminAgricultureController::class, 'farmers']);
+        Route::get('/workers', [AdminAgricultureController::class, 'workers']);
+    });
+    Route::post('/agriculture/products/{id}/moderate', [AdminAgricultureController::class, 'moderateProduct'])
+        ->middleware('permission:agriculture.products.manage');
+    Route::post('/agriculture/farmers/{id}/moderate', [AdminAgricultureController::class, 'moderateFarmer'])
+        ->middleware('permission:agriculture.overview.manage');
+    Route::post('/agriculture/workers/{id}/moderate', [AdminAgricultureController::class, 'moderateWorker'])
+        ->middleware('permission:agriculture.workers.manage');
+
+    // Deals console: published need listings + storefront visibility.
+    Route::get('/deals/overview', [AdminDealsController::class, 'overview'])
+        ->middleware('permission:deals.deals.view');
+    Route::get('/deals', [AdminDealsController::class, 'index'])
+        ->middleware('permission:deals.deals.view');
+    Route::post('/deals/{id}/moderate', [AdminDealsController::class, 'moderate'])
+        ->middleware('permission:deals.deals.manage');
+    Route::post('/deals/{id}/visibility', [AdminDealsController::class, 'visibility'])
+        ->middleware('permission:deals.deals.manage');
+
+    // Support messaging console: direct chat oversight and moderation.
+    Route::get('/messaging/conversations', [AdminMessagingController::class, 'conversations'])
+        ->middleware('permission:messaging.overview.view');
+    Route::get('/messaging/conversations/{id}', [AdminMessagingController::class, 'show'])
+        ->middleware('permission:messaging.overview.view');
+    Route::delete('/messaging/conversations/{id}', [AdminMessagingController::class, 'destroyConversation'])
+        ->middleware('permission:messaging.conversations.manage');
+    Route::post('/messaging/conversations/{id}/restore', [AdminMessagingController::class, 'restoreConversation'])
+        ->middleware('permission:messaging.conversations.manage');
+    Route::delete('/messaging/messages/{id}', [AdminMessagingController::class, 'destroyMessage'])
+        ->middleware('permission:messaging.conversations.manage');
 
     // RMA return queue (approve issues the gateway refund via RefundPayment)
     Route::get('/returns', [\Modules\Orders\Http\Controllers\ReturnRequestController::class, 'adminIndex'])
@@ -509,6 +557,9 @@ Route::prefix('api/admin')->middleware(['api', 'auth:sanctum', EnsureAccountActi
         Route::post('/disputes/{id}/assign', [AdminNeedsController::class, 'disputesAssign'])
             ->middleware('permission:needs.disputes.manage');
         Route::post('/disputes/{id}/resolve', [AdminNeedsController::class, 'disputesResolve'])
+            ->middleware('permission:needs.disputes.manage');
+        // N-21: split an escrowed milestone between provider and payer.
+        Route::post('/disputes/{id}/arbitrate', [AdminNeedsArbitrationController::class, 'arbitrate'])
             ->middleware('permission:needs.disputes.manage');
 
         // Fraud flags

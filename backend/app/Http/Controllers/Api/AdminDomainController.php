@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use Core\Services\Contracts\AuditServiceInterface;
+use Core\Services\Contracts\NotificationServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -320,6 +322,7 @@ class AdminDomainController extends Controller
         $validated = $request->validate([
             'is_read' => ['nullable', 'string', 'in:all,read,unread'],
             'type'    => ['nullable', 'string', 'max:60'],
+            'search'  => ['nullable', 'string', 'max:120'],
             'page'    => ['nullable', 'integer', 'min:1'],
         ]);
 
@@ -336,6 +339,16 @@ class AdminDomainController extends Controller
             $query->where('n.type', $validated['type']);
         }
 
+        if (is_string($validated['search'] ?? null) && $validated['search'] !== '') {
+            $search = $validated['search'];
+            $query->where(function ($q) use ($search) {
+                $q->where('n.title', 'ilike', "%{$search}%")
+                    ->orWhere('n.message', 'ilike', "%{$search}%")
+                    ->orWhere('u.name', 'ilike', "%{$search}%")
+                    ->orWhere('u.email', 'ilike', "%{$search}%");
+            });
+        }
+
         $read = $validated['is_read'] ?? 'all';
         if ($read === 'read') {
             $query->where('n.is_read', true);
@@ -344,6 +357,122 @@ class AdminDomainController extends Controller
         }
 
         return $this->paginate($query, $validated['page'] ?? 1, 15);
+    }
+
+    public function notificationRecipients(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'q' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        $query = DB::table('users')
+            ->whereNull('deleted_at')
+            ->select('id', 'name', 'email')
+            ->orderBy('name')
+            ->limit(20);
+
+        if ($search = trim((string) ($validated['q'] ?? ''))) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'ilike', "%{$search}%")
+                    ->orWhere('email', 'ilike', "%{$search}%");
+            });
+        }
+
+        return response()->json(['data' => $query->get()]);
+    }
+
+    public function notificationAudiences(): JsonResponse
+    {
+        $roles = DB::table('user_roles as ur')
+            ->join('users as u', 'u.id', '=', 'ur.user_id')
+            ->whereNull('u.deleted_at')
+            ->select('ur.role', DB::raw('COUNT(DISTINCT ur.user_id) as users'))
+            ->groupBy('ur.role')
+            ->orderBy('ur.role')
+            ->get();
+
+        return response()->json([
+            'data' => [
+                'roles' => $roles,
+                'users_total' => DB::table('users')->whereNull('deleted_at')->count(),
+            ],
+        ]);
+    }
+
+    public function sendNotification(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'audience' => ['required', 'string', 'in:user,role,all'],
+            'recipient_id' => ['nullable', 'uuid', 'required_if:audience,user', 'exists:users,id'],
+            'role' => ['nullable', 'string', 'max:40', 'required_if:audience,role'],
+            'title' => ['required', 'string', 'max:120'],
+            'message' => ['required', 'string', 'max:500'],
+            'type' => ['nullable', 'string', 'max:60'],
+        ]);
+
+        $userIds = match ($validated['audience']) {
+            'user' => [(string) $validated['recipient_id']],
+            'role' => DB::table('user_roles')->where('role', $validated['role'])
+                ->pluck('user_id')->unique()->values()->all(),
+            default => DB::table('users')->whereNull('deleted_at')
+                ->pluck('id')->all(),
+        };
+
+        if ($userIds === []) {
+            return response()->json(['message' => 'No recipients match this audience'], 422);
+        }
+
+        $type = $validated['type'] ?? 'admin_broadcast';
+        $notifications = app(NotificationServiceInterface::class);
+
+        foreach ($userIds as $userId) {
+            $notifications->notify($userId, $validated['title'], $validated['message'], $type);
+        }
+
+        try {
+            app(AuditServiceInterface::class)->log([
+                'action' => 'notification.broadcast_sent',
+                'entity_type' => 'notification',
+                'entity_id' => 'broadcast',
+                'performed_by' => $request->user()->id,
+                'new_values' => [
+                    'audience' => $validated['audience'],
+                    'role' => $validated['role'] ?? null,
+                    'recipients' => count($userIds),
+                    'title' => $validated['title'],
+                    'type' => $type,
+                ],
+            ]);
+        } catch (\Throwable) {
+        }
+
+        return response()->json([
+            'message' => 'Notification sent to ' . count($userIds) . ' user(s)',
+            'data' => ['count' => count($userIds)],
+        ], 201);
+    }
+
+    public function destroyNotification(Request $request, string $id): JsonResponse
+    {
+        $notification = DB::table('notifications')->where('id', $id)->whereNull('deleted_at')->first();
+        if (! $notification) {
+            return response()->json(['message' => 'Notification not found'], 404);
+        }
+
+        DB::table('notifications')->where('id', $id)->update(['deleted_at' => now()]);
+
+        try {
+            app(AuditServiceInterface::class)->log([
+                'action' => 'notification.removed',
+                'entity_type' => 'notification',
+                'entity_id' => $id,
+                'performed_by' => $request->user()->id,
+                'old_values' => ['user_id' => $notification->user_id, 'title' => $notification->title],
+            ]);
+        } catch (\Throwable) {
+        }
+
+        return response()->json(['message' => 'Notification removed']);
     }
 
     /** Properties incl. inactive (public index hides them) + owner. */

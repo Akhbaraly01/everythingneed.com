@@ -43,6 +43,8 @@ class AdminConsoleApiParityTest extends TestCase
                 '/api/admin/cms/pages', '/api/admin/analytics/overview',
                 '/api/admin/vendors', '/api/admin/returns', '/api/admin/disputes',
                 '/api/admin/refunds', '/api/admin/wallet/transactions', '/api/admin/kyc',
+                '/api/admin/agriculture/overview', '/api/admin/deals',
+                '/api/admin/messaging/conversations', '/api/admin/notifications',
             ],
             'platform_ops' => [
                 '/api/admin/orders', '/api/admin/vendors', '/api/admin/returns',
@@ -65,7 +67,7 @@ class AdminConsoleApiParityTest extends TestCase
                 '/api/admin/refunds',
             ],
             'wallet_admin' => ['/api/admin/wallet/transactions', '/api/admin/finance/withdrawals'],
-            'support_admin' => ['/api/admin/support/tickets', '/api/admin/departments'],
+            'support_admin' => ['/api/admin/support/tickets', '/api/admin/departments', '/api/admin/messaging/conversations'],
             'real_estate_admin' => ['/api/admin/properties'],
             'payout_reviewer' => ['/api/admin/finance/withdrawals'],
             'refund_agent' => ['/api/admin/orders', '/api/admin/refunds'],
@@ -96,7 +98,10 @@ class AdminConsoleApiParityTest extends TestCase
             'building_admin' => ['/api/admin/building/bookings', '/api/admin/properties'],
             // Dashboard-only consoles (server-rendered cards, no page API).
             'needs_admin' => [],
-            'agriculture_admin' => [],
+            'agriculture_admin' => [
+                '/api/admin/agriculture/overview', '/api/admin/agriculture/products',
+                '/api/admin/agriculture/farmers', '/api/admin/agriculture/workers',
+            ],
             // Spec §65 named admin roles.
             'category_admin' => ['/api/categories', '/api/admin/brands'],
             'vendor_manager' => ['/api/admin/vendors'],

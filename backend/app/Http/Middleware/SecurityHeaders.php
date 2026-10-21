@@ -41,6 +41,20 @@ class SecurityHeaders
         'https://www.tiktok.com',
     ];
 
+    /**
+     * Origins the Google Translate Website Widget (engine=google) needs.
+     *
+     * element.js pulls its stylesheet from gstatic.com and its language
+     * list from translate-pa.googleapis.com; without these two the widget
+     * loads but never translates the page.
+     */
+    private const TRANSLATE_ORIGINS = [
+        'https://translate.google.com',
+        'https://translate.googleapis.com',
+        'https://translate-pa.googleapis.com',
+        'https://www.gstatic.com',
+    ];
+
     public function handle(Request $request, Closure $next): Response
     {
         // Per-request nonce for the handful of inline scripts in
@@ -62,8 +76,7 @@ class SecurityHeaders
             ...self::EMBED_FRAMES,
             $videoOrigin,
             // Path A: Google Translate Website Widget (engine=google).
-            'https://translate.googleapis.com',
-            'https://translate.google.com',
+            ...self::TRANSLATE_ORIGINS,
         ]);
         $scriptSrc = implode(' ', [
             "'self'",
@@ -71,8 +84,7 @@ class SecurityHeaders
             'https://www.youtube.com',
             'https://player.vimeo.com',
             $videoOrigin,
-            'https://translate.googleapis.com',
-            'https://translate.google.com',
+            ...self::TRANSLATE_ORIGINS,
         ]);
 
         $headers = [
@@ -94,14 +106,14 @@ class SecurityHeaders
             'Content-Security-Policy' => implode('; ', [
                 "default-src 'self'",
                 "base-uri 'self'",
-                "font-src 'self' https://fonts.bunny.net",
+                "font-src 'self' https://fonts.bunny.net https://www.gstatic.com",
                 "form-action 'self'",
                 "frame-ancestors 'self'",
                 'frame-src '.$frameSrc,
                 "img-src 'self' data: blob: https:",
                 "object-src 'none'",
                 'script-src '.$scriptSrc,
-                "style-src 'self' 'unsafe-inline' https://fonts.bunny.net https://translate.googleapis.com https://translate.google.com",
+                "style-src 'self' 'unsafe-inline' https://fonts.bunny.net ".implode(' ', self::TRANSLATE_ORIGINS),
                 "connect-src 'self' https: ws: wss:",
                 "media-src 'self' blob: https:",
                 "worker-src 'self' blob:",

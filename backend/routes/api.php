@@ -169,7 +169,11 @@ Route::post('/appeals', [AppealController::class, 'store'])
 
 Route::middleware('auth:sanctum')->prefix('newsletter')->group(function () {
     Route::get('/subscriptions', [App\Http\Controllers\Api\NewsletterController::class, 'index'])
-        ->middleware('role:super_admin,administrator,content_manager,cms_editor,content_admin');
+        ->middleware('permission:newsletter.subscriptions.view');
+    Route::get('/subscriptions/export', [App\Http\Controllers\Api\NewsletterController::class, 'export'])
+        ->middleware('permission:newsletter.subscriptions.manage');
+    Route::delete('/subscriptions/{id}', [App\Http\Controllers\Api\NewsletterController::class, 'destroy'])
+        ->middleware('permission:newsletter.subscriptions.manage');
 });
 
 Route::middleware(['auth:sanctum'])->prefix('db')->group(function () {

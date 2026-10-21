@@ -194,15 +194,25 @@ Modified (highlights):
 | Jobs | `/admin/jobs` already ships full post CRUD + applications triage (`admin/Jobs.tsx`) | none needed |
 | Rides | `/admin/transport` already ships rides + flights queues and flight activation (`Modules/Rides` admin APIs) | none needed |
 | Job Seekers | Consumer directory + work-request lifecycle existed; **no admin visibility** | **Built**: `/admin/job-seekers` (workers + work requests tabs), admin API (`GET/PUT/DELETE/POST restore /api/admin/job-seekers`, `GET /api/admin/work-requests`), nav entry, permission gates (`job_seekers.overview.view/manage`, `job_seekers.requests.manage`), soft-delete/restore with active-request guard, verification toggle reaching `verified_only` public search |
-| Agriculture | No module: deep pages read Needs listings (`NeedController::agriculture`) | data already moderated through `/admin/needs`; dedicated agriculture console deferred |
-| Deals | No module: deals are Needs items (`/api/deals`, `NeedController::deals`) | covered by `/admin/needs`; dedicated deals console deferred |
-| Messaging | User chat has no admin console (support tickets do) | deferred: needs moderation policy (conversation access, retention) |
+| Agriculture | No module: deep pages read Needs listings (`NeedController::agriculture`) | **Built**: `/admin/agriculture` console over the existing needs/profile/product data (`GET /api/admin/agriculture/{overview,products,farmers,workers}`, `POST .../{products,workers,farmers}/{id}/moderate`), permission-gated by `agriculture.*`, audited moderation; dedicated `AdminAgricultureConsoleTest` |
+| Deals | No module: deals are Needs items (`/api/deals`, `NeedController::deals`) | **Built**: `/admin/deals` console (`GET /api/admin/deals[/overview]`, `POST .../{id}/moderate`, `POST .../{id}/visibility`); status transitions delegate to the Needs workflow, visibility maps to `is_available`; dedicated `AdminDealsConsoleTest` |
+| Messaging | User chat has no admin console (support tickets do) | **Built**: `/admin/messaging` read-only inbox for support roles plus soft delete/restore for `support_admin` (`GET /api/admin/messaging/conversations[/{id}]`, `DELETE/POST restore`, `DELETE messages`); conversations/messages soft-deleted and audited; dedicated `AdminMessagingConsoleTest` |
 | Delivery managers | Directory read was auth-only; writes used a role-list helper | **Hardened**: directory read now `delivery.deliveries.view`, delete/assign `delivery.deliveries.manage`, `transport_admin` gained the matching manage permission; self-service registration/availability/completion and the vendor stripped-profile view keep their controller-level fan-out (tested by 20 Delivery tests) |
 
 The new Job Seekers surfaces follow the established pattern: server-rendered page +
 JSON API with per-route `permission:` middleware, audit entries on every moderation
 write, console nav entry, render/allow-sweep/parity/nav tests and a dedicated
 feature suite (`AdminJobSeekerConsoleTest`, 5 tests).
+
+The Agriculture, Deals, and Messaging consoles reuse the same pattern (dedicated
+`Admin*ConsoleTest` suites, allow-sweep/parity/matrix probes). Newsletter gained
+search/pagination, delete, and streamed CSV export behind
+`newsletter.subscriptions.view/manage`; Notifications gained search, recipient
+lookup, audience counts, targeted send (user/role/all), and soft delete behind
+`notifications.overview.view/manage`. The sidebars and dashboard were verified
+end-to-end with `e2e/admin-sidebar.spec.ts`: every `/admin` nav link navigates,
+dashboard totals render once above the Admin Access panel, and access switches are
+live (self-toggle disabled).
 
 ## 10. Out of scope / follow-ups
 

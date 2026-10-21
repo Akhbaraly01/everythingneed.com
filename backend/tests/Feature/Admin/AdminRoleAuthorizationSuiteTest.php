@@ -109,6 +109,16 @@ class AdminRoleAuthorizationSuiteTest extends TestCase
             // Super+administrator consoles.
             '/api/admin/subscriptions' => ['super_admin', 'administrator'],
             '/api/admin/notifications' => ['super_admin', 'administrator'],
+            '/api/admin/notifications/audiences' => ['super_admin', 'administrator'],
+            // Agriculture / deals / messaging consoles.
+            '/api/admin/agriculture/overview' => ['super_admin', 'administrator', 'agriculture_admin'],
+            '/api/admin/deals' => ['super_admin', 'administrator'],
+            '/api/admin/messaging/conversations' => [
+                'super_admin', 'administrator', 'support_admin', 'support_agent', 'customer_service',
+            ],
+            '/api/newsletter/subscriptions' => [
+                'super_admin', 'administrator', 'content_manager', 'cms_editor', 'content_admin',
+            ],
             // Domain consoles.
             '/api/admin/properties' => ['super_admin', 'administrator', 'building_admin', 'real_estate_admin'],
             '/api/admin/pharmacy/orders' => ['super_admin', 'administrator', 'pharmacy_admin', 'healthcare_admin'],
