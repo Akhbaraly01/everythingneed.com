@@ -1,25 +1,49 @@
 import {
+    Accessibility,
+    Armchair,
+    Baby,
     BookOpen,
+    Bug,
     Building2,
     Bus,
+    Calculator,
+    Camera,
+    Car,
     CheckSquare,
+    Cpu,
     Dumbbell,
     GraduationCap,
+    Hammer,
+    HardHat,
     HeartPulse,
     Hotel,
     Home,
+    KeyRound,
+    Megaphone,
+    Monitor,
     Package,
+    PaintRoller,
+    Palette,
+    PartyPopper,
+    PawPrint,
     Pill,
     Plane,
+    Scale,
+    Scissors,
+    Settings,
     Shirt,
     ShoppingBag,
     Smartphone,
     Sparkles,
+    Sprout,
+    Stethoscope,
     Tractor,
     Truck,
     UtensilsCrossed,
     Users,
+    Wallet,
     Wrench,
+    Zap,
     type LucideIcon,
 } from 'lucide-react';
 
@@ -99,4 +123,72 @@ export function iconForSlug(slug: string | null | undefined, name?: string | nul
     const match = VERTICALS.find((vertical) => haystack.includes(vertical.slug));
 
     return match?.icon ?? ShoppingBag;
+}
+
+/**
+ * Service categories (the "Submit your need" catalogue): plumbing,
+ * cleaning, tutoring, catering... They have no storefront page, so they
+ * are matched by keyword to a fitting icon instead of a generic bag.
+ */
+const SERVICE_ICONS: Array<[string, LucideIcon]> = [
+    ['plumb', Wrench],
+    ['electri', Zap],
+    ['clean', Sparkles],
+    ['paint', PaintRoller],
+    ['construct', HardHat],
+    ['build', HardHat],
+    ['roof', Home],
+    ['tutor', GraduationCap],
+    ['teach', GraduationCap],
+    ['cater', UtensilsCrossed],
+    ['event', PartyPopper],
+    ['photo', Camera],
+    ['moving', Truck],
+    ['transport', Car],
+    ['ride', Car],
+    ['garden', Sprout],
+    ['farm', Tractor],
+    ['agri', Tractor],
+    ['beauty', Sparkles],
+    ['salon', Scissors],
+    ['barber', Scissors],
+    ['fitness', Dumbbell],
+    ['gym', Dumbbell],
+    ['sport', Dumbbell],
+    ['web', Monitor],
+    ['design', Palette],
+    ['market', Megaphone],
+    ['legal', Scale],
+    ['account', Calculator],
+    ['financ', Wallet],
+    ['repair', Settings],
+    ['applianc', Wrench],
+    ['pest', Bug],
+    ['pet', PawPrint],
+    ['caring', HeartPulse],
+    ['health', HeartPulse],
+    ['medical', Stethoscope],
+    ['family', Users],
+    ['child', Baby],
+    ['senior', Accessibility],
+    ['it ', Cpu],
+    ['tech', Cpu],
+    ['computer', Monitor],
+    ['phone', Smartphone],
+    ['carpenter', Hammer],
+    ['locksmith', KeyRound],
+    ['interior', Armchair],
+];
+
+/** Icon for a need/service category (keyword match, then the verticals). */
+export function serviceIconFor(slug: string | null | undefined, name?: string | null): LucideIcon {
+    const haystack = `${slug ?? ''} ${name ?? ''}`.toLowerCase();
+
+    const hit = SERVICE_ICONS.find(([keyword]) => haystack.includes(keyword));
+
+    if (hit) {
+        return hit[1];
+    }
+
+    return iconForSlug(slug, name);
 }

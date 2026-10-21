@@ -5,17 +5,18 @@ import { Button } from '@/components/shared/Button';
 import { formatPrice } from '@/lib/currency';
 import { ArrowLeft, Upload, X, FileText, Package } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLanguage } from '@/lib/use-language';
 import type { NeedCategory, NeedCategoryFormField } from '@/types';
 
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'GHS', 'KES', 'NGN', 'ZAR', 'INR', 'AED'];
 
-const PRICING_BASES = [
-    { value: 'fixed', label: 'Fixed price' },
-    { value: 'range', label: 'Budget range' },
-    { value: 'hourly', label: 'Hourly rate' },
-    { value: 'per_item', label: 'Per item' },
-    { value: 'quote', label: 'Request quotation' },
-    { value: 'inspection', label: 'Inspection before quote' },
+const PRICING_BASES = (t: (key: string, options: { defaultValue: string }) => string) => [
+    { value: 'fixed', label: t('needs.pricingFixed', { defaultValue: 'Fixed price' }) },
+    { value: 'range', label: t('needs.pricingRange', { defaultValue: 'Budget range' }) },
+    { value: 'hourly', label: t('needs.pricingHourly', { defaultValue: 'Hourly rate' }) },
+    { value: 'per_item', label: t('needs.pricingPerItem', { defaultValue: 'Per item' }) },
+    { value: 'quote', label: t('needs.pricingQuote', { defaultValue: 'Request quotation' }) },
+    { value: 'inspection', label: t('needs.pricingInspection', { defaultValue: 'Inspection before quote' }) },
     { value: 'flexible', label: 'Flexible / undisclosed' },
 ] as const;
 
@@ -49,6 +50,7 @@ interface LinkedListing {
  * matching real category.
  */
 export default function NeedsRequest() {
+    const { t } = useLanguage();
     const { auth } = usePage().props as { auth?: { user?: { id: string } } };
     const [categories, setCategories] = useState<NeedCategory[]>([]);
     const [form, setForm] = useState({
@@ -430,7 +432,7 @@ export default function NeedsRequest() {
                     </div>
                 )}
                 <div className="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{editId ? 'Edit Your Need' : 'Submit Your Need'}</h1>
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{editId ? t('needs.editTitle', { defaultValue: 'Edit Your Need' }) : t('needs.submitTitle', { defaultValue: 'Submit Your Need' })}</h1>
                     <p className="mt-1 text-sm text-gray-500">
                         {editId
                             ? 'Revise your draft or pending request. Published requests with bids cannot be edited.'
@@ -446,19 +448,19 @@ export default function NeedsRequest() {
 
                     <div className="mt-6 space-y-4">
                         <div>
-                            <label className={labelClass} htmlFor="need-title">Title *</label>
-                            <input id="need-title" type="text" value={form.title} onChange={set('title')} placeholder="What do you need?" className={inputClass} />
+                            <label className={labelClass} htmlFor="need-title">{t('needs.title', { defaultValue: 'Title *' })}</label>
+                            <input id="need-title" type="text" value={form.title} onChange={set('title')} placeholder={t('needs.titlePlaceholder', { defaultValue: 'What do you need?' })} className={inputClass} />
                         </div>
                         <div>
-                            <label className={labelClass} htmlFor="need-description">Description</label>
-                            <textarea id="need-description" value={form.description} onChange={set('description')} rows={4} placeholder="Describe the requirement in detail..." className={inputClass} />
+                            <label className={labelClass} htmlFor="need-description">{t('needs.description', { defaultValue: 'Description' })}</label>
+                            <textarea id="need-description" value={form.description} onChange={set('description')} rows={4} placeholder={t('needs.descriptionPlaceholder', { defaultValue: 'Describe the requirement in detail...' })} className={inputClass} />
                         </div>
 
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div>
-                                <label className={labelClass} htmlFor="need-category">Category</label>
+                                <label className={labelClass} htmlFor="need-category">{t('needs.category', { defaultValue: 'Category' })}</label>
                                 <select id="need-category" value={form.category_id} onChange={set('category_id')} className={inputClass}>
-                                    <option value="">Select a category</option>
+                                    <option value="">{t('needs.selectCategory', { defaultValue: 'Select a category' })}</option>
                                     {categories.map((c) => (
                                         <option key={c.id} value={c.id}>{c.name}</option>
                                     ))}
@@ -504,41 +506,41 @@ export default function NeedsRequest() {
                                 )}
                             </div>
                             <div>
-                                <label className={labelClass} htmlFor="need-subcategory">Subcategory</label>
-                                <input id="need-subcategory" type="text" value={form.subcategory} onChange={set('subcategory')} placeholder="e.g. Emergency call-out" className={inputClass} />
+                                <label className={labelClass} htmlFor="need-subcategory">{t('needs.subcategory', { defaultValue: 'Subcategory' })}</label>
+                                <input id="need-subcategory" type="text" value={form.subcategory} onChange={set('subcategory')} placeholder={t('needs.subcategoryPlaceholder', { defaultValue: 'e.g. Emergency call-out' })} className={inputClass} />
                             </div>
                             <div>
-                                <label className={labelClass} htmlFor="need-quantity">Quantity</label>
+                                <label className={labelClass} htmlFor="need-quantity">{t('needs.quantity', { defaultValue: 'Quantity' })}</label>
                                 <input id="need-quantity" type="number" min={1} value={form.quantity} onChange={set('quantity')} className={inputClass} />
                             </div>
                             <div>
-                                <label className={labelClass} htmlFor="need-location">Location</label>
-                                <input id="need-location" type="text" value={form.location} onChange={set('location')} placeholder="City or area" className={inputClass} />
+                                <label className={labelClass} htmlFor="need-location">{t('needs.location', { defaultValue: 'Location' })}</label>
+                                <input id="need-location" type="text" value={form.location} onChange={set('location')} placeholder={t('needs.locationPlaceholder', { defaultValue: 'City or area' })} className={inputClass} />
                             </div>
                             <div>
-                                <label className={labelClass} htmlFor="need-country">Country</label>
+                                <label className={labelClass} htmlFor="need-country">{t('needs.country', { defaultValue: 'Country' })}</label>
                                 <input id="need-country" type="text" value={form.country} onChange={set('country')} className={inputClass} />
                             </div>
                             <div>
-                                <label className={labelClass} htmlFor="need-state">State</label>
+                                <label className={labelClass} htmlFor="need-state">{t('needs.state', { defaultValue: 'State' })}</label>
                                 <input id="need-state" type="text" value={form.state} onChange={set('state')} placeholder="e.g. Lagos" className={inputClass} />
                             </div>
                             <div>
-                                <label className={labelClass} htmlFor="need-lga">LGA</label>
+                                <label className={labelClass} htmlFor="need-lga">{t('needs.lga', { defaultValue: 'LGA' })}</label>
                                 <input id="need-lga" type="text" value={form.lga} onChange={set('lga')} placeholder="e.g. Ikeja" className={inputClass} />
                             </div>
                             <div>
-                                <label className={labelClass} htmlFor="need-city">City / town</label>
+                                <label className={labelClass} htmlFor="need-city">{t('needs.city', { defaultValue: 'City / town' })}</label>
                                 <input id="need-city" type="text" value={form.city} onChange={set('city')} placeholder="e.g. Ikeja GRA" className={inputClass} />
                             </div>
                             <div className="flex items-end pb-2">
                                 <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-gray-700 dark:text-gray-300" htmlFor="need-remote">
                                     <input id="need-remote" type="checkbox" checked={form.is_remote} onChange={setCheck('is_remote')} className="h-4 w-4 rounded" />
-                                    Remote / online service
+                                    {t('needs.remote', { defaultValue: 'Remote / online service' })}
                                 </label>
                             </div>
                             <div>
-                                <label className={labelClass} htmlFor="need-currency">Currency</label>
+                                <label className={labelClass} htmlFor="need-currency">{t('needs.currency', { defaultValue: 'Currency' })}</label>
                                 <select id="need-currency" value={form.currency} onChange={set('currency')} className={inputClass}>
                                     {CURRENCIES.map((c) => (
                                         <option key={c} value={c}>{c}</option>
@@ -546,30 +548,30 @@ export default function NeedsRequest() {
                                 </select>
                             </div>
                             <div>
-                                <label className={labelClass} htmlFor="need-budget-min">Budget from</label>
+                                <label className={labelClass} htmlFor="need-budget-min">{t('needs.budgetFrom', { defaultValue: 'Budget from' })}</label>
                                 <input id="need-budget-min" type="number" min={0} value={form.budget_min} onChange={set('budget_min')} className={inputClass} />
                             </div>
                             <div>
-                                <label className={labelClass} htmlFor="need-budget-max">Budget to</label>
+                                <label className={labelClass} htmlFor="need-budget-max">{t('needs.budgetTo', { defaultValue: 'Budget to' })}</label>
                                 <input id="need-budget-max" type="number" min={0} value={form.budget_max} onChange={set('budget_max')} className={inputClass} />
                             </div>
                             <div>
-                                <label className={labelClass} htmlFor="need-pricing-basis">Pricing basis</label>
+                                <label className={labelClass} htmlFor="need-pricing-basis">{t('needs.pricingBasis', { defaultValue: 'Pricing basis' })}</label>
                                 <select id="need-pricing-basis" value={form.pricing_basis} onChange={set('pricing_basis')} className={inputClass}>
-                                    {PRICING_BASES.map((b) => (
+                                    {PRICING_BASES(t).map((b) => (
                                         <option key={b.value} value={b.value}>{b.label}</option>
                                     ))}
                                 </select>
                                 {(form.pricing_basis === 'quote' || form.pricing_basis === 'inspection') && (
-                                    <p className="mt-1 text-xs text-gray-500">Providers will propose the price — budgets stay optional.</p>
+                                    <p className="mt-1 text-xs text-gray-500">{t('needs.pricingHint', { defaultValue: 'Providers will propose the price — budgets stay optional.' })}</p>
                                 )}
                             </div>
                             <div>
-                                <label className={labelClass} htmlFor="need-preferred">Preferred date</label>
+                                <label className={labelClass} htmlFor="need-preferred">{t('needs.preferredDate', { defaultValue: 'Preferred date' })}</label>
                                 <input id="need-preferred" type="date" value={form.preferred_date} onChange={set('preferred_date')} className={inputClass} />
                             </div>
                             <div>
-                                <label className={labelClass} htmlFor="need-deadline">Deadline</label>
+                                <label className={labelClass} htmlFor="need-deadline">{t('needs.deadline', { defaultValue: 'Deadline' })}</label>
                                 <input id="need-deadline" type="date" value={form.deadline} onChange={set('deadline')} className={inputClass} />
                             </div>
                             <div className="flex items-end pb-2">
@@ -579,7 +581,7 @@ export default function NeedsRequest() {
                                 </label>
                             </div>
                             <div>
-                                <label className={labelClass} htmlFor="need-time-window">Preferred time window</label>
+                                <label className={labelClass} htmlFor="need-time-window">{t('needs.timeWindow', { defaultValue: 'Preferred time window' })}</label>
                                 <input id="need-time-window" type="text" value={form.preferred_time_window} onChange={set('preferred_time_window')} placeholder="e.g. Weekdays after 5pm" className={inputClass} />
                             </div>
                         </div>
@@ -645,21 +647,21 @@ export default function NeedsRequest() {
                         )}
 
                         <div>
-                            <label className={labelClass} htmlFor="need-service-requirements">Service requirements</label>
+                            <label className={labelClass} htmlFor="need-service-requirements">{t('needs.requirements', { defaultValue: 'Service requirements' })}</label>
                             <textarea id="need-service-requirements" value={form.service_requirements} onChange={set('service_requirements')} rows={3} placeholder="Skills, tools, certifications..." className={inputClass} />
                         </div>
                         <div>
-                            <label className={labelClass} htmlFor="need-delivery-requirements">Delivery requirements</label>
+                            <label className={labelClass} htmlFor="need-delivery-requirements">{t('needs.delivery', { defaultValue: 'Delivery requirements' })}</label>
                             <textarea id="need-delivery-requirements" value={form.delivery_requirements} onChange={set('delivery_requirements')} rows={3} placeholder="How/when should it be delivered?" className={inputClass} />
                         </div>
                         <div>
-                            <label className={labelClass} htmlFor="need-notes">Additional notes</label>
+                            <label className={labelClass} htmlFor="need-notes">{t('needs.notes', { defaultValue: 'Additional notes' })}</label>
                             <textarea id="need-notes" value={form.notes} onChange={set('notes')} rows={3} className={inputClass} />
                         </div>
 
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div>
-                                <span className={labelClass}>Images</span>
+                                <span className={labelClass}>{t('needs.images', { defaultValue: 'Images' })}</span>
                                 <label className="mt-1 flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-gray-300 px-4 py-3 text-sm text-gray-500 hover:border-indigo-400 dark:border-gray-600">
                                     <Upload className="h-4 w-4" />
                                     {uploading ? 'Uploading...' : 'Add images'}
@@ -680,7 +682,7 @@ export default function NeedsRequest() {
                                 )}
                             </div>
                             <div>
-                                <span className={labelClass}>Documents</span>
+                                <span className={labelClass}>{t('needs.documents', { defaultValue: 'Documents' })}</span>
                                 <label className="mt-1 flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-gray-300 px-4 py-3 text-sm text-gray-500 hover:border-indigo-400 dark:border-gray-600">
                                     <Upload className="h-4 w-4" />
                                     {uploading ? 'Uploading...' : 'Add documents'}
@@ -704,7 +706,7 @@ export default function NeedsRequest() {
                     </div>
 
                     <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm dark:border-gray-700 dark:bg-gray-700/40">
-                        <h2 className="font-semibold text-gray-900 dark:text-white">Who can see this request?</h2>
+                        <h2 className="font-semibold text-gray-900 dark:text-white">{t('needs.visibility', { defaultValue: 'Who can see this request?' })}</h2>
                         <p className="mt-1 text-xs text-gray-500">
                             Published requests are visible to eligible providers, who may then
                             see the description, location area, budget and schedule. Your exact
@@ -714,13 +716,13 @@ export default function NeedsRequest() {
 
                     {reviewing && (
                         <div className="rounded-lg border border-indigo-200 bg-indigo-50/50 p-4 dark:border-indigo-900 dark:bg-indigo-900/20" role="region" aria-label="Review your request">
-                            <h2 className="font-semibold text-gray-900 dark:text-white">Review before submitting</h2>
+                            <h2 className="font-semibold text-gray-900 dark:text-white">{t('needs.review', { defaultValue: 'Review before submitting' })}</h2>
                             <dl className="mt-2 space-y-1 text-sm">
                                 <div><dt className="inline font-medium">Title: </dt><dd className="inline">{form.title}</dd></div>
                                 <div><dt className="inline font-medium">Category: </dt><dd className="inline">{categoryName ?? '—'}</dd></div>
-                                <div><dt className="inline font-medium">Budget: </dt><dd className="inline">{PRICING_BASES.find((b) => b.value === form.pricing_basis)?.label}{form.budget_min || form.budget_max ? ` (${form.budget_min || '?'}–${form.budget_max || '?'} ${form.currency})` : ''}</dd></div>
-                                <div><dt className="inline font-medium">Where: </dt><dd className="inline">{form.is_remote ? 'Remote / online' : [form.city, form.lga, form.state, form.country].filter(Boolean).join(', ') || form.location || '—'}</dd></div>
-                                <div><dt className="inline font-medium">When: </dt><dd className="inline">{form.is_asap ? 'ASAP' : form.preferred_date || form.deadline || 'Flexible'}{form.preferred_time_window ? ` (${form.preferred_time_window})` : ''}</dd></div>
+                                <div><dt className="inline font-medium">{t('needs.budget', { defaultValue: 'Budget:' })} </dt><dd className="inline">{PRICING_BASES(t).find((b) => b.value === form.pricing_basis)?.label}{form.budget_min || form.budget_max ? ` (${form.budget_min || '?'}–${form.budget_max || '?'} ${form.currency})` : ''}</dd></div>
+                                <div><dt className="inline font-medium">{t('needs.where', { defaultValue: 'Where:' })} </dt><dd className="inline">{form.is_remote ? t('needs.remote', { defaultValue: 'Remote / online service' }) : [form.city, form.lga, form.state, form.country].filter(Boolean).join(', ') || form.location || '—'}</dd></div>
+                                <div><dt className="inline font-medium">{t('needs.when', { defaultValue: 'When:' })} </dt><dd className="inline">{form.is_asap ? t('needs.asap', { defaultValue: 'ASAP' }) : form.preferred_date || form.deadline || t('needs.pricingFlexible', { defaultValue: 'Flexible' })}{form.preferred_time_window ? ` (${form.preferred_time_window})` : ''}</dd></div>
                                 {Object.keys(answers).length > 0 && (
                                     <div><dt className="inline font-medium">Answers: </dt><dd className="inline">{schema.filter((f) => answers[f.key]).map((f) => `${f.label}: ${answers[f.key]}`).join(' · ')}</dd></div>
                                 )}

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from '@inertiajs/react';
 import { api } from '@/lib/api';
-import { iconForSlug, verticalFor, VERTICALS } from '@/lib/verticals';
+import { serviceIconFor, verticalFor, VERTICALS } from '@/lib/verticals';
 import { ChevronLeft, ChevronRight, type LucideIcon } from 'lucide-react';
 
 interface RequestType {
@@ -77,7 +77,7 @@ export default function NeedCarousel() {
                                 }),
                             // The icon belongs to the category, not to its
                             // position in the carousel.
-                            icon: vertical?.icon ?? iconForSlug(key, c.name),
+                            icon: vertical?.icon ?? serviceIconFor(key, c.name),
                             gradient:
                                 vertical?.gradient ??
                                 CATEGORY_GRADIENTS[i % CATEGORY_GRADIENTS.length],

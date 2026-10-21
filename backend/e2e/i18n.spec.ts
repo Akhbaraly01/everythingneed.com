@@ -20,8 +20,10 @@ import { test, expect, type Page } from '@playwright/test';
  * still runs the full React handler path.
  */
 async function tapLocale(page: Page, label: string): Promise<void> {
+    // Target the combined language/currency switcher by name: the header
+    // also carries a mobile "Open menu" button with aria-haspopup=menu.
     await page
-        .locator('button[aria-haspopup="menu"]')
+        .getByRole('button', { name: /Language and currency/ })
         .first()
         .evaluate((el) => (el as HTMLElement).click());
 
@@ -134,7 +136,7 @@ test('currency choice converts the displayed prices and persists', async ({ page
     await page.goto('/', { waitUntil: 'domcontentloaded' });
 
     await page
-        .locator('button[aria-haspopup="menu"]')
+        .getByRole('button', { name: /Language and currency/ })
         .first()
         .evaluate((el) => (el as HTMLElement).click());
 
@@ -149,7 +151,7 @@ test('currency choice converts the displayed prices and persists', async ({ page
         )
         .toBe('EUR');
 
-    const trigger = page.locator('button[aria-haspopup="menu"]').first();
+    const trigger = page.getByRole('button', { name: /Language and currency/ }).first();
 
     await expect
         .poll(async () => (await trigger.textContent()) ?? '')
