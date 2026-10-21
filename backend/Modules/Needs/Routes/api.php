@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use Modules\Needs\Http\Controllers\NeedBookingController;
 use Modules\Needs\Http\Controllers\NeedController;
 use Modules\Needs\Http\Controllers\NeedCostGuideController;
+use Modules\Needs\Http\Controllers\NeedEscrowController;
 use Modules\Needs\Http\Controllers\NeedRequestController;
 use Modules\Needs\Http\Controllers\ProviderProfileController;
 use Modules\Needs\Http\Controllers\SavedItemController;
@@ -69,6 +70,23 @@ Route::prefix('api')->group(function () {
         Route::post('/need-requests/{id}/files', [WorkroomController::class, 'store']);
         Route::get('/need-requests/{id}/files/{fileId}/url', [WorkroomController::class, 'signedUrl']);
         Route::delete('/need-requests/{id}/files/{fileId}', [WorkroomController::class, 'destroy']);
+
+        // N-20 milestone escrow + N-21 milestone disputes + N-25 hourly
+        // timesheets. Registered before {id}/{action} so a sub-resource can
+        // never be read as a transition action.
+        Route::get('/need-requests/{id}/milestones', [NeedEscrowController::class, 'milestones']);
+        Route::post('/need-requests/{id}/milestones', [NeedEscrowController::class, 'storeMilestone']);
+        Route::put('/need-requests/{id}/milestones/{milestoneId}', [NeedEscrowController::class, 'updateMilestone']);
+        Route::post('/need-requests/{id}/milestones/{milestoneId}/fund', [NeedEscrowController::class, 'fundMilestone']);
+        Route::post('/need-requests/{id}/milestones/{milestoneId}/release', [NeedEscrowController::class, 'releaseMilestone']);
+        Route::post('/need-requests/{id}/milestones/{milestoneId}/refund', [NeedEscrowController::class, 'refundMilestone']);
+        Route::post('/need-requests/{id}/milestones/{milestoneId}/dispute', [NeedEscrowController::class, 'openMilestoneDispute']);
+        Route::get('/need-requests/{id}/timesheets', [NeedEscrowController::class, 'timesheets']);
+        Route::post('/need-requests/{id}/timesheets', [NeedEscrowController::class, 'storeTimesheet']);
+        Route::post('/need-requests/{id}/timesheets/pay', [NeedEscrowController::class, 'payTimesheets']);
+        Route::post('/need-requests/{id}/timesheets/{entryId}/approve', [NeedEscrowController::class, 'approveTimesheet']);
+        Route::post('/need-requests/{id}/timesheets/{entryId}/reject', [NeedEscrowController::class, 'rejectTimesheet']);
+
         Route::post('/need-requests/{id}/{action}', [NeedRequestController::class, 'transition'])
             ->whereIn('action', [
                 'start', 'complete', 'accept', 'cancel', 'submit', 'publish', 'payment',

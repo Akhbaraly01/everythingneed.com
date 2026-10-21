@@ -22,6 +22,24 @@ class TurnstileVerifier
         return (string) config('services.turnstile.secret', '') !== '';
     }
 
+    /**
+     * Whether the bot defence must be active in this environment.
+     *
+     * Default: required in production (where an unverified login is an
+     * open door), skipped in local/test/dev so the suite and a fresh
+     * checkout keep working without keys. TURNSTILE_REQUIRED overrides it.
+     */
+    public function required(): bool
+    {
+        $required = config('services.turnstile.required');
+
+        if ($required !== null) {
+            return (bool) $required;
+        }
+
+        return app()->isProduction();
+    }
+
     public function verify(?string $token, ?string $ip = null): bool
     {
         if (!$this->configured()) {

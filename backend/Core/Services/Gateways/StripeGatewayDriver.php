@@ -33,7 +33,7 @@ class StripeGatewayDriver implements GatewayDriverInterface
             'description' => $data['description'] ?? ($data['reference'] ?? 'EverythingNeed charge'),
             'metadata[reference]' => $data['reference'] ?? '',
             'metadata[user_id]' => $data['user_id'] ?? '',
-        ]);
+        ], $data['idempotency_key'] ?? null);
 
         $status = match ($response['status'] ?? '') {
             'succeeded' => 'completed',
@@ -63,7 +63,7 @@ class StripeGatewayDriver implements GatewayDriverInterface
         $response = $this->request('POST', 'https://api.stripe.com/v1/refunds', [
             'payment_intent' => $context['provider_payment_id'] ?? ($payment['provider_payment_id'] ?? null),
             'amount' => (int) round($amount * 100),
-        ]);
+        ], $context['refund_id'] ?? null);
 
         if (($response['status'] ?? '') === 'failed') {
             throw new \RuntimeException('Stripe refund failed.');
@@ -78,17 +78,25 @@ class StripeGatewayDriver implements GatewayDriverInterface
         ];
     }
 
-    private function request(string $method, string $url, array $fields): array
+    private function request(string $method, string $url, array $fields, ?string $idempotencyKey = null): array
     {
         $ch = curl_init($url);
+        $headers = [
+            'Authorization: Bearer '.$this->secret(),
+            'Content-Type: application/x-www-form-urlencoded',
+        ];
+
+        // Stripe dedupes on this header: a retried charge with the same key
+        // returns the original intent instead of taking the money twice.
+        if ($idempotencyKey !== null && $idempotencyKey !== '') {
+            $headers[] = 'Idempotency-Key: '.$idempotencyKey;
+        }
+
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_CUSTOMREQUEST => $method,
             CURLOPT_POSTFIELDS => http_build_query($fields),
-            CURLOPT_HTTPHEADER => [
-                'Authorization: Bearer '.$this->secret(),
-                'Content-Type: application/x-www-form-urlencoded',
-            ],
+            CURLOPT_HTTPHEADER => $headers,
             CURLOPT_TIMEOUT => 20,
         ]);
         $body = curl_exec($ch);

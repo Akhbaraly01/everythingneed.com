@@ -52,9 +52,9 @@ class SecurityPosture extends Command
             'set PAYMENTS_PAYSTACK_SECRET'
         );
         $check(
-            'Turnstile bot defence configured',
-            (string) config('services.turnstile.secret', '') !== '',
-            'set TURNSTILE_SECRET (+ VITE_TURNSTILE_SITE_KEY); auth runs unverified without it'
+            'Turnstile bot defence configured (required in production)',
+            !$isProd || (string) config('services.turnstile.secret', '') !== '',
+            'set TURNSTILE_SECRET (+ TURNSTILE_SITE_KEY); in production the auth endpoints refuse traffic (503) while it is missing'
         );
         $check(
             'Database TLS required in production',

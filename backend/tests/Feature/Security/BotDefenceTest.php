@@ -35,6 +35,40 @@ class BotDefenceTest extends TestCase
             ->assertCreated();
     }
 
+    public function test_a_missing_secret_fails_closed_where_the_bot_defence_is_required(): void
+    {
+        // Production posture: an unconfigured bot defence must refuse the
+        // request (503) instead of letting an unverified login through.
+        config(['services.turnstile.secret' => '', 'services.turnstile.required' => true]);
+
+        $this->postJson('/api/auth/register', $this->registration('required@example.com'))
+            ->assertStatus(503);
+
+        $this->assertDatabaseMissing('users', ['email' => 'required@example.com']);
+
+        // The same posture with a secret configured enforces the token.
+        config(['services.turnstile.secret' => 'test-secret']);
+
+        Http::fake([
+            'challenges.cloudflare.com/*' => Http::response(['success' => false], 200),
+        ]);
+
+        $this->postJson('/api/auth/register', $this->registration('required@example.com'))
+            ->assertStatus(422);
+    }
+
+    public function test_the_bot_defence_can_be_required_explicitly(): void
+    {
+        // TURNSTILE_REQUIRED=true forces the fail-closed behaviour even
+        // outside production.
+        config(['services.turnstile.secret' => '', 'services.turnstile.required' => true]);
+
+        $this->postJson('/api/auth/register', $this->registration('forced@example.com'))
+            ->assertStatus(503);
+
+        $this->assertDatabaseMissing('users', ['email' => 'forced@example.com']);
+    }
+
     public function test_configured_turnstile_rejects_missing_and_bad_tokens(): void
     {
         config(['services.turnstile.secret' => 'test-secret']);

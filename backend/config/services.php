@@ -31,5 +31,11 @@ return [
     'turnstile' => [
         'secret' => env('TURNSTILE_SECRET', ''),
         'site_key' => env('TURNSTILE_SITE_KEY', ''),
+        // Whether the bot defence MUST be active. Null = "required in
+        // production, skipped in local/test/dev". Set TURNSTILE_REQUIRED
+        // to force the behaviour either way.
+        'required' => env('TURNSTILE_REQUIRED') === null
+            ? null
+            : filter_var(env('TURNSTILE_REQUIRED'), FILTER_VALIDATE_BOOLEAN),
     ],
 ];

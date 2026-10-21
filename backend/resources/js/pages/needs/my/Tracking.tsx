@@ -3,6 +3,8 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import { api, errorMessage, rows } from '@/lib/api';
 import { NEED_STATUS_LABELS, needStatusClasses } from '@/lib/needs';
 import { Button } from '@/components/shared/Button';
+import MilestonePanel from '@/components/needs/MilestonePanel';
+import TimesheetPanel from '@/components/needs/TimesheetPanel';
 import { useConfirm } from '@/lib/confirm';
 import { ArrowLeft, Check, CircleDot, ClipboardList, GitCompare, Navigation, Send, X } from 'lucide-react';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
@@ -533,6 +535,14 @@ export default function MyNeedTracking({ need_id }: { need_id: string }) {
                             ))}
                         </ol>
                     </section>
+                )}
+
+                {need && (isOwner || isAcceptedProvider) && (
+                    <MilestonePanel needId={need_id} isOwner={isOwner} isProvider={isAcceptedProvider} />
+                )}
+
+                {need && (isOwner || isAcceptedProvider) && (
+                    <TimesheetPanel needId={need_id} isOwner={isOwner} isProvider={isAcceptedProvider} />
                 )}
             </div>
         </AppLayout>

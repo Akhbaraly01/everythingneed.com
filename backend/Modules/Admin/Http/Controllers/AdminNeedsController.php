@@ -406,7 +406,7 @@ class AdminNeedsController extends Controller
     {
         $validated = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
-            'status' => ['nullable', 'string', 'in:open,under_review,resolved,closed'],
+              'status' => ['nullable', 'string', 'in:open,in_review,resolved,closed'],
             'context' => ['nullable', 'string', 'in:need,task'],
             'per_page' => ['nullable', 'integer', 'min:5', 'max:100'],
             'page' => ['nullable', 'integer', 'min:1'],
@@ -473,7 +473,9 @@ class AdminNeedsController extends Controller
 
         $dispute->update([
             'assigned_to' => $validated['assigned_to'],
-            'status' => $dispute->status === 'open' ? 'under_review' : $dispute->status,
+            // The disputes.status enum accepts 'in_review' (not
+            // 'under_review'), so the assignment must write the enum value.
+            'status' => $dispute->status === 'open' ? 'in_review' : $dispute->status,
         ]);
 
         return response()->json([

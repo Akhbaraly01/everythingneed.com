@@ -154,4 +154,16 @@ class NeedRequest extends Model
         return $this->hasMany(\Modules\Orders\Entities\Dispute::class, 'need_request_id')
             ->orderByDesc('created_at');
     }
+
+    /** N-20: the milestone escrow ledger of this request. */
+    public function milestones()
+    {
+        return $this->hasMany(NeedMilestone::class, 'need_request_id')->orderBy('sequence');
+    }
+
+    /** N-25: the hourly timesheet ledger of this request. */
+    public function timesheets()
+    {
+        return $this->hasMany(NeedTimesheet::class, 'need_request_id')->orderBy('work_date');
+    }
 }

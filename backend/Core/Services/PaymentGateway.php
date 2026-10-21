@@ -137,6 +137,29 @@ class PaymentGateway extends BaseService implements PaymentGatewayInterface
             }
         }
 
+        // Idempotent refunds: a stable key makes a replay return the
+        // original refund instead of taking the money a second time.
+        $idempotencyKey = $data['idempotency_key'] ?? null;
+        if ($refund === null && $idempotencyKey !== null && $idempotencyKey !== '') {
+            $existing = Refund::where('idempotency_key', $idempotencyKey)
+                ->where('payment_id', $payment->id)
+                ->first();
+
+            if ($existing && in_array($existing->status, ['succeeded', 'completed'], true)) {
+                return [
+                    'success' => true,
+                    'refund_id' => $existing->id,
+                    'amount' => (float) $existing->amount,
+                    'status' => 'succeeded',
+                    'idempotent' => true,
+                ];
+            }
+
+            if ($existing && in_array($existing->status, ['pending', 'approved'], true)) {
+                $refund = $existing;
+            }
+        }
+
         // Chained partial refunds: total refunds may never exceed the charge.
         $alreadyRefunded = (float) Refund::where('payment_id', $payment->id)
             ->whereIn('status', ['succeeded', 'completed'])
@@ -150,6 +173,7 @@ class PaymentGateway extends BaseService implements PaymentGatewayInterface
                 'payment_id' => $payment->id,
                 'amount' => $refundAmount,
                 'reason' => $data['reason'] ?? null,
+                'idempotency_key' => $idempotencyKey,
                 'status' => 'pending',
             ]);
         } else {
@@ -163,7 +187,12 @@ class PaymentGateway extends BaseService implements PaymentGatewayInterface
             $gatewayResponse = $driver->refund(
                 $payment->toArray(),
                 (float) $refundAmount,
-                ['provider_payment_id' => $payment->provider_payment_id],
+                [
+                    'provider_payment_id' => $payment->provider_payment_id,
+                    // The provider dedupes on this key, so a retried refund
+                    // cannot pay out twice.
+                    'refund_id' => $refund->idempotency_key ?? $refund->id,
+                ],
             );
 
             $succeeded = ($gatewayResponse['status'] ?? '') !== 'pending_manual';
