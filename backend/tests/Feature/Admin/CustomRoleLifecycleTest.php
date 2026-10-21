@@ -149,6 +149,66 @@ class CustomRoleLifecycleTest extends TestCase
         $this->assertNull($matrix);
     }
 
+    public function test_delete_with_reassign_moves_holders_and_cleans_rows(): void
+    {
+        $this->seedMatrix();
+        $super = $this->superAdmin();
+
+        $this->actingAs($super)->postJson('/api/admin/rbac/roles', [
+            'name' => 'Regional Ops',
+            'slug' => 'regional_ops',
+            'permissions' => ['products.products.view'],
+        ])->assertStatus(201);
+
+        $bareHolder = User::factory()->create();
+        UserRole::create(['user_id' => $bareHolder->id, 'role' => 'regional_ops']);
+
+        $existingUser = User::factory()->create();
+        UserRole::create(['user_id' => $existingUser->id, 'role' => 'user']);
+        UserRole::create(['user_id' => $existingUser->id, 'role' => 'regional_ops']);
+
+        $this->actingAs($super)
+            ->deleteJson('/api/admin/rbac/roles/regional_ops', ['reassign_to' => 'user'])
+            ->assertStatus(200);
+
+        $this->assertSame(0, DB::table('custom_roles')->where('slug', 'regional_ops')->count());
+        $this->assertSame(0, DB::table('role_permissions')->where('role', 'regional_ops')->count());
+        $this->assertSame(0, DB::table('user_roles')->where('role', 'regional_ops')->count());
+        $this->assertSame(
+            'user',
+            DB::table('user_roles')->where('user_id', $bareHolder->id)->value('role'),
+        );
+        $this->assertSame(
+            1,
+            DB::table('user_roles')->where('user_id', $existingUser->id)->count(),
+        );
+        $this->assertSame(
+            'user',
+            DB::table('user_roles')->where('user_id', $existingUser->id)->value('role'),
+        );
+    }
+
+    public function test_delete_reassign_target_must_exist_and_differ_from_deleted_role(): void
+    {
+        $this->seedMatrix();
+        $super = $this->superAdmin();
+
+        $this->actingAs($super)->postJson('/api/admin/rbac/roles', [
+            'name' => 'Regional Ops',
+            'slug' => 'regional_ops',
+        ])->assertStatus(201);
+
+        $this->actingAs($super)
+            ->deleteJson('/api/admin/rbac/roles/regional_ops', ['reassign_to' => 'not_a_role'])
+            ->assertStatus(422);
+
+        $this->actingAs($super)
+            ->deleteJson('/api/admin/rbac/roles/regional_ops', ['reassign_to' => 'regional_ops'])
+            ->assertStatus(422);
+
+        $this->assertSame(1, DB::table('custom_roles')->where('slug', 'regional_ops')->count());
+    }
+
     public function test_delete_rejects_builtin_and_unknown_roles(): void
     {
         $this->seedMatrix();

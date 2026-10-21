@@ -8,6 +8,7 @@ use Core\Services\Contracts\RoleAssignmentInterface;
 use Core\Services\Contracts\RoleRegistryInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Modules\Admin\Http\Requests\AssignUserRoleRequest;
 use Modules\Admin\Http\Requests\BulkRolePermissionRequest;
 use Modules\Admin\Http\Requests\CreateCustomRoleRequest;
@@ -188,8 +189,9 @@ class AdminRbacController extends Controller
     }
 
     /**
-     * Deletes a custom role. Built-in roles are protected and a role that
-     * still has users assigned must be emptied first (no orphan rows).
+     * Deletes a custom role. Built-in roles are protected. When users still
+     * hold the role, deletion is blocked unless reassign_to names the role
+     * that should receive them, so no assignment is ever orphaned.
      */
     public function deleteRole(Request $request, string $slug): JsonResponse
     {
@@ -201,18 +203,53 @@ class AdminRbacController extends Controller
             return response()->json(['message' => 'Role not found'], 404);
         }
 
+        $validated = $request->validate([
+            'reassign_to' => ['nullable', 'string', 'max:100'],
+        ]);
+
+        $reassignTo = $validated['reassign_to'] ?? null;
         $holders = $this->registry->holderCount($slug);
 
-        if ($holders > 0) {
+        if ($holders > 0 && $reassignTo === null) {
             return response()->json([
                 'message' => "Reassign the {$holders} user(s) holding this role before deleting it.",
+                'holders' => $holders,
             ], 422);
         }
 
-        $this->registry->delete($slug);
+        if ($reassignTo !== null && ($reassignTo === $slug || ! $this->registry->exists($reassignTo))) {
+            return response()->json([
+                'message' => 'Choose a different existing role to reassign the holders to.',
+            ], 422);
+        }
+
+        DB::transaction(function () use ($slug, $reassignTo) {
+            if ($reassignTo !== null) {
+                $alreadyHoldsTarget = DB::table('user_roles')
+                    ->where('role', $reassignTo)
+                    ->select('user_id');
+
+                DB::table('user_roles')
+                    ->where('role', $slug)
+                    ->whereIn('user_id', $alreadyHoldsTarget)
+                    ->delete();
+
+                DB::table('user_roles')
+                    ->where('role', $slug)
+                    ->update(['role' => $reassignTo, 'updated_at' => now()]);
+            }
+
+            $this->registry->delete($slug);
+        });
 
         $this->auditChange('custom_role', $slug, [
-            'new_values' => ['deleted' => true],
+            'old_values' => $reassignTo !== null ? ['holders' => $holders] : null,
+            'new_values' => [
+                'deleted' => true,
+                ...($reassignTo !== null
+                    ? ['reassigned_to' => $reassignTo, 'reassigned_count' => $holders]
+                    : []),
+            ],
         ], $request);
 
         return response()->json(['message' => "Role {$slug} deleted"]);

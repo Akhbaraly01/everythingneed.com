@@ -1,7 +1,7 @@
 import { Card } from '@/components/shared/Card';
 import { Button } from '@/components/shared/Button';
 import { roleBadge, roleLabel, type RbacMatrixRow } from '@/lib/rbac';
-import { Trash2, Users, Wand2 } from 'lucide-react';
+import { Lock, Trash2, Users, Wand2 } from 'lucide-react';
 import { DeniedPermissionChip, PermissionChip } from './PermissionChip';
 
 interface Props {
@@ -103,17 +103,27 @@ export function RoleCard({ row, denied, busy, onManage, onDelete, onRestore }: P
                 >
                     Manage
                 </Button>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    iconLeft={<Trash2 className="h-3.5 w-3.5" />}
-                    className="text-muted-foreground hover:text-destructive"
-                    disabled={!deletable || busy}
-                    title={deletable ? `Delete ${label}` : 'Built-in roles cannot be deleted'}
-                    onClick={onDelete}
-                >
-                    Delete
-                </Button>
+                {deletable ? (
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        iconLeft={<Trash2 className="h-3.5 w-3.5" />}
+                        className="text-muted-foreground hover:text-destructive"
+                        disabled={busy}
+                        title={`Delete ${label}`}
+                        onClick={onDelete}
+                    >
+                        Delete
+                    </Button>
+                ) : (
+                    <span
+                        className="inline-flex items-center gap-1.5 px-2 py-1 text-xs text-muted-foreground"
+                        title="Built-in roles cannot be deleted"
+                    >
+                        <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+                        Protected
+                    </span>
+                )}
             </div>
         </Card>
     );

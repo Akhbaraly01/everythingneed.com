@@ -66,7 +66,8 @@ registry is the single access point for "which roles exist":
 - `Core\Services\RoleRegistry` (`RoleRegistryInterface`, bound in
   `AppServiceProvider`): `canonical()`, `custom()`, `all()`, `exists()`,
   `isCore()`, `label()`, `holderCount()`, `create()`, `delete()`.
-- `delete()` is refused while users still hold the role.
+- `delete()` is refused while users still hold the role unless the caller
+  supplies `reassign_to`; holders move to that role in the same transaction.
 - Every validation site that used `Rule::in(AppRole::values())` / hardcoded
   role lists now resolves through the registry: grant/revoke/assign/update
   requests, `AdminUserController` role filter, `RoleAssignmentService`.
@@ -77,7 +78,7 @@ registry is the single access point for "which roles exist":
 |--------|-------------------------------------|----------|
 | POST   | `/api/admin/rbac/bulk`              | one transaction: validates role + permission names against the catalog, upserts granted rows / writes denied rows, one audit entry, one cache flush |
 | POST   | `/api/admin/rbac/roles`             | create custom role (name, slug, description, permissions[]); reserved/duplicate slugs rejected; explicit `slug` wins, otherwise derived from name (`slugifyRole`, leading digits/underscores stripped server-side too) |
-| DELETE | `/api/admin/rbac/roles/{slug}`      | delete custom role; 409 while users hold it; canonical/unknown rejected |
+| DELETE | `/api/admin/rbac/roles/{slug}`      | delete custom role; 422 while users hold it unless `reassign_to` moves them atomically; canonical/unknown rejected |
 | POST   | `/api/admin/rbac/roles/{role}/reset`| canonical roles only: delete the role's permission rows and reinsert `PermissionSeeder::defaultsFor($role)` (state granted) |
 
 Least privilege: `BulkRolePermissionRequest::authorize()` requires the actor

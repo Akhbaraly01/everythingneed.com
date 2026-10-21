@@ -213,10 +213,13 @@ export default function AdminRbac({ catalog }: Props) {
     };
 
     const deleteRole = async (row: RbacMatrixRow) => {
+        const holders = row.user_count ?? 0;
         const confirmed = await ask({
             title: `Delete ${roleLabel(row)}?`,
             description:
-                'The role and its permission rows are removed permanently. Users must be reassigned first.',
+                holders > 0
+                    ? `${holders} user${holders === 1 ? '' : 's'} currently hold this role and will be reassigned to the User role. The role and its permission rows are removed permanently.`
+                    : 'The role and its permission rows are removed permanently.',
             confirmLabel: 'Delete role',
             danger: true,
         });
@@ -224,7 +227,10 @@ export default function AdminRbac({ catalog }: Props) {
 
         setDeletingRole(row.role);
         try {
-            await api.del(`/api/admin/rbac/roles/${row.role}`);
+            await api.del(
+                `/api/admin/rbac/roles/${row.role}`,
+                holders > 0 ? { reassign_to: 'user' } : undefined,
+            );
             toast.success(`${roleLabel(row)} deleted`);
             if (manageRole === row.role) setManageRole(null);
             await load();
@@ -333,6 +339,10 @@ export default function AdminRbac({ catalog }: Props) {
                         placeholder="Filter permissions..."
                     />
                 </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                    Built-in roles are protected. Custom roles can be deleted; holders are moved to the
+                    User role first.
+                </p>
 
                 {loading ? (
                     <p className="py-10 text-center text-sm text-muted-foreground">Loading matrix...</p>
