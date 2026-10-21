@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Modules\Bookings\Entities\Booking;
-use Modules\Products\Entities\ProductReview;
+use Modules\Reviews\Services\ProductReviewFeed;
 use Modules\Vendors\Entities\Vendor;
 use Modules\Vendors\Entities\VendorService;
 
@@ -16,6 +16,8 @@ use Modules\Vendors\Entities\VendorService;
  */
 class VendorWorkspaceController extends Controller
 {
+    public function __construct(private ProductReviewFeed $reviews) {}
+
     public function profile(Request $request): JsonResponse
     {
         $vendor = $this->ownVendor($request);
@@ -190,12 +192,10 @@ class VendorWorkspaceController extends Controller
             return $vendor;
         }
 
-        $reviews = ProductReview::whereIn('product_id', $vendor->products()->select('id'))
-            ->join('users', 'users.id', '=', 'product_reviews.user_id')
-            ->join('products', 'products.id', '=', 'product_reviews.product_id')
-            ->select('product_reviews.*', 'users.name as reviewer_name', 'products.name as product_name')
-            ->orderByDesc('product_reviews.created_at')
-            ->paginate($request->get('per_page', 15));
+        $reviews = $this->reviews->forProducts(
+            $vendor->products()->select('id')->pluck('id')->all(),
+            (int) $request->get('per_page', 15)
+        );
 
         return response()->json([
             'data' => $reviews->items(),

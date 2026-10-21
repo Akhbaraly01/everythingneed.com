@@ -375,7 +375,7 @@ class HotelController extends Controller
      * Admin console: full edit of a hotel. Every field is optional, but at
      * least one change must be present (the is_active toggle rides on this).
      *
-     * PUT /api/admin/hotels/{id} (role: super_admin, administrator, hotel_admin)
+     * PUT /api/admin/hotels/{id} (permission: hotels.overview.manage)
      */
     public function adminUpdate(Request $request, string $id): JsonResponse
     {
@@ -430,7 +430,7 @@ class HotelController extends Controller
      * hidden from every scoped read). Refused while reservations exist so
      * the booking history stays intact.
      *
-     * DELETE /api/admin/hotels/{id} (role: super_admin, administrator, hotel_admin)
+     * DELETE /api/admin/hotels/{id} (permission: hotels.overview.manage)
      */
     public function adminDestroy(Request $request, string $id): JsonResponse
     {
@@ -467,7 +467,7 @@ class HotelController extends Controller
      * Admin console: create a hotel (spec 47 — live in the public listing,
      * detail page, search and navigation immediately).
      *
-     * POST /api/admin/hotels (role: super_admin, administrator, hotel_admin)
+     * POST /api/admin/hotels (permission: hotels.overview.manage)
      */
     public function adminStore(Request $request): JsonResponse
     {

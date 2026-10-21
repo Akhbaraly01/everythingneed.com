@@ -77,7 +77,7 @@ class PropertyController extends Controller
         unset($validated['area']);
 
         $property = Property::create(array_merge($validated, [
-            'user_id' => $request->user()->id,
+            'user_id' => $this->resolveOwnerId($request),
             'listing_type' => $validated['listing_type'] ?? 'sale',
         ]));
 
@@ -97,6 +97,31 @@ class PropertyController extends Controller
             'message' => 'Property listed successfully',
             'data' => $property,
         ], 201);
+    }
+
+    /**
+     * Owner (lister) of a new listing.
+     *
+     * A self-service listing (POST /api/properties) belongs to the
+     * authenticated user. A console listing (POST /api/admin/properties)
+     * is a platform listing: it is attributed to the vendor account the
+     * acting admin owns (the vendor's own user) and stays unowned when
+     * the admin has no vendor record. An admin must never become the
+     * customer-facing owner (and viewer-request handler) of a listing.
+     */
+    private function resolveOwnerId(Request $request): ?string
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            return null;
+        }
+
+        if (! $request->is('api/admin/properties')) {
+            return $user->id;
+        }
+
+        return $user->vendor?->user_id;
     }
 
     /** The current user's own listings. */

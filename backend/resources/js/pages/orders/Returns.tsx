@@ -1,12 +1,12 @@
 import { statusTone } from '@/lib/lifecycle';
 import AppLayout from '@/layouts/AppLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { api, errorMessage } from '@/lib/api';
 import { toast } from 'sonner';
 import { formatDateTime } from '@/lib/utils';
 import { formatPrice } from '@/lib/currency';
 import { RotateCcw, ArrowLeft, Plus, X, RefreshCcw } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/shared/Button';
 
 interface ReturnRequest {
@@ -26,7 +26,19 @@ interface ReturnsResponse {
     meta: { current_page: number; last_page: number; per_page: number; total: number };
 }
 
+interface CustomerOrder {
+    id: string;
+    order_number: string;
+    status: string;
+    total_amount: number;
+    created_at: string;
+}
+
+const RETURNABLE = ['delivered', 'completed'];
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export default function ReturnsPage() {
+    const { url } = usePage();
     const [returns, setReturns] = useState<ReturnRequest[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -35,6 +47,20 @@ export default function ReturnsPage() {
     const [reason, setReason] = useState('');
     const [description, setDescription] = useState('');
     const [submitting, setSubmitting] = useState(false);
+    const [orders, setOrders] = useState<CustomerOrder[]>([]);
+
+    // "Request Return" links arrive as /orders/returns?order={uuid}.
+    const prefilledOrderId = useMemo(() => {
+        const query = url.split('?')[1] ?? '';
+        return new URLSearchParams(query).get('order') ?? '';
+    }, [url]);
+
+    useEffect(() => {
+        if (prefilledOrderId) {
+            setOrderId(prefilledOrderId);
+            setShowForm(true);
+        }
+    }, [prefilledOrderId]);
 
     const fetchReturns = () => {
         setLoading(true);
@@ -48,13 +74,19 @@ export default function ReturnsPage() {
             .finally(() => setLoading(false));
     };
 
-    useEffect(() => { fetchReturns(); }, []);
+    const fetchOrders = () => {
+        api.get<{ data: CustomerOrder[] }>('/api/product-orders', { params: { per_page: 50 } })
+            .then((res) => setOrders((res.data ?? []).filter((o) => RETURNABLE.includes(o.status))))
+            .catch(() => setOrders([]));
+    };
+
+    useEffect(() => { fetchReturns(); fetchOrders(); }, []);
 
     const createReturn = async () => {
         if (!orderId.trim() || !reason.trim()) return;
         setSubmitting(true);
         try {
-            await api.post('/api/returns', { order_id: orderId, reason, description: description || undefined });
+            await api.post('/api/returns', { order_id: orderId.trim(), reason, description: description || undefined });
             setShowForm(false);
             setOrderId('');
             setReason('');
@@ -66,6 +98,8 @@ export default function ReturnsPage() {
             setSubmitting(false);
         }
     };
+
+    const orderIdValid = UUID_RE.test(orderId.trim());
 
     return (
         <AppLayout title="Returns">
@@ -94,15 +128,49 @@ export default function ReturnsPage() {
                                 <Button variant="icon" iconOnly size="sm" aria-label="Close" onClick={() => setShowForm(false)}><X className="h-5 w-5" /></Button>
                             </div>
                             <div className="mt-4 space-y-4">
+                                {orders.length > 0 && (
+                                    <div>
+                                        <label htmlFor="return-order-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Your orders</label>
+                                        <select
+                                            id="return-order-select"
+                                            value=""
+                                            onChange={(e) => e.target.value && setOrderId(e.target.value)}
+                                            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700"
+                                        >
+                                            <option value="">Select an order to return</option>
+                                            {orders.map((o) => (
+                                                <option key={o.id} value={o.id}>
+                                                    #{o.order_number} · {formatPrice(o.total_amount)} · {o.status}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Order ID *</label>
-                                    <input type="text" value={orderId} onChange={(e) => setOrderId(e.target.value)}
+                                    <label htmlFor="return-order-id" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                        Order ID *
+                                        {prefilledOrderId && orderId === prefilledOrderId && (
+                                            <span className="ml-2 text-xs font-normal text-gray-500">(prefilled)</span>
+                                        )}
+                                    </label>
+                                    <input
+                                        id="return-order-id"
+                                        type="text"
+                                        value={orderId}
+                                        onChange={(e) => setOrderId(e.target.value)}
                                         className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700"
-                                        placeholder="Paste order ID" />
+                                        placeholder="Paste order ID"
+                                    />
+                                    {orderId.trim() !== '' && !orderIdValid && (
+                                        <p className="mt-1 text-sm text-red-600">Enter the order UUID (for example 6f1c…-…-…).</p>
+                                    )}
+                                    {prefilledOrderId && orderId === prefilledOrderId && (
+                                        <p className="mt-1 text-xs text-gray-500">Taken from the order you opened this page from.</p>
+                                    )}
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Reason *</label>
-                                    <select value={reason} onChange={(e) => setReason(e.target.value)}
+                                    <label htmlFor="return-reason" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Reason *</label>
+                                    <select id="return-reason" value={reason} onChange={(e) => setReason(e.target.value)}
                                         className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700">
                                         <option value="">Select reason</option>
                                         <option value="damaged">Item arrived damaged</option>
@@ -114,15 +182,15 @@ export default function ReturnsPage() {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
-                                    <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3}
+                                    <label htmlFor="return-description" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
+                                    <textarea id="return-description" value={description} onChange={(e) => setDescription(e.target.value)} rows={3}
                                         className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700"
                                         placeholder="Additional details..." />
                                 </div>
                             </div>
                             <div className="mt-6 flex gap-3">
                                 <Button variant="ghost" size="sm" className="flex-1" onClick={() => setShowForm(false)}>Cancel</Button>
-                                <Button variant="primary" size="sm" className="flex-1" onClick={createReturn} disabled={submitting || !orderId.trim() || !reason.trim()}>
+                                <Button variant="primary" size="sm" className="flex-1" onClick={createReturn} disabled={submitting || !orderIdValid || !reason.trim()}>
                                     {submitting ? 'Submitting...' : 'Submit Request'}
                                 </Button>
                             </div>

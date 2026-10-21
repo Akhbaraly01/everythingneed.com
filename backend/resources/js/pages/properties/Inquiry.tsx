@@ -1,10 +1,13 @@
 import AppLayout from '@/layouts/AppLayout';
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { api, errorMessage } from '@/lib/api';
 import { useState } from 'react';
 import { Home, ArrowRight } from 'lucide-react';
 
 export default function PropertyInquiry({ property_id }: { property_id?: string }) {
+    const { auth } = usePage().props as { auth?: { id?: string; user?: { id?: string } } | null };
+    const isLoggedIn = Boolean(auth?.id ?? auth?.user?.id);
+
     const [form, setForm] = useState({ name: '', email: '', phone: '', message: '', viewing_date: '', viewing_time: '' });
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
@@ -12,6 +15,10 @@ export default function PropertyInquiry({ property_id }: { property_id?: string 
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!isLoggedIn) {
+            router.visit('/login');
+            return;
+        }
         setSubmitting(true); setError('');
         try {
             await api.post(`/api/properties/${id}/inquiries`, form);
@@ -22,6 +29,24 @@ export default function PropertyInquiry({ property_id }: { property_id?: string 
     return (
         <AppLayout title="Property Inquiry">
             <Head title="Property Inquiry" />
+            {!isLoggedIn ? (
+                <div className="mx-auto max-w-2xl space-y-6">
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2"><Home className="h-6 w-6" /> Inquire About Property</h1>
+                    <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
+                        <Home className="mx-auto h-12 w-12 text-gray-400" />
+                        <h2 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">Sign in to continue</h2>
+                        <p className="mt-2 text-sm text-gray-500">
+                            Sending an inquiry is tied to your account — sign in so the agent can reply to you.
+                        </p>
+                        <Link
+                            href="/login"
+                            className="mt-4 inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+                        >
+                            Sign in
+                        </Link>
+                    </div>
+                </div>
+            ) : (
             <form onSubmit={handleSubmit} className="mx-auto max-w-2xl space-y-6">
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2"><Home className="h-6 w-6" /> Inquire About Property</h1>
                 {error && <div className="rounded bg-red-50 p-3 text-sm text-red-600 dark:bg-red-900/20">{error}</div>}
@@ -41,6 +66,7 @@ export default function PropertyInquiry({ property_id }: { property_id?: string 
                     {submitting ? 'Sending...' : 'Send Inquiry'} <ArrowRight className="h-4 w-4" />
                 </button>
             </form>
+            )}
         </AppLayout>
     );
 }

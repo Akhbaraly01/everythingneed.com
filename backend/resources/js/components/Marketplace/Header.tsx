@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState, useEffect } from 'react';
 import { Link, router, usePage } from '@inertiajs/react';
 import {
     User,
@@ -7,6 +7,8 @@ import {
     Sun,
     ShoppingCart,
     ChevronDown,
+    Menu,
+    X,
 } from 'lucide-react';
 import { useTheme } from '@/components/ThemeProvider';
 import { useLanguage } from '@/lib/use-language';
@@ -35,6 +37,9 @@ const FALLBACK_HEADER: SiteNavItem[] = [
 const forDesktop = (items: SiteNavItem[]): SiteNavItem[] =>
     items.filter((item) => !item.devices || item.devices.length === 0 || item.devices.includes('desktop'));
 
+const forMobile = (items: SiteNavItem[]): SiteNavItem[] =>
+    items.filter((item) => !item.devices || item.devices.length === 0 || item.devices.includes('mobile'));
+
 export default function Header({
     cartCount = 0,
     onSearch,
@@ -59,6 +64,10 @@ export default function Header({
     const siteName = uiTexts.ui?.site_name?.value || 'everythingneed.com';
     const headerNav = forDesktop(siteNav.header?.length ? siteNav.header : FALLBACK_HEADER);
     const moreNav = forDesktop(siteNav.more ?? []);
+    // The drawer shows the mobile slice: entries published for mobile only
+    // must appear there instead of being filtered out with the desktop list.
+    const mobileHeaderNav = forMobile(siteNav.header?.length ? siteNav.header : FALLBACK_HEADER);
+    const mobileMoreNav = forMobile(siteNav.more ?? []);
 
     const isActiveUrl = (target: string): boolean => {
         const path = target.split('?')[0];
@@ -73,7 +82,7 @@ export default function Header({
             ? t(item.title, { defaultValue: item.title })
             : item.title;
 
-    const navLink = (item: SiteNavItem, className: string) => {
+    const navLink = (item: SiteNavItem, className: string, onNavigate?: () => void) => {
         const active = !/^https?:\/\//i.test(item.url) && isActiveUrl(item.url);
         const classes = `${className}${active ? ' text-primary' : ''}`;
         const targetProps =
@@ -81,20 +90,30 @@ export default function Header({
 
         if (/^https?:\/\//i.test(item.url)) {
             return (
-                <a key={item.id} href={item.url} className={classes} {...targetProps}>
+                <a key={item.id} href={item.url} className={classes} {...targetProps} onClick={onNavigate}>
                     {navLabel(item)}
                 </a>
             );
         }
 
         return (
-            <Link key={item.id} href={item.url} className={classes} {...targetProps}>
+            <Link key={item.id} href={item.url} className={classes} {...targetProps} onClick={onNavigate}>
                 {navLabel(item)}
             </Link>
         );
     };
 
     const isDark = theme === 'dark';
+    const [menuOpen, setMenuOpen] = useState(false);
+
+    useEffect(() => {
+        if (!menuOpen) return;
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setMenuOpen(false);
+        };
+        document.addEventListener('keydown', onKey);
+        return () => document.removeEventListener('keydown', onKey);
+    }, [menuOpen]);
 
     // Fixed chrome: the bar never scrolls, so a measured spacer keeps page
     // content from hiding underneath (robust across breakpoints/rows).
@@ -126,9 +145,20 @@ export default function Header({
             >
             <div className="container mx-auto px-3 py-2">
                 <div className="flex flex-wrap items-center gap-2">
+                    <button
+                        type="button"
+                        className="tap-safe -m-2.5 rounded-full p-2.5 text-foreground lg:hidden"
+                        onClick={() => setMenuOpen(true)}
+                        aria-label={t('console.openMenu', { defaultValue: 'Open menu' })}
+                        aria-expanded={menuOpen}
+                        aria-haspopup="menu"
+                    >
+                        <Menu className="h-6 w-6" />
+                    </button>
+
                     <Link
                         href="/"
-                        className="hidden shrink-0 items-center gap-1.5 sm:flex"
+                        className="hidden shrink-0 items-center gap-1.5 lg:flex"
                         aria-label={siteName}
                     >
                         <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-sm font-bold text-primary-foreground shadow-sm">
@@ -233,7 +263,77 @@ export default function Header({
                     )}
                 </nav>
             </div>
-            </header>
+
+            {menuOpen && (
+                <div className="fixed inset-0 z-modal lg:hidden" role="dialog" aria-modal="true">
+                    <div
+                        className="fixed inset-0 bg-black/45 backdrop-blur-[2px]"
+                        onClick={() => setMenuOpen(false)}
+                    />
+                    <div className="glass-3 fixed inset-y-0 right-0 z-modal w-72 border-l border-border/60">
+                        <div className="flex h-full flex-col overflow-y-auto p-4">
+                            <div className="flex items-center justify-between gap-2">
+                                <span className="max-w-[180px] truncate text-sm font-bold text-foreground">
+                                    {siteName}
+                                </span>
+                                <button
+                                    type="button"
+                                    aria-label={t('console.closeMenu', { defaultValue: 'Close menu' })}
+                                    onClick={() => setMenuOpen(false)}
+                                    className="tap-safe rounded-full p-2 text-muted-foreground hover:bg-muted"
+                                >
+                                    <X className="h-6 w-6" />
+                                </button>
+                            </div>
+
+                            <nav
+                                className="mt-4 space-y-1"
+                                aria-label={t('nav.mainNavigation', { defaultValue: 'Main navigation' })}
+                                data-testid="site-nav-mobile"
+                            >
+                                {mobileHeaderNav.map((item) =>
+                                    navLink(
+                                        item,
+                                        'tap-safe block rounded-lg px-3 py-2 text-sm font-medium text-foreground hover:bg-muted/70',
+                                        () => setMenuOpen(false),
+                                    ),
+                                )}
+                                {mobileMoreNav.map((item) =>
+                                    navLink(
+                                        item,
+                                        'tap-safe block rounded-lg px-3 py-2 text-sm font-medium text-foreground hover:bg-muted/70',
+                                        () => setMenuOpen(false),
+                                    ),
+                                )}
+                            </nav>
+
+                            <div className="mt-4 space-y-1 border-t border-border/60 pt-3">
+                                {user ? (
+                                    <>
+                                        <Link href="/dashboard" onClick={() => setMenuOpen(false)} className="tap-safe block rounded-lg px-3 py-2 text-sm font-medium text-foreground hover:bg-muted/70">
+                                            {t('nav.dashboard', { defaultValue: 'Dashboard' })}
+                                        </Link>
+                                        <Link href="/account" onClick={() => setMenuOpen(false)} className="tap-safe block rounded-lg px-3 py-2 text-sm font-medium text-foreground hover:bg-muted/70">
+                                            {t('nav.account', { defaultValue: 'Account' })}
+                                        </Link>
+                                        <Link href="/orders" onClick={() => setMenuOpen(false)} className="tap-safe block rounded-lg px-3 py-2 text-sm font-medium text-foreground hover:bg-muted/70">
+                                            {t('nav.orders', { defaultValue: 'Orders' })}
+                                        </Link>
+                                        <Link href="/tickets" onClick={() => setMenuOpen(false)} className="tap-safe block rounded-lg px-3 py-2 text-sm font-medium text-foreground hover:bg-muted/70">
+                                            {t('nav.support', { defaultValue: 'Support' })}
+                                        </Link>
+                                    </>
+                                ) : (
+                                    <Link href="/login" onClick={() => setMenuOpen(false)} className="tap-safe block rounded-lg px-3 py-2 text-sm font-medium text-foreground hover:bg-muted/70">
+                                        {t('nav.signIn', { defaultValue: 'Sign in' })}
+                                    </Link>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </header>
         </>
     );
 }

@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { Link } from '@inertiajs/react';
 import { api, errorMessage } from '@/lib/api';
 import { useLanguage } from '@/lib/use-language';
+import { pageSeed, rotate } from '@/lib/session-rotation';
 import { toast } from 'sonner';
 import ProductGrid from '@/components/home/ProductGrid';
 import type { MarketplaceProduct } from '@/components/Marketplace/ProductCard';
@@ -79,6 +80,11 @@ export default function InfiniteProductFeed({
         [items, tab],
     );
 
+    // The shelf order changes on every page load (the shopper never gets
+    // the same arrangement twice in a row) but stays stable while the
+    // page is open.
+    const seed = useMemo(() => pageSeed(), []);
+
     const batch = (index: number): MarketplaceProduct[] => {
         if (visible.length === 0) return [];
         const out: MarketplaceProduct[] = [];
@@ -91,23 +97,30 @@ export default function InfiniteProductFeed({
 
     const blocks = useMemo(() => {
         const nodes: ReactNode[] = [];
+        const batches = sections.length + 1;
+
+        // Every batch gets its own rotation, so the products change places
+        // between the batches as well as between visits.
+        const rotated = rotate(visible, seed, batches);
+
         nodes.push(
-            <ProductGrid key="batch-0" keyPrefix="batch-0" products={batch(0)} testId="home-feed-batch-0" />,
+            <ProductGrid key="batch-0" keyPrefix="batch-0" products={rotated.slice(0, batchSize)} testId="home-feed-batch-0" />,
         );
         sections.forEach((section, i) => {
             nodes.push(<div key={`section-${i}`}>{section}</div>);
+            const offset = (i + 1) * batchSize;
             nodes.push(
                 <ProductGrid
                     key={`batch-${i + 1}`}
                     keyPrefix={`batch-${i + 1}`}
-                    products={batch(i + 1)}
+                    products={rotated.slice(offset, offset + batchSize)}
                     testId={`home-feed-batch-${i + 1}`}
                 />,
             );
         });
         return nodes;
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [visible, sections, batchSize]);
+    }, [visible, sections, batchSize, seed]);
 
     // Product pages only extend the products/all pools; static tabs (learning,
     // healthcare) have no further pages to fetch.

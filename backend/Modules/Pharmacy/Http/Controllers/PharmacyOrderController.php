@@ -9,6 +9,7 @@ use Illuminate\Support\Str;
 use Modules\Orders\Entities\MedicineOrder;
 use Modules\Orders\Entities\MedicineOrderItem;
 use Modules\Pharmacy\Entities\Medicine;
+use Modules\Pharmacy\Entities\Prescription;
 
 /**
  * Pharmacy order endpoints (previously route closures).
@@ -20,18 +21,32 @@ class PharmacyOrderController extends Controller
      */
     public function storePrescription(Request $request): JsonResponse
     {
-        $request->validate([
+        $validated = $request->validate([
             'prescription' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'notes' => 'nullable|string|max:1000',
         ]);
 
         $path = $request->file('prescription')->store('prescriptions', 'public');
 
+        // The upload is a real prescription row: the Rx gate (prescription
+        // only medicines) and the admin prescriptions console both read the
+        // `prescriptions` table, so the file alone never unlocked anything.
+        $prescription = Prescription::create([
+            'code' => 'RX-'.strtoupper(Str::random(8)),
+            'patient_id' => $request->user()->id,
+            'items' => [],
+            'status' => Prescription::STATUS_ACTIVE,
+            'notes' => collect([$validated['notes'] ?? null, 'Uploaded prescription: '.$path])
+                ->filter()
+                ->implode(' - '),
+        ]);
+
         $order = MedicineOrder::create([
             'user_id' => $request->user()->id,
             'order_number' => 'MED-' . strtoupper(Str::random(8)),
             'delivery_address' => $request->input('delivery_address', 'Address on file'),
             'prescription_url' => $path,
+            'prescription_id' => $prescription->id,
             'total_amount' => 0,
             'status' => 'pending',
         ]);

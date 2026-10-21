@@ -9,16 +9,15 @@ import type { MedicineOrder } from '@/types';
 import { formatDateTime } from '@/lib/utils';
 import { formatPrice } from '@/lib/currency';
 import { Package, Eye, XCircle } from 'lucide-react';
+import Pagination from '@/components/shared/Pagination';
 
 interface OrdersProps {
     orders: {
         data: MedicineOrder[];
-        meta: {
-            current_page: number;
-            last_page: number;
-            per_page: number;
-            total: number;
-        };
+        current_page: number;
+        last_page: number;
+        per_page: number;
+        total: number;
     };
 }
 
@@ -104,6 +103,12 @@ export default function Orders({ orders }: OrdersProps) {
                         ))}
                     </div>
                 )}
+
+                <Pagination
+                    currentPage={orders?.current_page ?? 1}
+                    lastPage={orders?.last_page ?? 1}
+                    hrefFor={(page) => `/orders?page=${page}`}
+                />
             </div>
         </AppLayout>
     );

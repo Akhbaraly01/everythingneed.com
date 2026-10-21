@@ -5,11 +5,29 @@ namespace Modules\Orders\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Modules\Orders\Entities\ReturnRequest;
 use Modules\Orders\Entities\Order;
+use Modules\Orders\Entities\OrderItem;
 
 class ReturnRequestController extends Controller
 {
+    /**
+     * Orders are referenced by uuid (the id) or by the human order number
+     * (EN-XXXX) the customer reads on the order page. A number is resolved
+     * inside the caller's own orders, so a stranger's number never resolves.
+     */
+    private function resolveOrder(Request $request, string $reference): ?Order
+    {
+        if (Str::isUuid($reference)) {
+            return Order::find($reference);
+        }
+
+        return Order::where('order_number', $reference)
+            ->where('user_id', $request->user()->id)
+            ->first();
+    }
+
     public function index(Request $request): JsonResponse
     {
         $userId = $request->user()->id;
@@ -31,17 +49,37 @@ class ReturnRequestController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $request->validate([
-            'order_id' => 'required|uuid|exists:orders,id',
+        $validated = $request->validate([
+            'order_id' => 'required|string|max:64',
             'order_item_id' => 'nullable|uuid',
             'reason' => 'required|string|max:500',
             'description' => 'nullable|string|max:2000',
         ]);
 
-        $order = Order::findOrFail($request->order_id);
+        $order = $this->resolveOrder($request, $validated['order_id']);
+
+        if (!$order) {
+            return response()->json([
+                'message' => 'Order not found',
+                'errors' => ['order_id' => ['The selected order does not exist.']],
+            ], 422);
+        }
 
         if ($order->user_id !== $request->user()->id) {
             return response()->json(['message' => 'Not your order'], 403);
+        }
+
+        // Partial returns name one line of the order.
+        $orderItemId = $validated['order_item_id'] ?? null;
+
+        if ($orderItemId !== null) {
+            $belongsToOrder = OrderItem::where('id', $orderItemId)
+                ->where('order_id', $order->id)
+                ->exists();
+
+            if (!$belongsToOrder) {
+                return response()->json(['message' => 'Order item does not belong to this order'], 422);
+            }
         }
 
         // Duplicate check first: an order already in refund_requested must
@@ -61,11 +99,11 @@ class ReturnRequestController extends Controller
 
         $return = ReturnRequest::create([
             'order_id' => $order->id,
-            'order_item_id' => $request->order_item_id,
+            'order_item_id' => $orderItemId,
             'user_id' => $request->user()->id,
             'vendor_id' => $order->items->first()?->vendor_id,
-            'reason' => $request->reason,
-            'description' => $request->description,
+            'reason' => $validated['reason'],
+            'description' => $validated['description'] ?? null,
             'status' => 'pending',
             'previous_status' => $order->status,
         ]);

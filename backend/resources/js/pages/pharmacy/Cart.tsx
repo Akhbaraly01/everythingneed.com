@@ -3,7 +3,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import {  api, errorMessage } from '@/lib/api';
 import { toast } from 'sonner';
 import { formatPrice } from '@/lib/currency';
-import { Trash2, Plus, Minus, ArrowRight, ShoppingCart } from 'lucide-react';
+import { Trash2, Plus, Minus, ArrowRight, ShoppingCart, MapPin } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Image from '@/components/shared/Image';
 
@@ -16,9 +16,40 @@ interface CartItem {
     requires_prescription?: boolean;
 }
 
+interface SavedAddress {
+    id: string;
+    line1: string;
+    line2?: string | null;
+    city: string;
+    region?: string | null;
+    postal_code?: string | null;
+    country: string;
+    is_default?: boolean;
+}
+
+const MANUAL = 'manual';
+
+function formatAddress(address: SavedAddress): string {
+    return [
+        address.line1,
+        address.line2,
+        address.city,
+        address.region,
+        address.postal_code,
+        address.country,
+    ]
+        .filter((part): part is string => Boolean(part && String(part).trim() !== ''))
+        .join(', ');
+}
+
 export default function PharmacyCart() {
     const [items, setItems] = useState<CartItem[]>([]);
     const [blockedByPrescription, setBlockedByPrescription] = useState(false);
+    const [addresses, setAddresses] = useState<SavedAddress[]>([]);
+    const [addressChoice, setAddressChoice] = useState<string>(MANUAL);
+    const [manualAddress, setManualAddress] = useState('');
+    const [addressError, setAddressError] = useState('');
+    const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
         try {
@@ -28,6 +59,17 @@ export default function PharmacyCart() {
             toast.warning('Your saved cart could not be read and has been cleared.');
             try { localStorage.removeItem('pharmacy_cart'); } catch { /* storage unavailable */ }
         }
+    }, []);
+
+    useEffect(() => {
+        api.get<{ data: SavedAddress[] }>('/api/addresses')
+            .then((res) => {
+                const rows = res.data ?? [];
+                setAddresses(rows);
+                const preferred = rows.find((a) => a.is_default) ?? rows[0];
+                if (preferred) setAddressChoice(preferred.id);
+            })
+            .catch(() => setAddresses([]));
     }, []);
 
     const updateQty = (medicineId: string, qty: number) => {
@@ -47,12 +89,29 @@ export default function PharmacyCart() {
     const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
     const hasRx = items.some((i) => i.requires_prescription);
 
+    const resolveAddress = (): string => {
+        if (addressChoice === MANUAL) return manualAddress.trim();
+        const chosen = addresses.find((a) => a.id === addressChoice);
+        return chosen ? formatAddress(chosen) : '';
+    };
+
     const handleCheckout = async () => {
         if (items.length === 0) return;
+        if (submitting) return;
+
+        const deliveryAddress = resolveAddress();
+        if (!deliveryAddress) {
+            setAddressError('Choose a saved address or type where the medicines should be delivered.');
+            return;
+        }
+
+        setAddressError('');
         setBlockedByPrescription(false);
+        setSubmitting(true);
         try {
             const res = await api.post<{ data: { id: string } }>('/api/pharmacy/orders', {
                 items: items.map((i) => ({ medicine_id: i.medicine_id, quantity: i.quantity })),
+                delivery_address: deliveryAddress,
             });
             localStorage.removeItem('pharmacy_cart');
             router.visit(`/pharmacy/orders/${res.data.id}/confirmation`);
@@ -62,6 +121,8 @@ export default function PharmacyCart() {
             // prescription — surface the path to fix it instead of a bare toast.
             if (/prescription/i.test(message)) setBlockedByPrescription(true);
             toast.error(message);
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -133,12 +194,86 @@ export default function PharmacyCart() {
                             </div>
                         )}
 
+                        {/* Delivery address */}
+                        <div className="rounded-lg bg-white p-4 shadow dark:bg-gray-800">
+                            <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
+                                <MapPin className="h-4 w-4" /> Delivery address
+                            </h2>
+
+                            {addresses.length > 0 && (
+                                <div className="mt-3 space-y-2">
+                                    {addresses.map((address) => (
+                                        <label
+                                            key={address.id}
+                                            className={`flex cursor-pointer items-start gap-2 rounded-lg border p-3 text-sm ${
+                                                addressChoice === address.id
+                                                    ? 'border-indigo-500 bg-indigo-50 dark:border-indigo-400 dark:bg-indigo-900/20'
+                                                    : 'border-gray-200 dark:border-gray-700'
+                                            }`}
+                                        >
+                                            <input
+                                                type="radio"
+                                                name="delivery_address"
+                                                value={address.id}
+                                                checked={addressChoice === address.id}
+                                                onChange={() => setAddressChoice(address.id)}
+                                                className="mt-0.5 text-indigo-600"
+                                            />
+                                            <span className="text-gray-700 dark:text-gray-300">
+                                                {formatAddress(address)}
+                                                {address.is_default && (
+                                                    <span className="ml-2 rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-800">
+                                                        Default
+                                                    </span>
+                                                )}
+                                            </span>
+                                        </label>
+                                    ))}
+                                </div>
+                            )}
+
+                            <label
+                                className={`mt-3 flex cursor-pointer items-start gap-2 rounded-lg border p-3 text-sm ${
+                                    addressChoice === MANUAL
+                                        ? 'border-indigo-500 bg-indigo-50 dark:border-indigo-400 dark:bg-indigo-900/20'
+                                        : 'border-gray-200 dark:border-gray-700'
+                                }`}
+                            >
+                                <input
+                                    type="radio"
+                                    name="delivery_address"
+                                    value={MANUAL}
+                                    checked={addressChoice === MANUAL}
+                                    onChange={() => setAddressChoice(MANUAL)}
+                                    className="mt-0.5 text-indigo-600"
+                                />
+                                <span className="w-full text-gray-700 dark:text-gray-300">
+                                    <span className="block font-medium">Deliver to another address</span>
+                                    <input
+                                        type="text"
+                                        value={manualAddress}
+                                        onChange={(e) => setManualAddress(e.target.value)}
+                                        placeholder="Street, city, region, postal code, country"
+                                        className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700"
+                                    />
+                                </span>
+                            </label>
+
+                            {addressError && (
+                                <p className="mt-2 text-xs text-red-600 dark:text-red-400">{addressError}</p>
+                            )}
+                        </div>
+
                         <div className="rounded-lg bg-white p-4 shadow dark:bg-gray-800">
                             <div className="flex justify-between text-lg font-bold">
                                 <span>Total</span><span>{formatPrice(subtotal)}</span>
                             </div>
-                            <button onClick={handleCheckout} className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-6 py-3 text-lg font-semibold text-white hover:bg-indigo-500">
-                                Place Order <ArrowRight className="h-5 w-5" />
+                            <button
+                                onClick={() => void handleCheckout()}
+                                disabled={submitting}
+                                className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-6 py-3 text-lg font-semibold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                {submitting ? 'Placing order...' : 'Place Order'} <ArrowRight className="h-5 w-5" />
                             </button>
                         </div>
                     </div>

@@ -95,7 +95,15 @@ class DoctorController extends Controller
 
         $user = $request->user();
         $isOwnDoctor = $doctor->user_id && $doctor->user_id === $user->id;
-        if (!$isOwnDoctor && !$user->hasRole('super_admin') && !$user->hasRole('administrator') && !$user->hasRole('healthcare_admin')) {
+
+        // The granular permission is the source of truth; the legacy roles
+        // stay so a seeded console keeps working without a matrix change.
+        $canManage = $user->hasPermission('healthcare.doctors.manage')
+            || $user->hasRole('super_admin')
+            || $user->hasRole('administrator')
+            || $user->hasRole('healthcare_admin');
+
+        if (!$isOwnDoctor && !$canManage) {
             return response()->json(['message' => 'Only this doctor or an administrator can set availability'], 403);
         }
 

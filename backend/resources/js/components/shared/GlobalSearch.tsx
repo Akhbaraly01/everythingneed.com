@@ -13,24 +13,63 @@ import {
     UtensilsCrossed,
     Wrench,
     Search,
+    LayoutGrid,
+    ClipboardList,
+    Stethoscope,
+    Store,
+    Home,
+    Sprout,
+    Hammer,
 } from 'lucide-react';
 
-interface SearchResults {
-    products?: Array<{ id: string; name: string; price: string | number }>;
-    services?: Array<{ id: string; title?: string; name?: string; budget?: string | number }>;
-    courses?: Array<{ id: string; title: string; price: string | number }>;
-    restaurants?: Array<{ id: string; name: string; cuisine_type: string }>;
-    hotels?: Array<{ id: string; name: string; city?: string }>;
-    jobs?: Array<{ id: string; title: string; company: string }>;
+interface SearchRow {
+    id?: string | number;
+    name?: string;
+    title?: string;
+    price?: string | number;
+    budget?: string | number;
+    /** Canonical destination computed by the server (SearchService::discover). */
+    url?: string;
+    type?: string;
 }
 
+interface SearchResults {
+    products?: SearchRow[];
+    categories?: SearchRow[];
+    services?: SearchRow[];
+    needs?: SearchRow[];
+    doctors?: SearchRow[];
+    experts?: SearchRow[];
+    vendors?: SearchRow[];
+    courses?: SearchRow[];
+    jobs?: SearchRow[];
+    hotels?: SearchRow[];
+    restaurants?: SearchRow[];
+    properties?: SearchRow[];
+    agriculture?: SearchRow[];
+    building?: SearchRow[];
+}
+
+/**
+ * Suggestion groups. The destination always comes from the server row
+ * (`url`); the fallback below is only used for rows the server did not
+ * stamp, so the client never invents a route.
+ */
 const GROUPS = [
-    { key: 'products', label: 'Products', icon: ShoppingBag, href: (id: string) => `/products/${id}` },
-    { key: 'services', label: 'Services', icon: Wrench, href: (id: string) => `/needs/requests/${id}` },
-    { key: 'courses', label: 'Courses', icon: GraduationCap, href: (id: string) => `/learn/${id}` },
-    { key: 'hotels', label: 'Hotels', icon: BedDouble, href: (id: string) => `/hotels/${id}` },
-    { key: 'jobs', label: 'Jobs', icon: Briefcase, href: (id: string) => `/jobs/${id}` },
-    { key: 'restaurants', label: 'Food', icon: UtensilsCrossed, href: (id: string) => `/food/${id}` },
+    { key: 'products', label: 'Products', icon: ShoppingBag, fallback: (id: string) => `/products/${id}` },
+    { key: 'categories', label: 'Categories', icon: LayoutGrid, fallback: (id: string) => `/categories/${id}` },
+    { key: 'services', label: 'Services', icon: Wrench, fallback: (_id: string) => '/needs' },
+    { key: 'needs', label: 'Needs', icon: ClipboardList, fallback: (id: string) => `/needs/requests/${id}` },
+    { key: 'doctors', label: 'Doctors', icon: Stethoscope, fallback: (id: string) => `/healthcare/doctors/${id}` },
+    { key: 'experts', label: 'Experts', icon: GraduationCap, fallback: (id: string) => `/experts/${id}` },
+    { key: 'vendors', label: 'Vendors', icon: Store, fallback: (id: string) => `/stores/${id}` },
+    { key: 'courses', label: 'Courses', icon: GraduationCap, fallback: (id: string) => `/learn/${id}` },
+    { key: 'jobs', label: 'Jobs', icon: Briefcase, fallback: (id: string) => `/jobs/${id}` },
+    { key: 'hotels', label: 'Hotels', icon: BedDouble, fallback: (id: string) => `/hotels/${id}` },
+    { key: 'restaurants', label: 'Food', icon: UtensilsCrossed, fallback: (id: string) => `/food/${id}` },
+    { key: 'properties', label: 'Properties', icon: Home, fallback: (id: string) => `/real-estate/${id}` },
+    { key: 'agriculture', label: 'Agriculture', icon: Sprout, fallback: (_id: string) => '/agriculture/products' },
+    { key: 'building', label: 'Building services', icon: Hammer, fallback: (_id: string) => '/building-services' },
 ] as const;
 
 interface Props {
@@ -210,8 +249,8 @@ export default function GlobalSearch({
                                     <p className="flex items-center gap-1.5 px-3 pt-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
                                         <Icon className="h-3 w-3" /> {t(`search.${key}`, { defaultValue: label })}
                                     </p>
-                                    {group.map((row: Record<string, unknown>) => {
-                                        const id = String(row.id);
+                                    {group.map((row: SearchRow, index: number) => {
+                                        const id = String(row.id ?? `${key}-${index}`);
                                         const title = String(
                                             row.name ?? row.title ?? t('search.untitled', { defaultValue: 'Untitled' }),
                                         );
@@ -219,7 +258,7 @@ export default function GlobalSearch({
                                         return (
                                             <Link
                                                 key={id}
-                                                href={hrefFor(key, id)}
+                                                href={hrefFor(key, row)}
                                                 role="option"
                                                 aria-selected={false}
                                                 onClick={() => setOpen(false)}
@@ -244,7 +283,11 @@ export default function GlobalSearch({
     );
 }
 
-function hrefFor(group: string, _id: string): string {
+function hrefFor(group: string, row: SearchRow): string {
+    if (typeof row.url === 'string' && row.url !== '') {
+        return row.url;
+    }
+
     const found = GROUPS.find((g) => g.key === group);
-    return found ? found.href(_id) : '/';
+    return found ? found.fallback(String(row.id ?? '')) : '/';
 }

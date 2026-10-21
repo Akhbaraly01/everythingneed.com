@@ -7,12 +7,14 @@ import {ShoppingCart, Trash2, Plus, Minus, ArrowRight, Tag, AlertTriangle, Refre
 import { useEffect, useState } from 'react';
 import Image from '@/components/shared/Image';
 import { Button, buttonClasses } from '@/components/shared/Button';
+import { useConfirm } from '@/lib/confirm';
 
 interface CartItem {
     id: string;
     product_id: string;
     quantity: number;
     unit_price: number;
+    product_variant_id?: string | null;
     variant_name?: string | null;
     product?: { id: string; name: string; slug?: string; image_url?: string; price: number };
 }
@@ -32,42 +34,84 @@ interface CartData {
 }
 
 export default function CartIndex() {
+    const ask = useConfirm();
     const [cart, setCart] = useState<CartData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [couponCode, setCouponCode] = useState('');
     const [couponMsg, setCouponMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+    const [pendingItemId, setPendingItemId] = useState<string | null>(null);
+    const [clearing, setClearing] = useState(false);
 
-    const fetchCart = () => {
-        setLoading(true);
-        setError(null);
-        api.get<{ data: CartData }>('/api/cart')
-            .then((res) => setCart(res.data))
-            .catch((e) => {
-                setError(errorMessage(e, 'Failed to load your cart'));
-                setCart(null);
-            })
-            .finally(() => setLoading(false));
-    };
-
-    useEffect(() => { fetchCart(); }, []);
-
-    const updateQuantity = async (itemId: string, newQty: number) => {
-        if (newQty < 1) return;
+    const fetchCart = async (silent = false) => {
+        if (!silent) {
+            setLoading(true);
+            setError(null);
+        }
         try {
-            await api.put(`/api/cart/items/${itemId}`, { quantity: newQty });
-            fetchCart();
+            const res = await api.get<{ data: CartData }>('/api/cart');
+            setCart(res.data);
         } catch (e) {
-            toast.error(errorMessage(e, 'Could not update quantity'));
+            setError(errorMessage(e, 'Failed to load your cart'));
+            setCart(null);
+        } finally {
+            if (!silent) setLoading(false);
         }
     };
 
-    const removeItem = async (itemId: string) => {
+    useEffect(() => { void fetchCart(); }, []);
+
+    const updateQuantity = async (itemId: string, newQty: number) => {
+        if (newQty < 1) return;
+        if (pendingItemId) return;
+        setPendingItemId(itemId);
+        try {
+            await api.put(`/api/cart/items/${itemId}`, { quantity: newQty });
+            await fetchCart(true);
+        } catch (e) {
+            toast.error(errorMessage(e, 'Could not update quantity'));
+        } finally {
+            setPendingItemId(null);
+        }
+    };
+
+    const removeItem = async (itemId: string, name: string) => {
+        const confirmed = await ask({
+            title: 'Remove item?',
+            description: `"${name}" will be removed from your cart.`,
+            confirmLabel: 'Remove',
+            danger: true,
+        });
+        if (!confirmed) return;
+        setPendingItemId(itemId);
         try {
             await api.del(`/api/cart/items/${itemId}`);
-            fetchCart();
+            await fetchCart(true);
+            toast.success('Item removed from your cart.');
         } catch (e) {
             toast.error(errorMessage(e, 'Could not remove item'));
+        } finally {
+            setPendingItemId(null);
+        }
+    };
+
+    const clearCart = async () => {
+        const confirmed = await ask({
+            title: 'Clear your cart?',
+            description: 'Every item will be removed from your cart. This cannot be undone.',
+            confirmLabel: 'Clear cart',
+            danger: true,
+        });
+        if (!confirmed) return;
+        setClearing(true);
+        try {
+            await api.del('/api/cart');
+            await fetchCart(true);
+            toast.success('Cart cleared.');
+        } catch (e) {
+            toast.error(errorMessage(e, 'Could not clear your cart'));
+        } finally {
+            setClearing(false);
         }
     };
 
@@ -77,7 +121,7 @@ export default function CartIndex() {
         try {
             const res = await api.post<{ message: string }>('/api/cart/coupon', { code: couponCode.trim() });
             setCouponMsg({ type: 'success', text: res.message ?? 'Coupon applied' });
-            fetchCart();
+            await fetchCart(true);
         } catch (e) {
             setCouponMsg({ type: 'error', text: errorMessage(e, 'Invalid coupon') });
         }
@@ -98,7 +142,7 @@ export default function CartIndex() {
                     <div className="rounded-lg bg-white p-12 text-center shadow dark:bg-gray-800">
                         <p className="text-red-600 font-medium">{error}</p>
                         <p className="mt-2 text-sm text-gray-500">Your cart has not been changed — we just couldn't load it.</p>
-                        <Button variant="outline" size="sm" onClick={fetchCart} className="mt-4">
+                        <Button variant="outline" size="sm" onClick={() => void fetchCart()} className="mt-4">
                             <RefreshCcw className="h-4 w-4" /> Retry
                         </Button>
                     </div>
@@ -118,79 +162,94 @@ export default function CartIndex() {
                     <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
                         {/* Cart items */}
                         <div className="lg:col-span-2 space-y-4">
-                            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                                Cart ({itemCount} item{itemCount !== 1 ? 's' : ''})
-                            </h2>
-                            {cart!.cart.items.map((item) => (
-                                <div key={item.id} className="flex items-center gap-4 rounded-lg bg-white p-4 shadow dark:bg-gray-800">
-                                    <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-gray-100">
-                                        {item.product?.image_url ? (
-                                            <Image src={item.product.image_url} alt={item.product.name} className="h-full w-full object-cover" />
-                                        ) : (
-                                            <div className="flex h-full items-center justify-center text-gray-400">
-                                                <ShoppingCart className="h-6 w-6" />
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <Link
-                                            href={`/products/${item.product?.slug ?? item.product_id}`}
-                                            className="font-medium text-gray-900 hover:text-indigo-600 dark:text-white"
-                                        >
-                                            {item.product?.name ?? 'Product'}
-                                        </Link>
-                                        {item.variant_name && (
-                                            <p className="text-sm text-indigo-600 dark:text-indigo-400">{item.variant_name}</p>
-                                        )}
-                                        <p className="text-sm text-gray-500">{formatPrice(item.unit_price)} each</p>
-                                        {(() => {
-                                            const available = cart!.availability?.[item.product_id];
-                                            if (available === undefined || available >= item.quantity) {
-                                                return null;
-                                            }
-                                            return (
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                                    Cart ({itemCount} item{itemCount !== 1 ? 's' : ''})
+                                </h2>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => void clearCart()}
+                                    disabled={clearing || pendingItemId !== null}
+                                    aria-label="Clear cart"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                    {clearing ? 'Clearing...' : 'Clear cart'}
+                                </Button>
+                            </div>
+                            {cart!.cart.items.map((item) => {
+                                const busy = pendingItemId === item.id;
+                                const available = cart!.availability?.[item.product_id];
+                                const lowStock = available !== undefined && available < item.quantity;
+
+                                return (
+                                    <div key={item.id} className="flex items-center gap-4 rounded-lg bg-white p-4 shadow dark:bg-gray-800">
+                                        <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-gray-100">
+                                            {item.product?.image_url ? (
+                                                <Image src={item.product.image_url} alt={item.product.name} className="h-full w-full object-cover" />
+                                            ) : (
+                                                <div className="flex h-full items-center justify-center text-gray-400">
+                                                    <ShoppingCart className="h-6 w-6" />
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <Link
+                                                href={`/products/${item.product?.slug ?? item.product_id}`}
+                                                className="font-medium text-gray-900 hover:text-indigo-600 dark:text-white"
+                                            >
+                                                {item.product?.name ?? 'Product'}
+                                            </Link>
+                                            {item.variant_name && (
+                                                <p className="text-sm text-indigo-600 dark:text-indigo-400">{item.variant_name}</p>
+                                            )}
+                                            <p className="text-sm text-gray-500">{formatPrice(item.unit_price)} each</p>
+                                            {lowStock && (
                                                 <p className="mt-1 flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
                                                     <AlertTriangle className="h-3 w-3" />
                                                     Only {available} left - other carts are holding some stock
                                                 </p>
-                                            );
-                                        })()}
-                                    </div>
-                                    <div className="flex items-center gap-2">
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Button
+                                                variant="icon"
+                                                iconOnly
+                                                size="sm"
+                                                aria-label="Decrease quantity"
+                                                disabled={busy}
+                                                onClick={() => void updateQuantity(item.id, item.quantity - 1)}
+                                            >
+                                                <Minus className="h-4 w-4" />
+                                            </Button>
+                                            <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
+                                            <Button
+                                                variant="icon"
+                                                iconOnly
+                                                size="sm"
+                                                aria-label="Increase quantity"
+                                                disabled={busy}
+                                                onClick={() => void updateQuantity(item.id, item.quantity + 1)}
+                                            >
+                                                <Plus className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                        <p className="w-24 text-right font-semibold text-gray-900 dark:text-white">
+                                            {formatPrice(item.unit_price * item.quantity)}
+                                        </p>
                                         <Button
-                                            variant="icon"
+                                            variant="danger"
                                             iconOnly
                                             size="sm"
-                                            aria-label="Decrease quantity"
-                                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                            aria-label="Remove item"
+                                            disabled={busy}
+                                            onClick={() => void removeItem(item.id, item.product?.name ?? 'Product')}
                                         >
-                                            <Minus className="h-4 w-4" />
-                                        </Button>
-                                        <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
-                                        <Button
-                                            variant="icon"
-                                            iconOnly
-                                            size="sm"
-                                            aria-label="Increase quantity"
-                                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                        >
-                                            <Plus className="h-4 w-4" />
+                                            <Trash2 className="h-4 w-4" />
                                         </Button>
                                     </div>
-                                    <p className="w-24 text-right font-semibold text-gray-900 dark:text-white">
-                                        {formatPrice(item.unit_price * item.quantity)}
-                                    </p>
-                                    <Button
-                                        variant="danger"
-                                        iconOnly
-                                        size="sm"
-                                        aria-label="Remove item"
-                                        onClick={() => removeItem(item.id)}
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
 
                         {/* Order summary */}
@@ -219,7 +278,7 @@ export default function CartIndex() {
                                                 placeholder="Coupon code"
                                                 className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700"
                                             />
-                                            <Button variant="primary" size="sm" onClick={applyCoupon}>
+                                            <Button variant="primary" size="sm" onClick={() => void applyCoupon()}>
                                                 Apply
                                             </Button>
                                         </div>

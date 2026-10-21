@@ -34,6 +34,12 @@ class WorkspaceResolver implements WorkspaceResolverInterface
             }
         }
 
+        // A registered vendor (an account that owns a `vendors` row) belongs
+        // to the vendor console even without a console role.
+        if ($this->ownsVendor($user)) {
+            return (string) config('workspace.vendor_landing', '/vendor');
+        }
+
         return (string) config('workspace.default_landing', '/dashboard');
     }
 
@@ -50,7 +56,12 @@ class WorkspaceResolver implements WorkspaceResolverInterface
         ) {
             $available[] = 'admin';
         }
-        if (array_intersect((array) config('workspace.vendor_console_roles', []), $roles)) {
+        // Vendor console: the vendor_admin role, or ownership of a vendors
+        // row (self-scoped - a registered vendor holds no console role).
+        if (
+            array_intersect((array) config('workspace.vendor_console_roles', []), $roles) ||
+            $this->ownsVendor($user)
+        ) {
             $available[] = 'vendor';
         }
         if (array_intersect((array) config('workspace.provider_console_roles', []), $roles)) {
@@ -103,6 +114,25 @@ class WorkspaceResolver implements WorkspaceResolverInterface
         }
 
         return false;
+    }
+
+    /**
+     * True when the account owns a vendor record (self-scoped ownership,
+     * not a role). A registered vendor holds no console role, so this is
+     * what puts them in the vendor console.
+     */
+    private function ownsVendor(User $user): bool
+    {
+        if (! config('workspace.vendor_console_owners', true)) {
+            return false;
+        }
+
+        try {
+            return $user->vendor()->exists();
+        } catch (\Throwable) {
+            // A missing vendors table must never break the workspace shell.
+            return false;
+        }
     }
 
     /**

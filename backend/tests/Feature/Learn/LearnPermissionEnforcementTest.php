@@ -99,14 +99,31 @@ class LearnPermissionEnforcementTest extends TestCase
             ->assertStatus(403);
     }
 
-    public function test_course_creation_denies_a_role_that_holds_the_permission_but_not_the_route_role(): void
+    public function test_course_creation_allows_a_role_that_holds_the_permission(): void
     {
         $this->seedMatrix();
-        // content_manager holds every learn.* in the MATRIX but is not on the
-        // create route's role: list - the role layer must still refuse.
+        // content_manager holds every learn.* in the MATRIX: the permission
+        // is the authority, so the role list may not shadow it.
         $manager = $this->userWithRole('content_manager');
 
         $this->actingAs($manager, 'sanctum')
+            ->postJson('/api/admin/courses', [
+                'title' => 'Content managed course',
+                'description' => 'Created by the content manager.',
+                'category' => 'programming',
+                'course_type' => 'theory',
+                'instructor_name' => 'Ada Lovelace',
+                'price' => 0,
+            ])
+            ->assertStatus(201);
+    }
+
+    public function test_course_creation_denies_a_role_without_the_permission(): void
+    {
+        $this->seedMatrix();
+        $plain = $this->userWithRole('user');
+
+        $this->actingAs($plain, 'sanctum')
             ->postJson('/api/admin/courses', ['title' => 'Should not create'])
             ->assertStatus(403);
     }

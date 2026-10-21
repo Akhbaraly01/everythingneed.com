@@ -21,8 +21,11 @@ Route::prefix('api')->group(function () {
     Route::get('/properties', [PropertyController::class, 'index']);
     Route::get('/properties/{id}', [PropertyController::class, 'show']);
 
-    // Admin console: create a listing (spec 47). Same roles as the
-    // /admin/real-estate page gate (routes/web.php).
+    // Admin console: create a listing (spec 47). Same authority as the
+    // sibling console writes (PUT/DELETE /api/admin/properties/{id} in
+    // Modules/Admin/Routes/api.php): real_estate.overview.manage. The
+    // seeded roles (super_admin, administrator, building_admin,
+    // real_estate_admin) hold real_estate.* and keep working.
     Route::post('/admin/properties', [PropertyController::class, 'store'])
-        ->middleware('role:super_admin,administrator,building_admin,real_estate_admin');
+        ->middleware('permission:real_estate.overview.manage');
 });

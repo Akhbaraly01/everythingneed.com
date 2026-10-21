@@ -1,18 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from '@inertiajs/react';
 import { api } from '@/lib/api';
-import {
-    ChevronLeft,
-    ChevronRight,
-    Package,
-    Heart,
-    Wrench,
-    Building,
-    Tractor,
-    HelpCircle,
-    Users,
-    type LucideIcon,
-} from 'lucide-react';
+import { iconForSlug, verticalFor, VERTICALS } from '@/lib/verticals';
+import { ChevronLeft, ChevronRight, type LucideIcon } from 'lucide-react';
 
 interface RequestType {
     id: string;
@@ -23,17 +13,18 @@ interface RequestType {
     link: string;
 }
 
-const fallbackTypes: RequestType[] = [
-    { id: 'product', title: 'Request Product', subtitle: "Can't find a product? Let us source it", icon: Package, gradient: 'from-blue-500 to-indigo-600', link: '/needs/request?type=product' },
-    { id: 'healthcare', title: 'Healthcare Request', subtitle: 'Medical assistance & consultations', icon: Heart, gradient: 'from-rose-500 to-pink-600', link: '/healthcare' },
-    { id: 'worker', title: 'Request Workers', subtitle: 'Skilled laborers for your projects', icon: Wrench, gradient: 'from-amber-500 to-orange-600', link: '/needs/request?type=worker' },
-    { id: 'building', title: 'Construction Services', subtitle: 'Engineers & building materials', icon: Building, gradient: 'from-slate-500 to-gray-700', link: '/needs/request?type=building' },
-    { id: 'agriculture', title: 'Agriculture Needs', subtitle: 'Farm equipment & workers', icon: Tractor, gradient: 'from-green-500 to-emerald-600', link: '/needs/request?type=agriculture' },
-    { id: 'general', title: 'General Request', subtitle: 'Any other service you need', icon: HelpCircle, gradient: 'from-purple-500 to-violet-600', link: '/needs/request?type=general' },
-    { id: 'services', title: 'Professional Services', subtitle: 'Mechanics, electricians & more', icon: Users, gradient: 'from-cyan-500 to-teal-600', link: '/needs/request?type=services' },
-];
+/** The request types every shopper can start from. */
+const fallbackTypes: RequestType[] = VERTICALS.filter((vertical) =>
+    ['product', 'worker', 'building', 'agriculture', 'general', 'services'].includes(vertical.slug),
+).map((vertical) => ({
+    id: vertical.slug,
+    title: vertical.name,
+    subtitle: vertical.blurb,
+    icon: vertical.icon,
+    gradient: vertical.gradient,
+    link: vertical.href,
+}));
 
-const CATEGORY_ICONS: LucideIcon[] = [Package, Heart, Wrench, Building, Tractor, HelpCircle, Users];
 const CATEGORY_GRADIENTS = [
     'from-blue-500 to-indigo-600',
     'from-rose-500 to-pink-600',
@@ -70,13 +61,27 @@ export default function NeedCarousel() {
                 setRequestTypes(
                     rows.slice(0, 10).map((c, i) => {
                         const key = (c.slug || String(c.name)).toLowerCase();
+                        const vertical = verticalFor(key);
+
                         return {
                             id: String(c.id),
                             title: c.name,
-                            subtitle: c.description || `Request ${c.name.toLowerCase()}`,
-                            icon: CATEGORY_ICONS[i % CATEGORY_ICONS.length],
-                            gradient: CATEGORY_GRADIENTS[i % CATEGORY_GRADIENTS.length],
-                            link: `/needs/request?category=${encodeURIComponent(key)}`,
+                            // The admin description wins; otherwise the
+                            // vertical pitch; otherwise a translated prompt.
+                            subtitle:
+                                c.description ||
+                                vertical?.blurb ||
+                                t('needs.requestCategory', {
+                                    name: c.name,
+                                    defaultValue: `Request ${c.name}`,
+                                }),
+                            // The icon belongs to the category, not to its
+                            // position in the carousel.
+                            icon: vertical?.icon ?? iconForSlug(key, c.name),
+                            gradient:
+                                vertical?.gradient ??
+                                CATEGORY_GRADIENTS[i % CATEGORY_GRADIENTS.length],
+                            link: vertical?.href ?? `/needs/request?category=${encodeURIComponent(key)}`,
                         };
                     }),
                 );
@@ -87,7 +92,7 @@ export default function NeedCarousel() {
         return () => {
             cancelled = true;
         };
-    }, []);
+    }, [t]);
 
     useEffect(() => {
         const query = window.matchMedia('(min-width: 768px)');

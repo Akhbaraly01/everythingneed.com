@@ -16,8 +16,9 @@ class DeliveryController extends Controller
     public function index(Request $request): JsonResponse
     {
         // The manager directory is a management surface (the /admin/deliveries
-        // console is its only UI consumer) - not a public listing.
-        if (!$this->canManage($request)) {
+        // console is its only UI consumer) - not a public listing. Listing is
+        // a read: the view permission is enough, writes still need manage.
+        if (!$this->canView($request)) {
             return response()->json(['message' => 'Only delivery operations staff can list managers'], 403);
         }
 
@@ -293,6 +294,13 @@ class DeliveryController extends Controller
     private function canManage(Request $request): bool
     {
         return $request->user()->hasPermission('delivery.deliveries.manage');
+    }
+
+    /** Read surface of the roster: the view permission is enough to list it. */
+    private function canView(Request $request): bool
+    {
+        return $request->user()->hasPermission('delivery.deliveries.view')
+            || $request->user()->hasPermission('delivery.deliveries.manage');
     }
 
     private function ownManager(Request $request): ?DeliveryManager

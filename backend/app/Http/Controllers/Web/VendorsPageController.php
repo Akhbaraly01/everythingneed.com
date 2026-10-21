@@ -7,12 +7,14 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-use Modules\Products\Entities\ProductReview;
+use Modules\Reviews\Services\ProductReviewFeed;
 use Modules\Vendors\Entities\Vendor;
 use Modules\Vendors\Entities\VendorService;
 
 class VendorsPageController extends Controller
 {
+    public function __construct(private ProductReviewFeed $reviews) {}
+
     public function index(Request $request): Response
     {
         $query = Vendor::query();
@@ -115,13 +117,7 @@ class VendorsPageController extends Controller
             return redirect()->route('vendors.reviews', $vendor->slug, 301);
         }
 
-        $reviews = ProductReview::whereIn('product_id', $vendor->products()->select('id'))
-            ->join('users', 'users.id', '=', 'product_reviews.user_id')
-            ->join('products', 'products.id', '=', 'product_reviews.product_id')
-            ->select('product_reviews.*', 'users.name as reviewer_name', 'products.name as product_name')
-            ->orderByDesc('product_reviews.created_at')
-            ->paginate(10)
-            ->withQueryString();
+        $reviews = $this->reviews->forProducts($vendor->products()->select('id')->pluck('id')->all());
 
         return Inertia::render('vendors/Reviews', [
             'vendor' => $vendor,

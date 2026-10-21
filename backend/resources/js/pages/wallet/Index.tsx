@@ -1,13 +1,14 @@
 import AppLayout from '@/layouts/AppLayout';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import type { Wallet, WalletTransaction } from '@/types';
 import { formatDateTime } from '@/lib/utils';
 import { formatPrice } from '@/lib/currency';
 import { CreditCard, ArrowUpRight, ArrowDownLeft, Plus, Minus, X, Send } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ApiError, api, errorMessage } from '@/lib/api';
 import { toast } from 'sonner';
 import { Button } from '@/components/shared/Button';
+import Pagination from '@/components/shared/Pagination';
 
 interface WalletProps {
     wallet: Wallet;
@@ -16,12 +17,10 @@ interface WalletProps {
     typeFilter: string;
     transactions: {
         data: WalletTransaction[];
-        meta: {
-            current_page: number;
-            last_page: number;
-            per_page: number;
-            total: number;
-        };
+        current_page: number;
+        last_page: number;
+        per_page: number;
+        total: number;
     };
 }
 
@@ -31,6 +30,9 @@ const newIdempotencyKey = () =>
         : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 export default function WalletPage({ wallet, available, pending, typeFilter, transactions }: WalletProps) {
+    const { url } = usePage();
+    const path = useMemo(() => url.split('?')[0] || '/wallet', [url]);
+
     const [showDeposit, setShowDeposit] = useState(false);
     const [showWithdraw, setShowWithdraw] = useState(false);
     const [showTransfer, setShowTransfer] = useState(false);
@@ -343,7 +345,9 @@ export default function WalletPage({ wallet, available, pending, typeFilter, tra
                         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Transactions</h3>
                         <select
                             value={typeFilter}
-                            onChange={(e) => router.reload({ data: { type: e.target.value === 'all' ? undefined : e.target.value }, only: ['transactions', 'typeFilter'] })}
+                            onChange={(e) => router.get(path, {
+                                type: e.target.value === 'all' ? undefined : e.target.value,
+                            })}
                             className="rounded-lg border border-gray-300 px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-700"
                         >
                             <option value="all">All</option>
@@ -386,6 +390,12 @@ export default function WalletPage({ wallet, available, pending, typeFilter, tra
                         </div>
                     )}
                 </div>
+
+                <Pagination
+                    currentPage={transactions?.current_page ?? 1}
+                    lastPage={transactions?.last_page ?? 1}
+                    hrefFor={(page) => `${path}?page=${page}${typeFilter && typeFilter !== 'all' ? `&type=${typeFilter}` : ''}`}
+                />
             </div>
         </AppLayout>
     );

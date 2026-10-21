@@ -1738,8 +1738,13 @@ class NeedRequestController extends Controller
     /** Moderation powers for reject/expire/refund (spec S13 terminal states). */
     private function isModerator(Request $request): bool
     {
+        $user = $request->user();
+
+        // The granular permission is the source of truth; the legacy roles
+        // stay so the seeded console keeps working without a matrix change.
         return $this->isAdmin($request)
-            || $request->user()->hasRole('needs_admin')
-            || $request->user()->hasRole('platform_ops');
+            || $user->hasRole('needs_admin')
+            || $user->hasRole('platform_ops')
+            || $user->hasPermission('needs.requests.moderate');
     }
 }

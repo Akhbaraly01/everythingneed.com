@@ -1,13 +1,14 @@
 import { statusTone } from '@/lib/lifecycle';
 import AppLayout from '@/layouts/AppLayout';
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import { api, errorMessage } from '@/lib/api';
 import { formatDateTime } from '@/lib/utils';
 import { formatPrice } from '@/lib/currency';
 import { PromptDialog } from '@/components/shared/Ui';
 import { CreditCard, RefreshCcw, Undo2 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import Pagination from '@/components/shared/Pagination';
 
 interface RefundInfo {
     id: string;
@@ -30,6 +31,13 @@ interface Payment {
     refunds?: RefundInfo[];
 }
 
+interface PaymentsResponse {
+    data: Payment[];
+    meta: { current_page: number; last_page: number; per_page: number; total: number };
+}
+
+const EMPTY_META = { current_page: 1, last_page: 1, per_page: 15, total: 0 };
+
 const refundTone: Record<string, string> = {
     pending: 'bg-yellow-100 text-yellow-800',
     approved: 'bg-blue-100 text-blue-800',
@@ -40,7 +48,14 @@ const refundTone: Record<string, string> = {
 };
 
 export default function PaymentsIndex() {
+    const { url } = usePage();
+
+    const path = useMemo(() => url.split('?')[0] || '/payments', [url]);
+    const params = useMemo(() => new URLSearchParams(url.split('?')[1] ?? ''), [url]);
+    const page = Math.max(1, Number.parseInt(params.get('page') ?? '1', 10) || 1);
+
     const [payments, setPayments] = useState<Payment[]>([]);
+    const [meta, setMeta] = useState(EMPTY_META);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [retryTick, setRetryTick] = useState(0);
@@ -49,16 +64,21 @@ export default function PaymentsIndex() {
     const load = useCallback(() => {
         setLoading(true);
         setError(null);
-        api.get<{ data: Payment[] }>('/api/payments')
-            .then((res) => setPayments(res.data))
+        api.get<PaymentsResponse>('/api/payments', { params: { page } })
+            .then((res) => {
+                setPayments(res.data ?? []);
+                setMeta(res.meta ?? { ...EMPTY_META, current_page: page });
+            })
             .catch((e) => {
                 setError(errorMessage(e, 'Failed to load payments'));
                 setPayments([]);
             })
             .finally(() => setLoading(false));
-    }, []);
+    }, [page]);
 
-    useEffect(load, [load, retryTick]);
+    useEffect(() => { load(); }, [load, retryTick]);
+
+    const hrefFor = (target: number) => `${path}?page=${target}`;
 
     const requestRefund = async (payment: Payment, value: string) => {
         try {
@@ -141,6 +161,8 @@ export default function PaymentsIndex() {
                         ))}
                     </div>
                 )}
+
+                <Pagination currentPage={meta.current_page} lastPage={meta.last_page} hrefFor={hrefFor} />
 
                 <PromptDialog
                     open={refundFor !== null}

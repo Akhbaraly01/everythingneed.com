@@ -1,6 +1,8 @@
 import { Link } from '@inertiajs/react';
 import { Package, Star } from 'lucide-react';
+import { useMemo } from 'react';
 import { formatPrice } from '@/lib/currency';
+import { pageSeed, rotate } from '@/lib/session-rotation';
 import SectionHeader from '@/components/home/SectionHeader';
 import type { HomeSectionItem } from '@/types';
 
@@ -67,6 +69,14 @@ function RailCard({ item }: { item: HomeSectionItem }) {
  * filled with placeholder content.
  */
 export default function SectionRail({ testId, title, items = [], seeAllHref, seeAllLabel }: SectionRailProps) {
+    // The rail order changes on every page load (stable while the page is
+    // open), so the shelf never looks frozen.
+    const seed = useMemo(() => pageSeed(), []);
+    const ordered = useMemo(
+        () => rotate(items, seed, testId.length),
+        [items, seed, testId],
+    );
+
     if (items.length === 0) {
         return null;
     }
@@ -75,7 +85,7 @@ export default function SectionRail({ testId, title, items = [], seeAllHref, see
         <section data-testid={testId} className="space-y-3">
             <SectionHeader title={title} link={seeAllHref} linkLabel={seeAllLabel} />
             <div className="flex gap-3 overflow-x-auto pb-2">
-                {items.map((item) => (
+                {ordered.map((item) => (
                     <RailCard key={item.id} item={item} />
                 ))}
             </div>

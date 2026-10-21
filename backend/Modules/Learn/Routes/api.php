@@ -8,10 +8,13 @@ use Modules\Learn\Http\Controllers\LearnPostController;
 use Modules\Learn\Http\Controllers\LessonProgressController;
 use Modules\Learn\Http\Controllers\QuizController;
 
-// Review tiers are pinned inline per route:
+// Review tiers are pinned inline per route by their granular permission:
+// the permission is the authority (a role list on top of it only shadowed
+// it and refused custom roles that hold the permission):
 //   review (queue/claim/approve/reject/needs-info/hide/restore/reports):
-//     super_admin, administrator, learning_admin, learning_reviewer, moderator
-//   senior (reassign/pin/course create): super_admin, administrator, learning_admin
+//     learn.posts.review
+//   senior (reassign/pin): learn.courses.manage
+//   course create: learn.courses.create
 
 Route::prefix('api')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
@@ -71,48 +74,38 @@ Route::prefix('api')->group(function () {
         Route::delete('/learn/playlists/{id}', [LearnPlaylistController::class, 'destroy']);
 
         // Feed moderation queue (review tier).
-        // Spec 2682: never rely on role names alone - every admin route
-        // carries BOTH the role gate and the granular learn.* permission
-        // (super_admin holds '*' implicitly; see PermissionSeeder::MATRIX).
+        // Spec 2682: the granular learn.* permission is the only authority.
+        // The role list that used to sit on top of it only shadowed the
+        // permission: content_manager (learn.* in PermissionSeeder::MATRIX)
+        // and every custom role holding the permission were refused with a
+        // 403 even though the nav offered them the page.
         Route::get('/learn/posts-queue', [LearnModerationController::class, 'queue'])
-            ->middleware('role:super_admin,administrator,learning_admin,learning_reviewer,moderator')
             ->middleware('permission:learn.posts.review');
         Route::post('/learn/posts/{id}/claim', [LearnModerationController::class, 'claim'])
-            ->middleware('role:super_admin,administrator,learning_admin,learning_reviewer,moderator')
             ->middleware('permission:learn.posts.review');
         Route::post('/learn/posts/{id}/approve', [LearnModerationController::class, 'approve'])
-            ->middleware('role:super_admin,administrator,learning_admin,learning_reviewer,moderator')
             ->middleware('permission:learn.posts.review');
         Route::post('/learn/posts/{id}/reject', [LearnModerationController::class, 'reject'])
-            ->middleware('role:super_admin,administrator,learning_admin,learning_reviewer,moderator')
             ->middleware('permission:learn.posts.review');
         Route::post('/learn/posts/{id}/needs-info', [LearnModerationController::class, 'needsInfo'])
-            ->middleware('role:super_admin,administrator,learning_admin,learning_reviewer,moderator')
             ->middleware('permission:learn.posts.review');
         Route::post('/learn/posts/{id}/hide', [LearnModerationController::class, 'hide'])
-            ->middleware('role:super_admin,administrator,learning_admin,learning_reviewer,moderator')
             ->middleware('permission:learn.posts.review');
         Route::post('/learn/posts/{id}/restore', [LearnModerationController::class, 'restore'])
-            ->middleware('role:super_admin,administrator,learning_admin,learning_reviewer,moderator')
             ->middleware('permission:learn.posts.review');
         Route::post('/learn/posts/{id}/remove', [LearnModerationController::class, 'remove'])
-            ->middleware('role:super_admin,administrator,learning_admin,learning_reviewer,moderator')
             ->middleware('permission:learn.posts.review');
 
-        // Senior tier only.
+        // Senior tier (curriculum-level moderation).
         Route::post('/learn/posts/{id}/reassign', [LearnModerationController::class, 'reassign'])
-            ->middleware('role:super_admin,administrator,learning_admin')
             ->middleware('permission:learn.courses.manage');
         Route::post('/learn/posts/{id}/pin', [LearnModerationController::class, 'pin'])
-            ->middleware('role:super_admin,administrator,learning_admin')
             ->middleware('permission:learn.courses.manage');
 
         // Report inbox (review tier).
         Route::get('/learn/reports', [LearnModerationController::class, 'reports'])
-            ->middleware('role:super_admin,administrator,learning_admin,learning_reviewer,moderator')
             ->middleware('permission:learn.posts.review');
         Route::post('/learn/reports/{reportId}/resolve', [LearnModerationController::class, 'resolveReport'])
-            ->middleware('role:super_admin,administrator,learning_admin,learning_reviewer,moderator')
             ->middleware('permission:learn.posts.review');
     });
 
@@ -133,37 +126,30 @@ Route::prefix('api')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         // Admin console: create courses (spec 47 — live everywhere immediately)
         Route::post('/admin/courses', [CourseController::class, 'adminStore'])
-            ->middleware('role:super_admin,administrator,learning_admin')
             ->middleware('permission:learn.courses.create');
 
         // Admin console: course lifecycle (L-B) - list (all statuses), edit,
-        // publish/unpublish/archive, soft delete. Role + permission both.
+        // publish/unpublish/archive, soft delete. The granular learn.*
+        // permission is the only authority (super_admin holds '*'
+        // implicitly; see PermissionSeeder::MATRIX).
         Route::get('/admin/courses', [CourseController::class, 'adminIndex'])
-            ->middleware('role:super_admin,administrator,learning_admin')
             ->middleware('permission:learn.courses.manage');
         Route::put('/admin/courses/{id}', [CourseController::class, 'adminUpdate'])
-            ->middleware('role:super_admin,administrator,learning_admin')
             ->middleware('permission:learn.courses.manage');
         Route::put('/admin/courses/{id}/status', [CourseController::class, 'adminStatus'])
-            ->middleware('role:super_admin,administrator,learning_admin')
             ->middleware('permission:learn.courses.manage');
         Route::delete('/admin/courses/{id}', [CourseController::class, 'adminDestroy'])
-            ->middleware('role:super_admin,administrator,learning_admin')
             ->middleware('permission:learn.courses.manage');
 
         // Admin console: lesson management (master directive - Learn admin
         // owns curriculum: add/edit/remove lessons, order + video + resources).
         Route::get('/admin/courses/{id}/lessons', [CourseController::class, 'adminLessons'])
-            ->middleware('role:super_admin,administrator,learning_admin')
             ->middleware('permission:learn.courses.manage');
         Route::post('/admin/courses/{id}/lessons', [CourseController::class, 'adminStoreLesson'])
-            ->middleware('role:super_admin,administrator,learning_admin')
             ->middleware('permission:learn.courses.manage');
         Route::put('/admin/courses/{id}/lessons/{lessonId}', [CourseController::class, 'adminUpdateLesson'])
-            ->middleware('role:super_admin,administrator,learning_admin')
             ->middleware('permission:learn.courses.manage');
         Route::delete('/admin/courses/{id}/lessons/{lessonId}', [CourseController::class, 'adminDestroyLesson'])
-            ->middleware('role:super_admin,administrator,learning_admin')
             ->middleware('permission:learn.courses.manage');
     });
     Route::get('/learn/instructors', [CourseController::class, 'instructors']);

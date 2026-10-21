@@ -1064,7 +1064,12 @@ Route::middleware('permission:audit.logs.view')->prefix('admin')->group(function
     })->name('admin.audit-logs');
 });
 
-Route::middleware('role:super_admin')->prefix('admin')->group(function () {
+// RBAC console. The per-user permission editor APIs are gated by
+// users.permissions.manage (Modules/Admin/Routes/api.php), so the page
+// gate is the same permission: a holder of it (administrator, a custom
+// role or a direct per-user grant) can open the console. The role
+// management APIs stay super-admin-only.
+Route::middleware('permission:users.permissions.manage')->prefix('admin')->group(function () {
     Route::get('/rbac', [AdminPageController::class, 'rbac'])->name('admin.rbac');
     Route::get('/roles', [AdminPageController::class, 'rbac'])->name('admin.roles');
 });
@@ -1228,19 +1233,28 @@ Route::middleware('permission:messaging.overview.view')->prefix('admin')->group(
     })->name('admin.messaging');
 });
 
-Route::middleware('permission:transport.overview.view')->prefix('admin')->group(function () {
+// Transport console. The page lists the rides + flights of the Rides
+// module, so the gate carries the permission its own data API requires
+// (rides.overview.view) next to the transport overview permission.
+Route::middleware('permission:transport.overview.view,rides.overview.view')->prefix('admin')->group(function () {
     Route::get('/transport', function () {
         return inertia('admin/Transport');
     })->name('admin.transport');
 });
 
-Route::middleware('permission:jobs.overview.view')->prefix('admin')->group(function () {
+// Jobs console. The applications tab reads /api/admin/job-applications
+// (jobs.applications.view), so the page gate carries it next to the jobs
+// overview permission.
+Route::middleware('permission:jobs.overview.view,jobs.applications.view')->prefix('admin')->group(function () {
     Route::get('/jobs', function () {
         return inertia('admin/Jobs');
     })->name('admin.jobs');
 });
 
-Route::middleware('permission:job_seekers.overview.view')->prefix('admin')->group(function () {
+// Job seekers console. The work-request tab reads /api/admin/work-requests
+// (job_seekers.requests.manage), so the page gate carries it next to the
+// job_seekers overview permission.
+Route::middleware('permission:job_seekers.overview.view,job_seekers.requests.manage')->prefix('admin')->group(function () {
     Route::get('/job-seekers', function () {
         return inertia('admin/JobSeekers');
     })->name('admin.job-seekers');
@@ -1253,7 +1267,10 @@ Route::middleware('permission:finance.payouts.manage')->prefix('admin')->group(f
     Route::get('/payouts/{id}', [AdminDetailPageController::class, 'payout'])->name('admin.payouts.show');
 });
 
-Route::middleware('permission:finance.overview.view')->prefix('admin')->group(function () {
+// Finance console. The page reads /api/admin/finance/summary and
+// /api/admin/finance/transactions (finance.transactions.view), so the
+// page gate carries that permission next to the finance overview one.
+Route::middleware('permission:finance.overview.view,finance.transactions.view')->prefix('admin')->group(function () {
     Route::get('/finance', function () {
         return inertia('admin/Finance');
     })->name('admin.finance');
@@ -1286,7 +1303,10 @@ Route::middleware('permission:healthcare.aid.view')->prefix('admin')->group(func
 });
 
 // Spec 2682: granular permission is the only authority on every admin surface.
-Route::middleware('permission:learn.overview.view')->prefix('admin')->group(function () {
+// The learning console lists the courses through /api/admin/courses
+// (learn.courses.manage), so the page gate carries that permission next to
+// the learn overview one.
+Route::middleware('permission:learn.overview.view,learn.courses.manage')->prefix('admin')->group(function () {
     Route::get('/learning/courses', function () {
         return inertia('admin/Learning');
     })->name('admin.learning');

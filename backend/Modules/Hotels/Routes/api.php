@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Middleware\EnsureAccountActive;
 use Modules\Hotels\Http\Controllers\HotelController;
 
 Route::prefix('api')->group(function () {
@@ -20,15 +21,21 @@ Route::prefix('api')->group(function () {
     // Public reads
     Route::get('/hotels', [HotelController::class, 'index']);
 
-    // Admin console (all hotels incl. inactive)
+    // Admin console (all hotels incl. inactive).
+    // Permissions are the authority: the catalogue read is
+    // hotels.overview.view, every write is hotels.overview.manage. The
+    // seeded roles (super_admin, administrator, hotel_admin) all hold
+    // hotels.* in PermissionSeeder::MATRIX, so they keep working, and a
+    // custom role that holds the permission is no longer blocked by a
+    // role list that never named it.
     Route::get('/admin/hotels', [HotelController::class, 'adminIndex'])
-        ->middleware('role:super_admin,administrator,hotel_admin');
+        ->middleware(['auth:sanctum', EnsureAccountActive::class, 'permission:hotels.overview.view']);
     Route::put('/admin/hotels/{id}', [HotelController::class, 'adminUpdate'])
-        ->middleware('role:super_admin,administrator,hotel_admin');
+        ->middleware(['auth:sanctum', EnsureAccountActive::class, 'permission:hotels.overview.manage']);
     Route::delete('/admin/hotels/{id}', [HotelController::class, 'adminDestroy'])
-        ->middleware('role:super_admin,administrator,hotel_admin');
+        ->middleware(['auth:sanctum', EnsureAccountActive::class, 'permission:hotels.overview.manage']);
     Route::post('/admin/hotels', [HotelController::class, 'adminStore'])
-        ->middleware('role:super_admin,administrator,hotel_admin');
+        ->middleware(['auth:sanctum', EnsureAccountActive::class, 'permission:hotels.overview.manage']);
     Route::get('/hotels/{id}/rooms/{roomId}', [HotelController::class, 'room']);
     Route::get('/hotels/{id}', [HotelController::class, 'show']);
     Route::get('/hotels/{id}/rooms', [HotelController::class, 'rooms']);

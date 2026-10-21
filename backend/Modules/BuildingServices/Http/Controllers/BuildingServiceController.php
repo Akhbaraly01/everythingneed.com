@@ -117,7 +117,7 @@ class BuildingServiceController extends Controller
             return response()->json(['message' => 'Booking not found'], 404);
         }
 
-        if (!$this->canManage($request->user(), $booking)) {
+        if (!$this->canManage($request->user(), $booking, 'building_services.workers.manage')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -172,7 +172,7 @@ class BuildingServiceController extends Controller
             return response()->json(['message' => 'Booking not found'], 404);
         }
 
-        if (!$this->canManage($request->user(), $booking)) {
+        if (!$this->canManage($request->user(), $booking, 'building_services.bookings.manage')) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -208,7 +208,12 @@ class BuildingServiceController extends Controller
         return null;
     }
 
-    private function canManage($user, $booking): bool
+    /**
+     * The owner and the assigned worker always keep their self-service
+     * branch; everyone else needs the granular permission or one of the
+     * legacy console roles.
+     */
+    private function canManage($user, $booking, string $permission): bool
     {
         if ((string) $booking->user_id === (string) $user->id) {
             return true;
@@ -221,6 +226,10 @@ class BuildingServiceController extends Controller
             if ($isWorker) {
                 return true;
             }
+        }
+
+        if (method_exists($user, 'hasPermission') && $user->hasPermission($permission)) {
+            return true;
         }
 
         if (method_exists($user, 'hasRole')) {

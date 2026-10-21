@@ -13,6 +13,8 @@ interface CartItem {
     product_id: string;
     quantity: number;
     unit_price: number;
+    product_variant_id?: string | null;
+    variant_name?: string | null;
     product?: { id: string; name: string; image_url?: string; price: number };
 }
 
@@ -104,6 +106,8 @@ export default function CheckoutPage({ paymentMode = 'sandbox' }: CheckoutProps)
                 idempotency_key: orderKey.current,
                 items: cart!.cart.items.map((item) => ({
                     product_id: item.product_id,
+                    // The server prices and decrements stock per variant.
+                    variant_id: item.product_variant_id ?? null,
                     quantity: item.quantity,
                 })),
                 coupon_code: cart!.cart.coupon_code || undefined,
@@ -366,6 +370,9 @@ export default function CheckoutPage({ paymentMode = 'sandbox' }: CheckoutProps)
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <p className="truncate text-sm font-medium text-gray-900 dark:text-white">{item.product?.name ?? 'Product'}</p>
+                                                    {item.variant_name && (
+                                                        <p className="truncate text-xs text-indigo-600 dark:text-indigo-400">{item.variant_name}</p>
+                                                    )}
                                                     <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
                                                 </div>
                                                 <p className="text-sm font-semibold text-gray-900 dark:text-white">{formatPrice(item.unit_price * item.quantity)}</p>

@@ -26,15 +26,27 @@ class HandleInertiaRequests
             },
             'auth' => function () use ($request) {
                 if ($user = $request->user()) {
+                    // The profile row carries the display name, phone and
+                    // avatar the account pages render - loaded once here so
+                    // no page pays for a second query.
+                    $user->loadMissing('profile');
+                    $profile = $user->profile;
+
                     return [
                         'id' => $user->id,
                         'name' => $user->name,
                         'email' => $user->email,
+                        'full_name' => $profile?->full_name,
+                        'phone' => $profile?->phone,
+                        'avatar_url' => $profile?->avatar_url,
                         // Alias kept for pages that read auth.user.*
                         'user' => [
                             'id' => $user->id,
                             'name' => $user->name,
                             'email' => $user->email,
+                            'full_name' => $profile?->full_name,
+                            'phone' => $profile?->phone,
+                            'avatar_url' => $profile?->avatar_url,
                         ],
                         'roles' => $user->roles->pluck('role'),
                         'two_factor_enabled' => (bool) $user->twoFactorSecret?->enabled,

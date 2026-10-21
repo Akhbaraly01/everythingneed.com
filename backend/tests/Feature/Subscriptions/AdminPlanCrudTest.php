@@ -12,11 +12,21 @@ use Tests\TestCase;
 
 /**
  * W8 console plan CRUD (/api/admin/plans) + the duration/ends_at
- * regression pins for the subscribe flow.
+ * regression pins for the subscribe flow. The console API is
+ * permission-gated (subscriptions.subscriptions.*), so the seeded role
+ * matrix has to be in place.
  */
 class AdminPlanCrudTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->seed(\Database\Seeders\PermissionSeeder::class);
+        \Illuminate\Support\Facades\Cache::forget('rbac.matrix');
+    }
 
     private function makePlan(array $overrides = []): Plan
     {

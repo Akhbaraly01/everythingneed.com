@@ -56,7 +56,7 @@ const TYPE_LINKS: Record<string, (relatedId?: string | null) => string> = {
     bill: () => '/bills',
     booking: (id) => (id ? `/account/bookings/${id}` : '/account/bookings'),
     certificate: () => '/account/certificates',
-    enrollment: () => '/learn/my-courses',
+    enrollment: () => '/learn/my-learning',
     health_ticket: () => '/healthcare/tickets',
     // every need_* event carries the need request id
     need_offer: (id) => (id ? `/account/needs/${id}` : '/account/needs'),

@@ -23,6 +23,23 @@ interface FareEstimate {
     note: string;
 }
 
+const LAT_MIN = -90;
+const LAT_MAX = 90;
+const LNG_MIN = -180;
+const LNG_MAX = 180;
+
+const isLatitude = (value: string): boolean => {
+    if (value.trim() === '') return false;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed >= LAT_MIN && parsed <= LAT_MAX;
+};
+
+const isLongitude = (value: string): boolean => {
+    if (value.trim() === '') return false;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed >= LNG_MIN && parsed <= LNG_MAX;
+};
+
 export default function RideBooking() {
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
     const [loading, setLoading] = useState(false);
@@ -33,7 +50,10 @@ export default function RideBooking() {
     const [estimating, setEstimating] = useState(false);
 
     const hasCoords =
-        form.pickup_lat !== '' && form.pickup_lng !== '' && form.dropoff_lat !== '' && form.dropoff_lng !== '';
+        isLatitude(form.pickup_lat) &&
+        isLongitude(form.pickup_lng) &&
+        isLatitude(form.dropoff_lat) &&
+        isLongitude(form.dropoff_lng);
 
     const fetchEstimate = async () => {
         if (!hasCoords) return;
@@ -41,10 +61,10 @@ export default function RideBooking() {
         try {
             const res = await api.get<{ data: FareEstimate }>('/api/rides/estimate', {
                 params: {
-                    pickup_lat: form.pickup_lat,
-                    pickup_lng: form.pickup_lng,
-                    dropoff_lat: form.dropoff_lat,
-                    dropoff_lng: form.dropoff_lng,
+                    pickup_lat: Number(form.pickup_lat),
+                    pickup_lng: Number(form.pickup_lng),
+                    dropoff_lat: Number(form.dropoff_lat),
+                    dropoff_lng: Number(form.dropoff_lng),
                     ride_type: form.ride_type,
                 },
             });
@@ -72,12 +92,18 @@ export default function RideBooking() {
     };
 
     const handleBook = async () => {
-        if (!selectedVehicle) return;
+        if (!selectedVehicle || !hasCoords) return;
         setSubmitting(true);
         try {
             const res = await api.post<{ data: { id: string } }>('/api/rides', {
                 vehicle_id: selectedVehicle.id,
-                ...form,
+                pickup_address: form.pickup_address,
+                dropoff_address: form.dropoff_address,
+                pickup_lat: Number(form.pickup_lat),
+                pickup_lng: Number(form.pickup_lng),
+                dropoff_lat: Number(form.dropoff_lat),
+                dropoff_lng: Number(form.dropoff_lng),
+                ride_type: form.ride_type,
                 scheduled_for: form.scheduled_for ? new Date(form.scheduled_for).toISOString() : undefined,
             });
             router.visit(`/transportation/tracking/${res.data.id}`);
@@ -136,15 +162,91 @@ export default function RideBooking() {
                         />
                         <p className="mt-1 text-xs text-gray-500">Leave empty to request a ride now. Scheduled rides must be at least 30 minutes out (max 30 days).</p>
                     </div>
-                    <details className="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
-                        <summary className="cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Coordinates (for fare estimate)
-                        </summary>
-                        <div className="mt-3 grid grid-cols-2 gap-2">
-                            <input aria-label="Pickup latitude" value={form.pickup_lat} onChange={(e) => setForm({ ...form, pickup_lat: e.target.value })} placeholder="Pickup lat" className="rounded-lg border px-2 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-700" />
-                            <input aria-label="Pickup longitude" value={form.pickup_lng} onChange={(e) => setForm({ ...form, pickup_lng: e.target.value })} placeholder="Pickup lng" className="rounded-lg border px-2 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-700" />
-                            <input aria-label="Dropoff latitude" value={form.dropoff_lat} onChange={(e) => setForm({ ...form, dropoff_lat: e.target.value })} placeholder="Dropoff lat" className="rounded-lg border px-2 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-700" />
-                            <input aria-label="Dropoff longitude" value={form.dropoff_lng} onChange={(e) => setForm({ ...form, dropoff_lng: e.target.value })} placeholder="Dropoff lng" className="rounded-lg border px-2 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-700" />
+                    <div>
+                        <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Coordinates <span className="text-red-500">*</span>
+                        </span>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label htmlFor="pickup-lat" className="block text-xs font-medium text-gray-600 dark:text-gray-400">Pickup latitude *</label>
+                                <input
+                                    id="pickup-lat"
+                                    type="number"
+                                    inputMode="decimal"
+                                    step="any"
+                                    min={LAT_MIN}
+                                    max={LAT_MAX}
+                                    required
+                                    value={form.pickup_lat}
+                                    onChange={(e) => setForm({ ...form, pickup_lat: e.target.value })}
+                                    aria-label="Pickup latitude"
+                                    className="mt-1 w-full rounded-lg border px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700"
+                                    placeholder="-90 to 90"
+                                />
+                                {form.pickup_lat !== '' && !isLatitude(form.pickup_lat) && (
+                                    <p className="mt-1 text-xs text-red-600">Enter a latitude between -90 and 90.</p>
+                                )}
+                            </div>
+                            <div>
+                                <label htmlFor="pickup-lng" className="block text-xs font-medium text-gray-600 dark:text-gray-400">Pickup longitude *</label>
+                                <input
+                                    id="pickup-lng"
+                                    type="number"
+                                    inputMode="decimal"
+                                    step="any"
+                                    min={LNG_MIN}
+                                    max={LNG_MAX}
+                                    required
+                                    value={form.pickup_lng}
+                                    onChange={(e) => setForm({ ...form, pickup_lng: e.target.value })}
+                                    aria-label="Pickup longitude"
+                                    className="mt-1 w-full rounded-lg border px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700"
+                                    placeholder="-180 to 180"
+                                />
+                                {form.pickup_lng !== '' && !isLongitude(form.pickup_lng) && (
+                                    <p className="mt-1 text-xs text-red-600">Enter a longitude between -180 and 180.</p>
+                                )}
+                            </div>
+                            <div>
+                                <label htmlFor="dropoff-lat" className="block text-xs font-medium text-gray-600 dark:text-gray-400">Drop-off latitude *</label>
+                                <input
+                                    id="dropoff-lat"
+                                    type="number"
+                                    inputMode="decimal"
+                                    step="any"
+                                    min={LAT_MIN}
+                                    max={LAT_MAX}
+                                    required
+                                    value={form.dropoff_lat}
+                                    onChange={(e) => setForm({ ...form, dropoff_lat: e.target.value })}
+                                    aria-label="Dropoff latitude"
+                                    className="mt-1 w-full rounded-lg border px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700"
+                                    placeholder="-90 to 90"
+                                />
+                                {form.dropoff_lat !== '' && !isLatitude(form.dropoff_lat) && (
+                                    <p className="mt-1 text-xs text-red-600">Enter a latitude between -90 and 90.</p>
+                                )}
+                            </div>
+                            <div>
+                                <label htmlFor="dropoff-lng" className="block text-xs font-medium text-gray-600 dark:text-gray-400">Drop-off longitude *</label>
+                                <input
+                                    id="dropoff-lng"
+                                    type="number"
+                                    inputMode="decimal"
+                                    step="any"
+                                    min={LNG_MIN}
+                                    max={LNG_MAX}
+                                    required
+                                    value={form.dropoff_lng}
+                                    onChange={(e) => setForm({ ...form, dropoff_lng: e.target.value })}
+                                    aria-label="Dropoff longitude"
+                                    className="mt-1 w-full rounded-lg border px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700"
+                                    placeholder="-180 to 180"
+                                />
+                                {form.dropoff_lng !== '' && !isLongitude(form.dropoff_lng) && (
+                                    <p className="mt-1 text-xs text-red-600">Enter a longitude between -180 and 180.</p>
+                                )}
+                            </div>
                         </div>
                         <button
                             type="button"
@@ -154,7 +256,7 @@ export default function RideBooking() {
                         >
                             {estimating ? 'Estimating...' : 'Get fare estimate'}
                         </button>
-                    </details>
+                    </div>
                     {estimate && (
                         <div className="rounded-lg bg-blue-50 p-4 dark:bg-blue-900/20" role="status" aria-live="polite">
                             <p className="text-sm font-semibold text-blue-900 dark:text-blue-200">
@@ -168,7 +270,7 @@ export default function RideBooking() {
                     )}
                     <button
                         onClick={searchVehicles}
-                        disabled={loading}
+                        disabled={loading || !form.pickup_address.trim() || !form.dropoff_address.trim()}
                         className="w-full rounded-lg bg-blue-600 px-4 py-3 text-white hover:bg-blue-700 disabled:opacity-50"
                     >
                         {loading ? 'Searching...' : 'Search Available Vehicles'}
@@ -200,11 +302,16 @@ export default function RideBooking() {
                         ))}
                         <button
                             onClick={handleBook}
-                            disabled={!selectedVehicle || submitting}
+                            disabled={!selectedVehicle || submitting || !hasCoords}
                             className="w-full rounded-lg bg-green-600 px-4 py-3 text-white hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
                         >
                             {submitting ? 'Booking...' : 'Confirm Booking'} <ArrowRight className="h-4 w-4" />
                         </button>
+                        {!hasCoords && (
+                            <p className="mt-2 text-center text-xs text-red-600">
+                                Enter valid pickup and drop-off coordinates to book this ride.
+                            </p>
+                        )}
                     </div>
                 )}
             </div>

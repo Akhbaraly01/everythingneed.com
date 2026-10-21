@@ -1,24 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import { useLanguage } from '@/lib/use-language';
+import { iconForSlug, verticalFor, VERTICALS, type Vertical } from '@/lib/verticals';
 import type { SiteNav } from '@/types';
 import {
-    Smartphone,
-    Shirt,
-    Home,
-    Dumbbell,
-    Calendar,
-    CheckSquare,
-    Hotel,
     MoreHorizontal,
-    GraduationCap,
-    HeartPulse,
-    Pill,
-    Users,
-    Truck,
-    ShoppingBag,
-    Shield,
-    Headphones,
     type LucideIcon,
 } from 'lucide-react';
 
@@ -27,17 +13,37 @@ interface Category {
     icon: LucideIcon;
     link: string;
     gradient: string;
+    /** Short pitch shown under the label on the full panel. */
+    blurb?: string;
 }
 
-const SECTION_CATEGORIES: Category[] = [
-    { name: 'Learning', icon: GraduationCap, link: '/learn', gradient: 'from-emerald-500 to-teal-500' },
-    { name: 'Healthcare', icon: HeartPulse, link: '/healthcare', gradient: 'from-rose-500 to-pink-500' },
-    { name: 'Pharmacy', icon: Pill, link: '/pharmacy', gradient: 'from-blue-500 to-cyan-500' },
-    { name: 'Needs', icon: Users, link: '/needs', gradient: 'from-purple-500 to-fuchsia-500' },
-    { name: 'Hotels', icon: Hotel, link: '/hotels', gradient: 'from-yellow-500 to-amber-500' },
-    { name: 'Jobs', icon: CheckSquare, link: '/jobs', gradient: 'from-teal-500 to-emerald-500' },
-    { name: 'Tasks', icon: CheckSquare, link: '/tasks', gradient: 'from-cyan-500 to-blue-500' },
+const GRADIENTS = [
+    'from-blue-500 to-blue-600',
+    'from-pink-500 to-rose-500',
+    'from-amber-500 to-orange-500',
+    'from-green-500 to-emerald-500',
+    'from-cyan-500 to-blue-500',
+    'from-teal-500 to-emerald-500',
+    'from-yellow-500 to-amber-500',
+    'from-purple-500 to-fuchsia-500',
 ];
+
+/**
+ * The quick row: the storefront verticals that have a real page. Every
+ * tile links to the page that serves it (not a generic product filter)
+ * and carries its own icon.
+ */
+const SECTION_CATEGORIES: Category[] = VERTICALS.filter((vertical) =>
+    ['learn', 'healthcare', 'pharmacy', 'needs', 'hotels', 'jobs', 'services'].includes(
+        vertical.slug,
+    ),
+).map((vertical) => ({
+    name: vertical.name,
+    icon: vertical.icon,
+    link: vertical.href,
+    gradient: vertical.gradient,
+    blurb: vertical.blurb,
+}));
 
 function CategoryTile({ name, icon: Icon, link, gradient }: Category) {
     return (
@@ -64,42 +70,6 @@ export interface CategoryOption {
     icon?: string | null;
 }
 
-const ICONS: Record<string, LucideIcon> = {
-    smartphone: Smartphone,
-    shirt: Shirt,
-    home: Home,
-    dumbbell: Dumbbell,
-    calendar: Calendar,
-    check: CheckSquare,
-    hotel: Hotel,
-    graduation: GraduationCap,
-    health: HeartPulse,
-    pill: Pill,
-    users: Users,
-    truck: Truck,
-    bag: ShoppingBag,
-    shield: Shield,
-    headphones: Headphones,
-};
-
-const GRADIENTS = [
-    'from-blue-500 to-blue-600',
-    'from-pink-500 to-rose-500',
-    'from-amber-500 to-orange-500',
-    'from-green-500 to-emerald-500',
-    'from-cyan-500 to-blue-500',
-    'from-teal-500 to-emerald-500',
-    'from-yellow-500 to-amber-500',
-    'from-purple-500 to-fuchsia-500',
-];
-
-function iconFor(name: string | null | undefined, fallback: LucideIcon): LucideIcon {
-    if (!name) return fallback;
-    const key = name.toLowerCase();
-    const hit = Object.entries(ICONS).find(([k]) => key.includes(k));
-    return hit ? hit[1] : fallback;
-}
-
 export default function CategoryGrid({ categories = [] }: { categories?: CategoryOption[] }) {
     const { t } = useLanguage();
     const [showAll, setShowAll] = useState(false);
@@ -124,21 +94,31 @@ export default function CategoryGrid({ categories = [] }: { categories?: Categor
         };
     }, [showAll]);
 
-    const real: Category[] = categories.slice(0, 15).map((c, i) => ({
-        name: c.name,
-        icon: iconFor(c.icon, ShoppingBag),
-        link: c.slug ? `/products?category=${encodeURIComponent(c.slug)}` : '/products',
-        gradient: GRADIENTS[i % GRADIENTS.length],
-    }));
+    // Database categories: the icon comes from the vertical catalogue and
+    // the link points at the vertical page when there is one (healthcare
+    // -> /healthcare), otherwise at the filtered catalogue.
+    const real: Category[] = categories.slice(0, 15).map((c, i) => {
+        const vertical = verticalFor(c.slug);
+
+        return {
+            name: c.name,
+            icon: iconForSlug(c.slug, c.name),
+            link: vertical?.href ?? (c.slug ? `/products?category=${encodeURIComponent(c.slug)}` : '/products'),
+            gradient: vertical?.gradient ?? GRADIENTS[i % GRADIENTS.length],
+            blurb: vertical?.blurb,
+        };
+    });
+
     // Admin-managed `category` menu (spec S46) merged into the full panel.
     const navCategories: Category[] = (siteNav?.category ?? []).flatMap((item, index) =>
         (item.children?.length ? item.children : [item]).map((child, childIndex) => ({
             name: child.title,
-            icon: iconFor(child.icon, ShoppingBag),
+            icon: iconForSlug(child.url, child.title),
             link: child.url,
             gradient: GRADIENTS[(index + childIndex) % GRADIENTS.length],
         })),
     );
+
     const quick = real.length >= 7 ? real.slice(0, 7) : [...real, ...SECTION_CATEGORIES].slice(0, 7);
     const seen = new Set<string>();
     const all = [...real, ...SECTION_CATEGORIES, ...navCategories].filter((c) => {
@@ -171,7 +151,7 @@ export default function CategoryGrid({ categories = [] }: { categories?: Categor
 
             {showAll && (
                 <div className="mt-4 rounded-xl border border-border bg-card p-4">
-                        <h3 className="mb-3 text-sm font-semibold">{t('home.allCategories')}</h3>
+                    <h3 className="mb-3 text-sm font-semibold">{t('home.allCategories')}</h3>
                     <div className="grid grid-cols-4 md:grid-cols-6 gap-4 mt-6 overflow-y-auto">
                         {all.map((category) => (
                             <Link
@@ -186,6 +166,11 @@ export default function CategoryGrid({ categories = [] }: { categories?: Categor
                                     <category.icon className="h-6 w-6 text-white" />
                                 </span>
                                 <span className="text-xs font-medium text-center">{category.name}</span>
+                                {category.blurb && (
+                                    <span className="text-[10px] leading-tight text-center text-muted-foreground line-clamp-2">
+                                        {category.blurb}
+                                    </span>
+                                )}
                             </Link>
                         ))}
                     </div>

@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Middleware\EnsureAccountActive;
 use Modules\Reviews\Http\Controllers\ReviewController;
 use Modules\Reviews\Http\Controllers\ReviewModerationController;
 
@@ -22,9 +23,12 @@ Route::prefix('api')->group(function () {
     });
 
     // Moderation console (L-B.5): list every status + transition rows.
-    // super_admin holds '*' implicitly; administrator has reviews.* and
-    // moderator holds reviews.reviews.moderate (PermissionSeeder::MATRIX).
-    Route::middleware(['role:super_admin,administrator,moderator', 'permission:reviews.reviews.moderate'])
+    // reviews.reviews.moderate is the only authority: super_admin holds
+    // '*' implicitly; administrator has reviews.* and moderator holds
+    // reviews.reviews.moderate (PermissionSeeder::MATRIX). The role list
+    // that used to sit on top of it only shadowed the permission - a
+    // custom role holding the permission was refused with a 403.
+    Route::middleware(['auth:sanctum', EnsureAccountActive::class, 'permission:reviews.reviews.moderate'])
         ->group(function () {
             Route::get('/admin/reviews', [ReviewModerationController::class, 'index']);
             Route::get('/admin/reviews/reports', [ReviewModerationController::class, 'reports']);

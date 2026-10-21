@@ -5,6 +5,7 @@ import { api, errorMessage, ApiError } from '@/lib/api';
 import { toast } from 'sonner';
 import { formatPrice } from '@/lib/currency';
 import { useLanguage } from '@/lib/use-language';
+import { useConfirm } from '@/lib/confirm';
 import { useCartDrawer } from './CartDrawerContext';
 
 interface CartItem {
@@ -12,6 +13,8 @@ interface CartItem {
     product_id: string;
     quantity: number;
     unit_price: number;
+    product_variant_id?: string | null;
+    variant_name?: string | null;
     product?: { id: string; name: string; image_url?: string; price: number };
 }
 
@@ -26,8 +29,10 @@ interface CartPayload {
 export default function GlobalCartDrawer() {
     const { isOpen, closeCart } = useCartDrawer();
     const { t } = useLanguage();
+    const ask = useConfirm();
     const [cart, setCart] = useState<CartPayload | null>(null);
     const [loading, setLoading] = useState(false);
+    const [pendingItemId, setPendingItemId] = useState<string | null>(null);
 
     const fetchCart = useCallback(async () => {
         setLoading(true);
@@ -49,23 +54,39 @@ export default function GlobalCartDrawer() {
     }, [isOpen, fetchCart]);
 
     const updateQty = async (itemId: string, quantity: number) => {
+        if (pendingItemId) return;
         if (quantity < 1) return removeItem(itemId);
+        setPendingItemId(itemId);
         try {
             await api.put(`/api/cart/items/${itemId}`, { quantity });
-            void fetchCart();
+            await fetchCart();
         } catch (e) {
             toast.error(errorMessage(e, t('cart.updateFail', { defaultValue: 'Could not update quantity' })));
-            void fetchCart();
+            await fetchCart();
+        } finally {
+            setPendingItemId(null);
         }
     };
 
     const removeItem = async (itemId: string) => {
+        const confirmed = await ask({
+            title: t('cart.removeConfirmTitle', { defaultValue: 'Remove item?' }),
+            description: t('cart.removeConfirmBody', {
+                defaultValue: 'This item will be removed from your cart.',
+            }),
+            confirmLabel: t('cart.remove', { defaultValue: 'Remove' }),
+            danger: true,
+        });
+        if (!confirmed) return;
+        setPendingItemId(itemId);
         try {
             await api.del(`/api/cart/items/${itemId}`);
-            void fetchCart();
+            await fetchCart();
         } catch (e) {
             toast.error(errorMessage(e, t('cart.removeFail', { defaultValue: 'Could not remove item' })));
-            void fetchCart();
+            await fetchCart();
+        } finally {
+            setPendingItemId(null);
         }
     };
 
@@ -108,53 +129,60 @@ export default function GlobalCartDrawer() {
                         </div>
                     ) : (
                         <ul className="space-y-3">
-                            {items.map((item) => (
-                                <li key={item.id} className="flex gap-3 rounded-lg border border-border p-3">
-                                    <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-md bg-muted">
-                                        {item.product?.image_url && (
-                                            <img
-                                                src={item.product.image_url}
-                                                alt={item.product.name}
-                                                className="h-full w-full object-cover"
-                                                loading="lazy"
-                                            />
-                                        )}
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <p className="truncate text-sm font-medium">{item.product?.name ?? t('cart.item', { defaultValue: 'Item' })}</p>
-                                        <p className="text-sm font-bold text-primary">
-                                            {formatPrice(item.unit_price)}
-                                        </p>
-                                        <div className="mt-1 flex items-center gap-2">
-                                            <button
-                                                type="button"
-                                                aria-label={t('cart.decrease', { defaultValue: 'Decrease quantity' })}
-                                                onClick={() => void updateQty(item.id, item.quantity - 1)}
-                                                className="flex h-6 w-6 items-center justify-center rounded border border-border"
-                                            >
-                                                <Minus className="h-3 w-3" />
-                                            </button>
-                                            <span className="text-xs font-medium">{item.quantity}</span>
-                                            <button
-                                                type="button"
-                                                aria-label={t('cart.increase', { defaultValue: 'Increase quantity' })}
-                                                onClick={() => void updateQty(item.id, item.quantity + 1)}
-                                                className="flex h-6 w-6 items-center justify-center rounded border border-border"
-                                            >
-                                                <Plus className="h-3 w-3" />
-                                            </button>
-                                            <button
-                                                type="button"
-                                                aria-label={t('cart.remove', { defaultValue: 'Remove item' })}
-                                                onClick={() => void removeItem(item.id)}
-                                                className="ml-auto flex h-6 w-6 items-center justify-center rounded text-destructive hover:bg-muted"
-                                            >
-                                                <Trash2 className="h-3 w-3" />
-                                            </button>
+                            {items.map((item) => {
+                                const busy = pendingItemId === item.id;
+
+                                return (
+                                    <li key={item.id} className="flex gap-3 rounded-lg border border-border p-3">
+                                        <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-md bg-muted">
+                                            {item.product?.image_url && (
+                                                <img
+                                                    src={item.product.image_url}
+                                                    alt={item.product.name}
+                                                    className="h-full w-full object-cover"
+                                                    loading="lazy"
+                                                />
+                                            )}
                                         </div>
-                                    </div>
-                                </li>
-                            ))}
+                                        <div className="min-w-0 flex-1">
+                                            <p className="truncate text-sm font-medium">{item.product?.name ?? t('cart.item', { defaultValue: 'Item' })}</p>
+                                            <p className="text-sm font-bold text-primary">
+                                                {formatPrice(item.unit_price)}
+                                            </p>
+                                            <div className="mt-1 flex items-center gap-2">
+                                                <button
+                                                    type="button"
+                                                    aria-label={t('cart.decrease', { defaultValue: 'Decrease quantity' })}
+                                                    disabled={busy}
+                                                    onClick={() => void updateQty(item.id, item.quantity - 1)}
+                                                    className="flex h-6 w-6 items-center justify-center rounded border border-border disabled:cursor-not-allowed disabled:opacity-50"
+                                                >
+                                                    <Minus className="h-3 w-3" />
+                                                </button>
+                                                <span className="text-xs font-medium">{item.quantity}</span>
+                                                <button
+                                                    type="button"
+                                                    aria-label={t('cart.increase', { defaultValue: 'Increase quantity' })}
+                                                    disabled={busy}
+                                                    onClick={() => void updateQty(item.id, item.quantity + 1)}
+                                                    className="flex h-6 w-6 items-center justify-center rounded border border-border disabled:cursor-not-allowed disabled:opacity-50"
+                                                >
+                                                    <Plus className="h-3 w-3" />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    aria-label={t('cart.remove', { defaultValue: 'Remove item' })}
+                                                    disabled={busy}
+                                                    onClick={() => void removeItem(item.id)}
+                                                    className="ml-auto flex h-6 w-6 items-center justify-center rounded text-destructive hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                                                >
+                                                    <Trash2 className="h-3 w-3" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </li>
+                                );
+                            })}
                         </ul>
                     )}
                 </div>

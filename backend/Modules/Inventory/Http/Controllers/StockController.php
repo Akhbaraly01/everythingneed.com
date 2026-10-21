@@ -12,8 +12,8 @@ class StockController extends Controller
 {
     /**
      * Product IDs the current user may see/manage. Null = unrestricted
-     * (super_admin / administrator). Vendors are isolated to their own
-     * products; everyone else sees nothing.
+     * (super_admin / administrator, plus staff holding an inventory
+     * permission). A vendor account stays scoped to its own products.
      *
      * @return array<int, string>|null
      */
@@ -27,7 +27,20 @@ class StockController extends Controller
 
         $vendorIds = \Modules\Vendors\Entities\Vendor::where('user_id', $user->id)->pluck('id');
 
+        // Staff (inventory_manager, platform_ops, ...) hold the inventory
+        // permission and work the whole catalogue - without this they saw an
+        // empty console and were refused every adjustment.
+        if ($vendorIds->isEmpty() && $this->hasInventoryPermission($user)) {
+            return null;
+        }
+
         return \Modules\Products\Entities\Product::whereIn('vendor_id', $vendorIds)->pluck('id')->all();
+    }
+
+    private function hasInventoryPermission($user): bool
+    {
+        return $user->hasPermission('inventory.stock.view')
+            || $user->hasPermission('inventory.stock.manage');
     }
 
     private function scopeToOwnProducts(Request $request, $query): void

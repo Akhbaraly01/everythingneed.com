@@ -13,10 +13,20 @@ use Tests\TestCase;
 /**
  * W8 console hotel CRUD: full edit (PUT) + guarded delete (DELETE) on
  * /api/admin/hotels/{id} for super_admin / administrator / hotel_admin.
+ * The console API is permission-gated (hotels.overview.*), so the seeded
+ * role matrix has to be in place.
  */
 class AdminHotelCrudTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->seed(\Database\Seeders\PermissionSeeder::class);
+        \Illuminate\Support\Facades\Cache::forget('rbac.matrix');
+    }
 
     private function makeHotel(array $overrides = []): Hotel
     {

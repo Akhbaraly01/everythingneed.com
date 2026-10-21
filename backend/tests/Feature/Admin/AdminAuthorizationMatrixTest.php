@@ -37,8 +37,11 @@ class AdminAuthorizationMatrixTest extends TestCase
                 '/admin/settings', '/admin/system',
                 // W5.4: administrator holds reports.* in the role matrix.
                 '/admin/reports', '/admin/agriculture', '/admin/deals', '/admin/messaging',
+                // The per-user permission editor is gated by
+                // users.permissions.manage, which administrator holds.
+                '/admin/rbac',
             ],
-            'deny' => ['/admin/rbac', '/admin/audit-logs'],
+            'deny' => ['/admin/audit-logs'],
         ],
         'finance_admin' => [
             'allow' => ['/admin/dashboard', '/admin/finance', '/admin/payouts', '/admin/wallet', '/admin/returns'],
@@ -143,8 +146,10 @@ class AdminAuthorizationMatrixTest extends TestCase
             'deny' => ['/admin/users', '/admin/finance', '/admin/categories', '/admin/kyc', '/admin/cms'],
         ],
         'wallet_admin' => [
-            'allow' => ['/admin/dashboard', '/admin/payouts', '/admin/wallet'],
-            'deny' => ['/admin/users', '/admin/finance', '/admin/orders', '/admin/categories', '/admin/kyc'],
+            // The finance console reads the transactions API, whose gate is
+            // finance.transactions.view - wallet_admin holds it.
+            'allow' => ['/admin/dashboard', '/admin/payouts', '/admin/wallet', '/admin/finance'],
+            'deny' => ['/admin/users', '/admin/orders', '/admin/categories', '/admin/kyc'],
         ],
         'support_admin' => [
             'allow' => ['/admin/dashboard', '/admin/support/tickets', '/admin/departments', '/admin/messaging'],
@@ -163,8 +168,10 @@ class AdminAuthorizationMatrixTest extends TestCase
             'deny' => ['/admin/users', '/admin/finance', '/admin/orders', '/admin/categories', '/admin/kyc', '/admin/rbac'],
         ],
         'payout_reviewer' => [
-            'allow' => ['/admin/dashboard', '/admin/payouts'],
-            'deny' => ['/admin/users', '/admin/finance', '/admin/wallet', '/admin/orders'],
+            // finance.transactions.view is the finance console's data gate -
+            // payout_reviewer holds it.
+            'allow' => ['/admin/dashboard', '/admin/payouts', '/admin/finance'],
+            'deny' => ['/admin/users', '/admin/wallet', '/admin/orders'],
         ],
         'refund_agent' => [
             'allow' => ['/admin/dashboard', '/admin/orders', '/admin/returns'],

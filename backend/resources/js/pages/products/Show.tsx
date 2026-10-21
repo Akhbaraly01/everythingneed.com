@@ -43,6 +43,50 @@ interface RailResponse {
     }>;
 }
 
+/** Real shipping / returns facts taken from the product record. */
+interface ShippingMeta {
+    freeShipping: boolean;
+    freeShippingOver?: number;
+    returnDays?: number;
+    weightKg?: number;
+}
+
+function readNumber(value: unknown): number | undefined {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string' && value.trim() !== '' && Number.isFinite(Number(value))) {
+        return Number(value);
+    }
+    return undefined;
+}
+
+/**
+ * The product's own `shipping` JSON column carries the merchant-declared
+ * shipping facts (free_shipping, weight, optional thresholds). Everything
+ * not declared there falls back to what the server actually enforces:
+ * shipping is computed per cart (Checkout CartController) and a return is
+ * only accepted once the order is delivered (Orders ReturnRequestController).
+ */
+function readShippingMeta(product: Product): ShippingMeta {
+    const shipping = (product.shipping ?? {}) as Record<string, unknown>;
+    const specs = (product.specifications ?? {}) as Record<string, unknown>;
+
+    return {
+        freeShipping: shipping.free_shipping === true || shipping.free_shipping === 'true',
+        freeShippingOver: readNumber(
+            shipping.free_shipping_min
+            ?? shipping.free_shipping_over
+            ?? shipping.free_shipping_min_subtotal,
+        ),
+        returnDays: readNumber(
+            shipping.return_days
+            ?? shipping.return_window_days
+            ?? specs.return_days
+            ?? specs.return_window_days,
+        ),
+        weightKg: readNumber(shipping.weight_kg),
+    };
+}
+
 /** Normalise the catalogue payload into the rail card shape. */
 function toRail(data: RailResponse['data']): RailProduct[] {
     return (data ?? []).map((row) => ({
@@ -98,6 +142,19 @@ export default function ProductShow({ product }: ProductShowProps) {
 
         return list;
     }, [product.images, product.image_url]);
+
+    // Trust row copy comes from the real product record, never a fixed string.
+    const shippingMeta = useMemo(() => readShippingMeta(product), [product]);
+
+    const shippingNote = shippingMeta.freeShipping
+        ? 'Free shipping on this item'
+        : shippingMeta.freeShippingOver != null
+            ? `Free shipping on orders over ${formatPrice(shippingMeta.freeShippingOver)}`
+            : 'Shipping calculated at checkout';
+
+    const returnNote = shippingMeta.returnDays != null
+        ? `Returns accepted within ${shippingMeta.returnDays} days of delivery`
+        : 'Returns accepted after delivery';
 
     useEffect(() => {
         recordView({
@@ -538,13 +595,13 @@ export default function ProductShow({ product }: ProductShowProps) {
                         {/* Trust row */}
                         <div className="grid gap-2 rounded-lg bg-muted/40 p-4 text-sm text-muted-foreground sm:grid-cols-3">
                             <span className="flex items-center gap-2">
-                                <Truck className="h-4 w-4 shrink-0" /> Free shipping on orders over $50
+                                <Truck className="h-4 w-4 shrink-0" /> {shippingNote}
                             </span>
                             <span className="flex items-center gap-2">
                                 <Shield className="h-4 w-4 shrink-0" /> Secure payment
                             </span>
                             <span className="flex items-center gap-2">
-                                <RotateCcw className="h-4 w-4 shrink-0" /> 30-day return policy
+                                <RotateCcw className="h-4 w-4 shrink-0" /> {returnNote}
                             </span>
                         </div>
 
@@ -651,6 +708,12 @@ export default function ProductShow({ product }: ProductShowProps) {
                             className="text-sm font-medium text-primary hover:underline"
                         >
                             Read all reviews
+                        </Link>
+                        <Link
+                            href={`/reviews/create?type=product&id=${product.id}`}
+                            className="text-sm font-medium text-primary hover:underline"
+                        >
+                            Write a review
                         </Link>
                     </div>
                 </section>

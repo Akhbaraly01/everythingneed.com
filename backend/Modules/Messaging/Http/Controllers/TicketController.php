@@ -13,6 +13,21 @@ use Illuminate\Http\Request;
 
 class TicketController extends Controller
 {
+    /**
+     * The granular permissions that make an account support staff.
+     *
+     * The seeded roles that used to be hard-coded here (super_admin,
+     * administrator, support_agent, support_admin, customer_service) all
+     * hold support.* in PermissionSeeder::MATRIX, so they keep working
+     * unchanged; a custom role or a direct per-user grant of one of these
+     * permissions is now support staff as well.
+     */
+    private const STAFF_PERMISSIONS = [
+        'support.tickets.manage',
+        'support.tickets.assign',
+        'support.tickets.escalate',
+    ];
+
     public function __construct(
         private MessagingService $messagingService
     ) {}
@@ -121,7 +136,11 @@ class TicketController extends Controller
             return response()->json(['message' => 'Ticket not found'], 404);
         }
 
-        if (!$this->canAccess($request, $ticket)) {
+        // The owner may close their own ticket; closing somebody else's
+        // ticket is a staff action (support.tickets.manage).
+        $isOwner = (string) $ticket->user_id === (string) $request->user()->id;
+
+        if (!$isOwner && !$this->canManageTickets($request)) {
             return response()->json(['message' => 'You do not have access to this ticket'], 403);
         }
 
@@ -146,10 +165,7 @@ class TicketController extends Controller
         }
 
         $user = $request->user();
-        $isStaff = $user->hasRole('super_admin') || $user->hasRole('administrator')
-            || $user->hasRole('support_agent') || $user->hasRole('support_admin')
-            || $user->hasRole('customer_service')
-            || $user->hasPermission('support.tickets.manage');
+        $isStaff = $this->isStaff($request);
 
         if (!$isStaff) {
             return response()->json(['message' => 'Only support staff can transfer tickets'], 403);
@@ -185,10 +201,7 @@ class TicketController extends Controller
         }
 
         $user = $request->user();
-        $isStaff = $user->hasRole('super_admin') || $user->hasRole('administrator')
-            || $user->hasRole('support_agent') || $user->hasRole('support_admin')
-            || $user->hasRole('customer_service')
-            || $user->hasPermission('support.tickets.manage');
+        $isStaff = $this->canManageTickets($request);
 
         if ((string) $ticket->user_id !== (string) $user->id && !$isStaff) {
             return response()->json(['message' => 'You do not have access to this ticket'], 403);
@@ -326,16 +339,36 @@ class TicketController extends Controller
         return response()->json(['data' => $events]);
     }
 
+    /**
+     * Support staff = the account holds one of the support.tickets.*
+     * permissions (super_admin holds '*' implicitly).
+     */
     private function isStaff(Request $request): bool
     {
-        $roles = $request->user()?->roles->pluck('role');
+        $user = $request->user();
 
-        return $roles?->contains('super_admin')
-            || $roles?->contains('administrator')
-            || $roles?->contains('support_agent')
-            || $roles?->contains('support_admin')
-            || $roles?->contains('customer_service')
-            || $request->user()?->hasPermission('support.tickets.manage');
+        if (! $user) {
+            return false;
+        }
+
+        foreach (self::STAFF_PERMISSIONS as $permission) {
+            if ($user->hasPermission($permission)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Full support-desk authority over a ticket (moving it through the
+     * lifecycle, closing somebody else's ticket): support.tickets.manage.
+     */
+    private function canManageTickets(Request $request): bool
+    {
+        $user = $request->user();
+
+        return $user !== null && $user->hasPermission('support.tickets.manage');
     }
 
     private function canAccess(Request $request, object $ticket): bool

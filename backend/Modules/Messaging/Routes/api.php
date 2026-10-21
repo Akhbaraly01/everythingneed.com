@@ -13,10 +13,22 @@ Route::prefix('api')->group(function () {
         Route::get('/tickets/{id}', [TicketController::class, 'show']);
         Route::post('/tickets/{id}/reply', [TicketController::class, 'reply'])
             ->middleware('throttle:30,1');
+        // Support lifecycle.
+        // Permissions are the authority: the staff-only actions carry their
+        // granular support.tickets.* permission (support.tickets.assign for
+        // the department transfer, support.tickets.escalate for the
+        // escalation), so a custom role that holds the permission can act.
+        // The two customer self-service actions (reopen / close your own
+        // ticket) stay owner-scoped: they are not staff actions, so they
+        // carry no staff permission gate - the controller resolves them
+        // against the ticket owner and the support.tickets.manage staff
+        // permission (see TicketController::isStaff).
         Route::patch('/tickets/{id}/status', [TicketController::class, 'updateStatus']);
-        Route::post('/tickets/{id}/assign-department', [TicketController::class, 'assignDepartment']);
+        Route::post('/tickets/{id}/assign-department', [TicketController::class, 'assignDepartment'])
+            ->middleware('permission:support.tickets.assign');
         Route::post('/tickets/{id}/close', [TicketController::class, 'close']);
-        Route::post('/tickets/{id}/escalate', [TicketController::class, 'escalate']);
+        Route::post('/tickets/{id}/escalate', [TicketController::class, 'escalate'])
+            ->middleware('permission:support.tickets.escalate');
         Route::post('/tickets/{id}/satisfaction', [TicketController::class, 'satisfaction']);
         Route::get('/tickets/{id}/events', [TicketController::class, 'events']);
 

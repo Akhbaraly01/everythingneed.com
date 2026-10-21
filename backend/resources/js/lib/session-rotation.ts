@@ -1,15 +1,29 @@
 /**
- * Session-stable rotation helpers.
+ * Rotation helpers for the storefront arrangement.
  *
- * The storefront mixes several promotional blocks (banners, "submit your
- * need" callouts, trending rails). A fixed order makes every visit look
- * identical; a random order would jitter on every re-render. These
- * helpers shuffle deterministically from a seed that lives in the browser
- * session, so the arrangement is lively between sessions but stable while
- * the shopper browses.
+ * The storefront mixes several blocks (promo banners, category rails,
+ * product batches, recommendation rails). A fixed order makes every visit
+ * look identical; a random order would jitter on every re-render. These
+ * helpers shuffle deterministically from a seed, so the arrangement is
+ * lively between visits but stable while the shopper browses.
+ *
+ * `pageSeed()` is generated once per page load: every refresh produces a
+ * new arrangement (the shopper never sees the same shelf twice in a row)
+ * while the current page keeps its order.
  */
 
 const SEED_KEY = 'everythingneed-rotation-seed';
+
+let pageSeedValue: number | null = null;
+
+/** Seed for the current page load (stable until the next refresh). */
+export function pageSeed(): number {
+    if (pageSeedValue === null) {
+        pageSeedValue = Math.floor(Math.random() * 2 ** 31);
+    }
+
+    return pageSeedValue;
+}
 
 /** Stable per browser session (0 when storage is unavailable). */
 export function sessionSeed(): number {

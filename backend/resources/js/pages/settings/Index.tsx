@@ -59,6 +59,7 @@ export default function Settings({ user, settings }: SettingsProps) {
                 persistCurrency(data.currency);
             }
             setSaved(true);
+            toast.success(t('settings.saved', { defaultValue: 'Saved' }));
         } catch {
             toast.error(t('settings.saveFailed', { defaultValue: 'Failed to save settings' }));
         } finally {
@@ -76,6 +77,7 @@ export default function Settings({ user, settings }: SettingsProps) {
                 { key: 'notifications.marketing_emails', value: data.marketing_emails ? '1' : '0' },
             ]);
             setSaved(true);
+            toast.success(t('settings.saved', { defaultValue: 'Saved' }));
         } catch {
             toast.error(t('settings.prefsFailed', { defaultValue: 'Failed to save preferences' }));
         } finally {
@@ -94,7 +96,10 @@ export default function Settings({ user, settings }: SettingsProps) {
                             {(['general', 'notifications', 'security', 'appearance'] as const).map((tab) => (
                                 <button
                                     key={tab}
-                                    onClick={() => setActiveTab(tab)}
+                                    onClick={() => {
+                                        setActiveTab(tab);
+                                        setSaved(false);
+                                    }}
                                     className={`border-b-2 py-4 text-sm font-medium ${
                                         activeTab === tab
                                             ? 'border-indigo-500 text-indigo-600'
@@ -176,13 +181,20 @@ export default function Settings({ user, settings }: SettingsProps) {
                                         </div>
                                     </div>
                                 </div>
-                                <button
-                                    onClick={handleSaveGeneral}
-                                    disabled={processing}
-                                    className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
-                                >
-                                    {processing ? t('settings.saving', { defaultValue: 'Saving...' }) : t('settings.saveChanges', { defaultValue: 'Save Changes' })}{saved && activeTab === 'general' ? ' ?' : ''}
-                                </button>
+                                <div className="flex items-center gap-3">
+                                    <button
+                                        onClick={handleSaveGeneral}
+                                        disabled={processing}
+                                        className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+                                    >
+                                        {processing ? t('settings.saving', { defaultValue: 'Saving...' }) : t('settings.saveChanges', { defaultValue: 'Save Changes' })}
+                                    </button>
+                                    {saved && activeTab === 'general' && (
+                                        <span className="text-sm font-medium text-green-600" role="status">
+                                            {t('settings.saved', { defaultValue: 'Saved' })}
+                                        </span>
+                                    )}
+                                </div>
                             </div>
                         )}
 
@@ -215,13 +227,20 @@ export default function Settings({ user, settings }: SettingsProps) {
                                         </div>
                                     ))}
                                 </div>
-                                <button
-                                    onClick={handleSaveNotifications}
-                                    disabled={processing}
-                                    className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
-                                >
-                                    {processing ? t('settings.saving', { defaultValue: 'Saving...' }) : t('settings.savePreferences', { defaultValue: 'Save Preferences' })}{saved && activeTab === 'notifications' ? ' ?' : ''}
-                                </button>
+                                <div className="flex items-center gap-3">
+                                    <button
+                                        onClick={handleSaveNotifications}
+                                        disabled={processing}
+                                        className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+                                    >
+                                        {processing ? t('settings.saving', { defaultValue: 'Saving...' }) : t('settings.savePreferences', { defaultValue: 'Save Preferences' })}
+                                    </button>
+                                    {saved && activeTab === 'notifications' && (
+                                        <span className="text-sm font-medium text-green-600" role="status">
+                                            {t('settings.saved', { defaultValue: 'Saved' })}
+                                        </span>
+                                    )}
+                                </div>
                             </div>
                         )}
 

@@ -363,12 +363,16 @@ Route::prefix('api/admin')->middleware(['api', 'auth:sanctum', EnsureAccountActi
         ->middleware('role:super_admin');
     Route::post('/rbac/revoke', [AdminRbacController::class, 'revoke'])
         ->middleware('role:super_admin');
+    // Per-user permission grants (users.permissions.manage is the authority:
+    // administrator holds it, and a custom role or a direct per-user grant
+    // can use the editor too). The role-definition APIs above stay
+    // super-admin-only.
     Route::get('/users/{id}/permissions', [AdminRbacController::class, 'userPermissions'])
-        ->middleware('role:super_admin');
+        ->middleware('permission:users.permissions.manage');
     Route::post('/users/{id}/permissions', [AdminRbacController::class, 'grantUserPermission'])
-        ->middleware('role:super_admin');
+        ->middleware('permission:users.permissions.manage');
     Route::delete('/users/{id}/permissions/{permission}', [AdminRbacController::class, 'revokeUserPermission'])
-        ->middleware('role:super_admin');
+        ->middleware('permission:users.permissions.manage');
     Route::get('/rbac/scopes', [AdminRbacController::class, 'scopes'])
         ->middleware('role:super_admin');
     Route::post('/rbac/scopes', [AdminRbacController::class, 'grantScope'])

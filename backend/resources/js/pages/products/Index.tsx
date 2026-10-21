@@ -1,6 +1,6 @@
 import AppLayout from '@/layouts/AppLayout';
-import { Head, Link, router } from '@inertiajs/react';
-import { api } from '@/lib/api';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { api, ApiError, errorMessage } from '@/lib/api';
 import type { Product } from '@/types';
 import { formatPrice } from '@/lib/currency';
 import { toast } from 'sonner';
@@ -25,6 +25,7 @@ interface ProductsProps {
 }
 
 export default function Products({ products, filters }: ProductsProps) {
+    const { auth } = usePage().props as { auth?: { user?: { id: string } } | null };
     const [search, setSearch] = useState(filters?.search ?? '');
     const [cartMessage, setCartMessage] = useState<string | null>(null);
 
@@ -36,12 +37,22 @@ export default function Products({ products, filters }: ProductsProps) {
     const handleAddToCart = async (productId: string, e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
+        // The cart API is behind auth:sanctum - guests get a sign-in prompt
+        // instead of a generic failure toast.
+        if (!auth?.user) {
+            router.visit('/login');
+            return;
+        }
         try {
             await api.post('/api/cart/items', { product_id: productId, quantity: 1 });
             setCartMessage('Added to cart!');
             setTimeout(() => setCartMessage(null), 2000);
-        } catch {
-            toast.error('Could not add to cart. Please try again.');
+        } catch (err) {
+            if (err instanceof ApiError && err.status === 401) {
+                router.visit('/login');
+                return;
+            }
+            toast.error(errorMessage(err, 'Could not add to cart. Please try again.'));
         }
     };
 
@@ -144,7 +155,8 @@ export default function Products({ products, filters }: ProductsProps) {
                                 )}
                                 <button
                                     onClick={(e) => handleAddToCart(product.id, e)}
-                                    className="absolute right-2 top-2 rounded-full bg-white p-2 shadow-md opacity-0 transition group-hover:opacity-100 hover:bg-indigo-50"
+                                    aria-label={`Add ${product.name} to cart`}
+                                    className="absolute right-2 top-2 rounded-full bg-white p-2 shadow-md opacity-70 transition hover:bg-indigo-50 hover:opacity-100 focus:opacity-100 focus-visible:opacity-100"
                                     title="Add to cart"
                                 >
                                     <ShoppingCart className="h-4 w-4 text-indigo-600" />

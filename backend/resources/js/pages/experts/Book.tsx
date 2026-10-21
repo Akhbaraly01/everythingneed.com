@@ -1,5 +1,5 @@
 import AppLayout from '@/layouts/AppLayout';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { api, errorMessage } from '@/lib/api';
 import { toast } from 'sonner';
 import { formatPrice } from '@/lib/currency';
@@ -24,6 +24,9 @@ interface ExpertBookingProps {
 }
 
 export default function ExpertBooking({ expert_id }: ExpertBookingProps) {
+    const { auth } = usePage().props as { auth?: { id?: string; user?: { id?: string } } | null };
+    const isLoggedIn = Boolean(auth?.id ?? auth?.user?.id);
+
     const [expert, setExpert] = useState<Expert | null>(null);
     const [loading, setLoading] = useState(true);
     const [date, setDate] = useState('');
@@ -43,6 +46,10 @@ export default function ExpertBooking({ expert_id }: ExpertBookingProps) {
     }, [expert_id]);
 
     const handleBook = async () => {
+        if (!isLoggedIn) {
+            router.visit('/login');
+            return;
+        }
         if (!date || !time) return;
         setSubmitting(true);
         try {
@@ -109,6 +116,19 @@ export default function ExpertBooking({ expert_id }: ExpertBookingProps) {
                             Pay later - keep it pending
                         </button>
                     </>
+                ) : !isLoggedIn ? (
+                    <div className="rounded-lg bg-white p-6 text-center shadow dark:bg-gray-800">
+                        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Sign in to continue</h2>
+                        <p className="mt-2 text-sm text-gray-500">
+                            Booking a session is tied to your account — sign in to pick a slot and pay.
+                        </p>
+                        <Link
+                            href="/login"
+                            className="mt-4 inline-flex rounded-lg bg-indigo-600 px-6 py-3 text-sm font-semibold text-white hover:bg-indigo-500"
+                        >
+                            Sign in
+                        </Link>
+                    </div>
                 ) : (
                     <div className="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
                         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Book a session</h2>

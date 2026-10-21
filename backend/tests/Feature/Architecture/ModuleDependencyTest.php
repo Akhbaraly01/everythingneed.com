@@ -76,12 +76,15 @@ class ModuleDependencyTest extends TestCase
         'Modules/Products/Http/Requests/StoreProductRequest.php' => ['Modules\Vendors\Entities'],
         // Hotel reviews (N-40) read the hotel row for existence + a
         // completed-stay check that computes the verified-guest badge.
-        'Modules/Reviews/Http/Controllers/ReviewController.php' => ['Modules\Hotels\Entities', 'Modules\Learn\Entities', 'Modules\Needs\Entities', 'Modules\Orders\Entities'],
+        // Product reviews mirror the published review into the catalogue's
+        // product_reviews projection (same id, same transaction).
+        'Modules/Reviews/Http/Controllers/ReviewController.php' => ['Modules\Hotels\Entities', 'Modules\Learn\Entities', 'Modules\Needs\Entities', 'Modules\Orders\Entities', 'Modules\Products\Entities'],
+        'Modules/Reviews/Services/ProductReviewFeed.php' => ['Modules\Products\Entities'],
         'Modules/Rides/Http/Controllers/FlightController.php' => ['Modules\Bookings\Entities'],
         'Modules/Services/Http/Controllers/AdminServiceController.php' => ['Modules\Payments\Services'],
         'Modules/Services/Http/Controllers/ServiceCatalogController.php' => ['Modules\Payments\Services'],
         'Modules/Upload/Http/Controllers/UploadController.php' => ['Modules\Admin\Entities'],
-        'Modules/Vendors/Http/Controllers/VendorWorkspaceController.php' => ['Modules\Bookings\Entities', 'Modules\Products\Entities'],
+        'Modules/Vendors/Http/Controllers/VendorWorkspaceController.php' => ['Modules\Bookings\Entities', 'Modules\Reviews\Services'],
     ];
 
     public function test_cross_module_logic_references_stay_within_allowlist(): void

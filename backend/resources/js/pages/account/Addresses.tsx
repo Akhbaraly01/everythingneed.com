@@ -1,10 +1,11 @@
 import AppLayout from '@/layouts/AppLayout';
 import { Head } from '@inertiajs/react';
-import { api, errorMessage } from '@/lib/api';
+import { api, ApiError, errorMessage } from '@/lib/api';
 import { toast } from 'sonner';
 import { MapPin, Plus, Trash2, Check, RefreshCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/shared/Button';
+import ConfirmDialog from '@/components/shared/Ui';
 
 interface Address {
     id: string;
@@ -15,6 +16,13 @@ interface Address {
     postal_code: string;
     country: string;
     is_default: boolean;
+    line1?: string;
+    region?: string;
+}
+
+interface FieldErrors {
+    street?: string;
+    city?: string;
 }
 
 export default function AccountAddresses() {
@@ -22,12 +30,15 @@ export default function AccountAddresses() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [showForm, setShowForm] = useState(false);
+    const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+    const [deleteFor, setDeleteFor] = useState<string | null>(null);
+    const [deleting, setDeleting] = useState(false);
     const [form, setForm] = useState({ label: 'Home', street: '', city: '', state: '', postal_code: '', country: 'US' });
 
     const load = () => {
         setLoading(true);
         setError(null);
-        api.get<{ data: Array<Address & { line1?: string; region?: string }> }>('/api/addresses')
+        api.get<{ data: Address[] }>('/api/addresses')
             .then((res) => setAddresses(
                 (res.data ?? []).map((a) => ({
                     ...a,
@@ -46,31 +57,58 @@ export default function AccountAddresses() {
     useEffect(load, []);
 
     const addAddress = async () => {
+        const errors: FieldErrors = {};
+        if (!form.street.trim()) errors.street = 'Street address is required.';
+        if (!form.city.trim()) errors.city = 'City is required.';
+        setFieldErrors(errors);
+        if (errors.street || errors.city) return;
+
         try {
             const res = await api.post<{ data: Address }>('/api/addresses', {
-                line1: form.street,
-                city: form.city,
-                region: form.state,
-                postal_code: form.postal_code,
+                line1: form.street.trim(),
+                city: form.city.trim(),
+                region: form.state.trim() || undefined,
+                postal_code: form.postal_code.trim() || undefined,
                 country: (form.country || 'US').slice(0, 2).toUpperCase(),
+                // The first address of an account becomes the default one.
+                is_default: addresses.length === 0,
             });
-            const saved = { ...res.data, label: form.label, street: form.street, state: form.state };
+            const saved = {
+                ...res.data,
+                label: form.label,
+                street: form.street.trim(),
+                city: form.city.trim(),
+                state: form.state.trim(),
+                postal_code: form.postal_code.trim(),
+                is_default: res.data?.is_default ?? addresses.length === 0,
+            };
             setAddresses([...addresses, saved]);
             setShowForm(false);
+            setFieldErrors({});
             setForm({ label: 'Home', street: '', city: '', state: '', postal_code: '', country: 'US' });
             toast.success('Address saved.');
         } catch (e) {
+            if (e instanceof ApiError && e.errors) {
+                setFieldErrors({
+                    street: e.errors.line1?.[0] ?? e.errors.street?.[0],
+                    city: e.errors.city?.[0],
+                });
+            }
             toast.error(errorMessage(e, 'Failed to save address'));
         }
     };
 
     const deleteAddress = async (id: string) => {
+        setDeleting(true);
         try {
             await api.del(`/api/addresses/${id}`);
             setAddresses(addresses.filter((a) => a.id !== id));
+            setDeleteFor(null);
             toast.success('Address removed.');
         } catch (e) {
             toast.error(errorMessage(e, 'Failed to remove address'));
+        } finally {
+            setDeleting(false);
         }
     };
 
@@ -102,11 +140,23 @@ export default function AccountAddresses() {
                         <div className="mt-4 space-y-3">
                             <input type="text" placeholder="Label (Home, Work)" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })}
                                 className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700" />
-                            <input type="text" placeholder="Street address" value={form.street} onChange={(e) => setForm({ ...form, street: e.target.value })}
-                                className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700" />
-                            <div className="grid grid-cols-2 gap-3">
-                                <input type="text" placeholder="City" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })}
+                            <div>
+                                <input type="text" placeholder="Street address *" value={form.street} onChange={(e) => setForm({ ...form, street: e.target.value })}
+                                    aria-label="Street address"
                                     className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700" />
+                                {fieldErrors.street && (
+                                    <p className="mt-1 text-sm text-red-600" role="alert">{fieldErrors.street}</p>
+                                )}
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <input type="text" placeholder="City *" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })}
+                                        aria-label="City"
+                                        className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700" />
+                                    {fieldErrors.city && (
+                                        <p className="mt-1 text-sm text-red-600" role="alert">{fieldErrors.city}</p>
+                                    )}
+                                </div>
                                 <input type="text" placeholder="State" value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })}
                                     className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700" />
                             </div>
@@ -157,7 +207,7 @@ export default function AccountAddresses() {
                                             <Check className="h-4 w-4" />
                                         </Button>
                                     )}
-                                    <Button variant="danger" iconOnly size="sm" onClick={() => deleteAddress(a.id)} title="Delete" aria-label="Delete">
+                                    <Button variant="danger" iconOnly size="sm" onClick={() => setDeleteFor(a.id)} title="Delete" aria-label="Delete">
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
                                 </div>
@@ -165,6 +215,19 @@ export default function AccountAddresses() {
                         ))}
                     </div>
                 )}
+
+                <ConfirmDialog
+                    open={deleteFor !== null}
+                    title="Delete address?"
+                    description="This permanently removes the address from your account."
+                    confirmLabel="Delete"
+                    danger
+                    busy={deleting}
+                    onConfirm={() => {
+                        if (deleteFor) void deleteAddress(deleteFor);
+                    }}
+                    onCancel={() => setDeleteFor(null)}
+                />
             </div>
         </AppLayout>
     );

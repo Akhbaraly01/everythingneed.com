@@ -8,10 +8,12 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Products\Entities\Product;
-use Modules\Products\Entities\ProductReview;
+use Modules\Reviews\Services\ProductReviewFeed;
 
 class ProductsPageController extends Controller
 {
+    public function __construct(private ProductReviewFeed $reviews) {}
+
     public function index(Request $request): Response
     {
         $query = Product::where('is_active', true)
@@ -130,12 +132,7 @@ class ProductsPageController extends Controller
             return redirect()->route('products.reviews', $product->slug, 301);
         }
 
-        $reviews = ProductReview::where('product_id', $product->id)
-            ->join('users', 'users.id', '=', 'product_reviews.user_id')
-            ->select('product_reviews.*', 'users.name as reviewer_name')
-            ->orderByDesc('product_reviews.created_at')
-            ->paginate(10)
-            ->withQueryString();
+        $reviews = $this->reviews->forProduct($product->id);
 
         return Inertia::render('products/Reviews', [
             'product' => $product,

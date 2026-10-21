@@ -12,6 +12,16 @@ class TicketDeskTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Support staff is decided by the support.tickets.* permissions, so
+        // the seeded role matrix has to be in place.
+        $this->seed(\Database\Seeders\PermissionSeeder::class);
+        \Illuminate\Support\Facades\Cache::forget('rbac.matrix');
+    }
+
     private function makeTicket(): array
     {
         $owner = User::factory()->create();

@@ -34,8 +34,13 @@ class AuthorizationCoverageTest extends TestCase
         // lead/contact forms straight from rendered pages.
         'api/forms/*/submit',
         // Whole-page translation proxy: throttled, no provider credentials
-        // exposed to the client, and it only echoes translated text back.
+        // exposed, and it only echoes translated text back.
         'api/i18n/auto-translate',
+        // Search by photo: the shopper's picture is described by the vision
+        // model server-side (throttled 10/min, the key never leaves the
+        // server, the photo is never stored) and the description drives the
+        // ordinary product search.
+        'api/search/image',
     ];
 
     private function isMutating($route): bool

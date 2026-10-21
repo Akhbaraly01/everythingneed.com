@@ -58,7 +58,9 @@ export default function MyListings() {
     const act = async (propertyId: string, viewingId: string, action: 'approve' | 'reject') => {
         setBusyId(viewingId);
         try {
-            await api.post(`/api/properties/viewing-requests/${viewingId}/${action}`);
+            // The approve/reject endpoints live under /api/viewing-requests
+            // (not /api/properties/viewing-requests).
+            await api.post(`/api/viewing-requests/${viewingId}/${action}`);
             toast.success(action === 'approve' ? 'Viewing approved' : 'Viewing rejected');
             const res = await api.get<{ data: ViewingRequest[] }>(`/api/properties/${propertyId}/viewing-requests`);
             setViewings((v) => ({ ...v, [propertyId]: Array.isArray(res.data) ? res.data : [] }));

@@ -81,7 +81,7 @@ class UserPermissionGrantsTest extends TestCase
         $this->assertSame(1, \Illuminate\Support\Facades\DB::table('user_permissions')->where('user_id', $user->id)->count());
     }
 
-    public function test_non_super_admin_cannot_manage_user_permissions(): void
+    public function test_a_role_without_the_permission_cannot_manage_user_permissions(): void
     {
         $this->seedMatrix();
 
@@ -97,6 +97,16 @@ class UserPermissionGrantsTest extends TestCase
         $this->actingAs($moderator, 'sanctum')
             ->deleteJson("/api/admin/users/{$target->id}/permissions/inventory.stock.view")
             ->assertForbidden();
+
+        // The permission is the authority: administrator holds
+        // users.permissions.manage and can use the per-user editor.
+        $administrator = $this->userWithRole('administrator');
+        $this->actingAs($administrator, 'sanctum')
+            ->getJson("/api/admin/users/{$target->id}/permissions")
+            ->assertOk();
+        $this->actingAs($administrator, 'sanctum')
+            ->postJson("/api/admin/users/{$target->id}/permissions", ['permission' => 'inventory.stock.view'])
+            ->assertOk();
     }
 
     public function test_invalid_permission_is_rejected_on_grant_and_revoke(): void

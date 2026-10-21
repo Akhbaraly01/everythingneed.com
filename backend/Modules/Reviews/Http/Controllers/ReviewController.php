@@ -170,11 +170,15 @@ class ReviewController extends Controller
             // Savepoint: a 23505 race-collapse must not poison an outer
             // transaction (pgsql 25P02) — same pattern as the webhook intake.
             $review = \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $request, $verifiedPurchase) {
-                return Review::create(array_merge($validated, [
+                $review = Review::create(array_merge($validated, [
                     'user_id' => $request->user()->id,
                     'is_verified_purchase' => $verifiedPurchase,
                     'status' => Review::STATUS_APPROVED,
                 ]));
+
+                $this->mirrorProductReview($review);
+
+                return $review;
             });
         } catch (\Illuminate\Database\QueryException $e) {
             // Concurrent double-submit: the unique indexes collapse the race
@@ -297,6 +301,68 @@ class ReviewController extends Controller
 
         return false;
     }
+    /**
+     * Product reviews are published from `reviews`, but the catalogue keeps
+     * its own `product_reviews` projection (product page, vendor console).
+     * The projection is written in the same transaction as the review and
+     * shares its id, so the two rows are one review and never diverge.
+     */
+    private function mirrorProductReview(Review $review): void
+    {
+        if ($review->reviewable_type !== 'product') {
+            return;
+        }
+
+        $product = \Modules\Products\Entities\Product::find($review->reviewable_id);
+
+        if (!$product) {
+            return;
+        }
+
+        $mirror = new \Modules\Products\Entities\ProductReview([
+            'product_id' => $product->id,
+            'user_id' => $review->user_id,
+            'rating' => $review->rating,
+            'comment' => $review->comment,
+            'is_verified_purchase' => $review->is_verified_purchase,
+        ]);
+
+        $mirror->id = $review->id;
+        $mirror->save();
+    }
+
+    /** Keep the catalogue projection in step with an edited review. */
+    private function syncProductReview(Review $review): void
+    {
+        if ($review->reviewable_type !== 'product') {
+            return;
+        }
+
+        $mirror = \Modules\Products\Entities\ProductReview::find($review->id);
+
+        if (!$mirror) {
+            return;
+        }
+
+        $mirror->update([
+            'rating' => $review->rating,
+            'comment' => $review->comment,
+        ]);
+    }
+
+    /** A deleted review takes its catalogue projection with it. */
+    private function dropProductReview(Review $review): void
+    {
+        if ($review->reviewable_type !== 'product') {
+            return;
+        }
+
+        $mirror = \Modules\Products\Entities\ProductReview::find($review->id);
+
+        if ($mirror) {
+            $mirror->delete();
+        }
+    }
 
     public function update(Request $request, string $id): JsonResponse
     {
@@ -313,6 +379,8 @@ class ReviewController extends Controller
             'comment' => 'nullable|string|max:2000',
         ]));
 
+        $this->syncProductReview($review);
+
         if ($review->reviewable_type === 'course') {
             $this->courseRatings->sync($review->reviewable_id);
         }
@@ -326,11 +394,14 @@ class ReviewController extends Controller
     public function destroy(Request $request, string $id): JsonResponse
     {
         $review = Review::find($id);
+
         if (!$review || $review->user_id !== $request->user()->id) {
             return response()->json(['message' => 'Review not found'], 404);
         }
         $courseId = $review->reviewable_type === 'course' ? $review->reviewable_id : null;
         $review->delete();
+
+        $this->dropProductReview($review);
 
         if ($courseId !== null) {
             $this->courseRatings->sync($courseId);

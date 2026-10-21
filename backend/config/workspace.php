@@ -118,4 +118,15 @@ return [
 
     // Roles that belong to the vendor console.
     'vendor_console_roles' => ['vendor_admin'],
+
+    /*
+     * The vendor console is also entered by ownership, not by role: an
+     * account that owns a `vendors` row IS a vendor (self-scoped). A
+     * registered vendor holds no console role at all, so without this the
+     * vendor console would never appear in the workspace switcher.
+     */
+    'vendor_console_owners' => true,
+
+    // Landing for an owner of a vendors row who holds no console role.
+    'vendor_landing' => '/vendor',
 ];

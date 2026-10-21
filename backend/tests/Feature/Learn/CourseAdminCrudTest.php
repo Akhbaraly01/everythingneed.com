@@ -191,12 +191,20 @@ class CourseAdminCrudTest extends TestCase
         $this->getJson('/api/admin/courses')->assertStatus(401);
         $this->putJson("/api/admin/courses/{$course->id}/status", ['status' => 'draft'])->assertStatus(401);
 
-        // content_manager holds learn.courses.manage but is not on the route
-        // role list - the role layer must refuse.
+        // content_manager holds learn.courses.manage, so the permission is
+        // the authority: the role list that used to shadow it is gone.
         $this->seedMatrix();
         $manager = $this->createUser();
         $this->assignRole($manager, 'content_manager');
         $this->actingAs($manager, 'sanctum')
+            ->putJson("/api/admin/courses/{$course->id}/status", ['status' => 'draft'])
+            ->assertOk();
+
+        // A role without the permission is still refused.
+        $this->seedMatrix();
+        $plain = $this->createUser();
+        $this->assignRole($plain, 'user');
+        $this->actingAs($plain, 'sanctum')
             ->putJson("/api/admin/courses/{$course->id}/status", ['status' => 'draft'])
             ->assertStatus(403);
     }
