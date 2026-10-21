@@ -386,6 +386,17 @@ class NeedEscrowController extends Controller
             'refund_id' => $refund['refund_id'] ?? null,
         ]);
 
+        $providerId = (string) ($needRequest->acceptedOffer?->provider_id ?? '');
+        if ($providerId !== '') {
+            $this->notifications->notify(
+                $providerId,
+                'Milestone refunded',
+                "Milestone '{$milestone->title}' was refunded to the payer.",
+                'need_milestone_refunded',
+                $milestone->id
+            );
+        }
+
         return response()->json(['message' => 'Milestone refunded', 'data' => $this->present($milestone->fresh())]);
     }
 

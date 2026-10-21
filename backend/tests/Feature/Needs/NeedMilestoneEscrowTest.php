@@ -197,6 +197,11 @@ class NeedMilestoneEscrowTest extends TestCase
             Refund::where('payment_id', NeedMilestone::find($milestoneId)->payment_id)->count()
         );
 
+        // The provider is told their milestone went back to the payer.
+        $this->assertDatabaseHas('notifications', [
+            'type' => 'need_milestone_refunded',
+        ]);
+
         // A settled milestone cannot be refunded again.
         $this->postJson("/api/need-requests/{$request->id}/milestones/{$milestoneId}/refund")->assertStatus(422);
     }
