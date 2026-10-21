@@ -3,8 +3,8 @@ import { Link } from '@inertiajs/react';
 import { api } from '@/lib/api';
 import { formatPrice } from '@/lib/currency';
 import { useLanguage } from '@/lib/use-language';
+import PictureSearch from '@/components/shared/PictureSearch';
 import {
-    Camera,
     Loader2,
     ShoppingBag,
     GraduationCap,
@@ -36,8 +36,6 @@ const GROUPS = [
 interface Props {
     /** Where the query is sent on submit (defaults to the search page). */
     onSubmit?: (query: string) => void;
-    /** Camera (picture search) target. */
-    imageSearchHref?: string;
     className?: string;
 }
 
@@ -51,7 +49,6 @@ interface Props {
  */
 export default function GlobalSearch({
     onSubmit,
-    imageSearchHref = '/scan',
     className = '',
 }: Props) {
     const { t } = useLanguage();
@@ -175,15 +172,7 @@ export default function GlobalSearch({
                     <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
                 )}
 
-                <Link
-                    href={imageSearchHref}
-                    role="button"
-                    tabIndex={0}
-                    aria-label={t('nav.searchByImage', { defaultValue: 'Search by image' })}
-                    className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:inline-flex"
-                >
-                    <Camera className="h-4 w-4" aria-hidden="true" />
-                </Link>
+                <PictureSearch />
 
                 <button
                     type="submit"

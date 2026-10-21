@@ -1,31 +1,52 @@
 import { Card } from '@/components/shared/Card';
 import { Button } from '@/components/shared/Button';
 import { roleBadge, roleLabel, type RbacMatrixRow } from '@/lib/rbac';
-import { Lock, Trash2, Users, Wand2 } from 'lucide-react';
+import { Lock, RotateCcw, Trash2, Users, Wand2 } from 'lucide-react';
 import { DeniedPermissionChip, PermissionChip } from './PermissionChip';
 
 interface Props {
     row: RbacMatrixRow;
     denied: string[];
     busy: boolean;
+    /** The viewer may retire built-in roles (super admin only). */
+    canManageCore?: boolean;
     onManage: () => void;
     onDelete: () => void;
-    onRestore: (permission: string) => void;
+    onRestore: () => void;
+    onRestorePermission: (permission: string) => void;
 }
 
 const VISIBLE_GRANTED = 6;
 const VISIBLE_DENIED = 3;
 
-/** One role tile: identity, counts, permission preview and row actions. */
-export function RoleCard({ row, denied, busy, onManage, onDelete, onRestore }: Props) {
+/**
+ * One role tile: identity, counts, permission preview and row actions.
+ *
+ * Built-in roles stay protected - they cannot be deleted or edited by
+ * anyone but a super admin, and the tile says so. A super admin sees the
+ * action (retire) plus the restore path for roles already retired.
+ */
+export function RoleCard({
+    row,
+    denied,
+    busy,
+    canManageCore = false,
+    onManage,
+    onDelete,
+    onRestore,
+    onRestorePermission,
+}: Props) {
     const badge = roleBadge(row);
     const label = roleLabel(row);
     const visibleGranted = row.permissions.slice(0, VISIBLE_GRANTED);
     const hiddenGranted = row.permissions.length - visibleGranted.length;
     const visibleDenied = denied.slice(0, VISIBLE_DENIED);
     const hiddenDenied = denied.length - visibleDenied.length;
-    const deletable = row.is_custom === true;
+    const isCustom = row.is_custom === true;
+    const isRetired = row.is_retired === true;
     const userCount = row.user_count ?? 0;
+    // Custom roles are free to delete; built-in roles only for a super admin.
+    const deletable = isCustom || canManageCore;
 
     return (
         <Card className="flex h-full flex-col gap-3 p-4">
@@ -55,6 +76,12 @@ export function RoleCard({ row, denied, busy, onManage, onDelete, onRestore }: P
                 </span>
             </div>
 
+            {isRetired && (
+                <p className="rounded-lg bg-destructive/10 px-2.5 py-1.5 text-[11px] font-medium text-destructive">
+                    Retired - hidden from every role picker. A super admin can restore it.
+                </p>
+            )}
+
             <div className="flex flex-1 flex-wrap content-start gap-1.5">
                 {row.permissions.length === 0 && denied.length === 0 ? (
                     <p className="text-xs text-muted-foreground">No explicit grants.</p>
@@ -77,7 +104,7 @@ export function RoleCard({ row, denied, busy, onManage, onDelete, onRestore }: P
                                 key={`denied:${permission}`}
                                 permission={permission}
                                 disabled={busy}
-                                onRestore={() => onRestore(permission)}
+                                onRestore={() => onRestorePermission(permission)}
                             />
                         ))}
                         {hiddenDenied > 0 ? (
@@ -110,15 +137,31 @@ export function RoleCard({ row, denied, busy, onManage, onDelete, onRestore }: P
                         iconLeft={<Trash2 className="h-3.5 w-3.5" />}
                         className="text-muted-foreground hover:text-destructive"
                         disabled={busy}
-                        title={`Delete ${label}`}
+                        title={
+                            isCustom
+                                ? `Delete ${label}`
+                                : `Retire ${label} (super admin only - it leaves every role picker until restored)`
+                        }
                         onClick={onDelete}
                     >
-                        Delete
+                        {isCustom ? 'Delete' : 'Retire'}
+                    </Button>
+                ) : isRetired ? (
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        iconLeft={<RotateCcw className="h-3.5 w-3.5" />}
+                        className="text-muted-foreground hover:text-primary"
+                        disabled={busy}
+                        title={`Restore ${label}`}
+                        onClick={onRestore}
+                    >
+                        Restore
                     </Button>
                 ) : (
                     <span
                         className="inline-flex items-center gap-1.5 px-2 py-1 text-xs text-muted-foreground"
-                        title="Built-in roles cannot be deleted"
+                        title="Built-in roles are protected - only a super admin can retire them"
                     >
                         <Lock className="h-3.5 w-3.5" aria-hidden="true" />
                         Protected

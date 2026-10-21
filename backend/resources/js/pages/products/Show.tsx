@@ -110,37 +110,25 @@ export default function ProductShow({ product }: ProductShowProps) {
         });
     }, [product, recordView]);
 
-    // "Related items" (same category) and "More to love" (rest of the
-    // catalogue) - both rails feed the page from the public catalogue API.
+    // "Related items" (same shelf) and "More to love" (discovery across
+    // the catalogue) come from the ranked recommendation endpoint, so the
+    // rails always show genuinely comparable products.
     useEffect(() => {
         let cancelled = false;
 
         const load = async (): Promise<void> => {
             try {
-                const [sameCategory, catalogue] = await Promise.all([
-                    api.get<RailResponse>('/api/products', {
-                        params: { category: product.category, per_page: 12 },
-                    }),
-                    api.get<RailResponse>('/api/products', { params: { per_page: 24 } }),
-                ]);
+                const res = await api.get<{ related?: RailResponse['data']; more?: RailResponse['data'] }>(
+                    `/api/products/${product.id}/related`,
+                    { params: { limit: 12 } },
+                );
 
                 if (cancelled) {
                     return;
                 }
 
-                const exclude = (items: RailProduct[]): RailProduct[] =>
-                    items.filter((item) => String(item.id) !== String(product.id));
-
-                const relatedItems = exclude(toRail(sameCategory.data));
-                const catalogueItems = exclude(toRail(catalogue.data));
-                const more = catalogueItems.filter(
-                    (item) => !relatedItems.some((rel) => String(rel.id) === String(item.id)),
-                );
-
-                setRelated(relatedItems);
-                // Small catalogues can leave "More to love" empty; the
-                // related items then carry the section instead of a hole.
-                setMoreToLove(more.length > 0 ? more : relatedItems);
+                setRelated(toRail(res.related));
+                setMoreToLove(toRail(res.more));
             } catch {
                 // Rails are optional; the page stays complete without them.
             }
@@ -151,7 +139,7 @@ export default function ProductShow({ product }: ProductShowProps) {
         return () => {
             cancelled = true;
         };
-    }, [product.id, product.category]);
+    }, [product.id]);
 
     // Variants grouped by their attribute (Colour / Size / ...) so the
     // picker reads like a catalogue instead of a flat list.

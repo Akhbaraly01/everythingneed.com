@@ -11,6 +11,8 @@ export interface RbacMatrixRow {
     user_count?: number;
     is_core?: boolean;
     is_custom?: boolean;
+    /** Built-in role a super admin took out of service. */
+    is_retired?: boolean;
 }
 
 export interface RbacStatsShape {

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { api, errorMessage } from '@/lib/api';
 import { useConfirm } from '@/lib/confirm';
@@ -35,6 +35,11 @@ interface Props {
 
 export default function AdminRbac({ catalog }: Props) {
     const ask = useConfirm();
+    const { props } = usePage();
+    // Built-in roles are protected; only the platform owner may retire or
+    // restore them.
+    const auth = (props.auth ?? null) as { roles?: string[] } | null;
+    const isSuperAdmin = (auth?.roles ?? []).includes('super_admin');
 
     const [matrix, setMatrix] = useState<RbacMatrixRow[]>([]);
     // W2 reversible state: denied rows stay visible with one-click restore.
@@ -214,13 +219,15 @@ export default function AdminRbac({ catalog }: Props) {
 
     const deleteRole = async (row: RbacMatrixRow) => {
         const holders = row.user_count ?? 0;
+        const isCustom = row.is_custom === true;
         const confirmed = await ask({
-            title: `Delete ${roleLabel(row)}?`,
-            description:
-                holders > 0
+            title: isCustom ? `Delete ${roleLabel(row)}?` : `Retire ${roleLabel(row)}?`,
+            description: isCustom
+                ? holders > 0
                     ? `${holders} user${holders === 1 ? '' : 's'} currently hold this role and will be reassigned to the User role. The role and its permission rows are removed permanently.`
-                    : 'The role and its permission rows are removed permanently.',
-            confirmLabel: 'Delete role',
+                    : 'The role and its permission rows are removed permanently.'
+                : `This is a built-in role. Retiring it removes it from every role picker and drops its permission rows; its ${holders} holder${holders === 1 ? '' : 's'} will be reassigned to the User role. A super admin can restore it later.`,
+            confirmLabel: isCustom ? 'Delete role' : 'Retire role',
             danger: true,
         });
         if (!confirmed) return;
@@ -231,11 +238,34 @@ export default function AdminRbac({ catalog }: Props) {
                 `/api/admin/rbac/roles/${row.role}`,
                 holders > 0 ? { reassign_to: 'user' } : undefined,
             );
-            toast.success(`${roleLabel(row)} deleted`);
+            toast.success(
+                isCustom ? `${roleLabel(row)} deleted` : `${roleLabel(row)} retired`,
+            );
             if (manageRole === row.role) setManageRole(null);
             await load();
         } catch (err) {
             toast.error(errorMessage(err, 'Delete failed'));
+        } finally {
+            setDeletingRole(null);
+        }
+    };
+
+    const restoreRole = async (row: RbacMatrixRow) => {
+        const confirmed = await ask({
+            title: `Restore ${roleLabel(row)}?`,
+            description:
+                'The role returns to every role picker and its default permissions are granted again.',
+            confirmLabel: 'Restore role',
+        });
+        if (!confirmed) return;
+
+        setDeletingRole(row.role);
+        try {
+            await api.post(`/api/admin/rbac/roles/${row.role}/restore`);
+            toast.success(`${roleLabel(row)} restored`);
+            await load();
+        } catch (err) {
+            toast.error(errorMessage(err, 'Restore failed'));
         } finally {
             setDeletingRole(null);
         }
@@ -358,9 +388,11 @@ export default function AdminRbac({ catalog }: Props) {
                                 row={row}
                                 denied={row.denied ?? []}
                                 busy={busy !== null || deletingRole === row.role}
+                                canManageCore={isSuperAdmin}
                                 onManage={() => setManageRole(row.role)}
                                 onDelete={() => void deleteRole(row)}
-                                onRestore={(permission) => void grantPair(row.role, permission)}
+                                onRestore={() => void restoreRole(row)}
+                                onRestorePermission={(permission) => void grantPair(row.role, permission)}
                             />
                         ))}
                     </div>

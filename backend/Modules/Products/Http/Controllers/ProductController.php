@@ -4,6 +4,7 @@ namespace Modules\Products\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Modules\Products\Services\ProductService;
+use Modules\Products\Services\ProductRecommendationService;
 use Modules\Products\Http\Requests\StoreProductRequest;
 use Modules\Products\Http\Resources\ProductResource;
 use Illuminate\Http\JsonResponse;
@@ -12,7 +13,8 @@ use Illuminate\Http\Request;
 class ProductController extends Controller
 {
     public function __construct(
-        private ProductService $productService
+        private ProductService $productService,
+        private ProductRecommendationService $recommendations,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -67,6 +69,30 @@ class ProductController extends Controller
 
         return response()->json([
             'data' => new ProductResource($product),
+        ]);
+    }
+
+    /**
+     * Ranked recommendations for a product: "related" (same shelf) and
+     * "more" (discovery across the catalogue). Only live products are
+     * ever returned.
+     */
+    public function related(Request $request, string $id): JsonResponse
+    {
+        $product = $this->productService->getProduct($id);
+
+        if (!$product) {
+            return response()->json(['message' => 'Product not found'], 404);
+        }
+
+        $limit = (int) $request->get('limit', 12);
+        $limit = max(4, min(24, $limit));
+
+        $result = $this->recommendations->forProduct($product, $limit, $limit);
+
+        return response()->json([
+            'related' => ProductResource::collection($result['related'])->resolve(),
+            'more' => ProductResource::collection($result['more'])->resolve(),
         ]);
     }
 

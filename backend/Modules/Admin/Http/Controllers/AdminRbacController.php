@@ -32,7 +32,7 @@ class AdminRbacController extends Controller
         'payout_reviewer', 'refund_agent', 'inventory_manager', 'cms_editor',
         'auditor', 'analyst',
         'kyc_reviewer', 'worker', 'user',
-        // Spec A?65 named admin roles.
+        // Spec A section 65 named admin roles.
         'category_admin', 'vendor_manager', 'content_admin',
     ];
 
@@ -51,7 +51,7 @@ class AdminRbacController extends Controller
 
     public function roles(): JsonResponse
     {
-        $roles = $this->registry->all();
+        $roles = $this->registry->allIncludingRetired();
         $summaries = collect($this->permissions->roleSummaries($roles))->keyBy('role');
 
         return response()->json(['data' => collect($roles)->map(fn (string $role) => [
@@ -60,6 +60,7 @@ class AdminRbacController extends Controller
             'user_count' => (int) ($summaries[$role]['user_count'] ?? 0),
             'is_core'    => in_array($role, self::CORE_ROLES, true),
             'is_custom'  => ! $this->registry->isCore($role),
+            'is_retired' => $this->registry->isRetired($role),
         ])->values()->all()]);
     }
 
@@ -82,7 +83,7 @@ class AdminRbacController extends Controller
      */
     public function matrix(): JsonResponse
     {
-        $roles = $this->registry->all();
+        $roles = $this->registry->allIncludingRetired();
         $summaries = collect($this->permissions->roleSummaries($roles))->keyBy('role');
 
         $data = collect($this->permissions->permissionMatrix($roles))->map(fn (array $row) => [
@@ -92,6 +93,7 @@ class AdminRbacController extends Controller
             'user_count'  => (int) ($summaries[$row['role']]['user_count'] ?? 0),
             'is_core'     => in_array($row['role'], self::CORE_ROLES, true),
             'is_custom'   => ! $this->registry->isCore($row['role']),
+            'is_retired'  => $this->registry->isRetired($row['role']),
         ])->values()->all();
 
         return response()->json([
@@ -189,14 +191,22 @@ class AdminRbacController extends Controller
     }
 
     /**
-     * Deletes a custom role. Built-in roles are protected. When users still
-     * hold the role, deletion is blocked unless reassign_to names the role
-     * that should receive them, so no assignment is ever orphaned.
+     * Deletes a custom role. Built-in roles are protected: only a super
+     * admin may take one out of service (it is then hidden from the
+     * console and every role picker, and can be restored). When users
+     * still hold the role, deletion is blocked unless reassign_to names
+     * the role that should receive them, so no assignment is orphaned.
      */
     public function deleteRole(Request $request, string $slug): JsonResponse
     {
+        // Built-in roles are part of the platform contract: they can never
+        // be deleted, not even by a super admin (the roster, the permission
+        // matrix and every gated surface depend on them). Only custom
+        // roles can be removed.
         if ($this->registry->isCore($slug)) {
-            return response()->json(['message' => 'Built-in roles cannot be deleted.'], 422);
+            return response()->json([
+                'message' => 'Built-in roles cannot be deleted.',
+            ], 422);
         }
 
         if (! in_array($slug, $this->registry->custom(), true)) {
@@ -205,6 +215,7 @@ class AdminRbacController extends Controller
 
         $validated = $request->validate([
             'reassign_to' => ['nullable', 'string', 'max:100'],
+            'reason' => ['nullable', 'string', 'max:255'],
         ]);
 
         $reassignTo = $validated['reassign_to'] ?? null;
@@ -223,7 +234,7 @@ class AdminRbacController extends Controller
             ], 422);
         }
 
-        DB::transaction(function () use ($slug, $reassignTo) {
+        DB::transaction(function () use ($slug, $reassignTo, $request, $validated) {
             if ($reassignTo !== null) {
                 $alreadyHoldsTarget = DB::table('user_roles')
                     ->where('role', $reassignTo)
@@ -252,7 +263,43 @@ class AdminRbacController extends Controller
             ],
         ], $request);
 
-        return response()->json(['message' => "Role {$slug} deleted"]);
+        return response()->json([
+            'message' => "Role {$slug} deleted",
+            'retired' => false,
+        ]);
+    }
+
+    /**
+     * Brings a retired built-in role back into service and re-seeds its
+     * default permissions. Super admin only.
+     */
+    public function restoreRole(Request $request, string $role): JsonResponse
+    {
+        if (! $this->isSuperAdmin($request)) {
+            return response()->json([
+                'message' => 'Only a super admin can restore a built-in role.',
+            ], 422);
+        }
+
+        if (! $this->registry->isRetired($role)) {
+            return response()->json(['message' => 'Role is not retired'], 422);
+        }
+
+        $this->registry->restore($role);
+
+        $this->auditChange('custom_role', $role, [
+            'new_values' => ['restored' => true],
+        ], $request);
+
+        return response()->json(['message' => "Role {$role} restored"]);
+    }
+
+    /** Super admin = the platform owner role. */
+    private function isSuperAdmin(Request $request): bool
+    {
+        $user = $request->user();
+
+        return $user !== null && $user->hasRole('super_admin');
     }
 
     /**

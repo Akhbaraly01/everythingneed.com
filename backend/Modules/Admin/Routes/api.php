@@ -378,6 +378,8 @@ Route::prefix('api/admin')->middleware(['api', 'auth:sanctum', EnsureAccountActi
         ->middleware('role:super_admin');
     Route::post('/rbac/roles/{role}/reset', [AdminRbacController::class, 'resetRole'])
         ->middleware('role:super_admin');
+    Route::post('/rbac/roles/{role}/restore', [AdminRbacController::class, 'restoreRole'])
+        ->middleware('role:super_admin');
     Route::put('/roles/assign', [AdminRbacController::class, 'updateRole'])
         ->middleware('permission:users.permissions.manage')
         ->can('manageUsers');

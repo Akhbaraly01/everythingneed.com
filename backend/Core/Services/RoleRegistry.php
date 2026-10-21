@@ -19,6 +19,9 @@ class RoleRegistry extends BaseService implements RoleRegistryInterface
     /** @var list<string>|null */
     private ?array $memoCustom = null;
 
+    /** @var list<string>|null */
+    private ?array $memoRetired = null;
+
     public function canonical(): array
     {
         return AppRole::values();
@@ -34,7 +37,12 @@ class RoleRegistry extends BaseService implements RoleRegistryInterface
 
     public function all(): array
     {
-        return array_values(array_unique([...$this->canonical(), ...$this->custom()]));
+        $retired = $this->retired();
+
+        return array_values(array_unique([
+            ...array_values(array_diff($this->canonical(), $retired)),
+            ...$this->custom(),
+        ]));
     }
 
     public function exists(string $role): bool
@@ -42,9 +50,100 @@ class RoleRegistry extends BaseService implements RoleRegistryInterface
         return in_array($role, $this->all(), true);
     }
 
+    public function allIncludingRetired(): array
+    {
+        return array_values(array_unique([...$this->canonical(), ...$this->custom()]));
+    }
+
     public function isCore(string $role): bool
     {
         return in_array($role, $this->canonical(), true);
+    }
+
+    public function retired(): array
+    {
+        return $this->memoRetired ??= DB::table('retired_roles')
+            ->orderBy('role')
+            ->pluck('role')
+            ->all();
+    }
+
+    public function isRetired(string $role): bool
+    {
+        return in_array($role, $this->retired(), true);
+    }
+
+    /**
+     * Takes a built-in role out of service. The role itself lives in the
+     * AppRole enum, so "deleting" it means: hide it everywhere and drop
+     * its grants/scopes. A super admin can restore it later.
+     */
+    public function retire(string $role, ?string $actorId, ?string $reason = null): bool
+    {
+        if (! $this->isCore($role)) {
+            return false;
+        }
+
+        DB::transaction(function () use ($role, $actorId, $reason) {
+            DB::table('role_permissions')->where('role', $role)->delete();
+            DB::table('permission_scopes')
+                ->where('holder_type', 'role')
+                ->where('holder_id', $role)
+                ->delete();
+
+            DB::table('retired_roles')->updateOrInsert(
+                ['role' => $role],
+                [
+                    'id' => (string) Str::uuid(),
+                    'reason' => $reason,
+                    'retired_by' => $actorId,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ],
+            );
+        });
+
+        $this->memoRetired = null;
+        Cache::forget('rbac.matrix');
+        Cache::forget('permission.scopes');
+
+        return true;
+    }
+
+    /** Brings a retired built-in role back and re-seeds its defaults. */
+    public function restore(string $role): bool
+    {
+        if (! $this->isCore($role) || ! $this->isRetired($role)) {
+            return false;
+        }
+
+        DB::transaction(function () use ($role) {
+            DB::table('retired_roles')->where('role', $role)->delete();
+
+            $defaults = \Database\Seeders\PermissionSeeder::defaultsFor($role);
+            $rows = [];
+
+            foreach (array_values(array_unique($defaults)) as $permission) {
+                $rows[] = [
+                    'id' => (string) Str::uuid(),
+                    'role' => $role,
+                    'permission' => $permission,
+                    'state' => 'granted',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+
+            if ($rows !== []) {
+                DB::table('role_permissions')->insert($rows);
+            }
+        });
+
+        $this->memoRetired = null;
+        Cache::forget('rbac.matrix');
+        Cache::forget('permission.scopes');
+
+        return true;
     }
 
     public function label(string $role): string

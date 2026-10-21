@@ -8,6 +8,9 @@ Route::prefix('api')->group(function () {
     // Home infinite feed (Home rebuild) — declared before /products/{id}
     // so "feed" never resolves as a product id.
     Route::get('/home/feed', [ProductController::class, 'homeFeed']);
+    // Ranked recommendations for a product (declared before /products/{id}
+    // so "related" never resolves as a product id).
+    Route::get('/products/{id}/related', [ProductController::class, 'related']);
     Route::get('/products/comparison', [ProductController::class, 'comparison'])
         ->middleware('auth:sanctum');
     Route::get('/products/{id}', [ProductController::class, 'show']);
