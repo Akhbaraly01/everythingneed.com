@@ -28,3 +28,4 @@ tmp-*.spec.ts
 playwright-report/
 test-results/
 tmp-routes.json
+tmp-*-audit.json
