@@ -128,7 +128,9 @@ class WorkspaceResolver implements WorkspaceResolverInterface
         }
 
         try {
-            return $user->vendor()->exists();
+            // The relation is cached on the model instance, so the landing
+            // and the workspace list share one lookup per request.
+            return $user->vendor !== null;
         } catch (\Throwable) {
             // A missing vendors table must never break the workspace shell.
             return false;

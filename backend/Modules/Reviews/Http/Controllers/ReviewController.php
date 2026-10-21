@@ -301,6 +301,7 @@ class ReviewController extends Controller
 
         return false;
     }
+
     /**
      * Product reviews are published from `reviews`, but the catalogue keeps
      * its own `product_reviews` projection (product page, vendor console).

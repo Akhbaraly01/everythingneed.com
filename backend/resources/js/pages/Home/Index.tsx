@@ -15,7 +15,7 @@ import InfiniteProductFeed from '@/components/home/InfiniteProductFeed';
 import PromoCard from '@/components/home/PromoCard';
 import SeoMeta, { type LearnSeo } from '@/components/learn/SeoMeta';
 import { useLanguage } from '@/lib/use-language';
-import { rotate, sessionSeed } from '@/lib/session-rotation';
+import { pageSeed, rotate } from '@/lib/session-rotation';
 import type { HomeSectionItem } from '@/types';
 
 interface TopExpert {
@@ -147,7 +147,7 @@ export default function HomeIndex({
 
     // Promotional blocks rotate per browser session: the page keeps the
     // same content but stops looking identical on every visit.
-    const rotationSeed = useMemo(() => sessionSeed(), []);
+    const rotationSeed = useMemo(() => pageSeed(), []);
     const trending = useMemo(
         () =>
             rotate(

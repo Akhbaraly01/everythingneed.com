@@ -85,16 +85,6 @@ export default function InfiniteProductFeed({
     // page is open.
     const seed = useMemo(() => pageSeed(), []);
 
-    const batch = (index: number): MarketplaceProduct[] => {
-        if (visible.length === 0) return [];
-        const out: MarketplaceProduct[] = [];
-        const start = index * batchSize;
-        for (let i = 0; i < batchSize; i += 1) {
-            out.push(visible[(start + i) % visible.length]);
-        }
-        return out;
-    };
-
     const blocks = useMemo(() => {
         const nodes: ReactNode[] = [];
         const batches = sections.length + 1;
@@ -119,7 +109,6 @@ export default function InfiniteProductFeed({
             );
         });
         return nodes;
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [visible, sections, batchSize, seed]);
 
     // Product pages only extend the products/all pools; static tabs (learning,

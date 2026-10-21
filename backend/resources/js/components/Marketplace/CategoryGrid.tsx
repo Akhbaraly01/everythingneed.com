@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import { useLanguage } from '@/lib/use-language';
-import { iconForSlug, verticalFor, VERTICALS, type Vertical } from '@/lib/verticals';
+import { iconForSlug, verticalFor, VERTICALS } from '@/lib/verticals';
 import type { SiteNav } from '@/types';
 import {
     MoreHorizontal,

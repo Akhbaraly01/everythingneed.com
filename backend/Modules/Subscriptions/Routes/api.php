@@ -33,4 +33,6 @@ Route::middleware(['auth:sanctum', EnsureAccountActive::class, 'permission:subsc
         Route::post('/plans', [SubscriptionController::class, 'adminStorePlan']);
         Route::put('/plans/{id}', [SubscriptionController::class, 'adminUpdatePlan'])
             ->where('id', '[0-9a-f-]{36}');
-        Route::delete('/plans/{id}', [SubscriptionController::class, 'adminDestroyPlan
+        Route::delete('/plans/{id}', [SubscriptionController::class, 'adminDestroyPlan'])
+            ->where('id', '[0-9a-f-]{36}');
+    });

@@ -3,6 +3,7 @@
 namespace Modules\Services\Routes;
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Middleware\EnsureAccountActive;
 use Modules\Services\Http\Controllers\AdminServiceCategoryController;
 use Modules\Services\Http\Controllers\AdminServiceController;
 use Modules\Services\Http\Controllers\ServiceCatalogController;
@@ -22,7 +23,7 @@ Route::prefix('api')->group(function () {
     });
 
     // Admin console (spec 39).
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', EnsureAccountActive::class])->group(function () {
         Route::get('/admin/services', [AdminServiceController::class, 'index'])
             ->middleware('permission:services.overview.view');
 
