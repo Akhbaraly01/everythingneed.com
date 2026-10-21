@@ -97,7 +97,15 @@ test('language switch translates chrome globally', async ({ page, context }) => 
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await expect(page.getByTestId('home-feed-batch-0')).toBeVisible({ timeout: 30_000 });
 
-    await expect(page.getByPlaceholder('Search everything...')).toBeVisible();
+    // The header search collapses to zero width on narrow viewports (the
+    // mobile bar owns search there), so it is only asserted where it is
+    // actually visible.
+    const viewportWidth = page.viewportSize()?.width ?? 1280;
+    const searchVisible = viewportWidth >= 640;
+
+    if (searchVisible) {
+        await expect(page.getByPlaceholder('Search everything...')).toBeVisible();
+    }
     await expect(page.getByText('Featured Products').first()).toBeVisible();
 
     // The whole-page engine decides who translates the chrome: the curated
@@ -120,7 +128,9 @@ test('language switch translates chrome globally', async ({ page, context }) => 
             )
             .toContain('/en/es');
     } else {
-        await expect(page.getByPlaceholder('Buscar todo...')).toBeVisible();
+        if (searchVisible) {
+            await expect(page.getByPlaceholder('Buscar todo...')).toBeVisible();
+        }
         await expect(page.getByText('Productos destacados').first()).toBeVisible();
         await expect(page.getByText('Ver todo >').first()).toBeVisible();
     }
