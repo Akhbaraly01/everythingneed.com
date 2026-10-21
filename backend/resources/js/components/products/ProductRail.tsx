@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from '@inertiajs/react';
 import { ChevronLeft, ChevronRight, Star } from 'lucide-react';
 import { formatPrice } from '@/lib/currency';
+import { pageSeed, rotate } from '@/lib/session-rotation';
 import Image from '@/components/shared/Image';
 
 export interface RailProduct {
@@ -31,6 +32,14 @@ export default function ProductRail({ title, products, testId }: Props) {
     const [atStart, setAtStart] = useState(true);
     const [atEnd, setAtEnd] = useState(false);
 
+    // A new arrangement on every page load; the relevance order is kept
+    // inside each rotation.
+    const seed = useMemo(() => pageSeed(), []);
+    const ordered = useMemo(
+        () => rotate(products, seed, title.length),
+        [products, seed, title],
+    );
+
     const sync = (): void => {
         const el = trackRef.current;
 
@@ -44,7 +53,7 @@ export default function ProductRail({ title, products, testId }: Props) {
 
     useEffect(() => {
         sync();
-    }, [products.length]);
+    }, [ordered.length]);
 
     const scrollBy = (direction: 1 | -1): void => {
         const el = trackRef.current;
@@ -91,7 +100,7 @@ export default function ProductRail({ title, products, testId }: Props) {
                 onScroll={sync}
                 className="flex gap-3 overflow-x-auto pb-2 [scrollbar-width:thin]"
             >
-                {products.map((product) => {
+                {ordered.map((product) => {
                     const href = product.link ?? `/products/${product.id}`;
                     const discount =
                         product.originalPrice && Number(product.originalPrice) > Number(product.price)

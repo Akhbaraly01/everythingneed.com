@@ -105,9 +105,9 @@ class PropertyController extends Controller
      * A self-service listing (POST /api/properties) belongs to the
      * authenticated user. A console listing (POST /api/admin/properties)
      * is a platform listing: it is attributed to the vendor account the
-     * acting admin owns (the vendor's own user) and stays unowned when
-     * the admin has no vendor record. An admin must never become the
-     * customer-facing owner (and viewer-request handler) of a listing.
+     * acting admin owns and stays unowned when the admin has no vendor
+     * record. An admin must never become the customer-facing owner (and
+     * viewer-request handler) of a listing.
      */
     private function resolveOwnerId(Request $request): ?string
     {
@@ -117,11 +117,23 @@ class PropertyController extends Controller
             return null;
         }
 
-        if (! $request->is('api/admin/properties')) {
+        if (! $this->isConsoleListing($request)) {
             return $user->id;
         }
 
         return $user->vendor?->user_id;
+    }
+
+    /** True for the admin console create route (POST /api/admin/properties). */
+    private function isConsoleListing(Request $request): bool
+    {
+        $route = $request->route();
+
+        if ($route !== null) {
+            return $route->uri() === 'api/admin/properties';
+        }
+
+        return $request->is('api/admin/properties');
     }
 
     /** The current user's own listings. */

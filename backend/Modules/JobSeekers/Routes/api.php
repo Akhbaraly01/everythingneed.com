@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Middleware\EnsureAccountActive;
 use Modules\JobSeekers\Http\Controllers\AdminWorkerProfileController;
 use Modules\JobSeekers\Http\Controllers\AdminWorkRequestController;
 use Modules\JobSeekers\Http\Controllers\WorkerProfileController;
@@ -27,7 +28,7 @@ Route::prefix('api')->group(function () {
     });
 
     // Admin console: every profile (incl. unverified/deleted) + moderation.
-    Route::prefix('admin')->group(function () {
+    Route::prefix('admin')->middleware(['auth:sanctum', EnsureAccountActive::class])->group(function () {
         Route::get('/job-seekers', [AdminWorkerProfileController::class, 'index'])
             ->middleware('permission:job_seekers.overview.view');
         Route::put('/job-seekers/{id}', [AdminWorkerProfileController::class, 'update'])

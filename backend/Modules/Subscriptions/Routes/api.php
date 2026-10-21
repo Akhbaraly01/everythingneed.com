@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Middleware\EnsureAccountActive;
 use Modules\Subscriptions\Http\Controllers\SubscriptionController;
 
 Route::prefix('api')->group(function () {
@@ -20,18 +21,16 @@ Route::prefix('api')->group(function () {
 // the seeded roles (super_admin, administrator) hold subscriptions.* and
 // keep working, while a custom role holding the permission is no longer
 // blocked by a role list that never named it.
-Route::middleware(['auth:sanctum', 'permission:subscriptions.subscriptions.view'])
+Route::middleware(['auth:sanctum', EnsureAccountActive::class, 'permission:subscriptions.subscriptions.view'])
     ->prefix('api/admin')
     ->group(function () {
         Route::get('/plans', [SubscriptionController::class, 'adminPlans']);
     });
 
-Route::middleware(['auth:sanctum', 'permission:subscriptions.subscriptions.manage'])
+Route::middleware(['auth:sanctum', EnsureAccountActive::class, 'permission:subscriptions.subscriptions.manage'])
     ->prefix('api/admin')
     ->group(function () {
         Route::post('/plans', [SubscriptionController::class, 'adminStorePlan']);
         Route::put('/plans/{id}', [SubscriptionController::class, 'adminUpdatePlan'])
             ->where('id', '[0-9a-f-]{36}');
-        Route::delete('/plans/{id}', [SubscriptionController::class, 'adminDestroyPlan'])
-            ->where('id', '[0-9a-f-]{36}');
-    });
+        Route::delete('/plans/{id}', [SubscriptionController::class, 'adminDestroyPlan

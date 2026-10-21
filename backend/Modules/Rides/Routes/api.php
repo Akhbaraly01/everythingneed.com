@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Middleware\EnsureAccountActive;
 use Modules\Rides\Http\Controllers\DriverController;
 use Modules\Rides\Http\Controllers\DriverEarningsController;
 use Modules\Rides\Http\Controllers\RideController;
@@ -40,7 +41,7 @@ Route::prefix('api')->group(function () {
 });
 
 // Admin console (all rides/flights incl. inactive)
-Route::prefix('api/admin/transport')->group(function () {
+Route::prefix('api/admin/transport')->middleware(['auth:sanctum', EnsureAccountActive::class])->group(function () {
     Route::get('/rides', [RideController::class, 'adminIndex'])
         ->middleware('permission:rides.overview.view');
     Route::get('/flights', [FlightController::class, 'adminIndex'])
