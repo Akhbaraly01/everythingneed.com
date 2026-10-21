@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { api, errorMessage } from '@/lib/api';
 import { Button } from '@/components/shared/Button';
+import { useConfirm } from '@/lib/confirm';
 import { AlertTriangle, Flag, Landmark, Plus } from 'lucide-react';
 
 export interface Milestone {
@@ -56,12 +57,16 @@ export default function MilestonePanel({
     isOwner: boolean;
     isProvider: boolean;
 }) {
+    const ask = useConfirm();
     const [milestones, setMilestones] = useState<Milestone[]>([]);
     const [loading, setLoading] = useState(false);
     const [busyId, setBusyId] = useState<string | null>(null);
     const [title, setTitle] = useState('');
     const [amount, setAmount] = useState('');
     const [planning, setPlanning] = useState(false);
+    const [disputingId, setDisputingId] = useState<string | null>(null);
+    const [disputeSubject, setDisputeSubject] = useState('');
+    const [disputeDescription, setDisputeDescription] = useState('');
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -80,6 +85,25 @@ export default function MilestonePanel({
     }, [load]);
 
     const act = async (milestone: Milestone, action: 'fund' | 'release' | 'refund') => {
+        if (action === 'release') {
+            const ok = await ask({
+                title: 'Release this milestone?',
+                description: `${milestone.currency} ${milestone.amount} is paid to the provider. This cannot be undone.`,
+                confirmLabel: 'Release',
+                danger: true,
+            });
+            if (!ok) return;
+        }
+        if (action === 'refund') {
+            const ok = await ask({
+                title: 'Refund this milestone?',
+                description: `${milestone.currency} ${milestone.amount} goes back to the payer. This cannot be undone.`,
+                confirmLabel: 'Refund',
+                danger: true,
+            });
+            if (!ok) return;
+        }
+
         setBusyId(milestone.id);
         try {
             await api.post(`/api/need-requests/${needId}/milestones/${milestone.id}/${action}`);
@@ -98,22 +122,27 @@ export default function MilestonePanel({
         }
     };
 
-    const dispute = async (milestone: Milestone) => {
-        const subject = window.prompt('What is wrong with this milestone?');
-        if (!subject) return;
-        const description = window.prompt('Describe the issue in a sentence');
-        if (!description) return;
+    const openDispute = (milestone: Milestone) => {
+        setDisputingId(milestone.id);
+        setDisputeSubject('');
+        setDisputeDescription('');
+    };
+
+    const dispute = async (milestone: Milestone, e: FormEvent) => {
+        e.preventDefault();
+        if (!disputeSubject.trim() || !disputeDescription.trim()) return;
 
         setBusyId(milestone.id);
         try {
             await api.post(`/api/need-requests/${needId}/milestones/${milestone.id}/dispute`, {
-                subject,
-                description,
+                subject: disputeSubject.trim(),
+                description: disputeDescription.trim(),
             });
             toast.success('Dispute opened — a moderator will arbitrate it');
+            setDisputingId(null);
             await load();
-        } catch (e) {
-            toast.error(errorMessage(e, 'Could not open the dispute'));
+        } catch (err) {
+            toast.error(errorMessage(err, 'Could not open the dispute'));
         } finally {
             setBusyId(null);
         }
@@ -226,13 +255,60 @@ export default function MilestonePanel({
                                     loading={busyId === milestone.id}
                                     disabled={busyId !== null}
                                     data-testid={`milestone-dispute-${milestone.id}`}
-                                    onClick={() => dispute(milestone)}
+                                    onClick={() => openDispute(milestone)}
                                     iconLeft={<Flag className="h-4 w-4" />}
                                 >
                                     Dispute
                                 </Button>
                             )}
                         </div>
+
+                        {disputingId === milestone.id && (
+                            <form onSubmit={(e) => dispute(milestone, e)} className="mt-3 rounded-lg border border-red-200 p-3 dark:border-red-900/60">
+                                <div>
+                                    <label htmlFor={`dispute-subject-${milestone.id}`} className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                                        What is wrong with this milestone?
+                                    </label>
+                                    <input
+                                        id={`dispute-subject-${milestone.id}`}
+                                        type="text"
+                                        value={disputeSubject}
+                                        onChange={(e) => setDisputeSubject(e.target.value)}
+                                        maxLength={160}
+                                        className={inputClass}
+                                    />
+                                </div>
+                                <div className="mt-2">
+                                    <label htmlFor={`dispute-description-${milestone.id}`} className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                                        Describe the issue
+                                    </label>
+                                    <textarea
+                                        id={`dispute-description-${milestone.id}`}
+                                        value={disputeDescription}
+                                        onChange={(e) => setDisputeDescription(e.target.value)}
+                                        rows={3}
+                                        maxLength={4000}
+                                        className={inputClass}
+                                    />
+                                </div>
+                                <div className="mt-3 flex gap-2">
+                                    <Button
+                                        type="submit"
+                                        size="sm"
+                                        variant="danger"
+                                        loading={busyId === milestone.id}
+                                        disabled={!disputeSubject.trim() || !disputeDescription.trim()}
+                                        data-testid={`milestone-dispute-submit-${milestone.id}`}
+                                        iconLeft={<Flag className="h-4 w-4" />}
+                                    >
+                                        Open dispute
+                                    </Button>
+                                    <Button type="button" size="sm" variant="ghost" onClick={() => setDisputingId(null)}>
+                                        Cancel
+                                    </Button>
+                                </div>
+                            </form>
+                        )}
                     </li>
                 ))}
             </ul>

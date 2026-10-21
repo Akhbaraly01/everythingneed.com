@@ -26,6 +26,10 @@ class ModuleDependencyTest extends TestCase
     private const ALLOWLIST = [
         'Modules/Admin/Http/Controllers/AdminBrandController.php' => ['Modules\Products\Entities'],
         'Modules/Admin/Http/Controllers/AdminCostGuideController.php' => ['Modules\Needs\Entities'],
+        // N-21 arbitration: the moderation console arbitrates an escrowed
+        // needs milestone, so it reads the milestone, the dispute and the
+        // payment rows it moves money against.
+        'Modules/Admin/Http/Controllers/AdminNeedsArbitrationController.php' => ['Modules\Needs\Entities', 'Modules\Orders\Entities', 'Modules\Payments\Entities'],
         'Modules/Admin/Http/Controllers/AdminNeedsController.php' => ['Modules\Needs\Entities', 'Modules\Needs\Http', 'Modules\Needs\Services', 'Modules\Orders\Entities'],
         'Modules/Admin/Http/Controllers/AdminSupportController.php' => ['Modules\Messaging\Entities'],
         'Modules/Admin/Routes/api.php' => ['Modules\Orders\Http'],
@@ -51,6 +55,10 @@ class ModuleDependencyTest extends TestCase
         'Modules/Learn/Http/Controllers/LessonProgressController.php' => ['Modules\Users\Entities'],
         'Modules/Messaging/Http/Controllers/ChatController.php' => ['Modules\Needs\Entities'],
         'Modules/Needs/Http/Controllers/NeedController.php' => ['Modules\Products\Entities', 'Modules\Vendors\Entities'],
+        // N-20/N-25: the escrow + timesheet controller reads the payment
+        // rows it moves money against and opens the dispute that the
+        // arbitration queue arbitrates.
+        'Modules/Needs/Http/Controllers/NeedEscrowController.php' => ['Modules\Orders\Entities', 'Modules\Payments\Entities'],
         'Modules/Needs/Http/Controllers/NeedRequestController.php' => ['Modules\Payments\Entities'],
         'Modules/Orders/Actions/PlaceOrder.php' => ['Modules\Pharmacy\Entities'],
         'Modules/Orders/Actions/PlaceProductOrder.php' => ['Modules\Checkout\Entities', 'Modules\Inventory\Entities', 'Modules\Products\Entities'],
