@@ -5,6 +5,7 @@ import { getInitials } from '@/lib/utils';
 import { useLanguage } from '@/lib/use-language';
 import type { WorkspaceProps } from '@/types';
 import type { ConsoleNavItem } from '@/config/consoleNavigation';
+import { canViewAdminPath, matchesNavPath } from '@/config/consoleNavigation';
 import WorkspaceSwitcher from '@/components/workspace/WorkspaceSwitcher';
 import { Menu, X, ChevronDown, User, Settings, LogOut, ShieldCheck } from 'lucide-react';
 
@@ -78,8 +79,7 @@ export default function ConsoleLayout({ children, title, nav, kind }: ConsoleLay
         if (!item.permission || permissions === null) return true;
         return permissions.includes('*') || permissions.includes(item.permission);
     });
-    const canViewCurrentPage =
-        !isAdminPath || hrefs === null || hrefs.includes(currentPath) || (currentPath === '/admin' && hrefs.includes('/admin/dashboard'));
+    const canViewCurrentPage = !isAdminPath || canViewAdminPath(currentPath, hrefs);
 
     const groups: string[] = [];
     for (const item of visibleNav) {
@@ -107,7 +107,7 @@ export default function ConsoleLayout({ children, title, nav, kind }: ConsoleLay
                                     href={item.href}
                                     onClick={() => setSidebarOpen(false)}
                                     className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium ${
-                                        currentPath === item.href || currentPath.startsWith(`${item.href}/`)
+                                        matchesNavPath(item.href, currentPath)
                                             ? 'bg-primary/[0.12] text-primary'
                                             : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
                                     }`}

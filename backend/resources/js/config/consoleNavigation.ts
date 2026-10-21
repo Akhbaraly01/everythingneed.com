@@ -151,6 +151,41 @@ export const adminRouteAliases: Record<string, string> = {
     '/admin/support': '/admin/support/tickets',
 };
 
+/**
+ * True when `currentPath` is the nav href itself or a detail page beneath
+ * it. Detail routes (e.g. /admin/users/{id}) are guarded by the same
+ * middleware as their index page, so the index entry must stay visible.
+ */
+export function matchesNavPath(href: string, currentPath: string): boolean {
+    if (href === currentPath) {
+        return true;
+    }
+
+    const base = href.endsWith('/') ? href.slice(0, -1) : href;
+
+    return currentPath.startsWith(`${base}/`);
+}
+
+/**
+ * UX-only check for the console's "Access denied" fallback. Mirrors the
+ * backend authority; aliases are resolved to the entry they share a page
+ * with (see adminRouteAliases).
+ */
+export function canViewAdminPath(currentPath: string, hrefs: string[] | null): boolean {
+    if (hrefs === null) {
+        return true;
+    }
+
+    const candidates = [currentPath];
+    const alias = adminRouteAliases[currentPath];
+
+    if (alias && alias !== currentPath) {
+        candidates.push(alias);
+    }
+
+    return candidates.some((path) => hrefs.some((href) => matchesNavPath(href, path)));
+}
+
 /** Provider/worker console navigation (worker-role routes only). */
 export const providerNavigation: ConsoleNavItem[] = [
     { label: 'Workspace Overview', href: '/provider', icon: LayoutDashboard, group: 'Provider' },

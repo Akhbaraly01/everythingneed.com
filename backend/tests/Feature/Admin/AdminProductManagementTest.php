@@ -108,6 +108,37 @@ class AdminProductManagementTest extends TestCase
     }
 
     #[Test]
+    public function test_custom_role_with_manage_permission_creates_for_any_vendor(): void
+    {
+        $vendor = $this->createVendor($this->createUser());
+
+        $manager = $this->createUser();
+        \Illuminate\Support\Facades\DB::table('user_permissions')->insert([
+            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'user_id' => $manager->id,
+            'permission' => 'products.products.manage',
+            'granted_by' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        Cache::forget("user.permissions.{$manager->id}");
+
+        $debug = $this->actingAs($manager, 'sanctum')
+            ->postJson('/api/products', [
+                'vendor_id' => $vendor->id,
+                'name' => 'Custom Role Product',
+                'description' => 'Created by a permission-backed console role.',
+                'category' => 'home',
+                'price' => 12.5,
+                'stock_quantity' => 3,
+            ])
+            ; fwrite(STDERR, $debug->getContent());
+        $debug->assertStatus(201)
+            ->assertJsonPath('data.name', 'Custom Role Product')
+            ->assertJsonPath('data.is_active', true);
+    }
+
+    #[Test]
     public function test_vendor_submissions_still_enter_the_approval_queue(): void
     {
         $vendorUser = $this->createVendorUser();

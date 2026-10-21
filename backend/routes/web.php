@@ -1033,25 +1033,13 @@ Route::get('/building-services', [ServiceRequestsPageController::class, 'buildin
 Route::get('/services', [ServiceCatalogPageController::class, 'index'])->name('services.index');
 Route::get('/services/{id}', [ServiceCatalogPageController::class, 'show'])->name('services.show');
 
-// ─── Admin console (Inertia, role-gated) ──────────────────────────────────────
+// ─── Admin console (Inertia, role- or permission-gated) ───────────────────────
 // Mirrors ADMIN_WORKSPACE_AUTHORIZATION_MATRIX.md: the dashboard is the common
-// landing for every administrative role (cards filtered per role server-side);
-// domain pages grant exactly their domain roles. Server middleware is the
-// only authority — the sidebar registry is UX.
-$adminConsoleRoles = implode(',', [
-    'super_admin', 'administrator', 'platform_ops', 'security_admin',
-    'finance_admin', 'healthcare_admin', 'learning_admin', 'learning_reviewer',
-    'support_agent', 'customer_service', 'content_manager', 'analytics_admin',
-    'marketplace_admin', 'moderator',
-    'hotel_admin', 'food_admin', 'transport_admin', 'jobs_admin', 'pharmacy_admin',
-    'agriculture_admin', 'building_admin', 'kyc_reviewer',
-    'orders_admin', 'wallet_admin', 'support_admin', 'real_estate_admin', 'needs_admin',
-    'needs_viewer',
-    'payout_reviewer', 'refund_agent', 'inventory_manager', 'cms_editor', 'auditor', 'analyst',
-    'category_admin', 'vendor_manager', 'content_admin',
-]);
-
-Route::middleware('role:' . $adminConsoleRoles)->prefix('admin')->group(function () {
+// landing for every administrative role (cards filtered per role server-side)
+// and for custom roles whose permissions open at least one console page;
+// domain pages grant exactly their domain permission (or their role list).
+// Server middleware is the only authority — the sidebar registry is UX.
+Route::middleware('admin.access')->prefix('admin')->group(function () {
     Route::get('/dashboard', [AdminPageController::class, 'dashboard'])->name('admin.dashboard');
     Route::get('/', [AdminPageController::class, 'dashboard'])->name('admin.root');
 });

@@ -135,9 +135,10 @@ const labelizeStatus = (p: Product): string =>
 export default function AdminProducts() {
     const permissions =
         (usePage().props.auth as { permissions?: string[] } | null)?.permissions ?? [];
-    const canCreate = permissions.includes('*') || permissions.includes('products.products.create');
-    const canUpdate = permissions.includes('*') || permissions.includes('products.products.update');
+    const canCreate = permissions.includes('*') || permissions.includes('products.products.create') || permissions.includes('products.products.manage');
+    const canUpdate = permissions.includes('*') || permissions.includes('products.products.update') || permissions.includes('products.products.manage');
     const canDelete = permissions.includes('*') || permissions.includes('products.products.delete');
+    const canApprove = permissions.includes('*') || permissions.includes('products.products.approve');
 
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
@@ -454,7 +455,7 @@ export default function AdminProducts() {
                                 return (
                                     <div className="flex gap-2">
                                         <a href={`/products/${p.slug ?? p.id}`} target="_blank" className="text-gray-400 hover:text-gray-600" title="View"><Eye className="h-4 w-4" /></a>
-                                        {status === 'pending' && (
+                                        {status === 'pending' && canApprove && (
                                             <>
                                                 <button onClick={() => void approveProduct(p.id)} className="text-green-600 hover:text-green-800" title="Approve"><CheckCircle className="h-4 w-4" /></button>
                                                 <button onClick={() => setRejectFor(p)} className="text-red-600 hover:text-red-800" title="Reject"><XCircle className="h-4 w-4" /></button>

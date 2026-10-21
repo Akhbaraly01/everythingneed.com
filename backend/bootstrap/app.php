@@ -28,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => \App\Http\Middleware\EnsureUserHasRole::class,
             'permission' => \App\Http\Middleware\EnsureUserHasPermission::class,
+            'admin.access' => \App\Http\Middleware\EnsureAdminConsoleAccess::class,
             'verified.custom' => \App\Http\Middleware\EnsureEmailIsVerified::class,
             'audit' => \App\Http\Middleware\AuditLog::class,
             'turnstile' => \App\Http\Middleware\VerifyTurnstile::class,

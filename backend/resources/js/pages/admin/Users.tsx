@@ -35,9 +35,10 @@ export default function AdminUsers() {
     const auth = usePage().props.auth as { roles?: string[]; permissions?: string[] } | null;
     const permissions = auth?.permissions ?? [];
     const authRoles = auth?.roles ?? [];
-    const canCreate = permissions.includes('*') || permissions.includes('users.users.create');
-    const canEdit = permissions.includes('*') || permissions.includes('users.users.update');
+    const canCreate = permissions.includes('*') || permissions.includes('users.users.create') || permissions.includes('users.users.manage');
+    const canEdit = permissions.includes('*') || permissions.includes('users.users.update') || permissions.includes('users.users.manage');
     const canDelete = permissions.includes('*') || permissions.includes('users.users.delete');
+    const canSuspend = permissions.includes('*') || permissions.includes('users.users.suspend') || permissions.includes('users.users.manage');
     const canManageRoles = permissions.includes('*') || permissions.includes('users.permissions.manage');
     const isSuperAdmin = authRoles.includes('super_admin');
     const ask = useConfirm();
@@ -346,12 +347,14 @@ export default function AdminUsers() {
                                             <Pencil className="h-3.5 w-3.5" /> Edit
                                         </button>
                                     )}
-                                    <button
-                                        onClick={() => toggleSuspend(u)}
-                                        className={`text-xs font-medium ${u.status === 'suspended' ? 'text-green-600' : 'text-red-600'}`}
-                                    >
-                                        {u.status === 'suspended' ? 'Restore' : 'Suspend'}
-                                    </button>
+                                    {canSuspend && (
+                                        <button
+                                            onClick={() => toggleSuspend(u)}
+                                            className={`text-xs font-medium ${u.status === 'suspended' ? 'text-green-600' : 'text-red-600'}`}
+                                        >
+                                            {u.status === 'suspended' ? 'Restore' : 'Suspend'}
+                                        </button>
+                                    )}
                                     {canDelete && (
                                         <button
                                             onClick={() => void deleteUser(u)}

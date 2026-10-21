@@ -46,27 +46,29 @@ Route::prefix('api/admin')->middleware(['api', 'auth:sanctum', EnsureAccountActi
         ->can('manageSettings');
 
     // User management
+    // `users.users.manage` is the console page gate; it acts as the umbrella
+    // for listing/creating/editing/suspending so a role that can open the
+    // page can actually work in it. Role grants and deletion stay granular.
     Route::get('/users', [AdminUserController::class, 'index'])
-        ->middleware('permission:users.users.view')
+        ->middleware('permission:users.users.view,users.users.manage')
         ->can('manageUsers');
     Route::post('/users', [AdminUserController::class, 'store'])
-        ->middleware('permission:users.users.create')
+        ->middleware('permission:users.users.create,users.users.manage')
         ->can('manageUsers');
     Route::get('/users/{id}', [AdminUserController::class, 'show'])
-        ->middleware('permission:users.users.view')
+        ->middleware('permission:users.users.view,users.users.manage')
         ->can('manageUsers');
-    // Profile edits (name / email) need users.users.update in the role matrix.
     Route::put('/users/{id}', [AdminUserController::class, 'update'])
-        ->middleware('permission:users.users.update')
+        ->middleware('permission:users.users.update,users.users.manage')
         ->can('manageUsers');
     Route::put('/users/{id}/role', [AdminUserController::class, 'updateRole'])
         ->middleware('permission:users.permissions.manage')
         ->can('manageUsers');
     Route::post('/users/{id}/suspend', [AdminUserController::class, 'suspend'])
-        ->middleware('permission:users.users.suspend')
+        ->middleware('permission:users.users.suspend,users.users.manage')
         ->can('manageUsers');
     Route::post('/users/{id}/restore', [AdminUserController::class, 'restore'])
-        ->middleware('permission:users.users.activate')
+        ->middleware('permission:users.users.activate,users.users.manage')
         ->can('manageUsers');
     // Deletion is destructive: only roles holding users.users.delete (super_admin).
     Route::delete('/users/{id}', [AdminUserController::class, 'destroy'])

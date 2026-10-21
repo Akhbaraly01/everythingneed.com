@@ -7,7 +7,6 @@ import {
     Sun,
     ShoppingCart,
     ChevronDown,
-    ScanQrCode,
 } from 'lucide-react';
 import { useTheme } from '@/components/ThemeProvider';
 import { useLanguage } from '@/lib/use-language';
@@ -173,14 +172,6 @@ export default function Header({
                     >
                         {isDark ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
                     </button>
-
-                    <Link
-                        href="/scan"
-                        className="icon-glass-3d tap-safe inline-flex"
-                        aria-label={t('nav.scan')}
-                    >
-                        <ScanQrCode className="h-[18px] w-[18px]" />
-                    </Link>
 
                     <LocaleCurrencySwitcher />
 

@@ -322,7 +322,7 @@ export default function ProductShow({ product }: ProductShowProps) {
                         )}
                     </div>
 
-                    <div className="space-y-5">
+                    <div className="space-y-5 lg:sticky lg:top-24 lg:self-start">
                         <div>
                             <h1 className="text-2xl font-bold leading-snug text-foreground sm:text-3xl">
                                 {product.name}
@@ -599,6 +599,36 @@ export default function ProductShow({ product }: ProductShowProps) {
                             </p>
                         </div>
                     </div>
+                </div>
+
+                {/* Mobile action bar (Amazon/Alibaba pattern): the price and
+                    the primary action stay reachable while the shopper
+                    scrolls the long detail page. */}
+                <div className="sticky bottom-0 z-30 -mx-3 mt-4 flex items-center gap-3 border-t border-border bg-background/95 px-3 py-2 backdrop-blur lg:hidden">
+                    <div className="min-w-0 flex-1">
+                        <p className="truncate text-base font-bold text-primary">
+                            {formatPrice(effectivePrice)}
+                        </p>
+                        <p className="truncate text-[11px] text-muted-foreground">{product.name}</p>
+                    </div>
+                    <Button
+                        variant="primary"
+                        className="flex-1"
+                        onClick={handleAddToCart}
+                        disabled={adding || effectiveStock <= 0}
+                    >
+                        {added ? (
+                            <>
+                                <Check className="h-4 w-4" /> Added
+                            </>
+                        ) : effectiveStock <= 0 ? (
+                            'Out of Stock'
+                        ) : (
+                            <>
+                                <ShoppingCart className="h-4 w-4" /> Add to cart
+                            </>
+                        )}
+                    </Button>
                 </div>
 
                 <ProductAnchorNav items={anchors} />

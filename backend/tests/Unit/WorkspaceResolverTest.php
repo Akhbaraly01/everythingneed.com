@@ -147,6 +147,7 @@ class WorkspaceResolverTest extends TestCase
         $vendorAtAdmin = $resolver->workspaceFor($vendor, '/admin/users');
         $this->assertSame('admin', $vendorAtAdmin['current']);
         $this->assertContains('/admin/orders', $vendorAtAdmin['adminHrefs']);
+        $this->assertContains('/admin/dashboard', $vendorAtAdmin['adminHrefs']);
         $this->assertNotContains('/admin/users', $vendorAtAdmin['adminHrefs']);
         $this->assertNotContains('/admin/rbac', $vendorAtAdmin['adminHrefs']);
 
@@ -173,6 +174,7 @@ class WorkspaceResolverTest extends TestCase
 
         $this->assertContains('admin', $resolver->availableWorkspaces($powered));
         $this->assertContains('/admin/learning/courses', $resolver->adminHrefs($powered));
+        $this->assertContains('/admin/dashboard', $resolver->adminHrefs($powered));
         $this->assertNotContains('/admin/users', $resolver->adminHrefs($powered));
 
         // A permission with no permission-gated /admin page opens nothing.

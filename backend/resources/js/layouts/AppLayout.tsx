@@ -8,60 +8,17 @@ import GlobalCartDrawer from '@/components/cart/GlobalCartDrawer';
 import CompareDrawer from '@/components/compare/CompareDrawer';
 import PushNotificationPrompt from '@/components/notifications/PushNotificationPrompt';
 import WorkspaceSwitcher from '@/components/workspace/WorkspaceSwitcher';
+import AppSidebarNav from '@/components/navigation/AppSidebarNav';
 import { getInitials } from '@/lib/utils';
 import { useLanguage } from '@/lib/use-language';
-/** Camel slug for sidebar labels: 'Job Seekers' -> jobSeekers ('sidebar.*'). */
-const navSlug = (name: string): string => {
-    const slug = name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+(.)/g, (_, c: string) => c.toUpperCase())
-        .replace(/[^a-z0-9]/g, '');
-    return slug === '' ? name.toLowerCase() : slug;
-};
 import {
-    LayoutDashboard,
-    ShoppingBag,
-    Heart,
-    Calendar,
-    MessageSquare,
-    Bell,
-    Settings,
     LogOut,
     Menu,
     X,
     ChevronDown,
     User,
-    Lock,
-    Package,
+    Settings,
     CreditCard,
-    HelpCircle,
-    Briefcase,
-    Plane,
-    ListChecks,
-    Store,
-    Stethoscope,
-    Handshake,
-    Sprout,
-    HardHat,
-    Building2,
-    FolderTree,
-    Hotel,
-    UtensilsCrossed,
-    BookOpen,
-    MapPin,
-    Wallet,
-    ShoppingCart,
-    RotateCcw,
-    AlertTriangle,
-    GraduationCap,
-    Award,
-    Pill,
-    Receipt,
-    Users,
-    Star,
-    Truck,
-    BarChart3,
-    ClipboardList,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -69,79 +26,6 @@ interface AppLayoutProps {
     children: ReactNode;
     title?: string;
 }
-
-const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { name: 'Products', href: '/products', icon: ShoppingBag },
-    { name: 'Cart', href: '/cart', icon: ShoppingCart },
-    { name: 'Orders', href: '/orders', icon: Package },
-    { name: 'Returns', href: '/orders/returns', icon: RotateCcw },
-    { name: 'Disputes', href: '/orders/disputes', icon: AlertTriangle },
-    { name: 'Hotels', href: '/hotels', icon: Hotel },
-    { name: 'Food', href: '/food', icon: UtensilsCrossed },
-    { name: 'Learn', href: '/learn', icon: BookOpen },
-    { name: 'My Learning', href: '/learn/my-learning', icon: GraduationCap },
-    { name: 'Instructors', href: '/learn/instructors', icon: Users },
-    { name: 'Certificates', href: '/learn/certificates', icon: Award },
-    { name: 'Properties', href: '/properties', icon: Building2 },
-    { name: 'Jobs', href: '/jobs', icon: Briefcase },
-    { name: 'Vendors', href: '/vendors', icon: Store },
-    { name: 'Job Seekers', href: '/job-seekers', icon: Briefcase },
-    { name: 'Flights', href: '/flights', icon: Plane },
-    { name: 'Task Center', href: '/tasks', icon: ListChecks },
-    { name: 'My Requests', href: '/requests', icon: Handshake },
-    { name: 'Agriculture', href: '/agriculture', icon: Sprout },
-    { name: 'Building', href: '/building-services', icon: HardHat },
-    { name: 'My Bookings', href: '/bookings', icon: Calendar },
-    { name: 'Wishlist', href: '/wishlist', icon: Heart },
-    { name: 'Messages', href: '/messages', icon: MessageSquare },
-    { name: 'Vendor Portal', href: '/vendor', icon: Store },
-    { name: 'Payouts', href: '/vendor/payouts', icon: Wallet },
-    { name: 'Healthcare', href: '/healthcare', icon: Stethoscope },
-    { name: 'Lab Tests', href: '/healthcare/labs', icon: Stethoscope },
-    { name: 'Experts', href: '/experts', icon: User },
-    { name: 'Pharmacy', href: '/pharmacy', icon: Pill },
-    { name: 'Find Doctors', href: '/healthcare/doctors', icon: Stethoscope },
-    { name: 'Appointments', href: '/healthcare/appointments', icon: Calendar },
-    { name: 'Health Bookings', href: '/healthcare/bookings', icon: Calendar },
-    { name: 'Healthcare Aid', href: '/healthcare/aid', icon: Heart },
-    { name: 'Records', href: '/healthcare/records', icon: ClipboardList },
-    { name: 'Prescriptions', href: '/healthcare/prescriptions', icon: Pill },
-    { name: 'Notifications', href: '/notifications', icon: Bell },
-    { name: 'Wallet', href: '/wallet', icon: CreditCard },
-    { name: 'Bills', href: '/bills', icon: Receipt },
-    { name: 'Settings', href: '/settings', icon: Settings },
-    { name: 'My Profile', href: '/account/profile', icon: User },
-    { name: 'Change Password', href: '/account/change-password', icon: Lock },
-    { name: 'My Addresses', href: '/account/addresses', icon: MapPin },
-    { name: 'Help / Tickets', href: '/account/support', icon: HelpCircle },
-    { name: 'My Account', href: '/account/dashboard', icon: User },
-    { name: 'Stores', href: '/stores', icon: Store },
-    { name: 'Deals', href: '/deals', icon: Handshake },
-    { name: 'Needs & Services', href: '/needs', icon: Handshake },
-    { name: 'Needs History', href: '/needs/history', icon: Handshake },
-    { name: 'Transportation', href: '/transportation', icon: Plane },
-    { name: 'Agriculture', href: '/agriculture', icon: Sprout },
-    { name: 'Agri Products', href: '/agriculture/products', icon: Sprout },
-    { name: 'Agri Workers', href: '/agriculture/workers', icon: Users },
-    { name: 'Building Book', href: '/building-services/book', icon: HardHat },
-    { name: 'Subscriptions', href: '/subscriptions', icon: CreditCard },
-    { name: 'Reviews', href: '/reviews', icon: Star },
-    { name: 'Write Review', href: '/reviews/create', icon: Star },
-    { name: 'Payments', href: '/payments', icon: CreditCard },
-    { name: 'Categories', href: '/categories', icon: FolderTree },
-    { name: 'Deliveries', href: '/deliveries', icon: Truck },
-    { name: 'Inventory', href: '/inventory', icon: Package },
-    { name: 'Compare Products', href: '/products/compare', icon: Star },
-    { name: 'My Analytics', href: '/analytics', icon: BarChart3 },
-    { name: 'My Bookings', href: '/account/bookings', icon: Calendar },
-    { name: 'My Applications', href: '/account/applications', icon: Briefcase },
-    { name: 'Health History', href: '/account/healthcare-history', icon: Stethoscope },
-    { name: 'My Reviews', href: '/account/reviews', icon: Star },
-    { name: 'Food Orders', href: '/food/order-history', icon: UtensilsCrossed },
-    { name: 'Pharmacy Upload', href: '/pharmacy/prescription-upload', icon: Pill },
-    { name: 'Vendor - Add Product', href: '/vendor/products/create', icon: Package },
-];
 
 // NOTE: administration navigation was removed from the customer shell.
 // Admin pages render inside resources/js/layouts/AdminLayout.tsx and pull
@@ -166,8 +50,6 @@ function AppLayoutShell({ children, title }: AppLayoutProps) {
     const { t } = useLanguage();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [profileOpen, setProfileOpen] = useState(false);
-    const navLabel = (item: { name: string }): string =>
-        t(`sidebar.${navSlug(item.name)}`, { defaultValue: item.name });
 
     useEffect(() => {
         if (!profileOpen) return;
@@ -194,22 +76,10 @@ function AppLayoutShell({ children, title }: AppLayoutProps) {
                                     <X className="h-6 w-6" />
                                 </button>
                             </div>
-                            <nav className="flex-1 space-y-1 overflow-y-auto px-3 pb-[var(--dock-clearance)]">
-                                {navigation.map((item) => (
-                                    <Link
-                                        key={item.name}
-                                        href={item.href}
-                                        className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium ${
-                                            page.url === item.href
-                                                ? 'bg-primary/[0.12] text-primary'
-                                                : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
-                                        }`}
-                                    >
-                                        <item.icon className="h-5 w-5" />
-                                        {navLabel(item)}
-                                    </Link>
-                                ))}
-                            </nav>
+                            <AppSidebarNav
+                                className="flex-1 space-y-1 overflow-y-auto px-3 pb-[var(--dock-clearance)]"
+                                onNavigate={() => setSidebarOpen(false)}
+                            />
                         </div>
                     </div>
                 </div>
@@ -223,22 +93,7 @@ function AppLayoutShell({ children, title }: AppLayoutProps) {
                                 EverythingNeed
                             </Link>
                         </div>
-                        <nav className="mt-8 flex-1 space-y-1 overflow-y-auto px-3">
-                            {navigation.map((item) => (
-                                <Link
-                                    key={item.name}
-                                    href={item.href}
-                                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium ${
-                                        page.url === item.href
-                                            ? 'bg-primary/[0.12] text-primary'
-                                            : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
-                                    }`}
-                                >
-                                    <item.icon className="h-5 w-5" />
-                                    {navLabel(item)}
-                                </Link>
-                            ))}
-                        </nav>
+                        <AppSidebarNav className="mt-8 flex-1 space-y-1 overflow-y-auto px-3" />
                     </div>
                     <div className="flex flex-shrink-0 border-t border-border/60 p-4">
                         <div className="group block w-full flex-shrink-0">

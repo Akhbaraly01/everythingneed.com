@@ -36,7 +36,11 @@ export default function PictureSearch({ className = '' }: Props) {
     };
 
     useEffect(() => {
-        return () => stopCamera();
+        return () => {
+            // Stop the camera when the dialog unmounts.
+            stream?.getTracks().forEach((track) => track.stop());
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {

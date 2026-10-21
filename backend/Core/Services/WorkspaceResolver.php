@@ -75,12 +75,20 @@ class WorkspaceResolver implements WorkspaceResolverInterface
 
         // Custom roles carry no role-gated hrefs; include pages their
         // granted permissions can actually open.
+        $permissionAccess = false;
         foreach (self::permissionHrefs() as $expression => $uris) {
             if ($this->satisfiesPermissionExpression($user, $expression)) {
+                $permissionAccess = true;
                 foreach ($uris as $uri) {
                     $hrefs[$uri] = true;
                 }
             }
+        }
+
+        // The dashboard/root gate is role- OR permission-based (admin.access),
+        // so every permission-backed console user must see the landing entry.
+        if ($permissionAccess) {
+            $hrefs['/admin/dashboard'] = true;
         }
 
         return array_keys($hrefs);

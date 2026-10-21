@@ -27,3 +27,4 @@ tmp-*.php
 tmp-*.spec.ts
 playwright-report/
 test-results/
+tmp-routes.json

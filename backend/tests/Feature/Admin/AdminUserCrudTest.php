@@ -136,6 +136,49 @@ class AdminUserCrudTest extends TestCase
             ->assertStatus(403);
     }
 
+    #[Test]
+    public function test_manage_permission_covers_listing_creating_editing_and_suspending(): void
+    {
+        // users.users.manage is the page gate shown in the console nav. It
+        // must not open a page whose list/create/edit buttons then 403.
+        $actor = User::factory()->create();
+        $this->grant($actor, 'users.users.manage');
+
+        $target = User::factory()->create();
+
+        $this->actingAs($actor, 'sanctum')
+            ->getJson('/api/admin/users')
+            ->assertOk();
+
+        $this->actingAs($actor, 'sanctum')
+            ->postJson('/api/admin/users', [
+                'name' => 'Managed User',
+                'email' => 'managed@everythingneed.com',
+                'password' => 'Password123!',
+                'role' => 'user',
+            ])
+            ->assertStatus(201);
+
+        $this->actingAs($actor, 'sanctum')
+            ->putJson("/api/admin/users/{$target->id}", ['name' => 'Managed Rename'])
+            ->assertOk();
+
+        $this->actingAs($actor, 'sanctum')
+            ->postJson("/api/admin/users/{$target->id}/suspend")
+            ->assertOk();
+
+        // Destructive/privileged actions stay granular.
+        $this->actingAs($actor, 'sanctum')
+            ->deleteJson("/api/admin/users/{$target->id}")
+            ->assertStatus(403);
+
+        $this->actingAs($actor, 'sanctum')
+            ->putJson("/api/admin/users/{$target->id}/role", [
+                'role' => 'administrator',
+            ])
+            ->assertStatus(403);
+    }
+
     // ---- delete ----------------------------------------------------------
 
     #[Test]

@@ -45,8 +45,6 @@ export function RoleCard({
     const isCustom = row.is_custom === true;
     const isRetired = row.is_retired === true;
     const userCount = row.user_count ?? 0;
-    // Custom roles are free to delete; built-in roles only for a super admin.
-    const deletable = isCustom || canManageCore;
 
     return (
         <Card className="flex h-full flex-col gap-3 p-4">
@@ -130,42 +128,61 @@ export function RoleCard({
                 >
                     Manage
                 </Button>
-                {deletable ? (
+                {isCustom ? (
                     <Button
                         variant="ghost"
                         size="sm"
                         iconLeft={<Trash2 className="h-3.5 w-3.5" />}
                         className="text-muted-foreground hover:text-destructive"
                         disabled={busy}
-                        title={
-                            isCustom
-                                ? `Delete ${label}`
-                                : `Retire ${label} (super admin only - it leaves every role picker until restored)`
-                        }
+                        title={`Delete ${label}`}
                         onClick={onDelete}
                     >
-                        {isCustom ? 'Delete' : 'Retire'}
-                    </Button>
-                ) : isRetired ? (
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        iconLeft={<RotateCcw className="h-3.5 w-3.5" />}
-                        className="text-muted-foreground hover:text-primary"
-                        disabled={busy}
-                        title={`Restore ${label}`}
-                        onClick={onRestore}
-                    >
-                        Restore
+                        Delete
                     </Button>
                 ) : (
-                    <span
-                        className="inline-flex items-center gap-1.5 px-2 py-1 text-xs text-muted-foreground"
-                        title="Built-in roles are protected - only a super admin can retire them"
-                    >
-                        <Lock className="h-3.5 w-3.5" aria-hidden="true" />
-                        Protected
-                    </span>
+                    <>
+                        {/* Built-in roles always carry the lock - the
+                            protection is part of the contract, only a
+                            super admin may lift it. */}
+                        <span
+                            className="inline-flex items-center gap-1.5 px-2 py-1 text-xs text-muted-foreground"
+                            title={
+                                canManageCore
+                                    ? 'Built-in role - only a super admin can retire it'
+                                    : 'Built-in roles are protected - only a super admin can retire them'
+                            }
+                        >
+                            <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+                            Protected
+                        </span>
+                        {canManageCore && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                iconLeft={<Trash2 className="h-3.5 w-3.5" />}
+                                className="text-muted-foreground hover:text-destructive"
+                                disabled={busy}
+                                title={`Retire ${label} (super admin only - it leaves every role picker until restored)`}
+                                onClick={onDelete}
+                            >
+                                Retire
+                            </Button>
+                        )}
+                        {isRetired && canManageCore && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                iconLeft={<RotateCcw className="h-3.5 w-3.5" />}
+                                className="text-muted-foreground hover:text-primary"
+                                disabled={busy}
+                                title={`Restore ${label}`}
+                                onClick={onRestore}
+                            >
+                                Restore
+                            </Button>
+                        )}
+                    </>
                 )}
             </div>
         </Card>
