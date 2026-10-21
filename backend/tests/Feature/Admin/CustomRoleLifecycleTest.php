@@ -209,15 +209,22 @@ class CustomRoleLifecycleTest extends TestCase
         $this->assertSame(1, DB::table('custom_roles')->where('slug', 'regional_ops')->count());
     }
 
-    public function test_delete_rejects_builtin_and_unknown_roles(): void
+    public function test_delete_retires_builtin_roles_and_rejects_unknown_ones(): void
     {
         $this->seedMatrix();
         $super = $this->superAdmin();
 
+        // A built-in role lives in the AppRole enum: it cannot be removed
+        // from the code base, so deleting it takes it out of service
+        // (retired - hidden everywhere, grants dropped, restorable).
         $this->actingAs($super)
             ->deleteJson('/api/admin/rbac/roles/moderator')
-            ->assertStatus(422);
+            ->assertStatus(200)
+            ->assertJsonPath('retired', true);
 
+        $this->assertDatabaseHas('retired_roles', ['role' => 'moderator']);
+
+        // An unknown role is simply not there.
         $this->actingAs($super)
             ->deleteJson('/api/admin/rbac/roles/not_a_role')
             ->assertStatus(404);
@@ -245,6 +252,45 @@ class CustomRoleLifecycleTest extends TestCase
         $this->assertSame('Super Admin', $superRow['label']);
         $this->assertTrue($superRow['is_core']);
         $this->assertFalse($superRow['is_custom']);
+    }
+
+    public function test_custom_role_with_console_permission_enters_the_admin_console(): void
+    {
+        $this->seedMatrix();
+        $super = $this->superAdmin();
+
+        $this->actingAs($super)->postJson('/api/admin/rbac/roles', [
+            'name' => 'Learning Ops',
+            'slug' => 'learning_ops',
+            'permissions' => ['learn.overview.view'],
+        ])->assertStatus(201);
+
+        $holder = User::factory()->create();
+        $this->actingAs($super)->putJson('/api/admin/roles/assign', [
+            'user_id' => $holder->id,
+            'role' => 'learning_ops',
+        ])->assertStatus(200);
+
+        // The dashboard gate is role-OR-permission based, so a custom role
+        // with any console permission can land in the admin workspace.
+        $this->actingAs($holder, 'web')->get('/admin/dashboard')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->component('admin/Dashboard'));
+
+        $this->actingAs($holder, 'web')->get('/admin/learning/courses')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->component('admin/Learning'));
+
+        // It still cannot reach pages outside its granted permissions.
+        $this->actingAs($holder, 'web')->get('/admin/users')
+            ->assertStatus(302)
+            ->assertSessionHas('error');
+
+        // A user with no console role and no console permission is refused.
+        $plain = User::factory()->create();
+        $this->actingAs($plain, 'web')->get('/admin/dashboard')
+            ->assertStatus(302)
+            ->assertSessionHas('error');
     }
 
     public function test_create_requires_super_admin(): void

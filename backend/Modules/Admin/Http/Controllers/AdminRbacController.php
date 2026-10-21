@@ -199,17 +199,19 @@ class AdminRbacController extends Controller
      */
     public function deleteRole(Request $request, string $slug): JsonResponse
     {
-        // Built-in roles are part of the platform contract: they can never
-        // be deleted, not even by a super admin (the roster, the permission
-        // matrix and every gated surface depend on them). Only custom
-        // roles can be removed.
-        if ($this->registry->isCore($slug)) {
+        $isCore = $this->registry->isCore($slug);
+
+        // A built-in role lives in the AppRole enum, so it cannot be
+        // removed from the code base: deleting it takes it out of service
+        // (retired - hidden everywhere, grants dropped, restorable). Only
+        // a super admin may do that.
+        if ($isCore && ! $this->isSuperAdmin($request)) {
             return response()->json([
-                'message' => 'Built-in roles cannot be deleted.',
+                'message' => 'Built-in roles can only be retired by a super admin.',
             ], 422);
         }
 
-        if (! in_array($slug, $this->registry->custom(), true)) {
+        if (! $isCore && ! in_array($slug, $this->registry->custom(), true)) {
             return response()->json(['message' => 'Role not found'], 404);
         }
 
@@ -234,7 +236,7 @@ class AdminRbacController extends Controller
             ], 422);
         }
 
-        DB::transaction(function () use ($slug, $reassignTo, $request, $validated) {
+        DB::transaction(function () use ($slug, $reassignTo, $isCore, $request, $validated) {
             if ($reassignTo !== null) {
                 $alreadyHoldsTarget = DB::table('user_roles')
                     ->where('role', $reassignTo)
@@ -250,13 +252,22 @@ class AdminRbacController extends Controller
                     ->update(['role' => $reassignTo, 'updated_at' => now()]);
             }
 
-            $this->registry->delete($slug);
+            if ($isCore) {
+                $this->registry->retire(
+                    $slug,
+                    $request->user()?->id,
+                    $validated['reason'] ?? null,
+                );
+            } else {
+                $this->registry->delete($slug);
+            }
         });
 
         $this->auditChange('custom_role', $slug, [
             'old_values' => $reassignTo !== null ? ['holders' => $holders] : null,
             'new_values' => [
                 'deleted' => true,
+                'retired' => $isCore,
                 ...($reassignTo !== null
                     ? ['reassigned_to' => $reassignTo, 'reassigned_count' => $holders]
                     : []),
@@ -264,8 +275,10 @@ class AdminRbacController extends Controller
         ], $request);
 
         return response()->json([
-            'message' => "Role {$slug} deleted",
-            'retired' => false,
+            'message' => $isCore
+                ? "Built-in role {$slug} retired - restore it any time"
+                : "Role {$slug} deleted",
+            'retired' => $isCore,
         ]);
     }
 
