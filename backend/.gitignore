@@ -24,3 +24,6 @@ yarn-error.log
 tmp-playwright-results/
 tmp-*.mjs
 tmp-*.php
+tmp-*.spec.ts
+playwright-report/
+test-results/
