@@ -41,8 +41,13 @@ live in the security suites; only needs-specific findings below.
    thresholds are constants awaiting operational tuning data.
 6. Matching v1 uses profile + engagement signals only (no review-rating
    signal yet); weights are documented constants.
-7. Hourly billing, milestone escrow ledger, and arbitration stay P4 —
-   deliberately not built here.
+7. Hourly billing, milestone escrow ledger, and arbitration are built
+   (2026-10-21) with the money-path controls that matter: every leg
+   carries a stable idempotency key, a milestone plan can never exceed the
+   agreed price, an arbitration award can never exceed the held amount,
+   refunds are idempotent, and each money event writes an audit-chain
+   entry. The residual risk is legal/operational (holding funds,
+   arbitrator impartiality, evidence standards), not technical.
 
 ## Performance posture
 

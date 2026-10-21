@@ -541,7 +541,7 @@ export default function MyNeedTracking({ need_id }: { need_id: string }) {
                     <MilestonePanel needId={need_id} isOwner={isOwner} isProvider={isAcceptedProvider} />
                 )}
 
-                {need && (isOwner || isAcceptedProvider) && (
+                {need && (isOwner || isAcceptedProvider) && need.pricing_basis === 'hourly' && (
                     <TimesheetPanel needId={need_id} isOwner={isOwner} isProvider={isAcceptedProvider} />
                 )}
             </div>

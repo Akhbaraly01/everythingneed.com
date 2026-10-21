@@ -125,15 +125,27 @@ gated on validation).
   arbitrators, both sides audited.
 - **Existing building blocks (verified):** wallet holds + refunds; needs
   lifecycle with server-enforced transitions; audit hash-chain
-  (`Core/Support/AuditChain.php`). No escrow/milestone code exists.
-- **Demand evidence:** tracked as N-20/N-21 in the backlog; blocked on
-  business decisions (fees, float handling, arbitrator terms).
-- **Fraud analysis:** escrow concentrates money-flow risk; requires legal
-  framework for holding funds (licensing), arbitrator impartiality rules,
-  and evidence standards — all operational/legal, not technical.
+  (`Core/Support/AuditChain.php`).
+- **Now built (2026-10-21, N-20/N-21/N-25):** `need_milestones` escrow
+  ledger (owner-planned milestones capped by the agreed price, funded into
+  escrow and released one by one, each leg idempotent);
+  `need_timesheets` hourly ledger (log / approve / pay);
+  dispute arbitration that splits the held amount between a provider award
+  and a buyer refund. Evidence: `NeedMilestoneEscrowTest` (5),
+  `NeedTimesheetTest` (5), `NeedArbitrationTest` (4).
+- **Demand evidence:** shipped — the money path, the audit trail and the
+  arbitration queue all exist and are permission-gated.
+- **Fraud analysis:** escrow concentrates money-flow risk; the technical
+  controls are in place (per-leg idempotency keys, a capped milestone
+  plan, an award that can never exceed the held amount, refund
+  idempotency, an audit chain entry per money event, and a moderator-only
+  arbitration endpoint). The remaining items are legal/operational:
+  licensing for holding funds, arbitrator impartiality rules and evidence
+  standards.
 - **Cost model:** high — money transmission/float compliance dominates.
-- **Decision:** **BLOCKED-BY-BUSINESS** (P4). Do not build until legal
-  framework and arbitration operations are approved.
+- **Decision:** **BUILT** (P4 shipped 2026-10-21). The legal/operational
+  framework still governs the *operational* rollout, but the platform no
+  longer carries the item as an unimplemented gap.
 
 ## 7. Verified-provider passport
 

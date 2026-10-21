@@ -55,13 +55,19 @@ in the suites above.
 
 ## Unresolved blockers
 
-None inside NEEDS scope. Known external/adjacent limits (unchanged):
-Turnstile keys unprovisioned; braces advisory (Tailwind v4); live FX/VAPID/
-Reverb cutover pending.
+None inside NEEDS scope. Known external/adjacent limits:
+Turnstile keys are still unprovisioned (the platform now **fails closed**
+in production when they are missing — the auth endpoints answer 503
+instead of accepting unverified logins); braces advisory (Tailwind v4);
+live FX/VAPID/Reverb cutover pending.
 
 ## Deferred with owners (documented, not dropped)
 
 - Invite-adding UI + provider saves → needs public provider directory.
-- Milestone escrow ledger, hourly billing, arbitration → P4.
 - Signed-URL private attachments; global DB session TZ pin; pg_trgm search.
 - Review-rating signal in matching weights.
+- Milestone escrow ledger, hourly billing, arbitration → **shipped
+  2026-10-21** (`need_milestones`, `need_timesheets`, dispute
+  arbitration with an award/buyer-refund split; 14 new tests green). What
+  remains is operational/legal (holding-funds licensing, arbitrator terms),
+  not code.
