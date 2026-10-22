@@ -16,7 +16,16 @@ const walk = (dir) => {
     return out;
 };
 
-const routes = JSON.parse(readFileSync(routesJson, 'utf8')).map((r) => r.uri.replace(/^\//, ''));
+// The route list may be written with a BOM (PowerShell) or UTF-16 (shell
+// redirection) - normalise before parsing.
+const readJson = (path) => {
+    const raw = readFileSync(path, 'utf8');
+    const text = raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw;
+
+    return JSON.parse(text.replace(/^[\s\uFEFF]+/, ''));
+};
+
+const routes = readJson(routesJson).map((r) => r.uri.replace(/^\//, ''));
 
 const toRegex = (uri) =>
     new RegExp('^' + uri.split('/').map((seg) => (seg.startsWith('{') ? '[^/]+' : seg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))).join('/') + '$');
